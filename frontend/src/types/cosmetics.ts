@@ -41,6 +41,8 @@ export interface ProductImage {
 }
 
 export interface ProductPricing {
+  costPrice: number;
+  factoryPrice: number;
   hasSample: boolean;
   boxDimensions?: string;
   boxQuantity?: number;
@@ -51,20 +53,22 @@ export interface CosmeticProduct {
   name: string;
   code: string;
   description: string;
-  tube_type?: TubeType;
-  box_type?: BoxType;
-  process_type?: ProcessType;
-  functional_designs: FunctionalDesign[] | string;
+  productType?: string;
+  tubeType?: TubeType;
+  boxType?: BoxType;
+  processType?: ProcessType;
+  functionalDesigns: FunctionalDesign[];
   shape: Shape;
   material: Material;
   development_line_materials?: DevelopmentLineMaterial[];
   dimensions: ProductDimensions;
   images: ProductImage[];
   pricing: ProductPricing;
-  in_stock: boolean;
-  popularity_score: number;
-  created_at: string;
-  updated_at: string;
+  inStock: boolean;
+  popularityScore: number;
+  isFeatured: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface FilterOptions {
@@ -73,19 +77,23 @@ export interface FilterOptions {
   functionalDesigns?: FunctionalDesign[];
   shapes?: Shape[];
   materials?: Material[];
-  developmentLineMaterials?: DevelopmentLineMaterial[];
-  capacityRange?: {
-    min: number;
-    max: number;
-  };
-  compartmentRange?: {
-    min: number;
-    max: number;
-  };
+  capacityRange?: { min: number; max: number };
+  compartmentRange?: { min: number; max: number };
   searchText?: string;
 }
 
-export type SortOption = 'newest' | 'popular';
+export interface FilterOptionsResponse {
+  tubeTypes: TubeType[];
+  boxTypes: BoxType[];
+  functionalDesigns: FunctionalDesign[];
+  shapes: Shape[];
+  materials: Material[];
+  capacityRange: { min: number; max: number };
+  compartmentRange: { min: number; max: number };
+  priceRange: { min: number; max: number };
+}
+
+export type SortOption = 'newest' | 'popular' | 'price_low' | 'price_high';
 
 export interface CartItem {
   product: CosmeticProduct;

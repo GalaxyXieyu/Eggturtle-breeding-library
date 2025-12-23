@@ -95,6 +95,8 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 
+import { ProductImportDialog } from "@/components/admin/ProductImportDialog";
+
 // Image upload interface
 interface ProductImageUpload {
   file: File;
@@ -119,14 +121,14 @@ const formSchema = z.object({
   description: z.string().min(1, "产品描述不能为空"),
   material: z.string().min(1, "材质不能为空"),
   shape: z.string().min(1, "形状不能为空"),
-  tube_type: z.string().optional(),
-  box_type: z.string().optional(),
-  process_type: z.string().optional(),
+  tubeType: z.string().optional(),
+  boxType: z.string().optional(),
+  processType: z.string().optional(),
   hasSample: z.boolean().default(false),
   boxDimensions: z.string().optional(),
   boxQuantity: z.coerce.number().optional(),
-  in_stock: z.boolean().default(true),
-  popularity_score: z.coerce.number().min(0).max(100).default(0),
+  inStock: z.boolean().default(true),
+  popularityScore: z.coerce.number().min(0).max(100).default(0),
   isFeatured: z.boolean().default(false),
   dimensions: z.object({
     weight: z.coerce.number().optional(),
@@ -641,20 +643,6 @@ const AdminProducts = () => {
     initImagesFromProduct(product);
   };
 
-  // Check if product is featured
-  const checkIfProductIsFeatured = async (productId: string): Promise<boolean> => {
-    try {
-      const response = await fetch('/api/products/featured');
-      if (response.ok) {
-        const data = await response.json();
-        return data.data.some((featured: any) => featured.product.id === productId);
-      }
-    } catch (error) {
-      console.error('Failed to check featured status:', error);
-    }
-    return false;
-  };
-
   // Handle edit product
   const handleEditProduct = async (product: CosmeticProduct) => {
     setSelectedProduct(product);
@@ -666,9 +654,7 @@ const AdminProducts = () => {
       : product.functionalDesigns ? [product.functionalDesigns] : [];
     setSelectedFunctionalDesigns(designs);
 
-    // Check if product is featured and update form
-    const isFeatured = await checkIfProductIsFeatured(product.id);
-    editForm.setValue('isFeatured', isFeatured);
+    editForm.setValue('isFeatured', product.isFeatured);
 
     // Initialize images
     initImagesFromProduct(product);
@@ -790,7 +776,8 @@ const AdminProducts = () => {
       id: upload.id,
       url: upload.preview,
       alt: `${productName} - Image ${index + 1}`,
-      type: index === 0 ? 'main' : 'gallery'
+      type: index === 0 ? 'main' : 'gallery',
+      sort_order: index
     }));
   };
 
@@ -809,22 +796,23 @@ const AdminProducts = () => {
         functional_designs: selectedFunctionalDesigns,
         dimensions: {
           weight: values.dimensions?.weight ? parseFloat(values.dimensions.weight.toString()) : undefined,
-          capacity: values.dimensions?.capacityMin || values.dimensions?.capacityMax ? {
-            min: values.dimensions?.capacityMin ? parseFloat(values.dimensions.capacityMin.toString()) : 0,
-            max: values.dimensions?.capacityMax ? parseFloat(values.dimensions.capacityMax.toString()) : 0
+          capacity: values.dimensions?.capacity?.min || values.dimensions?.capacity?.max ? {
+            min: values.dimensions?.capacity?.min ? parseFloat(values.dimensions.capacity.min.toString()) : 0,
+            max: values.dimensions?.capacity?.max ? parseFloat(values.dimensions.capacity.max.toString()) : 0
           } : undefined,
           length: values.dimensions?.length ? parseFloat(values.dimensions.length.toString()) : undefined,
           width: values.dimensions?.width ? parseFloat(values.dimensions.width.toString()) : undefined,
           height: values.dimensions?.height ? parseFloat(values.dimensions.height.toString()) : undefined,
           compartments: values.dimensions?.compartments ? parseInt(values.dimensions.compartments.toString()) : undefined
         },
-        has_sample: false,
+        has_sample: values.hasSample,
         box_dimensions: values.boxDimensions || undefined,
-        box_quantity: values.boxQuantity ? parseInt(values.boxQuantity) : undefined,
+        box_quantity: values.boxQuantity ?? undefined,
         cost_price: 0, // Default value, can be updated later
         factory_price: 0, // Default value, can be updated later
-        in_stock: true,
-        popularity_score: 0,
+        in_stock: values.inStock,
+        popularity_score: values.popularityScore,
+        is_featured: values.isFeatured,
         images: [] // Create product without images first
       };
 
@@ -845,27 +833,6 @@ const AdminProducts = () => {
             }
           }
 
-          // If product is marked as featured, add it to featured products
-          if (values.isFeatured && response?.id) {
-            try {
-              const token = localStorage.getItem('token');
-              await fetch('/api/featured-products', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                  productId: response.id,
-                  sortOrder: 0,
-                  isActive: true
-                })
-              });
-            } catch (error) {
-              console.error('Failed to add to featured products:', error);
-            }
-          }
-
           setIsCreateDialogOpen(false);
           resetImages();
           setSelectedFunctionalDesigns([]);
@@ -880,80 +847,40 @@ const AdminProducts = () => {
   const handleSaveProduct = (values: z.infer<typeof formSchema>) => {
     if (!selectedProduct) return;
 
-    // Convert current image uploads to product images
-    const productImages = convertImagesToProductImages(imageUploads, values.name);
-
     const updatedProductData = {
       name: values.name,
       code: values.code,
       description: values.description || "",
       material: values.material as Material,
       shape: values.shape as Shape,
-      tubeType: values.tubeType ? values.tubeType as TubeType : undefined,
-      boxType: values.boxType ? values.boxType as BoxType : undefined,
-      processType: values.processType ? values.processType as ProcessType : undefined,
-      functionalDesigns: selectedFunctionalDesigns,
-      images: productImages,
+      tube_type: values.tubeType ? values.tubeType as TubeType : undefined,
+      box_type: values.boxType ? values.boxType as BoxType : undefined,
+      process_type: values.processType ? values.processType as ProcessType : undefined,
+      functional_designs: selectedFunctionalDesigns,
       dimensions: {
         ...selectedProduct.dimensions,
-        weight: values.weight ? parseFloat(values.weight) : undefined,
-        capacity: {
-          min: values.capacityMin ? parseFloat(values.capacityMin) : 0,
-          max: values.capacityMax ? parseFloat(values.capacityMax) : 0
-        },
-        length: values.length ? parseFloat(values.length) : undefined,
-        width: values.width ? parseFloat(values.width) : undefined,
-        height: values.height ? parseFloat(values.height) : undefined,
-        boxDimensions: values.boxDimensions,
-        boxQuantity: values.boxQuantity ? parseInt(values.boxQuantity) : undefined
+        weight: values.dimensions?.weight ? parseFloat(values.dimensions.weight.toString()) : undefined,
+        capacity: values.dimensions?.capacity?.min || values.dimensions?.capacity?.max ? {
+          min: values.dimensions?.capacity?.min ? parseFloat(values.dimensions.capacity.min.toString()) : 0,
+          max: values.dimensions?.capacity?.max ? parseFloat(values.dimensions.capacity.max.toString()) : 0
+        } : undefined,
+        length: values.dimensions?.length ? parseFloat(values.dimensions.length.toString()) : undefined,
+        width: values.dimensions?.width ? parseFloat(values.dimensions.width.toString()) : undefined,
+        height: values.dimensions?.height ? parseFloat(values.dimensions.height.toString()) : undefined,
+        compartments: values.dimensions?.compartments ? parseInt(values.dimensions.compartments.toString()) : undefined
       },
+      has_sample: values.hasSample,
+      box_dimensions: values.boxDimensions || undefined,
+      box_quantity: values.boxQuantity ?? undefined,
+      in_stock: values.inStock,
+      popularity_score: values.popularityScore,
+      is_featured: values.isFeatured
     };
 
     updateProductMutation.mutate(
       { id: selectedProduct.id, productData: updatedProductData },
       {
         onSuccess: async () => {
-          // Handle featured product status
-          const wasFeatured = await checkIfProductIsFeatured(selectedProduct.id);
-          const shouldBeFeatured = values.isFeatured;
-
-          try {
-            const token = localStorage.getItem('token');
-
-            if (shouldBeFeatured && !wasFeatured) {
-              // Add to featured products
-              await fetch('/api/featured-products', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                  productId: selectedProduct.id,
-                  sortOrder: 0,
-                  isActive: true
-                })
-              });
-            } else if (!shouldBeFeatured && wasFeatured) {
-              // Remove from featured products
-              const featuredResponse = await fetch('/api/featured-products');
-              if (featuredResponse.ok) {
-                const featuredData = await featuredResponse.json();
-                const featuredItem = featuredData.data.find((item: any) => item.product.id === selectedProduct.id);
-                if (featuredItem) {
-                  await fetch(`/api/featured-products/${featuredItem.id}`, {
-                    method: 'DELETE',
-                    headers: {
-                      'Authorization': `Bearer ${token}`
-                    }
-                  });
-                }
-              }
-            }
-          } catch (error) {
-            console.error('Failed to update featured status:', error);
-          }
-
           // Save image order if there are images
           if (imageUploads.length > 0) {
             try {
@@ -1359,17 +1286,20 @@ const AdminProducts = () => {
             className="pl-10 bg-white border-cosmetic-beige-200"
           />
         </div>
-        <Button 
-          className="bg-cosmetic-gold-400 hover:bg-cosmetic-gold-500 text-white w-full sm:w-auto"
-          onClick={() => {
-            resetImages();
-            setSelectedFunctionalDesigns([]);
-            setIsCreateDialogOpen(true);
-          }}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          添加产品
-        </Button>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <ProductImportDialog onSuccess={() => queryClient.invalidateQueries({ queryKey: PRODUCT_QUERY_KEYS.lists() })} />
+          <Button 
+            className="bg-cosmetic-gold-400 hover:bg-cosmetic-gold-500 text-white flex-1 sm:flex-none"
+            onClick={() => {
+              resetImages();
+              setSelectedFunctionalDesigns([]);
+              setIsCreateDialogOpen(true);
+            }}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            添加产品
+          </Button>
+        </div>
       </div>
 
       <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">

@@ -6,24 +6,30 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-
-# Import your app and dependencies
 import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from pathlib import Path
 
-from main import app
-from database import get_db
-from models import Base
-from auth import create_admin_user
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(BACKEND_DIR))
 
-# Create test database
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
+os.environ["ADMIN_USERNAME"] = "admin"
+os.environ["ADMIN_PASSWORD"] = "password"
+
+SQLALCHEMY_DATABASE_URL = "sqlite://"
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+import app.db.session as session_module
+session_module.engine = engine
+session_module.SessionLocal = TestingSessionLocal
+
+from app.main import app
+from app.db.session import get_db
+from app.models.models import Base
 
 def override_get_db():
     try:
@@ -44,65 +50,21 @@ def test_db():
 @pytest.fixture(scope="function")
 def db_session(test_db):
     """Create a fresh database session for each test."""
-    connection = engine.connect()
-    transaction = connection.begin()
-    session = TestingSessionLocal(bind=connection)
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    session = TestingSessionLocal()
 
     # Override the get_db dependency for this session
     def override_get_db_for_test():
-        try:
-            yield session
-        finally:
-            pass  # Don't close here, we'll handle it in cleanup
+        yield session
 
     app.dependency_overrides[get_db] = override_get_db_for_test
-
-    # Create admin user for each test
-    try:
-        from models import User
-        from auth import get_password_hash
-
-        # Delete existing admin if any
-        existing_admin = session.query(User).filter(User.username == 'admin').first()
-        if existing_admin:
-            session.delete(existing_admin)
-            session.commit()
-
-        # Create new admin user
-        admin_user = User(
-            username='admin',
-            hashed_password=get_password_hash('password'),
-            role='admin',
-            is_active=True
-        )
-        session.add(admin_user)
-        session.commit()
-    except Exception as e:
-        session.rollback()
-        print(f"Error creating admin user: {e}")
-        # Try with create_admin_user function as fallback
-        try:
-            create_admin_user(session)
-            session.commit()
-        except Exception as e2:
-            session.rollback()
-            print(f"Fallback admin creation also failed: {e2}")
 
     yield session
 
     # Cleanup
-    try:
-        session.close()
-    except:
-        pass
-    try:
-        transaction.rollback()
-    except:
-        pass
-    try:
-        connection.close()
-    except:
-        pass
+    session.rollback()
+    session.close()
 
     # Reset dependency override
     app.dependency_overrides[get_db] = override_get_db

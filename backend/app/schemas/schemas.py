@@ -3,6 +3,12 @@ from typing import List, Optional, Dict, Any, Union
 from datetime import datetime
 from enum import Enum
 
+class SortOption(str, Enum):
+    NEWEST = "newest"
+    POPULAR = "popular"
+    PRICE_LOW = "price_low"
+    PRICE_HIGH = "price_high"
+
 # Base schemas
 class ProductDimensions(BaseModel):
     weight: Optional[float] = None

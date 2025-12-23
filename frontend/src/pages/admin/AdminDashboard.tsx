@@ -7,6 +7,7 @@ import { Package, ShoppingCart, Heart, Award } from "lucide-react";
 import { useProducts } from "@/hooks/useProducts";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { CosmeticProduct } from "@/types/cosmetics";
 
 const AdminDashboard = () => {
   // Require authentication
@@ -19,32 +20,23 @@ const AdminDashboard = () => {
     limit: 1000,
   });
 
-  const products = apiProductsData?.products || [];
-
-  const getInStock = (product: any) => product.inStock ?? product.in_stock ?? false;
-  const getPopularity = (product: any) => product.popularityScore ?? product.popularity_score ?? 0;
-  const getTubeType = (product: any) => product.tubeType ?? product.tube_type ?? "";
-  const getBoxType = (product: any) => product.boxType ?? product.box_type ?? "";
-  const getMaterial = (product: any) => product.material ?? "";
-  const getCreatedAt = (product: any) => product.createdAt ?? product.created_at ?? "";
-  const getFactoryPrice = (product: any) =>
-    product.pricing?.factoryPrice ?? product.factory_price ?? 0;
+  const products: CosmeticProduct[] = apiProductsData?.products || [];
 
   // Calculate dashboard statistics
   const totalProducts = products.length;
-  const inStockProducts = products.filter(product => getInStock(product)).length;
-  const popularProducts = products.filter(product => getPopularity(product) > 7).length;
+  const inStockProducts = products.filter(product => product.inStock).length;
+  const popularProducts = products.filter(product => product.popularityScore > 7).length;
   const productTypes = [
     ...new Set([
-      ...products.map(product => getTubeType(product)).filter(Boolean),
-      ...products.map(product => getBoxType(product)).filter(Boolean),
+      ...products.map(product => product.tubeType).filter(Boolean),
+      ...products.map(product => product.boxType).filter(Boolean),
     ]),
   ].length;
 
   const productTypesData = Object.entries(
     products.reduce<Record<string, number>>((acc, product) => {
-      const tubeType = getTubeType(product);
-      const boxType = getBoxType(product);
+      const tubeType = product.tubeType;
+      const boxType = product.boxType;
       if (tubeType) acc[tubeType] = (acc[tubeType] || 0) + 1;
       if (boxType) acc[boxType] = (acc[boxType] || 0) + 1;
       return acc;
@@ -56,7 +48,7 @@ const AdminDashboard = () => {
 
   const materialData = Object.entries(
     products.reduce<Record<string, number>>((acc, product) => {
-      const material = getMaterial(product);
+      const material = product.material;
       if (material) {
         const key = material.trim();
         acc[key] = (acc[key] || 0) + 1;
@@ -70,12 +62,12 @@ const AdminDashboard = () => {
 
   // Recent products
   const recentProducts = [...products]
-    .sort((a, b) => new Date(getCreatedAt(b)).getTime() - new Date(getCreatedAt(a)).getTime())
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 5);
 
   // Popular products
   const topProducts = [...products]
-    .sort((a, b) => getPopularity(b) - getPopularity(a))
+    .sort((a, b) => b.popularityScore - a.popularityScore)
     .slice(0, 5);
 
   // Colors for the pie chart
@@ -265,11 +257,11 @@ const AdminDashboard = () => {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-cosmetic-brown-500 truncate">{product.name}</p>
                     <p className="text-xs text-cosmetic-brown-300">
-                      {new Date(getCreatedAt(product)).toLocaleDateString('zh-CN')}
+                      {new Date(product.createdAt).toLocaleDateString('zh-CN')}
                     </p>
                   </div>
                   <div className="text-sm font-medium text-cosmetic-gold-500">
-                    ¥{getFactoryPrice(product).toFixed(2)}
+                    ¥{product.pricing.factoryPrice.toFixed(2)}
                   </div>
                 </div>
               ))}
@@ -299,11 +291,11 @@ const AdminDashboard = () => {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-cosmetic-brown-500 truncate">{product.name}</p>
                     <p className="text-xs text-cosmetic-brown-300">
-                      人气: {getPopularity(product)}/100
+                      人气: {product.popularityScore}/100
                     </p>
                   </div>
                   <div className="text-sm font-medium text-cosmetic-gold-500">
-                    ¥{getFactoryPrice(product).toFixed(2)}
+                    ¥{product.pricing.factoryPrice.toFixed(2)}
                   </div>
                 </div>
               ))}

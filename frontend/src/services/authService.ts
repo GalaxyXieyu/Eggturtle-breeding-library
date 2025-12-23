@@ -142,7 +142,7 @@ export class AuthError extends Error {
 }
 
 // Helper function to handle auth errors
-export const handleAuthError = (error: any): AuthError => {
+export const handleAuthError = (error: unknown): AuthError => {
   const apiError = handleApiError(error);
   
   if (apiError.status === 401) {

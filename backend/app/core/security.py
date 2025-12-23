@@ -8,9 +8,9 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 
-from database import get_db
-from models import User
-from schemas import UserResponse
+from app.db.session import get_db
+from app.models.models import User
+from app.schemas.schemas import UserResponse
 
 load_dotenv()
 

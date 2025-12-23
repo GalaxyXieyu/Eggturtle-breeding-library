@@ -55,7 +55,7 @@ const getConnectionQuality = (): 'slow' | 'fast' => {
     return 'fast'; // 默认假设快速连接
   }
   
-  const connection = (navigator as any).connection;
+  const connection = (navigator as unknown as { connection?: { effectiveType?: string; downlink?: number } }).connection;
   if (connection) {
     // 检查连接类型和速度
     if (connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g') {

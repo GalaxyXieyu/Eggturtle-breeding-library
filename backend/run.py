@@ -22,7 +22,7 @@ def main():
     print(f"🔧 Debug mode: {debug}")
     
     uvicorn.run(
-        "main:app",
+        "app.main:app",
         host=host,
         port=port,
         reload=debug,

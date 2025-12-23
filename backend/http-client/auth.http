@@ -1,0 +1,26 @@
+@host = http://localhost:8000
+@username = admin
+@password = password
+@auth_token = {{login.response.body.data.token}}
+
+### Login
+# @name login
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
+
+> {%
+  client.global.set("auth_token", response.body.data.token);
+%}
+
+### Verify Token
+GET {{host}}/api/auth/verify
+Authorization: Bearer {{auth_token}}
+
+### Logout
+POST {{host}}/api/auth/logout
+Authorization: Bearer {{auth_token}}

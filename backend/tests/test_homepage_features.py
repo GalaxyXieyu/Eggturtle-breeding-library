@@ -3,6 +3,9 @@
 Test homepage features: carousels and featured products
 """
 
+import pytest
+pytest.skip("manual integration script (requires running server)", allow_module_level=True)
+
 import requests
 import json
 

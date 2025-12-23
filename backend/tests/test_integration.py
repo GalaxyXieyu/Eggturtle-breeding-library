@@ -4,6 +4,9 @@ Integration test script for Glam Cart Builder API
 Tests the complete workflow from frontend perspective
 """
 
+import pytest
+pytest.skip("manual integration script (requires running server)", allow_module_level=True)
+
 import requests
 import json
 import time

@@ -27,29 +27,18 @@ const HeroSection: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   // 自动播放插件配置
-  const plugin = React.useRef(
-    Autoplay({ delay: 5000, stopOnInteraction: true })
-  ) as any;
+  const plugin = React.useRef(Autoplay({ delay: 5000, stopOnInteraction: true }));
 
   // 获取轮播图数据
   useEffect(() => {
     const fetchCarousels = async () => {
-      console.log('🎠 开始获取轮播图数据...');
       try {
         const response = await fetch(createApiUrl(API_ENDPOINTS.CAROUSELS));
-        console.log('🎠 轮播图API响应状态:', response.status);
         if (response.ok) {
           const data = await response.json();
-          console.log('🎠 轮播图API数据:', data);
           setCarousels(data.data || []);
-          console.log('🎠 设置轮播图数据完成，数量:', data.data?.length || 0);
-        } else {
-          console.error('🎠 轮播图API响应失败:', response.status, response.statusText);
         }
-      } catch (error) {
-        console.error('🎠 获取轮播图失败:', error);
       } finally {
-        console.log('🎠 设置加载状态为false');
         setIsLoading(false);
       }
     };
@@ -81,17 +70,9 @@ const HeroSection: React.FC = () => {
 
   // 使用API数据或默认数据
   const carouselImages = carousels.length > 0 ? carousels : defaultCarouselImages;
-  
-  console.log('🎠 组件状态:', { 
-    isLoading, 
-    carouselsLength: carousels.length, 
-    carouselImagesLength: carouselImages.length,
-    usingDefault: carousels.length === 0
-  });
 
   // 如果正在加载且没有数据，显示加载状态
   if (isLoading) {
-    console.log('🎠 显示加载状态');
     return (
       <section className="relative w-full bg-beige-gradient h-[60vh] md:h-[70vh] lg:h-[80vh] flex items-center justify-center">
         <div className="text-center">
@@ -101,8 +82,6 @@ const HeroSection: React.FC = () => {
       </section>
     );
   }
-
-  console.log('🎠 渲染轮播图，图片数量:', carouselImages.length);
 
   return (
     <section className="relative w-full bg-beige-gradient">

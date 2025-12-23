@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 
 // API Configuration
 // Use empty string for production to make relative API calls
@@ -44,7 +44,7 @@ getAuthToken();
 
 // Request interceptor
 apiClient.interceptors.request.use(
-  (config: AxiosRequestConfig) => {
+  (config: InternalAxiosRequestConfig) => {
     // Only add timestamp for GET requests in development to prevent caching
     if (config.method === 'get' && import.meta.env.DEV) {
       config.params = {
@@ -104,27 +104,33 @@ export interface ApiError {
   message: string;
   status?: number;
   code?: string;
-  details?: any;
+  details?: unknown;
 }
 
 // Generic API response wrapper
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   data: T;
   message?: string;
   success: boolean;
 }
 
 // Helper function to handle API errors
-export const handleApiError = (error: any): ApiError => {
-  if (error.response) {
+export const handleApiError = (error: unknown): ApiError => {
+  if (axios.isAxiosError(error) && error.response) {
     // Server responded with error status
+    const data = error.response.data as unknown;
+    const maybeObj = (typeof data === 'object' && data !== null) ? (data as Record<string, unknown>) : undefined;
+    const message =
+      (typeof maybeObj?.message === 'string' && maybeObj.message) ||
+      (typeof maybeObj?.detail === 'string' && maybeObj.detail) ||
+      'Server error occurred';
     return {
-      message: error.response.data?.message || error.response.data?.detail || 'Server error occurred',
+      message,
       status: error.response.status,
-      code: error.response.data?.code,
+      code: typeof maybeObj?.code === 'string' ? maybeObj.code : undefined,
       details: error.response.data,
     };
-  } else if (error.request) {
+  } else if (axios.isAxiosError(error) && error.request) {
     // Request was made but no response received
     return {
       message: 'Network error. Please check your connection.',
@@ -133,7 +139,7 @@ export const handleApiError = (error: any): ApiError => {
   } else {
     // Something else happened
     return {
-      message: error.message || 'An unexpected error occurred',
+      message: error instanceof Error ? error.message : 'An unexpected error occurred',
     };
   }
 };

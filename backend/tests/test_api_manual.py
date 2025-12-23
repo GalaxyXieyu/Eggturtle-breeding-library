@@ -4,6 +4,9 @@ Manual API testing script for quick verification.
 Run this script to test the API endpoints manually.
 """
 
+import pytest
+pytest.skip("manual integration script (requires running server)", allow_module_level=True)
+
 import requests
 import json
 import time

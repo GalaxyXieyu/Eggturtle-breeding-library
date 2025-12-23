@@ -28,5 +28,5 @@ def get_db():
 
 # Create tables
 def create_tables():
-    from models import Base
+    from app.models.models import Base
     Base.metadata.create_all(bind=engine)

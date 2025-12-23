@@ -10,16 +10,7 @@ import { FilterOptions, SortOption } from "@/types/cosmetics";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useFilterOptions } from "@/hooks/useProducts";
 
-// 新的分组数据接口
-interface GroupedFilterOptions {
-  tubeTypes: Record<string, string[]>;
-  boxTypes: Record<string, string[]>;
-  functionalDesigns: Record<string, string[]>;
-  shapes: Record<string, string[]>;
-  materials: string[];
-  capacityRange: { min: number; max: number };
-  compartmentRange: { min: number; max: number };
-}
+type GroupedData = Record<string, string[]>;
 
 interface FilterSectionProps {
   onFilterChange: (filters: Partial<FilterOptions>) => void;
@@ -48,25 +39,33 @@ const FilterSection: React.FC<FilterSectionProps> = ({
   // 获取动态筛选器选项
   const { data: dynamicFilterOptions, isLoading: filterOptionsLoading, error: filterOptionsError } = useFilterOptions();
 
-  // 提取分组数据
-  const groupedOptions = dynamicFilterOptions as GroupedFilterOptions;
+  const normalizeGroupedData = (value: unknown): GroupedData => {
+    if (Array.isArray(value)) {
+      const items = value.filter((v): v is string => typeof v === "string" && v.trim() !== "");
+      return items.length ? { 全部: items } : {};
+    }
+    if (!value || typeof value !== "object") return {};
+
+    const result: GroupedData = {};
+    for (const [groupName, groupItems] of Object.entries(value as Record<string, unknown>)) {
+      if (Array.isArray(groupItems)) {
+        const items = groupItems.filter((v): v is string => typeof v === "string" && v.trim() !== "");
+        if (items.length) result[groupName] = items;
+        continue;
+      }
+      if (typeof groupItems === "string" && groupItems.trim() !== "") {
+        result[groupName] = [groupItems];
+      }
+    }
+    return result;
+  };
 
   // Auto-collapse filter content when it becomes sticky
   useEffect(() => {
     if (isSticky && isExpanded) {
       setIsExpanded(false);
     }
-  }, [isSticky]);
-
-  // 调试信息
-  console.log('FilterSection Debug:', {
-    dynamicFilterOptions,
-    groupedOptions,
-    filterOptionsLoading,
-    filterOptionsError: filterOptionsError?.message,
-    hasData: !!dynamicFilterOptions,
-    dataKeys: dynamicFilterOptions ? Object.keys(dynamicFilterOptions) : 'no data'
-  });
+  }, [isSticky, isExpanded]);
 
   // Count active filters
   const countActiveFilters = () => {
@@ -132,7 +131,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
   };
 
   // 渲染分组筛选器
-  const renderGroupedFilter = (title: string, groupedData: Record<string, string[]>, filterType: keyof FilterOptions) => {
+  const renderGroupedFilter = (title: string, groupedData: GroupedData, filterType: keyof FilterOptions) => {
     if (!groupedData || Object.keys(groupedData).length === 0) return null;
 
     return (
@@ -167,13 +166,36 @@ const FilterSection: React.FC<FilterSectionProps> = ({
     return <div className="p-4 text-center">正在加载筛选器...</div>;
   }
 
-  if (!groupedOptions) {
+  if (!dynamicFilterOptions) {
     return <div className="p-4 text-center text-red-500">筛选器数据加载失败，请刷新页面重试</div>;
   }
 
+  if (filterOptionsError) {
+    return <div className="p-4 text-center text-red-500">筛选器数据加载失败，请刷新页面重试</div>;
+  }
+
+  const tubeTypeGroups = normalizeGroupedData((dynamicFilterOptions as unknown as Record<string, unknown>).tubeTypes);
+  const boxTypeGroups = normalizeGroupedData((dynamicFilterOptions as unknown as Record<string, unknown>).boxTypes);
+  const functionalDesignGroups = normalizeGroupedData((dynamicFilterOptions as unknown as Record<string, unknown>).functionalDesigns);
+  const shapeGroups = normalizeGroupedData((dynamicFilterOptions as unknown as Record<string, unknown>).shapes);
+
+  const materials = Array.isArray((dynamicFilterOptions as unknown as Record<string, unknown>).materials)
+    ? ((dynamicFilterOptions as unknown as Record<string, unknown>).materials as string[]).filter(
+        (v): v is string => typeof v === "string" && v.trim() !== ""
+      )
+    : [];
+
   // 安全的范围数据
-  const capacityRange = groupedOptions?.capacityRange || { min: 0, max: 100 };
-  const compartmentRange = groupedOptions?.compartmentRange || { min: 1, max: 10 };
+  const capacityRange =
+    (dynamicFilterOptions as unknown as Record<string, unknown>).capacityRange &&
+    typeof (dynamicFilterOptions as unknown as Record<string, unknown>).capacityRange === "object"
+      ? ((dynamicFilterOptions as unknown as Record<string, unknown>).capacityRange as { min: number; max: number })
+      : { min: 0, max: 100 };
+  const compartmentRange =
+    (dynamicFilterOptions as unknown as Record<string, unknown>).compartmentRange &&
+    typeof (dynamicFilterOptions as unknown as Record<string, unknown>).compartmentRange === "object"
+      ? ((dynamicFilterOptions as unknown as Record<string, unknown>).compartmentRange as { min: number; max: number })
+      : { min: 1, max: 10 };
 
   if (isMobile) {
     return (
@@ -242,18 +264,18 @@ const FilterSection: React.FC<FilterSectionProps> = ({
 
             <div className="space-y-6 mt-4">
               {/* 分组筛选器 */}
-              {groupedOptions && (
+              {dynamicFilterOptions && (
                 <>
-                  {renderGroupedFilter("管类", groupedOptions.tubeTypes, "tubeTypes")}
-                  {renderGroupedFilter("盒类", groupedOptions.boxTypes, "boxTypes")}
-                  {renderGroupedFilter("功能设计", groupedOptions.functionalDesigns, "functionalDesigns")}
-                  {renderGroupedFilter("形状", groupedOptions.shapes, "shapes")}
+                  {renderGroupedFilter("管类", tubeTypeGroups, "tubeTypes")}
+                  {renderGroupedFilter("盒类", boxTypeGroups, "boxTypes")}
+                  {renderGroupedFilter("功能设计", functionalDesignGroups, "functionalDesigns")}
+                  {renderGroupedFilter("形状", shapeGroups, "shapes")}
 
                   {/* 材质 */}
                   <div>
                     <h3 className="text-base font-medium mb-2 text-cosmetic-brown-400">材质</h3>
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                      {groupedOptions.materials.map(material => (
+                      {materials.map(material => (
                         <div key={material} className="flex items-center space-x-2">
                           <Checkbox
                             id={`material-${material}`}
@@ -384,12 +406,12 @@ const FilterSection: React.FC<FilterSectionProps> = ({
           <div className="space-y-6 animate-fade-in">
             {/* 分组筛选器 */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {groupedOptions && (
+              {dynamicFilterOptions && (
                 <>
-                  {renderGroupedFilter("管类", groupedOptions.tubeTypes, "tubeTypes")}
-                  {renderGroupedFilter("盒类", groupedOptions.boxTypes, "boxTypes")}
-                  {renderGroupedFilter("功能设计", groupedOptions.functionalDesigns, "functionalDesigns")}
-                  {renderGroupedFilter("形状", groupedOptions.shapes, "shapes")}
+                  {renderGroupedFilter("管类", tubeTypeGroups, "tubeTypes")}
+                  {renderGroupedFilter("盒类", boxTypeGroups, "boxTypes")}
+                  {renderGroupedFilter("功能设计", functionalDesignGroups, "functionalDesigns")}
+                  {renderGroupedFilter("形状", shapeGroups, "shapes")}
                 </>
               )}
             </div>
@@ -397,11 +419,11 @@ const FilterSection: React.FC<FilterSectionProps> = ({
             {/* 材质和滑块 */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {/* 材质 */}
-              {groupedOptions && (
+              {dynamicFilterOptions && (
                 <div>
                   <h3 className="text-base font-medium mb-2 text-cosmetic-brown-400">材质</h3>
                   <div className="grid grid-cols-2 sm:grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1">
-                    {groupedOptions.materials.map(material => (
+                    {materials.map(material => (
                       <div key={material} className="flex items-center space-x-2">
                         <Checkbox
                           id={`material-${material}`}

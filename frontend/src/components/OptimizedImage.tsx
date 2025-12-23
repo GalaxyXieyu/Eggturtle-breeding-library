@@ -103,6 +103,7 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   const sizes = buildSizes(usage);
   const placeholderUrl = getPlaceholderUrl();
   const fallbackUrl = getFallbackUrl(usage);
+  const isShowingOriginal = imageState === 'loaded' && currentSrc === imageUrl;
 
   // 处理图片加载
   useEffect(() => {
@@ -145,6 +146,7 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
 
   // 处理图片加载成功
   const handleImageLoad = () => {
+    if (currentSrc !== imageUrl) return;
     if (imageState !== 'loaded') {
       setImageState('loaded');
       onLoad?.();
@@ -174,6 +176,13 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
     </div>
   );
 
+  const renderErrorOverlay = () => {
+    if (usage === 'card-thumbnail' || usage === 'card-preview' || usage === 'gallery-thumbnail') {
+      return renderPlaceholder();
+    }
+    return renderError();
+  };
+
   return (
     <div 
       ref={containerRef} 
@@ -195,11 +204,8 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
           
           {/* 错误状态 */}
           {imageState === 'error' && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-50 border-2 border-dashed border-gray-200 w-full h-full">
-              <div className="text-center text-gray-400">
-                <ImageIcon className="h-8 w-8 mx-auto mb-2" />
-                <p className="text-xs">图片加载失败</p>
-              </div>
+            <div className="absolute inset-0">
+              {renderErrorOverlay()}
             </div>
           )}
           
@@ -207,11 +213,11 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
           <img
             ref={imageRef}
             src={currentSrc}
-            srcSet={imageState === 'loaded' ? srcSet : undefined}
-            sizes={imageState === 'loaded' ? sizes : undefined}
+            srcSet={isShowingOriginal ? srcSet : undefined}
+            sizes={isShowingOriginal ? sizes : undefined}
             alt={alt}
             className={`w-full h-full object-contain transition-opacity duration-300 ${
-              imageState === 'loaded' ? 'opacity-100' : 'opacity-0'
+              isShowingOriginal ? 'opacity-100' : 'opacity-0'
             }`}
             loading={lazy && !priority ? 'lazy' : 'eager'}
             onLoad={handleImageLoad}

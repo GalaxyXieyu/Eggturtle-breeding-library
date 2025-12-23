@@ -1,4 +1,5 @@
 import { ImageUsage } from './imageUtils';
+import { CosmeticProduct, ProductImage } from '@/types/cosmetics';
 
 /**
  * 从现有的图片URL中提取产品代码和图片名称
@@ -10,6 +11,8 @@ interface ParsedImageInfo {
   imageName: string;
   isValid: boolean;
 }
+
+type ProductLike = Pick<CosmeticProduct, 'code' | 'name' | 'images'>;
 
 // 解析原始图片URL，提取产品代码和图片名称
 export const parseImageUrl = (url: string): ParsedImageInfo => {
@@ -37,19 +40,18 @@ export const parseImageUrl = (url: string): ParsedImageInfo => {
     
     return { productCode: '', imageName: '', isValid: false };
   } catch (error) {
-    console.warn('Failed to parse image URL:', url, error);
     return { productCode: '', imageName: '', isValid: false };
   }
 };
 
 // 从产品对象获取主图信息
-export const getMainImageInfo = (product: any): ParsedImageInfo => {
-  if (!product?.images || product.images.length === 0) {
-    return { productCode: product?.code || '', imageName: '', isValid: false };
+export const getMainImageInfo = (product: ProductLike): ParsedImageInfo => {
+  if (!product.images || product.images.length === 0) {
+    return { productCode: product.code || '', imageName: '', isValid: false };
   }
   
   // 查找主图
-  const mainImage = product.images.find((img: any) => img.type === 'main') || product.images[0];
+  const mainImage = product.images.find((img: ProductImage) => img.type === 'main') || product.images[0];
   
   if (mainImage?.url) {
     const parsed = parseImageUrl(mainImage.url);
@@ -59,16 +61,16 @@ export const getMainImageInfo = (product: any): ParsedImageInfo => {
     };
   }
   
-  return { productCode: product?.code || '', imageName: '', isValid: false };
+  return { productCode: product.code || '', imageName: '', isValid: false };
 };
 
 // 从产品对象获取所有图片信息
-export const getAllImagesInfo = (product: any): ParsedImageInfo[] => {
-  if (!product?.images || product.images.length === 0) {
+export const getAllImagesInfo = (product: ProductLike): ParsedImageInfo[] => {
+  if (!product.images || product.images.length === 0) {
     return [];
   }
   
-  return product.images.map((image: any) => {
+  return product.images.map((image: ProductImage) => {
     const parsed = parseImageUrl(image.url);
     return {
       ...parsed,
@@ -87,7 +89,7 @@ export const getImageUsageByIndex = (index: number, total: number): ImageUsage =
 
 // 便捷函数：直接从产品对象和用途生成优化的图片信息
 export const getOptimizedImageProps = (
-  product: any, 
+  product: ProductLike, 
   imageIndex: number = 0, 
   usage: ImageUsage = 'card-preview'
 ) => {
@@ -108,12 +110,12 @@ export const getOptimizedImageProps = (
 };
 
 // 检查产品是否有有效的图片
-export const hasValidImages = (product: any): boolean => {
+export const hasValidImages = (product: ProductLike): boolean => {
   const images = getAllImagesInfo(product);
   return images.length > 0;
 };
 
 // 获取产品的图片数量
-export const getImageCount = (product: any): number => {
+export const getImageCount = (product: ProductLike): number => {
   return getAllImagesInfo(product).length;
 }; 

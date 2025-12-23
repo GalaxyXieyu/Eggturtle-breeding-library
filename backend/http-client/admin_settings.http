@@ -1,0 +1,41 @@
+@host = http://localhost:8000
+@auth_token = 
+
+### Get Settings
+GET {{host}}/api/settings
+Authorization: Bearer {{auth_token}}
+
+### Update Settings
+PUT {{host}}/api/settings
+Authorization: Bearer {{auth_token}}
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="company_name"
+
+Glam Cart Co.
+--boundary
+Content-Disposition: form-data; name="contact_email"
+
+admin@glamcart.com
+--boundary
+Content-Disposition: form-data; name="company_logo"
+
+/images/logo.png
+--boundary
+Content-Disposition: form-data; name="company_description"
+
+Premium cosmetic packaging solutions.
+--boundary
+Content-Disposition: form-data; name="contact_phone"
+
++1234567890
+--boundary
+Content-Disposition: form-data; name="contact_address"
+
+123 Packaging St, Shanghai
+--boundary
+Content-Disposition: form-data; name="wechat_number"
+
+glamcart_wechat
+--boundary--

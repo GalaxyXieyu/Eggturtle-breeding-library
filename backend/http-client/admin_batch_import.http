@@ -1,0 +1,36 @@
+@host = http://localhost:8000
+@auth_token = 
+
+### Download Template
+GET {{host}}/api/products/batch-import/template
+Authorization: Bearer {{auth_token}}
+
+### Batch Import (Excel Only)
+POST {{host}}/api/products/batch-import
+Authorization: Bearer {{auth_token}}
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="excel_file"; filename="import_template.xlsx"
+Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+
+< ./import_template.xlsx
+--boundary--
+
+### Batch Import (Excel + Images)
+# Note: You need to have actual files in the current directory for this to work
+POST {{host}}/api/products/batch-import
+Authorization: Bearer {{auth_token}}
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="excel_file"; filename="import_template.xlsx"
+Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+
+< ./import_template.xlsx
+--boundary
+Content-Disposition: form-data; name="zip_file"; filename="images.zip"
+Content-Type: application/zip
+
+< ./images.zip
+--boundary--

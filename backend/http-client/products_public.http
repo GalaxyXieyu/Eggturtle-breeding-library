@@ -1,0 +1,23 @@
+@host = http://localhost:8000
+@auth_token = 
+@product_id = 
+
+### Get All Products (Paginated)
+GET {{host}}/api/products?page=1&limit=10
+Authorization: Bearer {{auth_token}}
+
+### Get Product by ID
+GET {{host}}/api/products/{{product_id}}
+Authorization: Bearer {{auth_token}}
+
+### Search Products
+GET {{host}}/api/products?search=tube
+Authorization: Bearer {{auth_token}}
+
+### Filter Products
+GET {{host}}/api/products?tube_types=口红管&materials=ABS
+Authorization: Bearer {{auth_token}}
+
+### Get Filter Options
+GET {{host}}/api/products/filter-options
+Authorization: Bearer {{auth_token}}

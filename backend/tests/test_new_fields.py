@@ -3,6 +3,9 @@
 Test new fields in the updated schema
 """
 
+import pytest
+pytest.skip("manual integration script (requires running server)", allow_module_level=True)
+
 import requests
 import json
 

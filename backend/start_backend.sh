@@ -5,11 +5,17 @@
 
 echo "🚀 启动 Glam Cart Backend 服务..."
 
-# 进入后端目录
-cd /data/glam-cart-deployment/backend
+# 获取脚本所在目录
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "$SCRIPT_DIR"
 
-# 激活虚拟环境并启动服务
-source venv/bin/activate
+# 检查虚拟环境
+if [ -d "venv" ]; then
+    echo "📦 激活虚拟环境 (venv)..."
+    source venv/bin/activate
+else
+    echo "⚠️ 警告: 未找到虚拟环境 (venv)，尝试直接运行..."
+fi
 
 # 设置生产环境变量
 export DEBUG=False

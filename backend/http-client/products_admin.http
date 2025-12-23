@@ -1,0 +1,48 @@
+@host = http://localhost:8000
+@auth_token = 
+@product_id = {{create_product.response.body.data.id}}
+
+### Create Product
+# @name create_product
+POST {{host}}/api/products
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+  "name": "Test Lipstick Tube",
+  "code": "TEST-HTTP-001",
+  "description": "Created via HTTP Client",
+  "product_type": "tube",
+  "tube_type": "口红管",
+  "shape": "圆形",
+  "material": "ABS",
+  "factory_price": 1.5,
+  "dimensions": {
+    "height": 100,
+    "width": 20,
+    "capacity": {
+      "min": 3,
+      "max": 5
+    }
+  },
+  "functional_designs": ["磁吸"],
+  "in_stock": true
+}
+
+> {%
+  client.global.set("product_id", response.body.data.id);
+%}
+
+### Update Product
+PUT {{host}}/api/products/{{product_id}}
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+  "name": "Updated Lipstick Tube",
+  "factory_price": 1.8
+}
+
+### Delete Product
+DELETE {{host}}/api/products/{{product_id}}
+Authorization: Bearer {{auth_token}}

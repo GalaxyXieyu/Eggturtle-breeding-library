@@ -1,5 +1,5 @@
 import apiClient, { ApiResponse, handleApiError, createImageUrl } from '@/lib/api';
-import { CosmeticProduct, FilterOptions, SortOption, Material, Shape, TubeType, BoxType, FunctionalDesign } from '@/types/cosmetics';
+import { CosmeticProduct, FilterOptions, FilterOptionsResponse, SortOption, Material, Shape, TubeType, BoxType, FunctionalDesign } from '@/types/cosmetics';
 
 // Backend API data structure (snake_case)
 interface BackendProductCreate {
@@ -146,25 +146,9 @@ export const productService = {
   },
 
   // Get filter options (for dynamic filter generation)
-  async getFilterOptions(): Promise<{
-    tubeTypes: Record<string, string[]>;
-    boxTypes: Record<string, string[]>;
-    functionalDesigns: Record<string, string[]>;
-    shapes: Record<string, string[]>;
-    materials: string[];
-    capacityRange: { min: number; max: number };
-    compartmentRange: { min: number; max: number };
-  }> {
+  async getFilterOptions(): Promise<FilterOptionsResponse> {
     try {
-      const response = await apiClient.get<ApiResponse<{
-        tubeTypes: Record<string, string[]>;
-        boxTypes: Record<string, string[]>;
-        functionalDesigns: Record<string, string[]>;
-        shapes: Record<string, string[]>;
-        materials: string[];
-        capacityRange: { min: number; max: number };
-        compartmentRange: { min: number; max: number };
-      }>>(`${ENDPOINTS.PRODUCTS}/filter-options`);
+      const response = await apiClient.get<ApiResponse<FilterOptionsResponse>>(`${ENDPOINTS.PRODUCTS}/filter-options`);
 
       return response.data.data;
     } catch (error) {
@@ -322,6 +306,60 @@ export const adminProductService = {
       return {
         images: processedImages,
       };
+    } catch (error) {
+      const apiError = handleApiError(error);
+      throw new Error(apiError.message);
+    }
+  },
+
+  // Batch Import
+  async batchImportProducts(excelFile: File, zipFile?: File): Promise<{
+    success: boolean;
+    total: number;
+    imported: number;
+    failed: number;
+    errors: string[];
+    warnings: string[];
+  }> {
+    try {
+      const formData = new FormData();
+      formData.append('excel_file', excelFile);
+      if (zipFile) {
+        formData.append('zip_file', zipFile);
+      }
+
+      const response = await apiClient.post<ApiResponse<{
+        success: boolean;
+        total: number;
+        imported: number;
+        failed: number;
+        errors: string[];
+        warnings: string[];
+      }>>(
+        '/api/products/batch-import',
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+
+      return response.data.data;
+    } catch (error) {
+      const apiError = handleApiError(error);
+      throw new Error(apiError.message);
+    }
+  },
+
+  // Download Template
+  async getImportTemplate(): Promise<Blob> {
+    try {
+      const response = await apiClient.get(
+        '/api/products/batch-import/template',
+        { responseType: 'blob' }
+      );
+      return response.data;
     } catch (error) {
       const apiError = handleApiError(error);
       throw new Error(apiError.message);

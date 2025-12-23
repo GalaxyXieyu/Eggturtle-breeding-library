@@ -4,8 +4,9 @@
 
 echo "🛑 停止 Glam Cart Backend 服务..."
 
-# 进入后端目录
-cd /data/glam-cart-deployment/backend
+# 获取脚本所在目录
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "$SCRIPT_DIR"
 
 # 检查PID文件是否存在
 if [ -f backend.pid ]; then
