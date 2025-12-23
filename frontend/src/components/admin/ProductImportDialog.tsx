@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Upload, FileDown, CheckCircle, XCircle, AlertTriangle, FileText, Image as ImageIcon } from "lucide-react";
+import { Loader2, Upload, FileDown, XCircle, AlertTriangle, FileText, Image as ImageIcon } from "lucide-react";
 import { adminProductService } from '@/services/productService';
 import { useToast } from "@/components/ui/use-toast";
 
@@ -42,15 +42,15 @@ export function ProductImportDialog({ onSuccess }: ProductImportDialogProps) {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'product_import_template.xlsx';
+      a.download = '产品批量导入模板.xlsx';
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to download template",
+        title: "下载失败",
+        description: "模板下载失败，请稍后重试",
         variant: "destructive",
       });
     }
@@ -59,8 +59,8 @@ export function ProductImportDialog({ onSuccess }: ProductImportDialogProps) {
   const handleImport = async () => {
     if (!excelFile) {
       toast({
-        title: "Error",
-        description: "Please select an Excel file",
+        title: "缺少文件",
+        description: "请先选择 Excel 文件",
         variant: "destructive",
       });
       return;
@@ -75,23 +75,22 @@ export function ProductImportDialog({ onSuccess }: ProductImportDialogProps) {
       
       if (result.success && result.failed === 0) {
         toast({
-          title: "Success",
-          description: `Successfully imported ${result.imported} products.`,
+          title: "导入成功",
+          description: `成功导入 ${result.imported} 个产品`,
         });
         if (onSuccess) onSuccess();
       } else {
         toast({
-          title: "Import Completed with Issues",
-          description: `Imported: ${result.imported}, Failed: ${result.failed}`,
+          title: "导入完成（有问题）",
+          description: `成功：${result.imported}，失败：${result.failed}`,
           variant: "default",
         });
         if (onSuccess) onSuccess(); // Refresh list anyway
       }
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "An unexpected error occurred";
       toast({
-        title: "Import Failed",
-        description: message,
+        title: "导入失败",
+        description: error instanceof Error ? error.message : "发生未知错误，请稍后重试",
         variant: "destructive",
       });
     } finally {
@@ -111,57 +110,62 @@ export function ProductImportDialog({ onSuccess }: ProductImportDialogProps) {
       if (!val) resetForm();
     }}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="gap-2">
+        <Button
+          variant="outline"
+          className="gap-2 border-cosmetic-beige-300 text-cosmetic-brown-400 hover:bg-cosmetic-beige-100 flex-1 sm:flex-none"
+        >
           <Upload className="h-4 w-4" />
-          Batch Import
+          批量导入
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>Batch Import Products</DialogTitle>
+          <DialogTitle>批量导入产品</DialogTitle>
           <DialogDescription>
-            Upload an Excel file with product data. Optionally upload a ZIP file containing product images.
+            上传 Excel 产品数据；可选上传图片 ZIP（按货号分文件夹）
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto py-4 space-y-6">
-          {/* Instructions */}
-          <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-md text-sm space-y-2">
-            <h4 className="font-semibold flex items-center gap-2 text-blue-700 dark:text-blue-300">
-              <FileDown className="h-4 w-4" />
-              Instructions
-            </h4>
-            <ul className="list-disc list-inside space-y-1 text-blue-600 dark:text-blue-400">
-              <li>Download the template to see the required format.</li>
-              <li>Required columns: <strong>货号 (Product Code)</strong>.</li>
-              <li>
-                <strong>Images (Optional):</strong> Upload a ZIP file containing folders named after the Product Code.
-                <ul className="list-circle list-inside ml-4 mt-1 text-xs opacity-80">
-                  <li>Example: ZIP contains folder <code>P001</code> which contains <code>1.jpg</code>, <code>2.jpg</code></li>
-                  <li>Images will be automatically optimized and linked.</li>
+          <Alert className="border-cosmetic-beige-200 bg-cosmetic-beige-50 text-cosmetic-brown-400">
+            <FileDown className="h-4 w-4 text-cosmetic-gold-500" />
+            <div className="space-y-2">
+              <AlertTitle className="text-cosmetic-brown-500">导入说明</AlertTitle>
+              <AlertDescription className="space-y-2">
+                <ul className="list-disc list-inside space-y-1">
+                  <li>先下载模板，按模板格式填写。</li>
+                  <li>必填列：<strong>货号</strong>。</li>
+                  <li>
+                    图片（可选）：上传 ZIP，内部文件夹以货号命名。
+                    <ul className="list-disc list-inside ml-4 mt-1 text-xs opacity-80">
+                      <li>示例：ZIP 内有 <code>P001</code> 文件夹，里面是 <code>1.jpg</code>、<code>2.jpg</code></li>
+                      <li>系统会自动关联到对应产品。</li>
+                    </ul>
+                  </li>
                 </ul>
-              </li>
-            </ul>
-            <Button 
-              variant="link" 
-              className="h-auto p-0 text-blue-700 dark:text-blue-300 underline"
-              onClick={handleDownloadTemplate}
-            >
-              Download Excel Template
-            </Button>
-          </div>
+                <Button
+                  variant="link"
+                  className="h-auto p-0 text-cosmetic-gold-500 hover:text-cosmetic-gold-600 underline"
+                  onClick={handleDownloadTemplate}
+                >
+                  下载 Excel 模板
+                </Button>
+              </AlertDescription>
+            </div>
+          </Alert>
 
           {/* File Inputs */}
           <div className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="excel-file" className="flex items-center gap-2">
                 <FileText className="h-4 w-4" />
-                Excel File (Required)
+                Excel 文件（必填）
               </Label>
               <Input
                 id="excel-file"
                 type="file"
                 accept=".xlsx, .xls"
+                className="border-cosmetic-beige-200"
                 onChange={(e) => setExcelFile(e.target.files?.[0] || null)}
               />
             </div>
@@ -169,12 +173,13 @@ export function ProductImportDialog({ onSuccess }: ProductImportDialogProps) {
             <div className="grid gap-2">
               <Label htmlFor="zip-file" className="flex items-center gap-2">
                 <ImageIcon className="h-4 w-4" />
-                Images ZIP (Optional)
+                图片 ZIP（可选）
               </Label>
               <Input
                 id="zip-file"
                 type="file"
                 accept=".zip"
+                className="border-cosmetic-beige-200"
                 onChange={(e) => setZipFile(e.target.files?.[0] || null)}
               />
             </div>
@@ -184,30 +189,30 @@ export function ProductImportDialog({ onSuccess }: ProductImportDialogProps) {
           {result && (
             <div className="space-y-4 border-t pt-4">
               <div className="grid grid-cols-3 gap-4 text-center">
-                <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded-lg">
-                  <div className="text-sm text-muted-foreground">Total</div>
+                <div className="bg-cosmetic-beige-50 p-3 rounded-lg border border-cosmetic-beige-200">
+                  <div className="text-sm text-cosmetic-brown-300">总数</div>
                   <div className="text-xl font-bold">{result.total}</div>
                 </div>
-                <div className="bg-green-100 dark:bg-green-900/30 p-3 rounded-lg">
-                  <div className="text-sm text-green-600 dark:text-green-400">Success</div>
-                  <div className="text-xl font-bold text-green-700 dark:text-green-300">{result.imported}</div>
+                <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-200">
+                  <div className="text-sm text-emerald-700">成功</div>
+                  <div className="text-xl font-bold text-emerald-800">{result.imported}</div>
                 </div>
-                <div className="bg-red-100 dark:bg-red-900/30 p-3 rounded-lg">
-                  <div className="text-sm text-red-600 dark:text-red-400">Failed</div>
-                  <div className="text-xl font-bold text-red-700 dark:text-red-300">{result.failed}</div>
+                <div className="bg-rose-50 p-3 rounded-lg border border-rose-200">
+                  <div className="text-sm text-rose-700">失败</div>
+                  <div className="text-xl font-bold text-rose-800">{result.failed}</div>
                 </div>
               </div>
 
               {(result.errors.length > 0 || result.warnings.length > 0) && (
-                <ScrollArea className="h-40 rounded-md border p-4 bg-muted/50">
+                <ScrollArea className="h-40 rounded-md border border-cosmetic-beige-200 p-4 bg-cosmetic-beige-50">
                   {result.errors.map((err, i) => (
-                    <div key={`err-${i}`} className="flex items-start gap-2 text-sm text-red-600 mb-2">
+                    <div key={`err-${i}`} className="flex items-start gap-2 text-sm text-rose-700 mb-2">
                       <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
                       <span>{err}</span>
                     </div>
                   ))}
                   {result.warnings.map((warn, i) => (
-                    <div key={`warn-${i}`} className="flex items-start gap-2 text-sm text-yellow-600 mb-2">
+                    <div key={`warn-${i}`} className="flex items-start gap-2 text-sm text-amber-700 mb-2">
                       <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
                       <span>{warn}</span>
                     </div>
@@ -219,12 +224,21 @@ export function ProductImportDialog({ onSuccess }: ProductImportDialogProps) {
         </div>
 
         <DialogFooter className="pt-4 border-t">
-          <Button variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>
-            Close
+          <Button
+            variant="outline"
+            className="border-cosmetic-beige-300 text-cosmetic-brown-300 hover:bg-cosmetic-beige-200 hover:text-cosmetic-brown-500"
+            onClick={() => setOpen(false)}
+            disabled={isLoading}
+          >
+            关闭
           </Button>
-          <Button onClick={handleImport} disabled={isLoading || !excelFile}>
+          <Button
+            className="bg-cosmetic-gold-400 hover:bg-cosmetic-gold-500 text-white"
+            onClick={handleImport}
+            disabled={isLoading || !excelFile}
+          >
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Start Import
+            开始导入
           </Button>
         </DialogFooter>
       </DialogContent>
