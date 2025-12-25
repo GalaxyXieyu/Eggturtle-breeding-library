@@ -21,7 +21,8 @@ jobs:
         with:
           repository: galaxy-xieyu/api-auto-test
           path: api-auto-test
-          token: ${{ secrets.GH_TOKEN }}
+          # 为空会导致 actions/checkout 报错；优先用仓库 Secret（支持私有仓库），否则回退到默认 GITHUB_TOKEN
+          token: ${{ secrets.GH_TOKEN || github.token }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
