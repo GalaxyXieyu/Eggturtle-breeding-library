@@ -33,3 +33,8 @@ backend/backup/
 # Image assets
 backend/static/images/
 frontend/public/images/
+kubeconfig.yaml
+O.zip
+O/
+产品 O.xlsx
+kube-base64.txt

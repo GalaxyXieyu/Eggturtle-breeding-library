@@ -20,10 +20,11 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# 安装系统依赖
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
+# 安装系统依赖（添加重试机制）
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends gcc || \
+    (sleep 5 && apt-get update && apt-get install -y --no-install-recommends gcc) && \
+    rm -rf /var/lib/apt/lists/*
 
 # 复制后端依赖文件
 COPY backend/requirements.txt ./
