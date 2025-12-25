@@ -95,6 +95,15 @@ jobs:
       - name: Deploy to Sealos
         run: |
           mkdir -p ~/.kube
-          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > ~/.kube/config
+          # 兼容两种 Secret 存法：
+          # 1) 直接存 kubeconfig YAML（推荐）
+          # 2) 存 base64 后的 kubeconfig（需确保是未换行的单行 base64）
+          KUBE_CONFIG_CONTENT='${{ secrets.KUBE_CONFIG }}'
+          if printf '%s' "$KUBE_CONFIG_CONTENT" | tr -d '\r' | base64 -d > ~/.kube/config 2>/dev/null; then
+            echo "kubeconfig loaded from base64 secret"
+          else
+            printf '%s' "$KUBE_CONFIG_CONTENT" | tr -d '\r' > ~/.kube/config
+            echo "kubeconfig loaded from raw yaml secret"
+          fi
           kubectl rollout restart statefulset/glam-cart -n ns-lmgpb9nc
           kubectl rollout status statefulset/glam-cart -n ns-lmgpb9nc --timeout=120s
