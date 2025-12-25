@@ -1,0 +1,27 @@
+testcase:
+  name: Auth API 测试
+  description: 测试用户认证相关接口
+  host: http://localhost:8000
+  allure:
+    feature: Auth API
+    story: 用户认证
+  steps:
+  - id: login_step
+    path: /api/auth/login
+    method: POST
+    data:
+      username: admin
+      password: admin123
+    assert:
+    - type: equals
+      field: success
+      expected: true
+  - id: health_check_step
+    path: /health
+    method: GET
+    assert:
+    - type: status_code
+      expected: 200
+    - type: equals
+      field: status
+      expected: healthy

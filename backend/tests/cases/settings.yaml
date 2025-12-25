@@ -1,0 +1,17 @@
+testcase:
+  name: Settings API 测试
+  description: 测试系统设置相关接口
+  host: http://localhost:8000
+  allure:
+    feature: Settings API
+    story: 系统设置
+  steps:
+  - id: get_settings_step
+    path: /api/settings
+    method: GET
+    assert:
+    - type: status_code
+      expected: 200
+    - type: equals
+      field: success
+      expected: true

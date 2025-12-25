@@ -1,0 +1,17 @@
+testcase:
+  name: Carousels API 测试
+  description: 测试轮播图相关接口
+  host: http://localhost:8000
+  allure:
+    feature: Carousels API
+    story: 轮播图管理
+  steps:
+  - id: get_carousels_step
+    path: /api/carousels
+    method: GET
+    assert:
+    - type: status_code
+      expected: 200
+    - type: equals
+      field: success
+      expected: true

@@ -1,0 +1,40 @@
+testcase:
+  name: Products API 测试
+  description: 测试产品相关接口
+  host: http://localhost:8000
+  allure:
+    feature: Products API
+    story: 产品管理
+  steps:
+  - id: get_products_step
+    path: /api/products
+    method: GET
+    params:
+      page: '1'
+      limit: '10'
+    assert:
+    - type: status_code
+      expected: 200
+    - type: equals
+      field: success
+      expected: true
+  - id: get_featured_products_step
+    path: /api/products/featured
+    method: GET
+    params:
+      limit: '8'
+    assert:
+    - type: status_code
+      expected: 200
+    - type: equals
+      field: success
+      expected: true
+  - id: get_filter_options_step
+    path: /api/products/filter-options
+    method: GET
+    assert:
+    - type: status_code
+      expected: 200
+    - type: equals
+      field: success
+      expected: true
