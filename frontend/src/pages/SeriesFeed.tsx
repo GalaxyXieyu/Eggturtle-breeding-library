@@ -38,7 +38,9 @@ const SeriesFeed: React.FC = () => {
         <header className="mb-6">
           <div className="text-xs uppercase tracking-widest text-neutral-500">turtle album</div>
           <h1 className="mt-2 text-2xl font-semibold">西瑞 · 果核选育溯源记录</h1>
-          <div className="mt-1 text-sm text-neutral-600">长期选育记录 · 5-10 年可追溯</div>
+          <div className="mt-1 text-sm text-neutral-600 whitespace-pre-wrap">
+            {'长期专注果核繁殖选育\n微信号①：Siri08888  满人加2号\n微信号②：Awen02222'}
+          </div>
         </header>
 
         <div className="mb-6 rounded-xl border border-neutral-200 bg-white p-4">
