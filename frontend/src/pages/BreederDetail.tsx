@@ -2,6 +2,8 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 
+import WeChatContactFab from '@/components/turtle-album/WeChatContactFab';
+
 import { turtleAlbumService } from '@/services/turtleAlbumService';
 
 const fmt = (iso?: string | null) => {
@@ -29,14 +31,19 @@ const BreederDetail: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white text-black">
+      <WeChatContactFab
+        wechat1Id="Siri08888"
+        wechat2Id="Awen02222"
+        wechat1QrUrl="https://api3.superbed.cn/static/images/2026/0218/d6/6995ae51556e27f1c93a2fd6.jpg"
+        wechat2QrUrl="https://api3.superbed.cn/static/images/2026/0218/04/6995afba556e27f1c93a3004.jpg"
+      />
       <div className="mx-auto max-w-6xl px-4 pb-8 pt-[calc(env(safe-area-inset-top)+32px)]">
         <div className="mb-6 flex items-center justify-between">
           <Link to="/" className="text-sm text-neutral-600 hover:underline">← 返回</Link>
           <div className="text-right">
             <div className="text-xs uppercase tracking-widest text-neutral-500">turtle album</div>
-            <div className="mt-1 text-sm font-medium text-neutral-800 whitespace-pre-wrap">
-              {'西瑞 · 果核选育溯源记录\n长期专注果核繁殖选育\n微信号①：Siri08888  满人加2号\n微信号②：Awen02222'}
-            </div>
+            <div className="mt-1 text-sm font-medium text-neutral-800">西瑞 · 果核选育溯源记录</div>
+            <div className="mt-1 text-xs text-neutral-500">长期专注果核繁殖选育</div>
           </div>
         </div>
 
