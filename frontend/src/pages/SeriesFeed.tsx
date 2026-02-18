@@ -49,7 +49,7 @@ const SeriesFeed: React.FC = () => {
           <div className="mt-2 text-base leading-relaxed text-neutral-600 sm:text-sm">长期专注果核繁殖选育</div>
         </header>
 
-        <div className="mb-6 rounded-xl border border-neutral-200 bg-white p-4">
+        <div className="mb-6 rounded-2xl bg-neutral-50 p-4">
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center gap-2">
               <div className="text-xs font-medium text-neutral-600">系列</div>
@@ -57,9 +57,9 @@ const SeriesFeed: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setSeriesId('all')}
-                  className={`h-8 rounded-full border px-3 text-xs ${
+                  className={`h-8 rounded-full border px-3 text-xs shadow-[0_1px_0_rgba(0,0,0,0.04)] ${
                     seriesId === 'all'
-                      ? 'border-[#FFD400] bg-[#FFD400] text-black'
+                      ? 'border-[#FFD400] bg-white text-black'
                       : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300'
                   }`}
                 >
@@ -70,9 +70,9 @@ const SeriesFeed: React.FC = () => {
                     key={s.id}
                     type="button"
                     onClick={() => setSeriesId(s.id)}
-                    className={`h-8 rounded-full border px-3 text-xs ${
+                    className={`h-8 rounded-full border px-3 text-xs shadow-[0_1px_0_rgba(0,0,0,0.04)] ${
                       seriesId === s.id
-                        ? 'border-[#FFD400] bg-[#FFD400] text-black'
+                        ? 'border-[#FFD400] bg-white text-black'
                         : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300'
                     }`}
                   >
@@ -109,9 +109,9 @@ const SeriesFeed: React.FC = () => {
                       }
                       setSex(t.key as any);
                     }}
-                    className={`h-8 rounded-full border px-3 text-xs ${
+                    className={`h-8 rounded-full border px-3 text-xs shadow-[0_1px_0_rgba(0,0,0,0.04)] ${
                       sex === t.key
-                        ? 'border-[#FFD400] bg-[#FFD400] text-black'
+                        ? 'border-[#FFD400] bg-white text-black'
                         : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300'
                     }`}
                   >
