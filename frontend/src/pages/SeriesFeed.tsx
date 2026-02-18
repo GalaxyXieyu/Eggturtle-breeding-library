@@ -34,11 +34,11 @@ const SeriesFeed: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white text-black">
-      <div className="mx-auto max-w-3xl px-4 pb-6 pt-[calc(env(safe-area-inset-top)+32px)]">
+      <div className="mx-auto max-w-6xl px-4 pb-8 pt-[calc(env(safe-area-inset-top)+32px)]">
         <header className="mb-6">
           <div className="text-xs uppercase tracking-widest text-neutral-500">turtle album</div>
-          <h1 className="mt-2 text-2xl font-semibold">西瑞 · 果核选育溯源记录</h1>
-          <div className="mt-1 text-sm text-neutral-600 whitespace-pre-wrap">
+          <h1 className="mt-2 text-[26px] font-semibold leading-tight sm:text-3xl">西瑞 · 果核选育溯源记录</h1>
+          <div className="mt-2 text-base leading-relaxed text-neutral-600 whitespace-pre-wrap sm:text-sm">
             {'长期专注果核繁殖选育\n微信号①：Siri08888  满人加2号\n微信号②：Awen02222'}
           </div>
         </header>
@@ -139,7 +139,7 @@ const SeriesFeed: React.FC = () => {
               <Link
                 key={b.id}
                 to={`/breeder/${b.id}`}
-                className="mb-3 inline-block w-full break-inside-avoid overflow-hidden rounded-xl border border-neutral-200 bg-white hover:border-neutral-300"
+                className="mb-3 inline-block w-full break-inside-avoid overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04)] hover:border-neutral-300"
               >
                 <div className="relative aspect-square bg-neutral-100">
                   {mainImage?.url ? (
@@ -147,27 +147,27 @@ const SeriesFeed: React.FC = () => {
                   ) : (
                     <div className="h-full w-full bg-neutral-100" />
                   )}
-                  <div className="absolute right-2 top-2 rounded-full bg-white/90 px-3 py-1 text-xs text-black">
+                  <div className="absolute right-2 top-2 rounded-full bg-white/90 px-2.5 py-1 text-xs text-black">
                     {sexLabel(b.sex)}
                   </div>
                 </div>
 
-                <div className="p-3">
+                <div className="p-3.5">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold text-neutral-900">{b.name}</div>
-                      <div className="mt-0.5 text-xs text-neutral-500">{b.code}</div>
+                      <div className="truncate text-base font-semibold text-neutral-900 sm:text-sm">{b.name}</div>
+                      <div className="mt-0.5 text-sm text-neutral-500 sm:text-xs">{b.code}</div>
                     </div>
                     {typeof b.offspringUnitPrice === 'number' ? (
-                      <div className="shrink-0 text-sm font-semibold text-[#D9A516]">子代 ¥ {b.offspringUnitPrice}</div>
+                      <div className="shrink-0 text-base font-semibold text-[#D9A516] sm:text-sm">子代 ¥ {b.offspringUnitPrice}</div>
                     ) : null}
                   </div>
 
                   {b.description ? (
-                    <div className="mt-2 line-clamp-2 text-xs text-neutral-700">{b.description}</div>
+                    <div className="mt-2 line-clamp-2 text-sm text-neutral-700 sm:text-xs">{b.description}</div>
                   ) : null}
 
-                  <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-neutral-600">
+                  <div className="mt-2 flex flex-wrap gap-2 text-xs text-neutral-600 sm:text-[11px]">
                     {seriesName ? <span className="rounded-full bg-neutral-100 px-2 py-1">{seriesName}</span> : null}
                     {b.sireCode ? <span className="rounded-full bg-neutral-100 px-2 py-1">父 {b.sireCode}</span> : null}
                     {b.damCode ? <span className="rounded-full bg-neutral-100 px-2 py-1">母 {b.damCode}</span> : null}
@@ -178,7 +178,7 @@ const SeriesFeed: React.FC = () => {
           };
 
           const Masonry = ({ list }: { list: typeof allBreeders }) => (
-            <div className="columns-2 gap-3 [column-fill:_balance] sm:columns-2">
+            <div className="columns-2 gap-3 [column-fill:_balance] md:columns-3 lg:columns-4">
               {list.map((b) => (
                 <Card key={b.id} b={b} />
               ))}
