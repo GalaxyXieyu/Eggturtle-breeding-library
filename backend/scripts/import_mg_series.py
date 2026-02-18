@@ -19,8 +19,10 @@ def _make_engine(db_url: str):
 def _ensure_series(db, *, name: str) -> Series:
     s = db.query(Series).filter(Series.name == name).first()
     if s:
+        # Ensure MG stays first in the series tabs.
+        s.sort_order = 0
         return s
-    s = Series(name=name, sort_order=99, is_active=True)
+    s = Series(name=name, sort_order=0, is_active=True)
     db.add(s)
     db.flush()
     return s

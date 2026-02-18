@@ -14,7 +14,7 @@ const sexLabel = (sex?: Sex | null) => {
 };
 
 const SeriesFeed: React.FC = () => {
-  const [seriesId, setSeriesId] = React.useState<string | 'all'>('all');
+  const [seriesId, setSeriesId] = React.useState<string | null>(null);
   const [sex, setSex] = React.useState<Sex | 'all'>('all');
   const femaleRef = React.useRef<HTMLDivElement | null>(null);
   const maleRef = React.useRef<HTMLDivElement | null>(null);
@@ -46,11 +46,19 @@ const SeriesFeed: React.FC = () => {
     queryFn: () => turtleAlbumService.listSeries(),
   });
 
+  // Default to the first series (sorted by backend sort_order) to avoid a mixed feed.
+  React.useEffect(() => {
+    if (seriesId) return;
+    if (!seriesQ.data || seriesQ.data.length === 0) return;
+    setSeriesId(seriesQ.data[0].id);
+  }, [seriesId, seriesQ.data]);
+
   const breedersQ = useQuery({
     queryKey: ['turtle-album', 'breeders', { seriesId, sex }],
+    enabled: !!seriesId,
     queryFn: () =>
       turtleAlbumService.listBreeders({
-        seriesId: seriesId === 'all' ? undefined : seriesId,
+        seriesId: seriesId || undefined,
         sex: sex === 'all' ? undefined : sex,
         limit: 200,
       }),
@@ -94,17 +102,6 @@ const SeriesFeed: React.FC = () => {
             <div className="flex flex-wrap items-center gap-2">
               <div className="text-xs font-medium text-neutral-600">系列</div>
               <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSeriesId('all')}
-                  className={`h-8 rounded-full border px-3 text-xs shadow-[0_1px_0_rgba(0,0,0,0.04)] ${
-                    seriesId === 'all'
-                      ? 'border-[#FFD400] bg-white text-black'
-                      : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300'
-                  }`}
-                >
-                  全部
-                </button>
                 {(seriesQ.data || []).map((s) => (
                   <button
                     key={s.id}
