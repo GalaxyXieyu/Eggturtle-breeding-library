@@ -4,6 +4,7 @@ export interface Series {
   id: string;
   name: string;
   sortOrder: number;
+  description?: string | null;
   isActive: boolean;
   createdAt?: string | null;
   updatedAt?: string | null;

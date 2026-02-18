@@ -231,10 +231,36 @@ const SeriesFeed: React.FC = () => {
             return <div className="rounded-xl border border-neutral-200 p-6 text-sm text-neutral-600">暂无数据</div>;
           }
 
+          const activeSeries = (seriesQ.data || []).find((s) => s.id === seriesId) || null;
+          const seriesIntroItems = (activeSeries?.description || '')
+            .split(/\n+/)
+            .map((s) => s.trim())
+            .filter(Boolean);
+
+          const SeriesIntro = () => {
+            if (seriesIntroItems.length === 0) return null;
+            return (
+              <div className="mb-6">
+                <div className="mb-2 text-xs font-medium text-neutral-500">本系列介绍</div>
+                <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {seriesIntroItems.map((t) => (
+                    <div
+                      key={t}
+                      className="shrink-0 rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-700"
+                    >
+                      {t}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          };
+
           // When sex=all, show 2 sections. Quick-jump is handled by the sex chips (种母/种公).
           if (sex === 'all') {
             return (
               <div className="space-y-6">
+                <SeriesIntro />
                 <div ref={femaleRef}>
                   <div className="mb-3 flex items-center justify-between">
                     <div className="text-sm font-semibold text-neutral-900">种母</div>

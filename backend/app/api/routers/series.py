@@ -25,6 +25,7 @@ async def list_series(
             "id": s.id,
             "name": s.name,
             "sortOrder": s.sort_order,
+            "description": s.description,
             "isActive": s.is_active,
             "createdAt": s.created_at.isoformat() if s.created_at else None,
             "updatedAt": s.updated_at.isoformat() if s.updated_at else None,

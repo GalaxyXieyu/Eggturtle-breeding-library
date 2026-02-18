@@ -16,13 +16,24 @@ def _make_engine(db_url: str):
     )
 
 
+MG_SERIES_DESCRIPTION = (
+    "本组的U公属于F的子代，和本组的母龟属于同父异母。\n"
+    "本组母基于编号F5的延续版本，表现特殊作为单独一条血线选育（脖子纹路遗传率很高）。\n"
+    "一代母本疑似带果盔基因，大概率是果x果盔的后代，品相偏果核。\n"
+    "小时候颜值很高长的跟果核一样当果核收来的。\n"
+    "后面出苗发现鼻尖金三角较弱，腹部黑斑较多，判定为携带果盔基因。\n"
+    "本组后代选育方向：在保留脖子头纹的前提下，提纯鼻尖金三角。"
+)
+
+
 def _ensure_series(db, *, name: str) -> Series:
     s = db.query(Series).filter(Series.name == name).first()
     if s:
         # Ensure MG stays first in the series tabs.
         s.sort_order = 0
+        s.description = MG_SERIES_DESCRIPTION
         return s
-    s = Series(name=name, sort_order=0, is_active=True)
+    s = Series(name=name, sort_order=0, is_active=True, description=MG_SERIES_DESCRIPTION)
     db.add(s)
     db.flush()
     return s
