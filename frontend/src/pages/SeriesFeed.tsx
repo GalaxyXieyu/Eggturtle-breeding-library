@@ -199,20 +199,22 @@ const SeriesFeed: React.FC = () => {
                 </div>
 
                 <div className="p-3">
-                  <div className="text-sm font-semibold tracking-wide text-neutral-900">{b.code}</div>
-
-                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                    {b.description ? (
-                      <span className="inline-flex max-w-full rounded-full bg-neutral-100/80 px-2 py-0.5 text-[11px] leading-5 text-neutral-700">
-                        <span className="truncate">{b.description}</span>
-                      </span>
-                    ) : null}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 text-sm font-semibold tracking-wide text-neutral-900">{b.code}</div>
                     {typeof b.offspringUnitPrice === 'number' ? (
-                      <span className="inline-flex rounded-full bg-neutral-900/85 px-2 py-0.5 text-[11px] font-semibold leading-5 text-[#FFD400] ring-1 ring-white/10">
+                      <span className="shrink-0 rounded-full bg-neutral-900/85 px-2 py-0.5 text-[11px] font-semibold leading-5 text-[#FFD400] ring-1 ring-white/10">
                         子代 ¥ {b.offspringUnitPrice}
                       </span>
                     ) : null}
                   </div>
+
+                  {b.description ? (
+                    <div className="mt-1">
+                      <span className="inline-flex max-w-full rounded-full bg-neutral-100/80 px-2 py-0.5 text-[11px] leading-5 text-neutral-700">
+                        <span className="truncate">{b.description}</span>
+                      </span>
+                    </div>
+                  ) : null}
                 </div>
               </Link>
             );
