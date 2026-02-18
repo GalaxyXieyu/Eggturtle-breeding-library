@@ -12,7 +12,7 @@ from app.core.security import create_admin_user
 from app.schemas.schemas import ErrorResponse
 
 # Import routers
-from app.api.routers import auth, products, admin, carousels, featured, settings, imports
+from app.api.routers import auth, products, admin, carousels, featured, settings, imports, series, breeders
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -119,6 +119,10 @@ app.include_router(carousels.router, prefix="/api/carousels", tags=["Carousels"]
 app.include_router(featured.router, prefix="/api/featured-products", tags=["Featured Products"])
 app.include_router(settings.router, prefix="/api/settings", tags=["Settings"])
 app.include_router(imports.router, prefix="/api/products/batch-import", tags=["Imports"])
+
+# Turtle-album public APIs
+app.include_router(series.router, prefix="/api/series", tags=["Series"])
+app.include_router(breeders.router, prefix="/api/breeders", tags=["Breeders"])
 
 # Health check (放在静态文件之前)
 @app.get("/health")
