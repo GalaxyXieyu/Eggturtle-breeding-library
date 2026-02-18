@@ -275,6 +275,37 @@ export const adminProductService = {
     }
   },
 
+  // Set one image as main
+  async setMainProductImage(productId: string, imageId: string): Promise<{
+    images: Array<{
+      id: string;
+      url: string;
+      alt: string;
+      type: 'main' | 'gallery' | 'dimensions' | 'detail';
+    }>;
+  }> {
+    try {
+      const response = await apiClient.put<ApiResponse<{
+        images: Array<{
+          id: string;
+          url: string;
+          alt: string;
+          type: 'main' | 'gallery' | 'dimensions' | 'detail';
+        }>;
+      }>>(`${ENDPOINTS.PRODUCT_IMAGES(productId)}/${imageId}/set-main`);
+
+      const processedImages = response.data.data.images.map(img => ({
+        ...img,
+        url: createImageUrl(img.url),
+      }));
+
+      return { images: processedImages };
+    } catch (error) {
+      const apiError = handleApiError(error);
+      throw new Error(apiError.message);
+    }
+  },
+
   // Reorder product images
   async reorderProductImages(productId: string, imageOrders: Array<{id: string, sort_order: number}>): Promise<{
     images: Array<{

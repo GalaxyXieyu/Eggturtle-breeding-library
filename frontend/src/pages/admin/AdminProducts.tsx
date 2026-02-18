@@ -102,6 +102,7 @@ interface ProductImageUpload {
   file: File;
   preview: string;
   id: string;
+  type?: 'main' | 'gallery' | 'dimensions' | 'detail';
 }
 
 // API response interface for filter options
@@ -372,36 +373,68 @@ const AdminProducts = () => {
     setFilteredProducts(sorted);
   };
 
-  // Handle single image upload
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const newUploads: ProductImageUpload[] = [];
-      
-      Array.from(e.target.files).forEach(file => {
-        // Create preview URL
-        const reader = new FileReader();
-        reader.onload = () => {
-          const newUpload: ProductImageUpload = {
-            file,
-            preview: reader.result as string,
-            id: Math.random().toString(36).substring(2, 9)
-          };
-          
-          setImageUploads(prev => [...prev, newUpload]);
-        };
-        reader.readAsDataURL(file);
-      });
-      
-      toast({
-        title: "图片已上传",
-        description: `已成功上传 ${e.target.files.length} 张图片，点击保存以更新产品。`,
-      });
-      
-      // Reset the input so the same file can be selected again if needed
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+  // Handle image upload
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+
+    const files = Array.from(e.target.files);
+
+    // Reset the input so the same file can be selected again if needed
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
+
+    // Edit mode: upload immediately to backend so the public pages can use it.
+    if (selectedProduct && isEditMode) {
+      try {
+        const result = await uploadImagesMutation.mutateAsync({
+          productId: selectedProduct.id,
+          files,
+        });
+
+        // Refresh local state from backend result
+        setSelectedProduct(prev => (prev ? { ...prev, images: result.images } : prev));
+        setFilteredProducts(prev => prev.map(p => (p.id === selectedProduct.id ? { ...p, images: result.images } : p)));
+        queryClient.setQueryData(
+          PRODUCT_QUERY_KEYS.detail(selectedProduct.id),
+          (oldData: CosmeticProduct | undefined) => (oldData ? { ...oldData, images: result.images } : oldData)
+        );
+
+        initImagesFromProduct({ ...selectedProduct, images: result.images });
+
+        toast({
+          title: "图片已上传",
+          description: `已上传 ${files.length} 张图片（系统会自动裁成 1:1）`,
+        });
+      } catch (error) {
+        console.error('Failed to upload images:', error);
+        toast({
+          title: "上传失败",
+          description: (error as Error).message || "图片上传失败，请重试",
+          variant: "destructive",
+        });
+      }
+      return;
+    }
+
+    // Create mode: store previews; upload happens after product is created.
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const newUpload: ProductImageUpload = {
+          file,
+          preview: reader.result as string,
+          id: Math.random().toString(36).substring(2, 9),
+        };
+        setImageUploads(prev => [...prev, newUpload]);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    toast({
+      title: "图片已选择",
+      description: `已选择 ${files.length} 张图片，创建产品后会自动上传（系统会自动裁成 1:1）`,
+    });
   };
 
   // Navigate through images
@@ -418,11 +451,45 @@ const AdminProducts = () => {
   };
 
   // Remove specific image
-  const handleRemoveImage = (idToRemove: string) => {
+  const handleRemoveImage = async (idToRemove: string) => {
+    // Edit mode: delete from backend
+    if (selectedProduct && isEditMode) {
+      if (!confirm("确定要删除这张图片吗？")) return;
+
+      try {
+        await adminProductService.deleteProductImage(selectedProduct.id, idToRemove);
+
+        const nextImages = (selectedProduct.images || []).filter(img => img.id !== idToRemove);
+        const nextProduct = { ...selectedProduct, images: nextImages };
+
+        setSelectedProduct(nextProduct);
+        setFilteredProducts(prev => prev.map(p => (p.id === selectedProduct.id ? { ...p, images: nextImages } : p)));
+        queryClient.setQueryData(
+          PRODUCT_QUERY_KEYS.detail(selectedProduct.id),
+          (oldData: CosmeticProduct | undefined) => (oldData ? { ...oldData, images: nextImages } : oldData)
+        );
+
+        initImagesFromProduct(nextProduct);
+
+        toast({
+          title: "已删除",
+          description: "图片已删除",
+        });
+      } catch (error) {
+        console.error('Failed to delete image:', error);
+        toast({
+          title: "删除失败",
+          description: (error as Error).message || "图片删除失败，请重试",
+          variant: "destructive",
+        });
+      }
+      return;
+    }
+
+    // Create mode: remove locally
     setImageUploads(prev => {
       const newUploads = prev.filter(upload => upload.id !== idToRemove);
 
-      // Adjust current index if needed
       if (currentImageIndex >= newUploads.length && newUploads.length > 0) {
         setCurrentImageIndex(newUploads.length - 1);
       }
@@ -624,6 +691,7 @@ const AdminProducts = () => {
       const initialUploads: ProductImageUpload[] = product.images.map(img => ({
         id: img.id,
         preview: img.url,
+        type: img.type,
         file: new File([], "existing-image", { type: "image/jpeg" }) // Placeholder file object
       }));
       setImageUploads(initialUploads);
@@ -920,17 +988,47 @@ const AdminProducts = () => {
               <img 
                 src={imageUploads[currentImageIndex]?.preview} 
                 alt="Product preview"
-                className="max-h-full max-w-full object-contain"
+                className="h-full w-full object-cover"
               />
               
-              <Button
-                variant="outline" 
-                size="sm"
-                className="absolute top-2 right-2 bg-white rounded-full p-1 border-none h-8 w-8 z-10"
-                onClick={() => handleRemoveImage(imageUploads[currentImageIndex].id)}
-              >
-                <X className="h-4 w-4"/>
-              </Button>
+              <div className="absolute right-2 top-2 z-10 flex gap-2">
+                {selectedProduct && isEditMode ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-white/90 rounded-full px-3 border-none h-8"
+                    onClick={async () => {
+                      const img = imageUploads[currentImageIndex];
+                      if (!img?.id) return;
+                      try {
+                        const result = await adminProductService.setMainProductImage(selectedProduct.id, img.id);
+                        const nextProduct = { ...selectedProduct, images: result.images };
+                        setSelectedProduct(nextProduct);
+                        setFilteredProducts(prev => prev.map(p => (p.id === selectedProduct.id ? { ...p, images: result.images } : p)));
+                        queryClient.setQueryData(
+                          PRODUCT_QUERY_KEYS.detail(selectedProduct.id),
+                          (oldData: CosmeticProduct | undefined) => (oldData ? { ...oldData, images: result.images } : oldData)
+                        );
+                        initImagesFromProduct(nextProduct);
+                        toast({ title: "主图已更新" });
+                      } catch (e) {
+                        toast({ title: "设置失败", description: (e as Error).message, variant: "destructive" });
+                      }
+                    }}
+                  >
+                    设为主图
+                  </Button>
+                ) : null}
+
+                <Button
+                  variant="outline" 
+                  size="sm"
+                  className="bg-white rounded-full p-1 border-none h-8 w-8"
+                  onClick={() => handleRemoveImage(imageUploads[currentImageIndex].id)}
+                >
+                  <X className="h-4 w-4"/>
+                </Button>
+              </div>
               
               {imageUploads.length > 1 && (
                 <>
@@ -1026,7 +1124,7 @@ const AdminProducts = () => {
           <div className="flex flex-col items-center justify-center space-y-2">
             <Upload className="h-10 w-10 text-cosmetic-beige-300" />
             <p className="text-sm text-cosmetic-brown-300">点击上传产品图片</p>
-            <p className="text-xs text-cosmetic-brown-200">支持 JPG, PNG, GIF 格式，可多选</p>
+            <p className="text-xs text-cosmetic-brown-200">支持 JPG/PNG/HEIC。上传后系统会自动居中裁切成 1:1。</p>
           </div>
         </div>
       </div>
@@ -1047,7 +1145,7 @@ const AdminProducts = () => {
                 <img 
                   src={imageUploads[currentImageIndex]?.preview} 
                   alt={selectedProduct.name}
-                  className="max-h-full max-w-full object-contain"
+                  className="h-full w-full object-cover"
                 />
                 
                 {imageUploads.length > 1 && (
