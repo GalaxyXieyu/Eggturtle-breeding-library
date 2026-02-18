@@ -63,7 +63,7 @@ const WeChatContactFab: React.FC<WeChatContactFabProps> = ({ wechat1Id, wechat2I
         type="button"
         aria-label="联系微信"
         onClick={() => setOpen(true)}
-        className="fixed bottom-[calc(env(safe-area-inset-bottom)+16px)] right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-[#FFD400] text-black shadow-[0_8px_24px_rgba(0,0,0,0.18)] hover:brightness-95"
+        className="fixed bottom-[calc(env(safe-area-inset-bottom)+16px)] right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-[#FFD400] text-white shadow-[0_8px_24px_rgba(0,0,0,0.18)] hover:brightness-95"
       >
         <QrCode className="h-6 w-6" />
       </button>
