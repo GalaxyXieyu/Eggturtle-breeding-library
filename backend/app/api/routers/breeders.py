@@ -31,7 +31,8 @@ async def list_breeders(
             raise HTTPException(status_code=400, detail="Invalid sex; must be 'male' or 'female'")
         query = query.filter(Product.sex == sex)
 
-    breeders = query.order_by(Product.created_at.desc()).limit(limit).all()
+    # Sort by code for consistent, user-friendly ordering (e.g. MG-01..MG-05).
+    breeders = query.order_by(Product.code.asc(), Product.created_at.desc()).limit(limit).all()
     return ApiResponse(
         data=[convert_product_to_response(b) for b in breeders],
         message="Breeders retrieved successfully",
