@@ -49,8 +49,8 @@ const BreederDetail: React.FC = () => {
               const mainImage = (breederQ.data.images || []).find((i) => i.type === 'main') || (breederQ.data.images || [])[0];
               if (!mainImage?.url) return null;
               return (
-                <div className="relative bg-neutral-100">
-                  <img src={mainImage.url} alt={mainImage.alt || breederQ.data.code} className="h-auto w-full object-cover" />
+                <div className="relative aspect-square bg-neutral-100">
+                  <img src={mainImage.url} alt={mainImage.alt || breederQ.data.code} className="h-full w-full object-cover" />
                   <div className="absolute right-3 top-3 rounded-full bg-white/90 px-3 py-1 text-xs text-black">
                     {breederQ.data.sex === 'female' ? '母' : breederQ.data.sex === 'male' ? '公' : '-'}
                   </div>
