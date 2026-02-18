@@ -67,7 +67,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title }) => {
       {/* Mobile Navigation Header */}
       <div className="lg:hidden bg-white border-b border-cosmetic-beige-200 p-4 flex items-center justify-between">
         <Link to="/admin/dashboard" className="flex items-center">
-          <span className="font-serif font-semibold gold-text text-lg">NATURAL COSMETICS</span>
+          <span className="font-serif font-semibold gold-text text-lg">TURTLE ALBUM</span>
         </Link>
         <button
           onClick={() => setIsMobileNavOpen(!isMobileNavOpen)}
@@ -88,7 +88,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title }) => {
       >
         <div className="p-6 border-b border-cosmetic-beige-200 hidden lg:block">
           <Link to="/admin/dashboard" className="flex items-center">
-            <span className="font-serif font-semibold gold-text text-lg">NATURAL COSMETICS</span>
+            <span className="font-serif font-semibold gold-text text-lg">TURTLE ALBUM</span>
           </Link>
         </div>
 

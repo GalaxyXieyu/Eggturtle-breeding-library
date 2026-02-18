@@ -33,7 +33,7 @@ const AdminLogin = () => {
       <div className="w-full max-w-md">
         <div className="bg-white rounded-lg shadow-lg p-8">
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-serif font-semibold gold-text mb-2">NATURAL COSMETICS</h1>
+            <h1 className="text-2xl font-serif font-semibold gold-text mb-2">TURTLE ALBUM</h1>
             <p className="text-cosmetic-brown-300">管理员登录</p>
           </div>
 
