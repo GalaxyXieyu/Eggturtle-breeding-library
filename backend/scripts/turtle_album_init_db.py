@@ -55,10 +55,10 @@ def seed_turtle_album(db_session):
         "https://api3.superbed.cn/static/images/2026/0218/3d/6995961b556e27f1c93a2e3d.jpg",
     ]
     male_images = [
-        "https://wkphoto.cdn.bcebos.com/f703738da9773912deb63b36e8198618377ae2d1.jpg",
-        "https://wkphoto.cdn.bcebos.com/4ec2d5628535e5dd0a7f1b8866c6a7efce1b6212.jpg",
-        "https://wkphoto.cdn.bcebos.com/cdbf6c81800a19d8adcd3a5223fa828ba71e469e.jpg",
-        "https://wkphoto.cdn.bcebos.com/d4628535e5dde7117e81fda1b7efce1b9d166112.jpg",
+        "https://pic1.imgdb.cn/item/69959731556e27f1c93a2e55.jpg",
+        "https://pic1.imgdb.cn/item/69959731556e27f1c93a2e56.jpg",
+        "https://pic1.imgdb.cn/item/69959732556e27f1c93a2e57.jpg",
+        "https://pic1.imgdb.cn/item/69959732556e27f1c93a2e58.jpg",
     ]
     placeholder_images = [
         "https://api3.superbed.cn/static/images/2026/0218/0d/6995936e556e27f1c93a2e0d.jpg"
