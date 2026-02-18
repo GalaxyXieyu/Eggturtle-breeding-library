@@ -54,6 +54,12 @@ def seed_turtle_album(db_session):
         "https://api3.superbed.cn/static/images/2026/0218/3c/6995961a556e27f1c93a2e3c.jpg",
         "https://api3.superbed.cn/static/images/2026/0218/3d/6995961b556e27f1c93a2e3d.jpg",
     ]
+    male_images = [
+        "https://api3.superbed.cn/static/images/2026/0218/55/69959731556e27f1c93a2e55.jpg",
+        "https://api3.superbed.cn/static/images/2026/0218/56/69959731556e27f1c93a2e56.jpg",
+        "https://api3.superbed.cn/static/images/2026/0218/57/69959732556e27f1c93a2e57.jpg",
+        "https://api3.superbed.cn/static/images/2026/0218/58/69959732556e27f1c93a2e58.jpg",
+    ]
     placeholder_images = [
         "https://api3.superbed.cn/static/images/2026/0218/0d/6995936e556e27f1c93a2e0d.jpg"
     ]
@@ -90,6 +96,8 @@ def seed_turtle_album(db_session):
         nonlocal demo_idx
         if sex == "female":
             img_url = female_images[demo_idx % len(female_images)]
+        elif sex == "male":
+            img_url = male_images[demo_idx % len(male_images)]
         else:
             img_url = placeholder_images[0]
         demo_idx += 1

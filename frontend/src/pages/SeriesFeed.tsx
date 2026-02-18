@@ -127,11 +127,11 @@ const SeriesFeed: React.FC = () => {
                 to={`/breeder/${b.id}`}
                 className="mb-3 inline-block w-full break-inside-avoid overflow-hidden rounded-xl border border-neutral-200 bg-white hover:border-neutral-300"
               >
-                <div className="relative bg-neutral-100">
+                <div className="relative aspect-square bg-neutral-100">
                   {mainImage?.url ? (
-                    <img src={mainImage.url} alt={mainImage.alt || b.code} className="h-auto w-full object-cover" />
+                    <img src={mainImage.url} alt={mainImage.alt || b.code} className="h-full w-full object-cover" />
                   ) : (
-                    <div className="aspect-[3/4] w-full bg-neutral-100" />
+                    <div className="h-full w-full bg-neutral-100" />
                   )}
                   <div className="absolute right-2 top-2 rounded-full bg-white/90 px-3 py-1 text-xs text-black">
                     {sexLabel(b.sex)}
