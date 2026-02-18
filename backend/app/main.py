@@ -60,24 +60,11 @@ if not os.path.exists("static"):
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 app.mount("/images", StaticFiles(directory=UPLOAD_DIR), name="images")
 
-# 自动运行数据库迁移
-def run_migrations():
-    """运行 Alembic 数据库迁移"""
-    try:
-        from alembic.config import Config
-        from alembic import command
-        
-        alembic_cfg = Config("alembic.ini")
-        command.upgrade(alembic_cfg, "head")
-        logger.info("Database migrations completed successfully")
-    except Exception as e:
-        logger.warning(f"Migration skipped or failed: {e}, falling back to create_tables")
-        create_tables()
-
-# Create tables and admin user on startup
+# Initialize schema on startup.
+# This project uses SQLAlchemy `create_all()` (no Alembic migrations).
 @app.on_event("startup")
 async def startup_event():
-    run_migrations()
+    create_tables()
     db = next(get_db())
     try:
         admin_user = create_admin_user(db)

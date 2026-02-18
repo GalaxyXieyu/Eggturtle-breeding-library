@@ -10,44 +10,114 @@ def utc_now():
     """Return current UTC datetime with microsecond precision."""
     return datetime.utcnow()
 
+
+class Series(Base):
+    __tablename__ = "series"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String, nullable=False, unique=True, index=True)
+    sort_order = Column(Integer, default=0)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
+
+    breeders = relationship("Product", back_populates="series")
+
+
 class Product(Base):
     __tablename__ = "products"
-    
+
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String, nullable=False, index=True)
     code = Column(String, nullable=False, unique=True, index=True)
     description = Column(Text)
-    
+
+    # Turtle-album extensions (kept optional for backward compatibility; enforced at API-level)
+    series_id = Column(String, ForeignKey("series.id"), index=True)
+    sex = Column(String, index=True)  # 'male' | 'female'
+    offspring_unit_price = Column(Float)  # female-only concept
+
+    # Optional lineage (shown only when provided)
+    sire_code = Column(String)
+    dam_code = Column(String)
+    sire_image_url = Column(String)
+    dam_image_url = Column(String)
+
     # Product type and classification fields - now more flexible
     product_type = Column(String)  # 'tube' or 'box' based on Excel data
     tube_type = Column(String)     # Various tube types from Excel
     box_type = Column(String)      # Various box types from Excel
     process_type = Column(String)  # Process type from Excel
-    
+
     # Basic properties - now flexible strings
     functional_designs = Column(String)  # Store as comma-separated string or single value
     shape = Column(String, nullable=False)
     material = Column(String, nullable=False)
-    
+
     # Dimensions (stored as JSON for flexibility)
     dimensions = Column(JSON)  # ProductDimensions object with weight, length, width, height, capacity, compartments
-    
+
     # Pricing information
     cost_price = Column(Float, default=0.0)
     factory_price = Column(Float, nullable=False)
     has_sample = Column(Boolean, default=False)
     box_dimensions = Column(String)
     box_quantity = Column(Integer)
-    
+
     # Status and metadata
     in_stock = Column(Boolean, default=True)
     popularity_score = Column(Integer, default=0)
     is_featured = Column(Boolean, default=False)
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
-    
+
     # Relationships
+    series = relationship("Series", back_populates="breeders")
     images = relationship("ProductImage", back_populates="product", cascade="all, delete-orphan")
+    mating_records_as_female = relationship(
+        "MatingRecord",
+        foreign_keys="MatingRecord.female_id",
+        back_populates="female",
+        cascade="all, delete-orphan",
+    )
+    mating_records_as_male = relationship(
+        "MatingRecord",
+        foreign_keys="MatingRecord.male_id",
+        back_populates="male",
+        cascade="all, delete-orphan",
+    )
+    egg_records = relationship(
+        "EggRecord",
+        back_populates="female",
+        cascade="all, delete-orphan",
+    )
+
+class MatingRecord(Base):
+    __tablename__ = "mating_records"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    female_id = Column(String, ForeignKey("products.id"), nullable=False, index=True)
+    male_id = Column(String, ForeignKey("products.id"), nullable=False, index=True)
+    mated_at = Column(DateTime, nullable=False, index=True)
+    notes = Column(Text)
+    created_at = Column(DateTime, default=utc_now)
+
+    female = relationship("Product", foreign_keys=[female_id], back_populates="mating_records_as_female")
+    male = relationship("Product", foreign_keys=[male_id], back_populates="mating_records_as_male")
+
+
+class EggRecord(Base):
+    __tablename__ = "egg_records"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    female_id = Column(String, ForeignKey("products.id"), nullable=False, index=True)
+    laid_at = Column(DateTime, nullable=False, index=True)
+    count = Column(Integer)
+    notes = Column(Text)
+    created_at = Column(DateTime, default=utc_now)
+
+    female = relationship("Product", back_populates="egg_records")
+
 
 class ProductImage(Base):
     __tablename__ = "product_images"
