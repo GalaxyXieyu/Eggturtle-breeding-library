@@ -19,6 +19,28 @@ const SeriesFeed: React.FC = () => {
   const femaleRef = React.useRef<HTMLDivElement | null>(null);
   const maleRef = React.useRef<HTMLDivElement | null>(null);
 
+  const [isHeroCollapsed, setIsHeroCollapsed] = React.useState(false);
+
+  React.useEffect(() => {
+    let raf = 0;
+
+    const onScroll = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        // Collapse hero after a small scroll threshold; keeps the page feeling responsive.
+        setIsHeroCollapsed(window.scrollY > 40);
+      });
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('scroll', onScroll);
+    };
+  }, []);
+
   const seriesQ = useQuery({
     queryKey: ['turtle-album', 'series'],
     queryFn: () => turtleAlbumService.listSeries(),
@@ -42,14 +64,32 @@ const SeriesFeed: React.FC = () => {
         wechat1QrUrl="https://api3.superbed.cn/static/images/2026/0218/d6/6995ae51556e27f1c93a2fd6.jpg"
         wechat2QrUrl="https://api3.superbed.cn/static/images/2026/0218/04/6995afba556e27f1c93a3004.jpg"
       />
-      <div className="mx-auto max-w-6xl px-4 pb-8 pt-[calc(env(safe-area-inset-top)+32px)]">
-        <header className="mb-6">
-          <div className="text-xs uppercase tracking-widest text-neutral-500">turtle album</div>
-          <h1 className="mt-2 text-[26px] font-semibold leading-tight sm:text-3xl">西瑞 · 果核选育溯源记录</h1>
-          <div className="mt-2 text-base leading-relaxed text-neutral-600 sm:text-sm">长期专注果核繁殖选育</div>
+      <div className="mx-auto max-w-6xl px-4 pb-8 pt-[calc(env(safe-area-inset-top)+12px)]">
+        <header
+          className={`mb-4 overflow-hidden rounded-3xl bg-neutral-900 transition-[max-height,opacity,transform] duration-300 ease-out ${
+            isHeroCollapsed ? 'max-h-20 opacity-0 -translate-y-2' : 'max-h-[220px] opacity-100 translate-y-0'
+          }`}
+        >
+          <div className="relative h-[220px]">
+            <div
+              className="absolute inset-0 bg-cover bg-center"
+              style={{ backgroundImage: 'url(/turtle-hero.jpg)' }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-black/30 to-white/5" />
+            <div className="absolute inset-0">
+              <div className="flex h-full flex-col justify-end p-5">
+                <div className="text-xs uppercase tracking-widest text-white/70">turtle album</div>
+                <h1 className="mt-2 text-[26px] font-semibold leading-tight text-white drop-shadow-sm">西瑞 · 果核选育溯源记录</h1>
+                <div className="mt-2 text-sm leading-relaxed text-white/80">长期专注果核繁殖选育</div>
+              </div>
+            </div>
+          </div>
         </header>
 
-        <div className="mb-6 rounded-2xl bg-neutral-50 p-4">
+        <div
+          className="sticky z-30 mb-6 rounded-2xl bg-white/80 p-4 backdrop-blur supports-[backdrop-filter]:bg-white/70"
+          style={{ top: 'calc(env(safe-area-inset-top) + 10px)' }}
+        >
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center gap-2">
               <div className="text-xs font-medium text-neutral-600">系列</div>
