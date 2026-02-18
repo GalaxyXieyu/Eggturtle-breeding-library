@@ -30,7 +30,7 @@ os.makedirs(IMAGES_DIR, exist_ok=True)
 os.makedirs(CAROUSEL_DIR, exist_ok=True)
 os.makedirs(QR_CODES_DIR, exist_ok=True)
 
-def optimize_single_image(input_path: str, output_path: str, size=None, quality=85, format='JPEG'):
+def optimize_single_image(input_path: str, output_path: str, size=None, quality=85, format='JPEG', crop_square: bool = False):
     """优化单张图片"""
     try:
         with Image.open(input_path) as img:
@@ -41,18 +41,30 @@ def optimize_single_image(input_path: str, output_path: str, size=None, quality=
             # 自动旋转（处理EXIF信息）
             img = ImageOps.exif_transpose(img)
             
+            # Optional center-crop to square (used by turtle-album: 1:1 everywhere)
+            if crop_square:
+                w, h = img.size
+                side = min(w, h)
+                left = (w - side) // 2
+                top = (h - side) // 2
+                img = img.crop((left, top, left + side, top + side))
+
             # 调整尺寸
             if size:
-                # 保持宽高比
-                img.thumbnail(size, Image.Resampling.LANCZOS)
-                
-                # 如果需要确切的尺寸，在中心创建新图片
-                if img.size != size:
-                    new_img = Image.new('RGB', size, (255, 255, 255))
-                    paste_x = (size[0] - img.size[0]) // 2
-                    paste_y = (size[1] - img.size[1]) // 2
-                    new_img.paste(img, (paste_x, paste_y))
-                    img = new_img
+                if crop_square:
+                    # After square-crop we can do an exact resize without padding.
+                    img = img.resize(size, Image.Resampling.LANCZOS)
+                else:
+                    # 保持宽高比
+                    img.thumbnail(size, Image.Resampling.LANCZOS)
+
+                    # 如果需要确切的尺寸，在中心创建新图片
+                    if img.size != size:
+                        new_img = Image.new('RGB', size, (255, 255, 255))
+                        paste_x = (size[0] - img.size[0]) // 2
+                        paste_y = (size[1] - img.size[1]) // 2
+                        new_img.paste(img, (paste_x, paste_y))
+                        img = new_img
             
             # 确保输出目录存在
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
@@ -193,18 +205,18 @@ async def save_product_images_optimized(files: List[UploadFile], product_code: s
             original_jpg = os.path.join(product_dir, f"{unique_stem}.jpg")
             original_webp = os.path.join(product_dir, f"{unique_stem}.webp")
             
-            optimize_single_image(temp_path, original_jpg, None, quality=90, format='JPEG')
-            optimize_single_image(temp_path, original_webp, None, quality=80, format='WebP')
+            optimize_single_image(temp_path, original_jpg, None, quality=90, format='JPEG', crop_square=True)
+            optimize_single_image(temp_path, original_webp, None, quality=80, format='WebP', crop_square=True)
             
             # 生成各种尺寸
             for size_name, size_dims in sizes.items():
                 # JPEG版本
                 jpg_path = os.path.join(product_dir, size_name, f"{unique_stem}.jpg")
-                optimize_single_image(temp_path, jpg_path, size_dims, quality=85, format='JPEG')
+                optimize_single_image(temp_path, jpg_path, size_dims, quality=85, format='JPEG', crop_square=True)
                 
                 # WebP版本
                 webp_path = os.path.join(product_dir, size_name, f"{unique_stem}.webp")
-                optimize_single_image(temp_path, webp_path, size_dims, quality=80, format='WebP')
+                optimize_single_image(temp_path, webp_path, size_dims, quality=80, format='WebP', crop_square=True)
             
             # 返回图片信息
             relative_path = f"images/{product_code}/{unique_stem}.jpg"
