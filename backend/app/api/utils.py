@@ -113,6 +113,16 @@ def convert_product_to_response(product: Product) -> dict:
         "name": product.name,
         "code": product.code,
         "description": product.description,
+
+        # Turtle-album extensions
+        "seriesId": product.series_id,
+        "sex": product.sex,
+        "offspringUnitPrice": product.offspring_unit_price,
+        "sireCode": product.sire_code,
+        "damCode": product.dam_code,
+        "sireImageUrl": product.sire_image_url,
+        "damImageUrl": product.dam_image_url,
+
         "productType": product.product_type,
         "tubeType": product.tube_type,
         "boxType": product.box_type,

@@ -29,6 +29,16 @@ async def create_product(
         name=product_data.name,
         code=product_data.code,
         description=product_data.description,
+
+        # Turtle-album extensions
+        series_id=product_data.series_id,
+        sex=product_data.sex,
+        offspring_unit_price=product_data.offspring_unit_price,
+        sire_code=product_data.sire_code,
+        dam_code=product_data.dam_code,
+        sire_image_url=product_data.sire_image_url,
+        dam_image_url=product_data.dam_image_url,
+
         product_type=product_data.product_type,
         tube_type=product_data.tube_type,
         box_type=product_data.box_type,

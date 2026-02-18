@@ -45,6 +45,16 @@ class ProductBase(BaseModel):
     name: str
     code: str
     description: Optional[str] = None
+
+    # Turtle-album extensions (optional in generic Product schema for backward compatibility)
+    series_id: Optional[str] = None
+    sex: Optional[str] = None  # 'male' | 'female'
+    offspring_unit_price: Optional[float] = None
+    sire_code: Optional[str] = None
+    dam_code: Optional[str] = None
+    sire_image_url: Optional[str] = None
+    dam_image_url: Optional[str] = None
+
     product_type: Optional[str] = None
     tube_type: Optional[str] = None
     box_type: Optional[str] = None
@@ -69,6 +79,16 @@ class ProductUpdate(BaseModel):
     name: Optional[str] = None
     code: Optional[str] = None
     description: Optional[str] = None
+
+    # Turtle-album extensions (optional)
+    series_id: Optional[str] = None
+    sex: Optional[str] = None
+    offspring_unit_price: Optional[float] = None
+    sire_code: Optional[str] = None
+    dam_code: Optional[str] = None
+    sire_image_url: Optional[str] = None
+    dam_image_url: Optional[str] = None
+
     product_type: Optional[str] = None
     tube_type: Optional[str] = None
     box_type: Optional[str] = None
