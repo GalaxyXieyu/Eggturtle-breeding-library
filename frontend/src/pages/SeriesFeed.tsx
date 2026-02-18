@@ -184,7 +184,7 @@ const SeriesFeed: React.FC = () => {
               <Link
                 key={b.id}
                 to={`/breeder/${b.id}`}
-                className="mb-3 inline-block w-full break-inside-avoid overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04)] hover:border-neutral-300"
+                className="mb-3 inline-block w-full break-inside-avoid overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04)] transition active:scale-[0.99] active:shadow-[0_6px_18px_rgba(0,0,0,0.10)] hover:border-neutral-300"
               >
                 <div className="relative aspect-[4/5] bg-neutral-100">
                   {mainImage?.url ? (
@@ -199,16 +199,16 @@ const SeriesFeed: React.FC = () => {
                 </div>
 
                 <div className="p-3">
-                  <div className="text-sm font-semibold text-neutral-900">{b.code}</div>
+                  <div className="text-sm font-semibold tracking-wide text-neutral-900">{b.code}</div>
 
-                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
                     {b.description ? (
-                      <span className="inline-flex max-w-full rounded-full bg-neutral-100 px-2 py-1 text-xs text-neutral-700">
+                      <span className="inline-flex max-w-full rounded-full bg-neutral-100/80 px-2 py-0.5 text-[11px] leading-5 text-neutral-700">
                         <span className="truncate">{b.description}</span>
                       </span>
                     ) : null}
                     {typeof b.offspringUnitPrice === 'number' ? (
-                      <span className="inline-flex rounded-full bg-neutral-900/80 px-2 py-1 text-xs font-semibold text-[#FFD400] ring-1 ring-white/10">
+                      <span className="inline-flex rounded-full bg-neutral-900/85 px-2 py-0.5 text-[11px] font-semibold leading-5 text-[#FFD400] ring-1 ring-white/10">
                         子代 ¥ {b.offspringUnitPrice}
                       </span>
                     ) : null}
