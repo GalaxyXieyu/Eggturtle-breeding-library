@@ -195,20 +195,24 @@ const SeriesFeed: React.FC = () => {
                   <div className="absolute right-2 top-2 rounded-full bg-white/90 px-2.5 py-1 text-xs text-black">
                     {sexLabel(b.sex)}
                   </div>
-                  {typeof b.offspringUnitPrice === 'number' ? (
-                    <div className="absolute bottom-2 left-2 rounded-full bg-white/90 px-2.5 py-1 text-xs font-semibold text-[#FFD400]">
-                      子代 ¥ {b.offspringUnitPrice}
-                    </div>
-                  ) : null}
+                  {/* price moved below */}
                 </div>
 
                 <div className="p-3">
                   <div className="text-sm font-semibold text-neutral-900">{b.code}</div>
-                  {b.description ? (
-                    <div className="mt-1 inline-flex max-w-full rounded-full bg-neutral-100 px-2 py-1 text-xs text-neutral-700">
-                      <span className="truncate">{b.description}</span>
-                    </div>
-                  ) : null}
+
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    {b.description ? (
+                      <span className="inline-flex max-w-full rounded-full bg-neutral-100 px-2 py-1 text-xs text-neutral-700">
+                        <span className="truncate">{b.description}</span>
+                      </span>
+                    ) : null}
+                    {typeof b.offspringUnitPrice === 'number' ? (
+                      <span className="inline-flex rounded-full bg-neutral-900/80 px-2 py-1 text-xs font-semibold text-[#FFD400] ring-1 ring-white/10">
+                        子代 ¥ {b.offspringUnitPrice}
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
               </Link>
             );
