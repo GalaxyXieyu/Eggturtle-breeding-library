@@ -90,7 +90,19 @@ const SeriesFeed: React.FC = () => {
                   <button
                     key={t.key}
                     type="button"
-                    onClick={() => setSex(t.key as any)}
+                    onClick={() => {
+                      if (t.key === 'female') {
+                        setSex('all');
+                        requestAnimationFrame(() => femaleRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+                        return;
+                      }
+                      if (t.key === 'male') {
+                        setSex('all');
+                        requestAnimationFrame(() => maleRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+                        return;
+                      }
+                      setSex(t.key as any);
+                    }}
                     className={`h-8 rounded-full border px-3 text-xs ${
                       sex === t.key
                         ? 'border-[#F5C542] bg-[#F5C542] text-black'
@@ -177,27 +189,10 @@ const SeriesFeed: React.FC = () => {
             return <div className="rounded-xl border border-neutral-200 p-6 text-sm text-neutral-600">暂无数据</div>;
           }
 
-          // When sex=all, show 2 sections and provide quick jump for mobile.
+          // When sex=all, show 2 sections. Quick-jump is handled by the sex chips (种母/种公).
           if (sex === 'all') {
             return (
               <div className="space-y-6">
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => femaleRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                    className="h-9 flex-1 rounded-full border border-neutral-200 bg-white text-sm text-neutral-800"
-                  >
-                    跳到种母
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => maleRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                    className="h-9 flex-1 rounded-full border border-neutral-200 bg-white text-sm text-neutral-800"
-                  >
-                    跳到种公
-                  </button>
-                </div>
-
                 <div ref={femaleRef}>
                   <div className="mb-3 flex items-center justify-between">
                     <div className="text-sm font-semibold text-neutral-900">种母</div>
