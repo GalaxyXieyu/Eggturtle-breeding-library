@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 from app.db.session import get_db
-from app.models.models import Product
+from app.models.models import Product, MatingRecord, EggRecord
 from app.schemas.schemas import ApiResponse
 from app.api.utils import convert_product_to_response
 
@@ -55,3 +55,88 @@ async def get_breeder_detail(
         raise HTTPException(status_code=404, detail="Breeder not found")
 
     return ApiResponse(data=convert_product_to_response(breeder), message="Breeder retrieved successfully")
+
+
+@router.get("/{breeder_id}/records", response_model=ApiResponse)
+async def get_breeder_records(
+    breeder_id: str,
+    db: Session = Depends(get_db),
+):
+    """Public: breeder timeline records (mating + eggs).
+
+    - For female: include matingRecordsAsFemale + eggRecords
+    - For male: include matingRecordsAsMale
+    """
+    breeder = (
+        db.query(Product)
+        .filter(Product.id == breeder_id)
+        .filter(Product.series_id.isnot(None))
+        .filter(Product.sex.isnot(None))
+        .first()
+    )
+    if not breeder:
+        raise HTTPException(status_code=404, detail="Breeder not found")
+
+    data = {
+        "breederId": breeder.id,
+        "sex": breeder.sex,
+        "matingRecordsAsFemale": [],
+        "matingRecordsAsMale": [],
+        "eggRecords": [],
+    }
+
+    if breeder.sex == "female":
+        matings = (
+            db.query(MatingRecord)
+            .filter(MatingRecord.female_id == breeder.id)
+            .order_by(MatingRecord.mated_at.desc())
+            .all()
+        )
+        eggs = (
+            db.query(EggRecord)
+            .filter(EggRecord.female_id == breeder.id)
+            .order_by(EggRecord.laid_at.desc())
+            .all()
+        )
+        data["matingRecordsAsFemale"] = [
+            {
+                "id": r.id,
+                "femaleId": r.female_id,
+                "maleId": r.male_id,
+                "matedAt": r.mated_at.isoformat() if r.mated_at else None,
+                "notes": r.notes,
+                "createdAt": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in matings
+        ]
+        data["eggRecords"] = [
+            {
+                "id": r.id,
+                "femaleId": r.female_id,
+                "laidAt": r.laid_at.isoformat() if r.laid_at else None,
+                "count": r.count,
+                "notes": r.notes,
+                "createdAt": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in eggs
+        ]
+    elif breeder.sex == "male":
+        matings = (
+            db.query(MatingRecord)
+            .filter(MatingRecord.male_id == breeder.id)
+            .order_by(MatingRecord.mated_at.desc())
+            .all()
+        )
+        data["matingRecordsAsMale"] = [
+            {
+                "id": r.id,
+                "femaleId": r.female_id,
+                "maleId": r.male_id,
+                "matedAt": r.mated_at.isoformat() if r.mated_at else None,
+                "notes": r.notes,
+                "createdAt": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in matings
+        ]
+
+    return ApiResponse(data=data, message="Breeder records retrieved successfully")

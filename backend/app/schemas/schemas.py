@@ -182,6 +182,21 @@ class SeriesUpdate(BaseModel):
     sort_order: Optional[int] = None
     is_active: Optional[bool] = None
 
+
+# Turtle-album: mating / egg record schemas (admin write, public read)
+class MatingRecordCreate(BaseModel):
+    female_id: str
+    male_id: str
+    mated_at: datetime
+    notes: Optional[str] = None
+
+
+class EggRecordCreate(BaseModel):
+    female_id: str
+    laid_at: datetime
+    count: Optional[int] = None
+    notes: Optional[str] = None
+
 class ErrorResponse(BaseModel):
     message: str
     success: bool = False
