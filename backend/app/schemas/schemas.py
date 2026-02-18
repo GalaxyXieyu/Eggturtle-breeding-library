@@ -169,6 +169,19 @@ class ApiResponse(BaseModel):
     message: Optional[str] = None
     success: bool = True
 
+
+# Turtle-album: Series admin schemas
+class SeriesCreate(BaseModel):
+    name: str
+    sort_order: Optional[int] = None
+    is_active: bool = True
+
+
+class SeriesUpdate(BaseModel):
+    name: Optional[str] = None
+    sort_order: Optional[int] = None
+    is_active: Optional[bool] = None
+
 class ErrorResponse(BaseModel):
     message: str
     success: bool = False
