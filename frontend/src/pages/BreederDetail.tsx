@@ -32,7 +32,10 @@ const BreederDetail: React.FC = () => {
       <div className="mx-auto max-w-3xl px-4 py-6">
         <div className="mb-6 flex items-center justify-between">
           <Link to="/" className="text-sm text-neutral-600 hover:underline">← 返回</Link>
-          <div className="text-xs uppercase tracking-widest text-neutral-500">breeder detail</div>
+          <div className="text-right">
+            <div className="text-xs uppercase tracking-widest text-neutral-500">turtle album</div>
+            <div className="mt-1 text-sm font-medium text-neutral-800">西瑞 · 果核系选育溯源记录</div>
+          </div>
         </div>
 
         {breederQ.isLoading ? <div className="text-sm text-neutral-600">loading...</div> : null}
