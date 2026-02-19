@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Optional
 import os
+from pathlib import Path
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
@@ -12,7 +13,9 @@ from app.db.session import get_db
 from app.models.models import User
 from app.schemas.schemas import UserResponse
 
-load_dotenv()
+BACKEND_DIR = Path(__file__).resolve().parents[2]
+ENV_PATH = BACKEND_DIR / ".env"
+load_dotenv(ENV_PATH)
 
 # Configuration
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")

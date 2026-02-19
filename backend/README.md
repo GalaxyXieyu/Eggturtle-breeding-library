@@ -1,6 +1,6 @@
-# Glam Cart Builder Backend API
+# Turtle Album Backend API
 
-A comprehensive Python FastAPI backend for the Glam Cart Builder application, providing both public and authenticated endpoints for product management.
+FastAPI backend for Turtle Album, providing public breeder browsing APIs and admin management APIs.
 
 ## 🚀 Quick Start
 
@@ -51,7 +51,7 @@ Once the server is running, you can access:
 
 ### Default Admin Credentials
 - **Username:** `admin`
-- **Password:** `password`
+- **Password:** `admin123`
 
 ### Authentication Flow
 1. POST `/api/auth/login` with credentials
@@ -64,10 +64,11 @@ Once the server is running, you can access:
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/products` | List products with filtering/sorting |
-| GET | `/api/products/{id}` | Get single product by ID |
-| GET | `/api/products/featured` | Get featured products |
-| GET | `/api/products/filter-options` | Get available filter options |
+| GET | `/api/series` | List active breeder series |
+| GET | `/api/breeders` | List breeders (supports series/sex filter) |
+| GET | `/api/breeders/{id}` | Get breeder detail |
+| GET | `/api/breeders/{id}/records` | Get mating/egg records |
+| GET | `/api/images/{filename}` | Proxy image serving endpoint |
 
 ### Admin Endpoints (Authentication Required)
 
@@ -76,6 +77,11 @@ Once the server is running, you can access:
 | POST | `/api/auth/login` | Admin login |
 | POST | `/api/auth/logout` | Admin logout |
 | GET | `/api/auth/verify` | Verify JWT token |
+| GET | `/api/admin/series` | Manage series list |
+| POST | `/api/admin/series` | Create series |
+| PUT | `/api/admin/series/{id}` | Update series |
+| DELETE | `/api/admin/series/{id}` | Delete series |
+| GET | `/api/admin/breeders` | Manage breeders |
 | POST | `/api/products` | Create new product |
 | PUT | `/api/products/{id}` | Update existing product |
 | DELETE | `/api/products/{id}` | Delete product |
@@ -120,46 +126,28 @@ python tests/run_tests.py
 
 ## 📁 Project Structure
 
-```
+``` 
 backend/
-├── main.py                 # FastAPI application
-├── models.py              # SQLAlchemy database models
-├── schemas.py             # Pydantic request/response schemas
-├── database.py            # Database configuration
-├── auth.py                # Authentication utilities
-├── file_utils.py          # File upload utilities
+├── app/
+│   ├── main.py            # FastAPI app entry
+│   ├── api/routers/       # API routers
+│   ├── core/              # Security/auth core logic
+│   ├── db/session.py      # DB session + engine config
+│   ├── models/models.py   # SQLAlchemy models
+│   └── schemas/schemas.py # Pydantic schemas
 ├── run.py                 # Server startup script
-├── create_admin.py        # Admin user creation script
-├── import_products.py     # Product data import script
-├── verify_import.py       # Import verification script
+├── scripts/               # DB init/import helper scripts
 ├── requirements.txt       # Python dependencies
 ├── .env                   # Environment configuration
 ├── README.md             # This file
-├── BACKEND_SUMMARY.md    # Backend development summary
-├── glam_cart.db          # SQLite database file
-├── B产品数据.xlsx         # B series product data
-├── Z产品数据.xlsx         # Z series product data
-├── tests/                # Test suite
-│   ├── __init__.py
-│   ├── conftest.py       # Test configuration
-│   ├── test_auth.py      # Authentication tests
-│   ├── test_products_public.py  # Public API tests
-│   ├── test_products_admin.py   # Admin API tests
-│   ├── test_api_integration.py  # Integration tests
-│   ├── test_homepage_features.py # Homepage feature tests
-│   ├── test_new_fields.py       # New fields tests
-│   ├── test_api_manual.py       # Manual API tests
-│   ├── TEST_RESULTS.md          # Test results documentation
-│   └── run_tests.py      # Test runner
+├── data/
+│   ├── app.db            # SQLite database file (runtime, ignored by git)
+│   └── archive/          # Historical DB backups (ignored by git)
+├── tests/                # API test cases and scripts
+├── http-client/          # HTTP request collections
 ├── static/               # Static file storage
-│   ├── images/           # Product images organized by product code
-│   │   ├── B01/          # B01 product images
-│   │   ├── B02/          # B02 product images
-│   │   ├── Z01/          # Z01 product images
-│   │   └── ...           # Other product image folders
-│   ├── carousels/        # Carousel images
-│   ├── qr_codes/         # QR code images
-│   └── image_info.json   # Image metadata
+│   ├── images/           # Uploaded images
+│   └── qr_codes/         # QR code images
 └── venv/                 # Python virtual environment
 ```
 
@@ -171,7 +159,7 @@ Create or modify `.env` file:
 
 ```env
 # Database Configuration
-DATABASE_URL=sqlite:///./glam_cart.db
+DATABASE_URL=sqlite:///./data/app.db
 
 # JWT Configuration
 SECRET_KEY=your-secret-key-change-in-production
@@ -217,14 +205,14 @@ The database is automatically created when the server starts. The admin user is 
 
 ### Adding New Endpoints
 
-1. Define Pydantic schemas in `schemas.py`
-2. Add database models in `models.py` if needed
-3. Implement endpoint in `main.py`
+1. Define Pydantic schemas in `app/schemas/schemas.py`
+2. Add database models in `app/models/models.py` if needed
+3. Implement endpoint in `app/api/routers/*.py` and register router in `app/main.py`
 4. Add tests in appropriate test file
 
 ### Database Changes
 
-1. Modify models in `models.py`
+1. Modify models in `app/models/models.py`
 2. Delete existing database file for development
 3. Restart server to recreate tables
 
@@ -235,7 +223,7 @@ The database is automatically created when the server starts. The admin user is 
 DEBUG=True python run.py
 
 # Or use uvicorn directly
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ## 🚀 Production Deployment

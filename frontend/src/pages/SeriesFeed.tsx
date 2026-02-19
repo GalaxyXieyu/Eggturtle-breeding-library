@@ -74,7 +74,7 @@ const SeriesFeed: React.FC = () => {
         wechat1QrUrl="https://api3.superbed.cn/static/images/2026/0218/d6/6995ae51556e27f1c93a2fd6.jpg"
         wechat2QrUrl="https://api3.superbed.cn/static/images/2026/0218/04/6995afba556e27f1c93a3004.jpg"
       />
-      <div className="mx-auto max-w-6xl px-4 pb-8 pt-[calc(env(safe-area-inset-top)+12px)]">
+      <div className="mx-auto w-full max-w-[1440px] px-3 pb-8 pt-[calc(env(safe-area-inset-top)+12px)] sm:px-4 lg:px-6">
         <header
           className={`mb-4 overflow-hidden rounded-3xl bg-neutral-900 transition-[max-height,opacity,transform] duration-300 ease-out ${
             isHeroCollapsed ? 'max-h-20 opacity-0 -translate-y-2' : 'max-h-[220px] opacity-100 translate-y-0'
@@ -109,7 +109,7 @@ const SeriesFeed: React.FC = () => {
                     key={s.id}
                     type="button"
                     onClick={() => setSeriesId(s.id)}
-                    className={`h-8 rounded-full border px-3 text-xs shadow-[0_1px_0_rgba(0,0,0,0.04)] ${
+                    className={`h-8 rounded-full border px-3 text-xs shadow-[0_1px_0_rgba(0,0,0,0.04)] transition ${
                       seriesId === s.id
                         ? 'border-[#FFD400] bg-white text-black'
                         : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300'
@@ -146,9 +146,9 @@ const SeriesFeed: React.FC = () => {
                         requestAnimationFrame(() => maleRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
                         return;
                       }
-                      setSex(t.key as any);
+                      setSex(t.key);
                     }}
-                    className={`h-8 rounded-full border px-3 text-xs shadow-[0_1px_0_rgba(0,0,0,0.04)] ${
+                    className={`h-8 rounded-full border px-3 text-xs shadow-[0_1px_0_rgba(0,0,0,0.04)] transition ${
                       sex === t.key
                         ? 'border-[#FFD400] bg-white text-black'
                         : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300'
@@ -183,7 +183,7 @@ const SeriesFeed: React.FC = () => {
               <Link
                 key={b.id}
                 to={`/breeder/${b.id}`}
-                className="mb-3 inline-block w-full break-inside-avoid overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04)] transition active:scale-[0.99] active:shadow-[0_6px_18px_rgba(0,0,0,0.10)] hover:border-neutral-300"
+                className="mb-3 inline-block w-full break-inside-avoid overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04)] transition active:scale-[0.995] active:shadow-[0_6px_18px_rgba(0,0,0,0.10)] hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-[0_8px_28px_rgba(0,0,0,0.10)]"
               >
                 <div className="relative aspect-[4/5] bg-neutral-100">
                   {mainImage?.url ? (
@@ -199,18 +199,18 @@ const SeriesFeed: React.FC = () => {
 
                 <div className="p-3">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0 text-sm font-semibold tracking-wide text-neutral-900">{b.code}</div>
+                    <div className="min-w-0 text-sm font-semibold tracking-wide text-neutral-900 sm:text-base">{b.code}</div>
                     {typeof b.offspringUnitPrice === 'number' ? (
-                      <span className="shrink-0 rounded-full bg-neutral-900/85 px-2 py-0.5 text-[11px] font-semibold leading-5 text-[#FFD400] ring-1 ring-white/10">
+                      <span className="shrink-0 rounded-full bg-neutral-900/85 px-2 py-0.5 text-[11px] font-semibold leading-5 text-[#FFD400] ring-1 ring-white/10 sm:text-xs">
                         子代 ¥ {b.offspringUnitPrice}
                       </span>
                     ) : null}
                   </div>
 
                   {b.description ? (
-                    <div className="mt-1">
-                      <span className="inline-flex max-w-full rounded-full bg-neutral-100/80 px-2 py-0.5 text-[11px] leading-5 text-neutral-700">
-                        <span className="truncate">{b.description}</span>
+                    <div className="mt-1.5">
+                      <span className="inline-flex max-w-full rounded-full bg-neutral-100/80 px-2 py-0.5 text-[11px] leading-5 text-neutral-700 sm:text-xs">
+                        <span className="line-clamp-2">{b.description}</span>
                       </span>
                     </div>
                   ) : null}
@@ -220,7 +220,7 @@ const SeriesFeed: React.FC = () => {
           };
 
           const Masonry = ({ list }: { list: typeof allBreeders }) => (
-            <div className="columns-2 gap-3 [column-fill:_balance] md:columns-3 lg:columns-4">
+            <div className="columns-1 gap-3 [column-fill:_balance] sm:columns-2 lg:columns-3 2xl:columns-4">
               {list.map((b) => (
                 <Card key={b.id} b={b} />
               ))}

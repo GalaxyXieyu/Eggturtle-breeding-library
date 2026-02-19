@@ -45,7 +45,7 @@ RUN mkdir -p /data/images
 ENV HOST=0.0.0.0
 ENV PORT=8000
 ENV DEBUG=False
-ENV DATABASE_URL=sqlite:////data/glam_cart.db
+ENV DATABASE_URL=sqlite:////data/app.db
 ENV UPLOAD_DIR=/data/images
 ENV SECRET_KEY=change-this-in-production
 ENV ADMIN_USERNAME=admin

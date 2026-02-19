@@ -91,8 +91,8 @@ def main():
     parser = argparse.ArgumentParser(description="Import MG series females into a sqlite DB using local images.")
     parser.add_argument(
         "--db-url",
-        default="sqlite:///./turtle_album_ui_refine.db",
-        help="SQLAlchemy DB URL (default: sqlite:///./turtle_album_ui_refine.db)",
+        default=os.getenv("DATABASE_URL", "sqlite:///./data/app.db"),
+        help="SQLAlchemy DB URL (default: DATABASE_URL or sqlite:///./data/app.db)",
     )
     parser.add_argument(
         "--upload-dir",

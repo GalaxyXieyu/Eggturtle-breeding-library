@@ -7,7 +7,13 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-from app.db.session import get_db, create_tables
+from app.db.session import (
+    DATABASE_URL,
+    create_tables,
+    get_db,
+    get_sqlite_file_path,
+    validate_schema_or_raise,
+)
 from app.core.security import create_admin_user
 from app.schemas.schemas import ErrorResponse
 
@@ -81,6 +87,12 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 @app.on_event("startup")
 async def startup_event():
     create_tables()
+    validate_schema_or_raise()
+    sqlite_file = get_sqlite_file_path()
+    if sqlite_file:
+        logger.info(f"Using SQLite DB: {sqlite_file}")
+    else:
+        logger.info(f"Using DB URL: {DATABASE_URL}")
     db = next(get_db())
     try:
         admin_user = create_admin_user(db)

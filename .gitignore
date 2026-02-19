@@ -1,6 +1,8 @@
 # Logs
 logs
 *.log
+backend/nohup.out
+backend/backend.pid
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -28,6 +30,12 @@ backend/venv
 
 # Database files
 *.db
+*.db-shm
+*.db-wal
+backend/data/*.sqlite
+backend/data/*.sqlite3
+backend/data/archive/*.sqlite
+backend/data/archive/*.sqlite3
 backend/backup/
 
 # Image assets

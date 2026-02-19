@@ -19,7 +19,7 @@ This PR introduces database-level structures needed for the turtle-album busines
 ## How to verify (manual)
 
 1) Use a fresh sqlite DB:
-   - remove `backend/glam_cart.db` (or point `DATABASE_URL` to a temp file)
+   - remove `backend/data/app.db` (or point `DATABASE_URL` to a temp file)
 2) Start backend:
    - `cd backend && uvicorn app.main:app --reload`
 3) Ensure tables are created (app uses `Base.metadata.create_all()`), then inspect DB with sqlite:

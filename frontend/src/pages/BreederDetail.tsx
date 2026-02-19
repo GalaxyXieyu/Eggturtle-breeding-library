@@ -39,7 +39,7 @@ const BreederDetail: React.FC = () => {
         wechat1QrUrl="https://api3.superbed.cn/static/images/2026/0218/d6/6995ae51556e27f1c93a2fd6.jpg"
         wechat2QrUrl="https://api3.superbed.cn/static/images/2026/0218/04/6995afba556e27f1c93a3004.jpg"
       />
-      <div className="mx-auto max-w-6xl px-4 pb-8 pt-[calc(env(safe-area-inset-top)+32px)]">
+      <div className="mx-auto w-full max-w-[1440px] px-3 pb-8 pt-[calc(env(safe-area-inset-top)+24px)] sm:px-4 lg:px-6">
         <div className="mb-6 flex items-center justify-between">
           <Link to="/" className="text-sm text-neutral-600 hover:underline">← 返回</Link>
           <div className="text-right">
@@ -55,7 +55,7 @@ const BreederDetail: React.FC = () => {
         ) : null}
 
         {breederQ.data ? (
-          <div className="grid gap-4 lg:grid-cols-[420px_1fr]">
+          <div className="grid gap-4 xl:grid-cols-[minmax(360px,440px)_1fr]">
             {(() => {
               const mainImage = (breederQ.data.images || []).find((i) => i.type === 'main') || (breederQ.data.images || [])[0];
               if (!mainImage?.url) return null;
@@ -75,16 +75,16 @@ const BreederDetail: React.FC = () => {
               <div className="p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="truncate text-2xl font-semibold text-neutral-900 sm:text-xl">{breederQ.data.name}</div>
-                    <div className="mt-1 text-base text-neutral-500 sm:text-sm">{breederQ.data.code}</div>
+                    <div className="truncate text-xl font-semibold text-neutral-900 sm:text-2xl">{breederQ.data.name}</div>
+                    <div className="mt-1 text-sm text-neutral-500 sm:text-base">{breederQ.data.code}</div>
                   </div>
                   {typeof breederQ.data.offspringUnitPrice === 'number' ? (
-                    <div className="shrink-0 text-xl font-semibold text-[#FFD400] sm:text-lg">子代 ¥ {breederQ.data.offspringUnitPrice}</div>
+                    <div className="shrink-0 text-lg font-semibold text-[#FFD400] sm:text-xl">子代 ¥ {breederQ.data.offspringUnitPrice}</div>
                   ) : null}
                 </div>
 
                 {breederQ.data.description ? (
-                  <div className="mt-3 text-base leading-relaxed text-neutral-800 whitespace-pre-wrap sm:text-sm">
+                  <div className="mt-3 text-sm leading-relaxed text-neutral-800 whitespace-pre-wrap sm:text-base">
                     {breederQ.data.description}
                   </div>
                 ) : null}

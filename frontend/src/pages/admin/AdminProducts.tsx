@@ -886,7 +886,7 @@ const AdminProducts = () => {
 
       createProductMutation.mutate(backendProductData, {
         onSuccess: async (response) => {
-          let created = response;
+          let created = response as CosmeticProduct;
 
           // Upload images if any
           if (imageUploads.length > 0 && response?.id) {
@@ -910,10 +910,10 @@ const AdminProducts = () => {
           createForm.reset();
 
           if (created?.id) {
-            setSelectedProduct(created as any);
+            setSelectedProduct(created);
             setIsEditMode(true);
             setIsProductDetailOpen(true);
-            initImagesFromProduct(created as any);
+            initImagesFromProduct(created);
           }
         }
       });

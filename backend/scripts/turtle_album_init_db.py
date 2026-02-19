@@ -170,7 +170,7 @@ def main():
     parser = argparse.ArgumentParser(description="Init a branch-isolated sqlite DB for turtle-album.")
     parser.add_argument(
         "--db-path",
-        default="./turtle_album.db",
+        default="./data/app.db",
         help="SQLite DB file path (relative to backend/ when run there).",
     )
     parser.add_argument("--reset", action="store_true", help="Backup and recreate if DB exists.")
@@ -201,6 +201,8 @@ def main():
     # If user passed a file path, handle backup/reset on the filesystem.
     if db_url.startswith("sqlite:///"):
         file_path = db_url.replace("sqlite:///", "", 1)
+        parent = os.path.dirname(file_path) or "."
+        os.makedirs(parent, exist_ok=True)
         if os.path.exists(file_path):
             if not args.reset:
                 raise SystemExit(f"DB already exists: {file_path} (use --reset to recreate)")
