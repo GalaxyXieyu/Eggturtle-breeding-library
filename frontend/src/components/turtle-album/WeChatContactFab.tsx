@@ -95,7 +95,7 @@ const WeChatContactFab: React.FC<WeChatContactFabProps> = ({ wechat1Id, wechat2I
             </div>
 
             {tab === '1' ? (
-              <WeChatCard label="微信号①（Siri08888，满人加2号）" wechatId={wechat1Id} qrUrl={wechat1QrUrl} />
+              <WeChatCard label="微信号①（满人加2号）" wechatId={wechat1Id} qrUrl={wechat1QrUrl} />
             ) : (
               <WeChatCard label="微信号②" wechatId={wechat2Id} qrUrl={wechat2QrUrl} />
             )}
