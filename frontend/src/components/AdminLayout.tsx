@@ -66,13 +66,13 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title }) => {
   return (
     <div className="min-h-screen bg-neutral-50 flex flex-col lg:flex-row">
       {/* Mobile Navigation Header */}
-      <div className="lg:hidden bg-white border-b border-neutral-200 p-4 flex items-center justify-between">
+      <div className="lg:hidden bg-white border-b border-neutral-200 px-4 py-3 flex items-center justify-between">
         <Link to="/admin/dashboard" className="flex items-center">
           <span className="font-semibold text-base tracking-wide text-neutral-900">Turtle Album</span>
         </Link>
         <button
           onClick={() => setIsMobileNavOpen(!isMobileNavOpen)}
-          className="text-gray-600 hover:text-gray-900"
+          className="text-gray-600 hover:text-gray-900 p-1"
         >
           {isMobileNavOpen ? <X /> : <Menu />}
         </button>
@@ -146,10 +146,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title }) => {
         </header>
 
         {/* Page Content */}
-        <div className="flex-1 p-6">
+        <div className="flex-1 px-4 py-4 sm:p-6">
           {/* Mobile header */}
-          <div className="mb-6 block lg:hidden">
-            <h1 className="text-2xl font-semibold text-neutral-900">{title}</h1>
+          <div className="mb-4 block lg:hidden">
+            <h1 className="text-xl font-semibold text-neutral-900">{title}</h1>
           </div>
           
           {children}

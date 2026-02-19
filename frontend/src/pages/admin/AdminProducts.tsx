@@ -96,6 +96,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { ProductImportDialog } from "@/components/admin/ProductImportDialog";
+import OptimizedImage from "@/components/OptimizedImage";
+import { getOptimizedImageProps } from "@/utils/productImageHelpers";
 
 // Image upload interface
 interface ProductImageUpload {
@@ -156,7 +158,7 @@ const AdminProducts = () => {
   const [listFilters, setListFilters] = useState({
     tubeType: "",
     boxType: "",
-    material: "",
+    processType: "",
     shape: "",
   });
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -195,7 +197,7 @@ const AdminProducts = () => {
     filters: {
       tubeTypes: listFilters.tubeType ? [listFilters.tubeType] : undefined,
       boxTypes: listFilters.boxType ? [listFilters.boxType] : undefined,
-      materials: listFilters.material ? [listFilters.material] : undefined,
+      processTypes: listFilters.processType ? [listFilters.processType] : undefined,
       shapes: listFilters.shape ? [listFilters.shape] : undefined,
     },
   });
@@ -1384,7 +1386,9 @@ const AdminProducts = () => {
 
   return (
     <AdminLayout title="产品管理">
-      <div className="mb-6 flex flex-col sm:flex-row gap-4 justify-between items-center">
+      {/* Sticky Search and Actions Bar */}
+      <div className="sticky top-0 z-10 bg-neutral-50 pb-4 mb-2">
+        <div className="mb-4 flex flex-col sm:flex-row gap-4 justify-between items-center">
         <div className="relative w-full sm:w-80">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600 h-4 w-4" />
           <Input
@@ -1410,7 +1414,7 @@ const AdminProducts = () => {
         </div>
       </div>
 
-      <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+      <div className="mb-4 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
         <div className="space-y-1">
           <Label className="text-sm text-gray-700">管型</Label>
           <Select
@@ -1456,11 +1460,11 @@ const AdminProducts = () => {
         </div>
 
         <div className="space-y-1">
-          <Label className="text-sm text-gray-700">材质</Label>
+          <Label className="text-sm text-gray-700">工艺类型</Label>
           <Select
-            value={listFilters.material || "all"}
+            value={listFilters.processType || "all"}
             onValueChange={(value) =>
-              setListFilters(prev => ({ ...prev, material: value === "all" ? "" : value }))
+              setListFilters(prev => ({ ...prev, processType: value === "all" ? "" : value }))
             }
           >
             <SelectTrigger className="bg-white border-gray-200">
@@ -1468,9 +1472,9 @@ const AdminProducts = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">全部</SelectItem>
-              {filterOptions.materials.map((material) => (
-                <SelectItem key={material} value={material}>
-                  {material}
+              {filterOptions.processTypes.map((processType) => (
+                <SelectItem key={processType} value={processType}>
+                  {processType}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -1508,7 +1512,7 @@ const AdminProducts = () => {
               setListFilters({
                 tubeType: "",
                 boxType: "",
-                material: "",
+                processType: "",
                 shape: "",
               })
             }
@@ -1517,8 +1521,10 @@ const AdminProducts = () => {
           </Button>
         </div>
       </div>
+      </div>
 
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+      {/* Desktop Table View */}
+      <div className="hidden md:block bg-white rounded-lg shadow-card border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -1547,11 +1553,20 @@ const AdminProducts = () => {
                     <TableCell>
                       <div className="h-10 w-10 rounded bg-gray-100 overflow-hidden">
                         {product.images && product.images.length > 0 ? (
-                          <img
-                            src={product.images[0].url}
-                            alt={product.name}
-                            className="h-full w-full object-cover"
-                          />
+                          (() => {
+                            const imageProps = getOptimizedImageProps(product, 0, 'card-thumbnail');
+                            return imageProps ? (
+                              <OptimizedImage
+                                {...imageProps}
+                                className="h-full w-full object-cover"
+                                lazy={true}
+                              />
+                            ) : (
+                              <div className="h-full w-full flex items-center justify-center text-gray-300">
+                                <Eye className="h-4 w-4" />
+                              </div>
+                            );
+                          })()
                         ) : (
                           <div className="h-full w-full flex items-center justify-center text-gray-300">
                             <Eye className="h-4 w-4" />
@@ -1657,6 +1672,124 @@ const AdminProducts = () => {
                 {currentPage < totalPages && totalPages > 3 && (
                   <PaginationItem>
                     <PaginationLast onClick={() => handlePageChange(totalPages)} />
+                  </PaginationItem>
+                )}
+              </PaginationContent>
+            </Pagination>
+          </div>
+        )}
+      </div>
+
+      {/* Mobile Card View */}
+      <div className="block md:hidden space-y-3">
+        {filteredProducts.length > 0 ? (
+          filteredProducts.map((product) => (
+            <Card key={product.id} className="overflow-hidden">
+              <CardContent className="p-4">
+                <div className="flex gap-3">
+                  {/* Product Image */}
+                  <div className="h-20 w-20 rounded bg-gray-100 overflow-hidden flex-shrink-0">
+                    {product.images && product.images.length > 0 ? (
+                      (() => {
+                        const imageProps = getOptimizedImageProps(product, 0, 'card-thumbnail');
+                        return imageProps ? (
+                          <OptimizedImage
+                            {...imageProps}
+                            className="h-full w-full object-cover"
+                            lazy={true}
+                          />
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center text-gray-300">
+                            <Eye className="h-6 w-6" />
+                          </div>
+                        );
+                      })()
+                    ) : (
+                      <div className="h-full w-full flex items-center justify-center text-gray-300">
+                        <Eye className="h-6 w-6" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Product Info */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-gray-900 truncate mb-1">{product.name}</h3>
+                    <p className="text-sm text-gray-600 mb-1">货号: {product.code}</p>
+                    <p className="text-sm text-gray-600">
+                      {product.tubeType || product.boxType || product.processType}
+                    </p>
+                  </div>
+
+                  {/* Quick Actions */}
+                  <div className="flex flex-col gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleViewProduct(product)}
+                      className="text-gray-600 hover:text-gray-900 h-8 w-8 p-0"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEditProduct(product)}
+                      className="text-gray-600 hover:text-gray-900 h-8 w-8 p-0"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteProduct(product.id)}
+                      className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 w-8 p-0"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        ) : (
+          <Card>
+            <CardContent className="p-8 text-center text-gray-600">
+              没有找到符合条件的产品
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Mobile Pagination */}
+        {totalPages > 1 && (
+          <div className="pt-4">
+            <Pagination>
+              <PaginationContent>
+                {currentPage > 1 && (
+                  <PaginationItem>
+                    <PaginationPrevious onClick={() => handlePageChange(currentPage - 1)} />
+                  </PaginationItem>
+                )}
+
+                {getPageNumbers().map((number, idx) =>
+                  number === "ellipsis" ? (
+                    <PaginationItem key={`ellipsis-${idx}`}>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  ) : (
+                    <PaginationItem key={number}>
+                      <PaginationLink
+                        isActive={currentPage === number}
+                        onClick={() => handlePageChange(Number(number))}
+                      >
+                        {number}
+                      </PaginationLink>
+                    </PaginationItem>
+                  )
+                )}
+
+                {currentPage < totalPages && (
+                  <PaginationItem>
+                    <PaginationNext onClick={() => handlePageChange(currentPage + 1)} />
                   </PaginationItem>
                 )}
               </PaginationContent>
