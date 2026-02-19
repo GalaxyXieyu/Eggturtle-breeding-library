@@ -15,7 +15,11 @@ class Series(Base):
     __tablename__ = "series"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    name = Column(String, nullable=False, unique=True, index=True)
+
+    # Stable series code (e.g. SER-TURTLES-001). Name is editable and not unique.
+    code = Column(String, unique=True, index=True)
+    name = Column(String, nullable=False, index=True)
+
     sort_order = Column(Integer, default=0)
     description = Column(Text)
     is_active = Column(Boolean, default=True)
@@ -23,6 +27,11 @@ class Series(Base):
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
     breeders = relationship("Product", back_populates="series")
+    product_relations = relationship(
+        "SeriesProductRelation",
+        back_populates="series",
+        cascade="all, delete-orphan",
+    )
 
 
 class Product(Base):
@@ -74,6 +83,11 @@ class Product(Base):
 
     # Relationships
     series = relationship("Series", back_populates="breeders")
+    series_relations = relationship(
+        "SeriesProductRelation",
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
     images = relationship("ProductImage", back_populates="product", cascade="all, delete-orphan")
     mating_records_as_female = relationship(
         "MatingRecord",
@@ -92,6 +106,17 @@ class Product(Base):
         back_populates="female",
         cascade="all, delete-orphan",
     )
+
+class SeriesProductRelation(Base):
+    __tablename__ = "series_product_rel"
+
+    series_id = Column(String, ForeignKey("series.id"), primary_key=True, index=True)
+    product_id = Column(String, ForeignKey("products.id"), primary_key=True, index=True)
+    created_at = Column(DateTime, default=utc_now)
+
+    series = relationship("Series", back_populates="product_relations")
+    product = relationship("Product", back_populates="series_relations")
+
 
 class MatingRecord(Base):
     __tablename__ = "mating_records"

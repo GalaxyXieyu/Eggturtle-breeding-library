@@ -15,6 +15,7 @@ router = APIRouter()
 def _series_to_dict(s: Series) -> dict:
     return {
         "id": s.id,
+        "code": s.code,
         "name": s.name,
         "sortOrder": s.sort_order,
         "isActive": s.is_active,
@@ -59,7 +60,13 @@ async def admin_create_series(
         max_sort = db.query(func.max(Series.sort_order)).scalar() or 0
         sort_order = max_sort + 1
 
-    series = Series(name=name, sort_order=sort_order, is_active=payload.is_active)
+    code = payload.code.strip() if payload.code else None
+    if code:
+        existing_code = db.query(Series).filter(func.lower(Series.code) == code.lower()).first()
+        if existing_code:
+            raise HTTPException(status_code=400, detail="Series code already exists")
+
+    series = Series(code=code, name=name, sort_order=sort_order, is_active=payload.is_active)
     db.add(series)
     db.commit()
     db.refresh(series)
@@ -79,10 +86,24 @@ async def admin_update_series(
     if not series:
         raise HTTPException(status_code=404, detail="Series not found")
 
+    if payload.code is not None:
+        code = payload.code.strip() if payload.code else None
+        if code:
+            existing_code = (
+                db.query(Series)
+                .filter(func.lower(Series.code) == code.lower())
+                .filter(Series.id != series_id)
+                .first()
+            )
+            if existing_code:
+                raise HTTPException(status_code=400, detail="Series code already exists")
+        series.code = code
+
     if payload.name is not None:
         name = payload.name.strip()
         if not name:
             raise HTTPException(status_code=400, detail="Series name cannot be empty")
+        # name is editable; we keep a soft uniqueness check to reduce operator mistakes.
         existing = (
             db.query(Series)
             .filter(func.lower(Series.name) == name.lower())

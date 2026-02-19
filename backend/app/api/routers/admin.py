@@ -4,13 +4,20 @@ from sqlalchemy import func
 from typing import List
 
 from app.db.session import get_db
-from app.models.models import Product, ProductImage
+from app.models.models import Product, ProductImage, SeriesProductRelation
 from app.schemas.schemas import ProductCreate, ProductUpdate, ApiResponse
 from app.core.security import get_current_active_user, User
 from app.core.file_utils import delete_file, save_product_images_optimized
 from app.api.utils import convert_product_to_response
 
 router = APIRouter()
+
+
+def _sync_primary_series_relation(db: Session, product: Product) -> None:
+    """Keep series_product_rel consistent with products.series_id during the transition period."""
+    db.query(SeriesProductRelation).filter(SeriesProductRelation.product_id == product.id).delete()
+    if product.series_id:
+        db.add(SeriesProductRelation(series_id=product.series_id, product_id=product.id))
 
 @router.post("", response_model=ApiResponse)
 async def create_product(
@@ -60,6 +67,9 @@ async def create_product(
     db.add(product)
     db.commit()
     db.refresh(product)
+
+    _sync_primary_series_relation(db, product)
+    db.commit()
 
     # Add images if provided
     for image_data in product_data.images:
@@ -111,6 +121,9 @@ async def update_product(
     db.commit()
     db.refresh(product)
 
+    _sync_primary_series_relation(db, product)
+    db.commit()
+
     return ApiResponse(
         data=convert_product_to_response(product),
         message="Product updated successfully"
@@ -130,6 +143,9 @@ async def delete_product(
     # Delete associated image files
     for image in product.images:
         delete_file(image.url)  # type: ignore
+
+    # Keep relation table clean during transition.
+    db.query(SeriesProductRelation).filter(SeriesProductRelation.product_id == product.id).delete()
 
     # Delete product (cascade will handle images)
     db.delete(product)

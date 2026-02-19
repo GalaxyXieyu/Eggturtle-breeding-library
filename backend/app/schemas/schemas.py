@@ -172,12 +172,14 @@ class ApiResponse(BaseModel):
 
 # Turtle-album: Series admin schemas
 class SeriesCreate(BaseModel):
+    code: Optional[str] = None
     name: str
     sort_order: Optional[int] = None
     is_active: bool = True
 
 
 class SeriesUpdate(BaseModel):
+    code: Optional[str] = None
     name: Optional[str] = None
     sort_order: Optional[int] = None
     is_active: Optional[bool] = None

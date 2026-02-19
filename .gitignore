@@ -31,6 +31,7 @@ backend/venv
 # Database files
 *.db
 *.db.*.bak
+*.db.bak_*
 *.db-shm
 *.db-wal
 backend/data/*.sqlite

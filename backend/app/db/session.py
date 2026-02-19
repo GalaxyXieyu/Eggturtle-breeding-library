@@ -72,7 +72,9 @@ def validate_schema_or_raise() -> None:
     """
     required_columns: Dict[str, Set[str]] = {
         "products": {"series_id", "sex", "offspring_unit_price"},
-        "series": {"id", "name"},
+        # series.code is required for admin UI + OpenClaw uploads; series.name is not unique.
+        "series": {"id", "name", "code"},
+        "series_product_rel": {"series_id", "product_id"},
         "mating_records": {"female_id", "male_id", "mated_at"},
         "egg_records": {"female_id", "laid_at"},
     }
@@ -104,5 +106,6 @@ def validate_schema_or_raise() -> None:
     raise RuntimeError(
         "Database schema is incompatible with current code. "
         + "; ".join(error_parts)
-        + ". Please recreate/upgrade DB (e.g. backend/scripts/turtle_album_init_db.py --reset)."
+        + ". Please upgrade DB (sqlite) via: backend/scripts/migrate_series_code_and_rel.py "
+        + "or recreate via backend/scripts/turtle_album_init_db.py --reset (dev only)."
     )
