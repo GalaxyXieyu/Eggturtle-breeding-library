@@ -6,13 +6,19 @@ import WeChatContactFab from '@/components/turtle-album/WeChatContactFab';
 
 import { createImageUrl } from '@/lib/api';
 
-import { turtleAlbumService } from '@/services/turtleAlbumService';
+import { ApiRequestError, turtleAlbumService } from '@/services/turtleAlbumService';
 
 const fmt = (iso?: string | null) => {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleString();
+};
+
+const isBreederNotFoundError = (error: unknown) => {
+  if (error instanceof ApiRequestError && error.status === 404) return true;
+  if (error instanceof Error && /not\s*found/i.test(error.message)) return true;
+  return false;
 };
 
 const BreederDetail: React.FC = () => {
@@ -23,12 +29,23 @@ const BreederDetail: React.FC = () => {
     queryKey: ['turtle-album', 'breeder', breederId],
     queryFn: () => turtleAlbumService.getBreeder(breederId),
     enabled: !!breederId,
+    retry: false,
   });
+
+  const isBreederNotFound = breederQ.isError && isBreederNotFoundError(breederQ.error);
 
   const recordsQ = useQuery({
     queryKey: ['turtle-album', 'breeder-records', breederId],
     queryFn: () => turtleAlbumService.getBreederRecords(breederId),
-    enabled: !!breederId,
+    enabled: !!breederId && breederQ.isSuccess,
+    retry: false,
+  });
+
+  const fallbackBreedersQ = useQuery({
+    queryKey: ['turtle-album', 'fallback-breeders'],
+    queryFn: () => turtleAlbumService.listBreeders({ limit: 8 }),
+    enabled: isBreederNotFound,
+    retry: false,
   });
 
   return (
@@ -39,8 +56,8 @@ const BreederDetail: React.FC = () => {
         wechat1QrUrl="https://api3.superbed.cn/static/images/2026/0218/d6/6995ae51556e27f1c93a2fd6.jpg"
         wechat2QrUrl="https://api3.superbed.cn/static/images/2026/0218/04/6995afba556e27f1c93a3004.jpg"
       />
-      <div className="w-full px-2 pb-8 pt-[calc(env(safe-area-inset-top)+24px)] sm:px-4 lg:px-8 xl:px-12 2xl:px-16">
-        <div className="mb-6 flex items-center justify-between">
+      <div className="w-full px-1 pb-8 pt-[calc(env(safe-area-inset-top)+18px)] sm:px-3 lg:px-5 2xl:px-6">
+        <div className="mb-5 flex items-center justify-between rounded-2xl border border-black/5 bg-white/75 px-4 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.06)] backdrop-blur">
           <Link to="/" className="text-sm text-neutral-600 hover:underline">← 返回</Link>
           <div className="text-right">
             <div className="text-xs uppercase tracking-widest text-neutral-500">turtle album</div>
@@ -49,9 +66,62 @@ const BreederDetail: React.FC = () => {
           </div>
         </div>
 
-        {breederQ.isLoading ? <div className="text-sm text-neutral-600">loading...</div> : null}
-        {breederQ.isError ? (
-          <div className="text-sm text-red-600">{(breederQ.error as Error).message}</div>
+        {breederQ.isLoading ? (
+          <div className="rounded-2xl border border-neutral-200 bg-white/80 p-5 text-sm text-neutral-600 shadow-[0_8px_30px_rgba(0,0,0,0.06)]">加载中...</div>
+        ) : null}
+
+        {breederQ.isError && !isBreederNotFound ? (
+          <div className="rounded-2xl border border-red-200 bg-red-50/80 p-5 text-sm text-red-700">
+            {(breederQ.error as Error).message}
+          </div>
+        ) : null}
+
+        {isBreederNotFound ? (
+          <div className="space-y-4 rounded-3xl border border-black/5 bg-white/85 p-5 shadow-[0_12px_36px_rgba(0,0,0,0.08)] backdrop-blur sm:p-6">
+            <div>
+              <div className="text-lg font-semibold text-neutral-900">该详情不存在或已迁移</div>
+              <div className="mt-1 text-sm text-neutral-600">
+                当前 ID：<span className="font-mono text-xs sm:text-sm">{breederId}</span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Link
+                to="/"
+                className="rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm text-neutral-800 transition hover:border-neutral-400 hover:shadow-sm"
+              >
+                返回首页
+              </Link>
+            </div>
+
+            {(fallbackBreedersQ.data || []).length > 0 ? (
+              <div>
+                <div className="mb-2 text-sm font-medium text-neutral-800">你可以先看这些记录：</div>
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3">
+                  {(fallbackBreedersQ.data || []).map((b) => {
+                    const mainImage = (b.images || []).find((i) => i.type === 'main') || (b.images || [])[0];
+                    return (
+                      <Link
+                        key={b.id}
+                        to={`/breeder/${b.id}`}
+                        className="group overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_30px_rgba(0,0,0,0.12)]"
+                      >
+                        <div className="relative aspect-[4/5] bg-neutral-100">
+                          {mainImage?.url ? (
+                            <img src={createImageUrl(mainImage.url)} alt={mainImage.alt || b.code} className="h-full w-full object-cover" />
+                          ) : null}
+                        </div>
+                        <div className="p-2.5">
+                          <div className="text-sm font-semibold text-neutral-900">{b.code}</div>
+                          <div className="text-xs text-neutral-500">{b.name}</div>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+          </div>
         ) : null}
 
         {breederQ.data ? (
@@ -106,7 +176,9 @@ const BreederDetail: React.FC = () => {
           <div className="mb-2 text-sm font-medium">记录</div>
           {recordsQ.isLoading ? <div className="text-sm text-neutral-600">loading...</div> : null}
           {recordsQ.isError ? (
-            <div className="text-sm text-red-600">{(recordsQ.error as Error).message}</div>
+            <div className="rounded-xl border border-red-200 bg-red-50/80 p-3 text-sm text-red-600">
+              {(recordsQ.error as Error).message}
+            </div>
           ) : null}
 
           {recordsQ.data ? (

@@ -8,6 +8,18 @@ const ENDPOINTS = {
   BREEDER_RECORDS: (id: string) => `/api/breeders/${id}/records`,
 };
 
+export class ApiRequestError extends Error {
+  status?: number;
+  code?: string;
+
+  constructor(message: string, options?: { status?: number; code?: string }) {
+    super(message);
+    this.name = 'ApiRequestError';
+    this.status = options?.status;
+    this.code = options?.code;
+  }
+}
+
 export const turtleAlbumService = {
   async listSeries(): Promise<Series[]> {
     try {
@@ -15,7 +27,7 @@ export const turtleAlbumService = {
       return res.data.data || [];
     } catch (e) {
       const err = handleApiError(e);
-      throw new Error(err.message);
+      throw new ApiRequestError(err.message, { status: err.status, code: err.code });
     }
   },
 
@@ -31,7 +43,7 @@ export const turtleAlbumService = {
       return res.data.data || [];
     } catch (e) {
       const err = handleApiError(e);
-      throw new Error(err.message);
+      throw new ApiRequestError(err.message, { status: err.status, code: err.code });
     }
   },
 
@@ -41,7 +53,7 @@ export const turtleAlbumService = {
       return res.data.data;
     } catch (e) {
       const err = handleApiError(e);
-      throw new Error(err.message);
+      throw new ApiRequestError(err.message, { status: err.status, code: err.code });
     }
   },
 
@@ -51,7 +63,7 @@ export const turtleAlbumService = {
       return res.data.data;
     } catch (e) {
       const err = handleApiError(e);
-      throw new Error(err.message);
+      throw new ApiRequestError(err.message, { status: err.status, code: err.code });
     }
   },
 };

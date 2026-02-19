@@ -74,13 +74,13 @@ const SeriesFeed: React.FC = () => {
         wechat1QrUrl="https://api3.superbed.cn/static/images/2026/0218/d6/6995ae51556e27f1c93a2fd6.jpg"
         wechat2QrUrl="https://api3.superbed.cn/static/images/2026/0218/04/6995afba556e27f1c93a3004.jpg"
       />
-      <div className="w-full px-2 pb-8 pt-[calc(env(safe-area-inset-top)+12px)] sm:px-4 lg:px-8 xl:px-12 2xl:px-16">
+      <div className="w-full px-1 pb-8 pt-[calc(env(safe-area-inset-top)+8px)] sm:px-3 lg:px-5 2xl:px-6">
         <header
-          className={`mb-4 overflow-hidden rounded-3xl bg-neutral-900 transition-[max-height,opacity,transform] duration-300 ease-out shadow-[0_18px_50px_rgba(0,0,0,0.22)] ${
-            isHeroCollapsed ? 'max-h-20 opacity-0 -translate-y-2' : 'max-h-[240px] opacity-100 translate-y-0 lg:max-h-[300px]'
+          className={`mb-4 overflow-hidden bg-neutral-900 transition-[max-height,opacity,transform] duration-300 ease-out shadow-[0_18px_50px_rgba(0,0,0,0.22)] sm:rounded-3xl ${
+            isHeroCollapsed ? 'max-h-20 opacity-0 -translate-y-2' : 'max-h-[240px] opacity-100 translate-y-0 lg:max-h-[320px]'
           }`}
         >
-          <div className="relative h-[240px] lg:h-[300px]">
+          <div className="relative h-[240px] lg:h-[320px]">
             <div
               className="absolute inset-0 bg-cover bg-center"
               style={{ backgroundImage: 'url(/turtle-hero.jpg)' }}
@@ -97,7 +97,7 @@ const SeriesFeed: React.FC = () => {
         </header>
 
         <div
-          className="sticky z-30 mb-6 rounded-2xl border border-black/5 bg-white/85 p-4 shadow-[0_8px_30px_rgba(0,0,0,0.06)] backdrop-blur supports-[backdrop-filter]:bg-white/75"
+          className="sticky z-30 mb-6 border border-black/5 bg-white/88 p-4 shadow-[0_8px_30px_rgba(0,0,0,0.06)] backdrop-blur supports-[backdrop-filter]:bg-white/75 sm:rounded-2xl"
           style={{ top: 'calc(env(safe-area-inset-top) + 10px)' }}
         >
           <div className="flex flex-col gap-3">
@@ -221,7 +221,7 @@ const SeriesFeed: React.FC = () => {
           };
 
           const Masonry = ({ list }: { list: typeof allBreeders }) => (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-4 sm:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] xl:grid-cols-[repeat(auto-fill,minmax(240px,1fr))]">
               {list.map((b) => (
                 <Card key={b.id} b={b} />
               ))}
