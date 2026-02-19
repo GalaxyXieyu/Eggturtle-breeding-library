@@ -55,7 +55,8 @@ const WeChatCard: React.FC<{ label: string; wechatId: string; qrUrl: string }> =
 
 const WeChatContactFab: React.FC<WeChatContactFabProps> = ({ wechat1Id, wechat2Id, wechat1QrUrl, wechat2QrUrl }) => {
   const [open, setOpen] = React.useState(false);
-  const [tab, setTab] = React.useState<'1' | '2'>('1');
+  // Default to #2 to reduce load on the primary account.
+  const [tab, setTab] = React.useState<'1' | '2'>('2');
 
   return (
     <>
