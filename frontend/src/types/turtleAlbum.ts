@@ -24,6 +24,7 @@ export interface Breeder {
   damCode?: string | null;
   sireImageUrl?: string | null;
   damImageUrl?: string | null;
+  isFeatured?: boolean | null;
 
   images?: Array<{ id?: string; url: string; alt: string; type: string; sortOrder?: number }>;
 
