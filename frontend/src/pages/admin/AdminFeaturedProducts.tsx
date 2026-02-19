@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useRequireAuth } from "@/hooks/useAuth";
-import { CosmeticProduct } from "@/types/cosmetics";
+import { Product } from "@/types/products";
 import {
   Table,
   TableBody,
@@ -50,7 +50,7 @@ import * as z from "zod";
 interface FeaturedProduct {
   id: string;
   productId: string;
-  product: CosmeticProduct;
+  product: Product;
   isActive: boolean;
   sortOrder: number;
   createdAt: string;
@@ -62,7 +62,7 @@ const AdminFeaturedProducts = () => {
   const { isAuthenticated, isLoading: authLoading } = useRequireAuth();
 
   const [featuredProducts, setFeaturedProducts] = useState<FeaturedProduct[]>([]);
-  const [availableProducts, setAvailableProducts] = useState<CosmeticProduct[]>([]);
+  const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -200,10 +200,10 @@ const AdminFeaturedProducts = () => {
     <AdminLayout>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-cosmetic-brown-500">精选产品管理</h1>
+          <h1 className="text-3xl font-bold text-gray-900">精选产品管理</h1>
           <Button 
             onClick={() => setIsAddDialogOpen(true)}
-            className="bg-cosmetic-gold-400 hover:bg-cosmetic-gold-500 text-white"
+            className="bg-gray-900 hover:bg-gray-800 text-white"
           >
             <Plus className="h-4 w-4 mr-2" />
             添加精选产品
@@ -260,7 +260,7 @@ const AdminFeaturedProducts = () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleMoveUp(featured)}
-                          className="text-cosmetic-brown-300 hover:text-cosmetic-brown-500"
+                          className="text-gray-600 hover:text-gray-900"
                         >
                           <ArrowUp className="h-4 w-4" />
                         </Button>
@@ -268,7 +268,7 @@ const AdminFeaturedProducts = () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleMoveDown(featured)}
-                          className="text-cosmetic-brown-300 hover:text-cosmetic-brown-500"
+                          className="text-gray-600 hover:text-gray-900"
                         >
                           <ArrowDown className="h-4 w-4" />
                         </Button>
@@ -367,7 +367,7 @@ const AdminFeaturedProducts = () => {
                 </Button>
                 <Button 
                   type="submit"
-                  className="bg-cosmetic-gold-400 hover:bg-cosmetic-gold-500 text-white"
+                  className="bg-gray-900 hover:bg-gray-800 text-white"
                 >
                   添加
                 </Button>

@@ -4,14 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ImageIcon, ShoppingCart } from "lucide-react";
-import { CosmeticProduct } from "@/types/cosmetics";
+import { Product } from "@/types/products";
 import { useLanguage } from "@/contexts/LanguageContext";
 import OptimizedImage from "@/components/OptimizedImage";
 import { getOptimizedImageProps, hasValidImages } from "@/utils/productImageHelpers";
 
 interface ProductCardProps {
-  product: CosmeticProduct;
-  onAddToCart: (product: CosmeticProduct) => void;
+  product: Product;
+  onAddToCart: (product: Product) => void;
   size?: 'large' | 'medium' | 'small' | 'compact';
 }
 

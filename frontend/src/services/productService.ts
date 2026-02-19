@@ -1,5 +1,5 @@
 import apiClient, { ApiResponse, handleApiError, createImageUrl } from '@/lib/api';
-import { CosmeticProduct, FilterOptions, FilterOptionsResponse, SortOption, Material, Shape, TubeType, BoxType, FunctionalDesign } from '@/types/cosmetics';
+import { Product, FilterOptions, FilterOptionsResponse, SortOption, Material, Shape, TubeType, BoxType, FunctionalDesign } from '@/types/products';
 
 // Backend API data structure (snake_case)
 interface BackendProductCreate {
@@ -53,7 +53,7 @@ export const productService = {
     limit?: number;
     search?: string;
   }): Promise<{
-    products: CosmeticProduct[];
+    products: Product[];
     total: number;
     page: number;
     totalPages: number;
@@ -71,7 +71,7 @@ export const productService = {
       }
 
       const response = await apiClient.get<ApiResponse<{
-        products: CosmeticProduct[];
+        products: Product[];
         total: number;
         page: number;
         totalPages: number;
@@ -98,9 +98,9 @@ export const productService = {
   },
 
   // Get single product by ID
-  async getProductById(id: string): Promise<CosmeticProduct> {
+  async getProductById(id: string): Promise<Product> {
     try {
-      const response = await apiClient.get<ApiResponse<CosmeticProduct>>(
+      const response = await apiClient.get<ApiResponse<Product>>(
         ENDPOINTS.PRODUCT_BY_ID(id)
       );
 
@@ -121,9 +121,9 @@ export const productService = {
   },
 
   // Get featured products
-  async getFeaturedProducts(limit: number = 8): Promise<CosmeticProduct[]> {
+  async getFeaturedProducts(limit: number = 8): Promise<Product[]> {
     try {
-      const response = await apiClient.get<ApiResponse<CosmeticProduct[]>>(
+      const response = await apiClient.get<ApiResponse<Product[]>>(
         `${ENDPOINTS.PRODUCTS}/featured`,
         { params: { limit } }
       );
@@ -161,9 +161,9 @@ export const productService = {
 // Admin Product APIs (Authentication Required)
 export const adminProductService = {
   // Create new product
-  async createProduct(productData: BackendProductCreate): Promise<CosmeticProduct> {
+  async createProduct(productData: BackendProductCreate): Promise<Product> {
     try {
-      const response = await apiClient.post<ApiResponse<CosmeticProduct>>(
+      const response = await apiClient.post<ApiResponse<Product>>(
         ENDPOINTS.PRODUCTS,
         productData
       );
@@ -185,9 +185,9 @@ export const adminProductService = {
   },
 
   // Update existing product
-  async updateProduct(id: string, productData: Partial<CosmeticProduct>): Promise<CosmeticProduct> {
+  async updateProduct(id: string, productData: Partial<Product>): Promise<Product> {
     try {
-      const response = await apiClient.put<ApiResponse<CosmeticProduct>>(
+      const response = await apiClient.put<ApiResponse<Product>>(
         ENDPOINTS.PRODUCT_BY_ID(id),
         productData
       );

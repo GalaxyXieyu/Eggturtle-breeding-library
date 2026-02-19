@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { CosmeticProduct, CartItem } from "@/types/cosmetics";
+import { Product, CartItem } from "@/types/products";
 
 const CART_STORAGE_KEY = 'glam-cart-items';
 
@@ -39,7 +39,7 @@ export function useCart() {
   }, [cartItems]);
   
   // Handle adding products to cart
-  const handleAddToCart = (product: CosmeticProduct) => {
+  const handleAddToCart = (product: Product) => {
     setCartItems((prevItems) => {
       const existingItem = prevItems.find(
         (item) => item.product.id === product.id

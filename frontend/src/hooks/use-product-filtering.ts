@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { CosmeticProduct, FilterOptions, SortOption } from "@/types/cosmetics";
+import { Product, FilterOptions, SortOption } from "@/types/products";
 
-export function useProductFiltering(initialProducts: CosmeticProduct[]) {
-  const [products, setProducts] = useState<CosmeticProduct[]>(initialProducts || []);
+export function useProductFiltering(initialProducts: Product[]) {
+  const [products, setProducts] = useState<Product[]>(initialProducts || []);
   const [filters, setFilters] = useState<Partial<FilterOptions>>({});
   const [sortOption, setSortOption] = useState<SortOption>("popular");
 

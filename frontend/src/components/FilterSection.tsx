@@ -6,7 +6,7 @@ import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronDown, ChevronUp, X, Search } from "lucide-react";
-import { FilterOptions, SortOption } from "@/types/cosmetics";
+import { FilterOptions, SortOption } from "@/types/products";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useFilterOptions } from "@/hooks/useProducts";
 

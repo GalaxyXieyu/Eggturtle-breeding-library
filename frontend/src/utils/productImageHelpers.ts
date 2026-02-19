@@ -1,5 +1,5 @@
 import { ImageUsage } from './imageUtils';
-import { CosmeticProduct, ProductImage } from '@/types/cosmetics';
+import { Product, ProductImage } from '@/types/products';
 
 /**
  * 从现有的图片URL中提取产品代码和图片名称
@@ -12,7 +12,7 @@ interface ParsedImageInfo {
   isValid: boolean;
 }
 
-type ProductLike = Pick<CosmeticProduct, 'code' | 'name' | 'images'>;
+type ProductLike = Pick<Product, 'code' | 'name' | 'images'>;
 
 // 解析原始图片URL，提取产品代码和图片名称
 export const parseImageUrl = (url: string): ParsedImageInfo => {

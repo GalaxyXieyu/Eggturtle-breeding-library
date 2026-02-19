@@ -48,7 +48,7 @@ export interface ProductPricing {
   boxQuantity?: number;
 }
 
-export interface CosmeticProduct {
+export interface Product {
   id: string;
   name: string;
   code: string;
@@ -96,7 +96,7 @@ export interface FilterOptionsResponse {
 export type SortOption = 'newest' | 'popular' | 'price_low' | 'price_high';
 
 export interface CartItem {
-  product: CosmeticProduct;
+  product: Product;
   quantity: number;
 }
 

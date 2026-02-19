@@ -3,7 +3,7 @@ import AdminLayout from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { CosmeticProduct, TubeType, BoxType, FunctionalDesign, Shape, Material, ProcessType, ProductImage } from "@/types/cosmetics";
+import { Product, TubeType, BoxType, FunctionalDesign, Shape, Material, ProcessType, ProductImage } from "@/types/products";
 import { useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct, useUploadProductImages, PRODUCT_QUERY_KEYS } from "@/hooks/useProducts";
 import { useQueryClient } from "@tanstack/react-query";
 import { adminProductService } from "@/services/productService";
@@ -149,7 +149,7 @@ const AdminProducts = () => {
   const { isAuthenticated, isLoading: authLoading } = useRequireAuth();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortField, setSortField] = useState<keyof CosmeticProduct | "">("");
+  const [sortField, setSortField] = useState<keyof Product | "">("");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
@@ -159,7 +159,7 @@ const AdminProducts = () => {
     material: "",
     shape: "",
   });
-  const [selectedProduct, setSelectedProduct] = useState<CosmeticProduct | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isProductDetailOpen, setIsProductDetailOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -210,7 +210,7 @@ const AdminProducts = () => {
   const totalPages = apiProductsData?.totalPages || 1;
 
   // Local state for filtered products
-  const [filteredProducts, setFilteredProducts] = useState<CosmeticProduct[]>(products);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>(products);
 
   // Fetch filter options from API
   const normalizeFilterValues = (values: unknown): string[] => {
@@ -343,7 +343,7 @@ const AdminProducts = () => {
   }, [currentPage, totalPages]);
 
   // Handle sort
-  const handleSort = (field: keyof CosmeticProduct) => {
+  const handleSort = (field: keyof Product) => {
     if (sortField === field) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
@@ -397,7 +397,7 @@ const AdminProducts = () => {
         setFilteredProducts(prev => prev.map(p => (p.id === selectedProduct.id ? { ...p, images: result.images } : p)));
         queryClient.setQueryData(
           PRODUCT_QUERY_KEYS.detail(selectedProduct.id),
-          (oldData: CosmeticProduct | undefined) => (oldData ? { ...oldData, images: result.images } : oldData)
+          (oldData: Product | undefined) => (oldData ? { ...oldData, images: result.images } : oldData)
         );
 
         initImagesFromProduct({ ...selectedProduct, images: result.images });
@@ -466,7 +466,7 @@ const AdminProducts = () => {
         setFilteredProducts(prev => prev.map(p => (p.id === selectedProduct.id ? { ...p, images: nextImages } : p)));
         queryClient.setQueryData(
           PRODUCT_QUERY_KEYS.detail(selectedProduct.id),
-          (oldData: CosmeticProduct | undefined) => (oldData ? { ...oldData, images: nextImages } : oldData)
+          (oldData: Product | undefined) => (oldData ? { ...oldData, images: nextImages } : oldData)
         );
 
         initImagesFromProduct(nextProduct);
@@ -642,12 +642,12 @@ const AdminProducts = () => {
       );
       queryClient.setQueryData(
         PRODUCT_QUERY_KEYS.detail(productId),
-        (oldData: CosmeticProduct | undefined) =>
+        (oldData: Product | undefined) =>
           oldData ? { ...oldData, images: result.images } : oldData
       );
       queryClient.setQueriesData(
         { queryKey: PRODUCT_QUERY_KEYS.lists() },
-        (oldData: { products?: CosmeticProduct[] } | undefined) => {
+        (oldData: { products?: Product[] } | undefined) => {
           if (!oldData?.products) return oldData;
           return {
             ...oldData,
@@ -686,7 +686,7 @@ const AdminProducts = () => {
   };
 
   // Initialize images from product
-  const initImagesFromProduct = (product: CosmeticProduct) => {
+  const initImagesFromProduct = (product: Product) => {
     if (product.images && product.images.length > 0) {
       const initialUploads: ProductImageUpload[] = product.images.map(img => ({
         id: img.id,
@@ -702,7 +702,7 @@ const AdminProducts = () => {
   };
 
   // Handle view product details
-  const handleViewProduct = (product: CosmeticProduct) => {
+  const handleViewProduct = (product: Product) => {
     setSelectedProduct(product);
     setIsEditMode(false);
     setIsProductDetailOpen(true);
@@ -712,7 +712,7 @@ const AdminProducts = () => {
   };
 
   // Handle edit product
-  const handleEditProduct = async (product: CosmeticProduct) => {
+  const handleEditProduct = async (product: Product) => {
     setSelectedProduct(product);
     setIsEditMode(true);
     setIsProductDetailOpen(true);
@@ -886,7 +886,7 @@ const AdminProducts = () => {
 
       createProductMutation.mutate(backendProductData, {
         onSuccess: async (response) => {
-          let created = response as CosmeticProduct;
+          let created = response as Product;
 
           // Upload images if any
           if (imageUploads.length > 0 && response?.id) {
@@ -989,12 +989,12 @@ const AdminProducts = () => {
   const renderImageGallery = () => {
     return (
       <div className="mb-6">
-        <p className="text-sm font-medium text-cosmetic-brown-500 mb-2">产品图片</p>
+        <p className="text-sm font-medium text-gray-900 mb-2">产品图片</p>
         
         {/* Image Carousel */}
         {imageUploads.length > 0 ? (
           <div className="mb-4">
-            <div className="relative aspect-square rounded-lg overflow-hidden bg-cosmetic-beige-100 flex items-center justify-center">
+            <div className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
               <img 
                 src={imageUploads[currentImageIndex]?.preview} 
                 alt="Product preview"
@@ -1017,7 +1017,7 @@ const AdminProducts = () => {
                         setFilteredProducts(prev => prev.map(p => (p.id === selectedProduct.id ? { ...p, images: result.images } : p)));
                         queryClient.setQueryData(
                           PRODUCT_QUERY_KEYS.detail(selectedProduct.id),
-                          (oldData: CosmeticProduct | undefined) => (oldData ? { ...oldData, images: result.images } : oldData)
+                          (oldData: Product | undefined) => (oldData ? { ...oldData, images: result.images } : oldData)
                         );
                         initImagesFromProduct(nextProduct);
                         toast({ title: "主图已更新" });
@@ -1067,7 +1067,7 @@ const AdminProducts = () => {
             {/* Thumbnails */}
             {imageUploads.length > 1 && (
               <div className="mt-2">
-                <div className="text-xs text-cosmetic-brown-400 mb-2 flex items-center gap-1">
+                <div className="text-xs text-gray-700 mb-2 flex items-center gap-1">
                   <GripVertical className="h-3 w-3" />
                   拖拽图片可调整顺序
                 </div>
@@ -1076,11 +1076,11 @@ const AdminProducts = () => {
                     <div
                       key={upload.id}
                       className={`relative w-16 h-16 flex-shrink-0 rounded-md overflow-hidden border-2 cursor-move transition-all duration-200 ${
-                        index === currentImageIndex ? 'border-cosmetic-gold-400' : 'border-transparent'
+                        index === currentImageIndex ? 'border-gray-900' : 'border-transparent'
                       } ${
                         draggedIndex === index ? 'opacity-50 scale-95' : ''
                       } ${
-                        dragOverIndex === index ? 'border-cosmetic-gold-600 border-dashed bg-cosmetic-gold-50' : ''
+                        dragOverIndex === index ? 'border-gray-900 border-dashed bg-gray-100' : ''
                       }`}
                       draggable
                       onDragStart={(e) => handleDragStart(e, index)}
@@ -1104,8 +1104,8 @@ const AdminProducts = () => {
 
                       {/* 拖拽时的overlay提示 */}
                       {dragOverIndex === index && draggedIndex !== index && (
-                        <div className="absolute inset-0 bg-cosmetic-gold-200/50 flex items-center justify-center">
-                          <span className="text-xs font-medium text-cosmetic-brown-600 bg-white px-1 py-0.5 rounded">
+                        <div className="absolute inset-0 bg-gray-200/50 flex items-center justify-center">
+                          <span className="text-xs font-medium text-gray-900 bg-white px-1 py-0.5 rounded">
                             放置
                           </span>
                         </div>
@@ -1120,7 +1120,7 @@ const AdminProducts = () => {
         
         {/* Upload Button */}
         <div 
-          className="border-2 border-dashed border-cosmetic-beige-200 rounded-lg p-4 cursor-pointer hover:bg-cosmetic-beige-50 transition-colors"
+          className="border-2 border-dashed border-gray-200 rounded-lg p-4 cursor-pointer hover:bg-gray-50 transition-colors"
           onClick={triggerFileInput}
         >
           <input 
@@ -1132,9 +1132,9 @@ const AdminProducts = () => {
             multiple
           />
           <div className="flex flex-col items-center justify-center space-y-2">
-            <Upload className="h-10 w-10 text-cosmetic-beige-300" />
-            <p className="text-sm text-cosmetic-brown-300">点击上传产品图片</p>
-            <p className="text-xs text-cosmetic-brown-200">支持 JPG/PNG/HEIC。上传后系统会自动居中裁切成 1:1。</p>
+            <Upload className="h-10 w-10 text-gray-300" />
+            <p className="text-sm text-gray-600">点击上传产品图片</p>
+            <p className="text-xs text-gray-500">支持 JPG/PNG/HEIC。上传后系统会自动居中裁切成 1:1。</p>
           </div>
         </div>
       </div>
@@ -1151,7 +1151,7 @@ const AdminProducts = () => {
           {/* Product Image Gallery for Details View */}
           {imageUploads.length > 0 ? (
             <div className="mb-4">
-              <div className="relative aspect-square rounded-lg overflow-hidden bg-cosmetic-beige-100 flex items-center justify-center">
+              <div className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
                 <img 
                   src={imageUploads[currentImageIndex]?.preview} 
                   alt={selectedProduct.name}
@@ -1186,7 +1186,7 @@ const AdminProducts = () => {
               {imageUploads.length > 1 && (
                 <div className="mt-2">
                   {isEditMode && (
-                    <div className="text-xs text-cosmetic-brown-400 mb-2 flex items-center gap-1">
+                    <div className="text-xs text-gray-700 mb-2 flex items-center gap-1">
                       <GripVertical className="h-3 w-3" />
                       拖拽图片可调整顺序
                     </div>
@@ -1196,13 +1196,13 @@ const AdminProducts = () => {
                       <div
                         key={upload.id}
                         className={`relative w-16 h-16 flex-shrink-0 rounded-md overflow-hidden border-2 transition-all duration-200 ${
-                          index === currentImageIndex ? 'border-cosmetic-gold-400' : 'border-transparent'
+                          index === currentImageIndex ? 'border-gray-900' : 'border-transparent'
                         } ${
                           isEditMode ? 'cursor-move' : 'cursor-pointer'
                         } ${
                           draggedIndex === index ? 'opacity-50 scale-95' : ''
                         } ${
-                          dragOverIndex === index ? 'border-cosmetic-gold-600 border-dashed bg-cosmetic-gold-50' : ''
+                          dragOverIndex === index ? 'border-gray-900 border-dashed bg-gray-100' : ''
                         }`}
                         draggable={isEditMode}
                         onDragStart={isEditMode ? (e) => handleDragStart(e, index) : undefined}
@@ -1228,8 +1228,8 @@ const AdminProducts = () => {
 
                         {/* 拖拽时的overlay提示 */}
                         {dragOverIndex === index && draggedIndex !== index && (
-                          <div className="absolute inset-0 bg-cosmetic-gold-200/50 flex items-center justify-center">
-                            <span className="text-xs font-medium text-cosmetic-brown-600 bg-white px-1 py-0.5 rounded">
+                          <div className="absolute inset-0 bg-gray-200/50 flex items-center justify-center">
+                            <span className="text-xs font-medium text-gray-900 bg-white px-1 py-0.5 rounded">
                               放置
                             </span>
                           </div>
@@ -1241,25 +1241,25 @@ const AdminProducts = () => {
               )}
             </div>
           ) : (
-            <div className="aspect-square rounded-lg overflow-hidden bg-cosmetic-beige-100 flex items-center justify-center mb-4">
-              <div className="text-cosmetic-beige-300">
+            <div className="aspect-square rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center mb-4">
+              <div className="text-gray-300">
                 <Eye className="h-12 w-12" />
               </div>
             </div>
           )}
 
-          <h3 className="text-xl font-medium text-cosmetic-brown-500">
+          <h3 className="text-xl font-medium text-gray-900">
             {selectedProduct.name}
           </h3>
-          <p className="text-sm text-cosmetic-brown-300 mt-1">
+          <p className="text-sm text-gray-600 mt-1">
             货号: {selectedProduct.code}
           </p>
         </div>
 
 
         <div>
-          <p className="text-sm font-medium text-cosmetic-brown-500 mb-1">产品描述</p>
-          <p className="text-cosmetic-brown-300 text-sm">
+          <p className="text-sm font-medium text-gray-900 mb-1">产品描述</p>
+          <p className="text-gray-600 text-sm">
             {selectedProduct.description}
           </p>
         </div>
@@ -1267,28 +1267,28 @@ const AdminProducts = () => {
         <div className="grid grid-cols-2 gap-4">
           {selectedProduct.tubeType && (
             <div>
-              <p className="text-sm font-medium text-cosmetic-brown-500">管型</p>
-              <p className="text-cosmetic-brown-300">{selectedProduct.tubeType}</p>
+              <p className="text-sm font-medium text-gray-900">管型</p>
+              <p className="text-gray-600">{selectedProduct.tubeType}</p>
             </div>
           )}
           {selectedProduct.boxType && (
             <div>
-              <p className="text-sm font-medium text-cosmetic-brown-500">盒型</p>
-              <p className="text-cosmetic-brown-300">{selectedProduct.boxType}</p>
+              <p className="text-sm font-medium text-gray-900">盒型</p>
+              <p className="text-gray-600">{selectedProduct.boxType}</p>
             </div>
           )}
           <div>
-            <p className="text-sm font-medium text-cosmetic-brown-500">材质</p>
-            <p className="text-cosmetic-brown-300">{selectedProduct.material}</p>
+            <p className="text-sm font-medium text-gray-900">材质</p>
+            <p className="text-gray-600">{selectedProduct.material}</p>
           </div>
           <div>
-            <p className="text-sm font-medium text-cosmetic-brown-500">形状</p>
-            <p className="text-cosmetic-brown-300">{selectedProduct.shape}</p>
+            <p className="text-sm font-medium text-gray-900">形状</p>
+            <p className="text-gray-600">{selectedProduct.shape}</p>
           </div>
         </div>
 
         <div>
-          <p className="text-sm font-medium text-cosmetic-brown-500 mb-1">功能设计</p>
+          <p className="text-sm font-medium text-gray-900 mb-1">功能设计</p>
           <div className="flex flex-wrap gap-2">
             {(() => {
               // Handle functionalDesigns being either array or string
@@ -1299,7 +1299,7 @@ const AdminProducts = () => {
               return designs.map((design, index) => (
                 <span
                   key={index}
-                  className="px-2.5 py-0.5 bg-cosmetic-beige-100 text-cosmetic-brown-400 rounded-full text-xs"
+                  className="px-2.5 py-0.5 bg-gray-100 text-gray-700 rounded-full text-xs"
                 >
                   {design}
                 </span>
@@ -1311,14 +1311,14 @@ const AdminProducts = () => {
         <div className="grid grid-cols-2 gap-4">
           {selectedProduct.dimensions.weight && (
             <div>
-              <p className="text-sm font-medium text-cosmetic-brown-500">重量</p>
-              <p className="text-cosmetic-brown-300">{selectedProduct.dimensions.weight}g</p>
+              <p className="text-sm font-medium text-gray-900">重量</p>
+              <p className="text-gray-600">{selectedProduct.dimensions.weight}g</p>
             </div>
           )}
           {selectedProduct.dimensions.capacity && (
             <div>
-              <p className="text-sm font-medium text-cosmetic-brown-500">容量</p>
-              <p className="text-cosmetic-brown-300">
+              <p className="text-sm font-medium text-gray-900">容量</p>
+              <p className="text-gray-600">
                 {selectedProduct.dimensions.capacity.min}-{selectedProduct.dimensions.capacity.max}ml
               </p>
             </div>
@@ -1328,20 +1328,20 @@ const AdminProducts = () => {
         <div className="grid grid-cols-3 gap-4">
           {selectedProduct.dimensions.length && (
             <div>
-              <p className="text-sm font-medium text-cosmetic-brown-500">长度</p>
-              <p className="text-cosmetic-brown-300">{selectedProduct.dimensions.length}mm</p>
+              <p className="text-sm font-medium text-gray-900">长度</p>
+              <p className="text-gray-600">{selectedProduct.dimensions.length}mm</p>
             </div>
           )}
           {selectedProduct.dimensions.width && (
             <div>
-              <p className="text-sm font-medium text-cosmetic-brown-500">宽度</p>
-              <p className="text-cosmetic-brown-300">{selectedProduct.dimensions.width}mm</p>
+              <p className="text-sm font-medium text-gray-900">宽度</p>
+              <p className="text-gray-600">{selectedProduct.dimensions.width}mm</p>
             </div>
           )}
           {selectedProduct.dimensions.height && (
             <div>
-              <p className="text-sm font-medium text-cosmetic-brown-500">高度</p>
-              <p className="text-cosmetic-brown-300">{selectedProduct.dimensions.height}mm</p>
+              <p className="text-sm font-medium text-gray-900">高度</p>
+              <p className="text-gray-600">{selectedProduct.dimensions.height}mm</p>
             </div>
           )}
         </div>
@@ -1349,13 +1349,13 @@ const AdminProducts = () => {
         <div className="flex justify-end gap-4 mt-8">
           <Button 
             variant="outline" 
-            className="border-cosmetic-beige-300 text-cosmetic-brown-300 hover:bg-cosmetic-beige-200 hover:text-cosmetic-brown-500"
+            className="border-gray-300 text-gray-600 hover:bg-gray-200 hover:text-gray-900"
             onClick={() => setIsProductDetailOpen(false)}
           >
             关闭
           </Button>
           <Button 
-            className="bg-cosmetic-gold-400 hover:bg-cosmetic-gold-500 text-white"
+            className="bg-gray-900 hover:bg-gray-800 text-white"
             onClick={() => {
               setIsEditMode(true);
             }}
@@ -1374,8 +1374,8 @@ const AdminProducts = () => {
       <AdminLayout title="产品管理">
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cosmetic-gold-400 mx-auto mb-4"></div>
-            <p className="text-cosmetic-brown-300">加载中...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+            <p className="text-gray-600">加载中...</p>
           </div>
         </div>
       </AdminLayout>
@@ -1386,18 +1386,18 @@ const AdminProducts = () => {
     <AdminLayout title="产品管理">
       <div className="mb-6 flex flex-col sm:flex-row gap-4 justify-between items-center">
         <div className="relative w-full sm:w-80">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-cosmetic-brown-300 h-4 w-4" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600 h-4 w-4" />
           <Input
             placeholder="搜索产品..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 bg-white border-cosmetic-beige-200"
+            className="pl-10 bg-white border-gray-200"
           />
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
           <ProductImportDialog onSuccess={() => queryClient.invalidateQueries({ queryKey: PRODUCT_QUERY_KEYS.lists() })} />
-          <Button 
-            className="bg-cosmetic-gold-400 hover:bg-cosmetic-gold-500 text-white flex-1 sm:flex-none"
+          <Button
+            className="bg-gray-900 hover:bg-gray-800 text-white flex-1 sm:flex-none"
             onClick={() => {
               resetImages();
               setSelectedFunctionalDesigns([]);
@@ -1412,14 +1412,14 @@ const AdminProducts = () => {
 
       <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
         <div className="space-y-1">
-          <Label className="text-sm text-cosmetic-brown-400">管型</Label>
+          <Label className="text-sm text-gray-700">管型</Label>
           <Select
             value={listFilters.tubeType || "all"}
             onValueChange={(value) =>
               setListFilters(prev => ({ ...prev, tubeType: value === "all" ? "" : value }))
             }
           >
-            <SelectTrigger className="bg-white border-cosmetic-beige-200">
+            <SelectTrigger className="bg-white border-gray-200">
               <SelectValue placeholder="全部" />
             </SelectTrigger>
             <SelectContent>
@@ -1434,14 +1434,14 @@ const AdminProducts = () => {
         </div>
 
         <div className="space-y-1">
-          <Label className="text-sm text-cosmetic-brown-400">盒型</Label>
+          <Label className="text-sm text-gray-700">盒型</Label>
           <Select
             value={listFilters.boxType || "all"}
             onValueChange={(value) =>
               setListFilters(prev => ({ ...prev, boxType: value === "all" ? "" : value }))
             }
           >
-            <SelectTrigger className="bg-white border-cosmetic-beige-200">
+            <SelectTrigger className="bg-white border-gray-200">
               <SelectValue placeholder="全部" />
             </SelectTrigger>
             <SelectContent>
@@ -1456,14 +1456,14 @@ const AdminProducts = () => {
         </div>
 
         <div className="space-y-1">
-          <Label className="text-sm text-cosmetic-brown-400">材质</Label>
+          <Label className="text-sm text-gray-700">材质</Label>
           <Select
             value={listFilters.material || "all"}
             onValueChange={(value) =>
               setListFilters(prev => ({ ...prev, material: value === "all" ? "" : value }))
             }
           >
-            <SelectTrigger className="bg-white border-cosmetic-beige-200">
+            <SelectTrigger className="bg-white border-gray-200">
               <SelectValue placeholder="全部" />
             </SelectTrigger>
             <SelectContent>
@@ -1478,14 +1478,14 @@ const AdminProducts = () => {
         </div>
 
         <div className="space-y-1">
-          <Label className="text-sm text-cosmetic-brown-400">形状</Label>
+          <Label className="text-sm text-gray-700">形状</Label>
           <Select
             value={listFilters.shape || "all"}
             onValueChange={(value) =>
               setListFilters(prev => ({ ...prev, shape: value === "all" ? "" : value }))
             }
           >
-            <SelectTrigger className="bg-white border-cosmetic-beige-200">
+            <SelectTrigger className="bg-white border-gray-200">
               <SelectValue placeholder="全部" />
             </SelectTrigger>
             <SelectContent>
@@ -1503,7 +1503,7 @@ const AdminProducts = () => {
           <Button
             type="button"
             variant="outline"
-            className="border-cosmetic-beige-300 text-cosmetic-brown-300 hover:bg-cosmetic-beige-200 hover:text-cosmetic-brown-500 w-full"
+            className="border-gray-300 text-gray-600 hover:bg-gray-200 hover:text-gray-900 w-full"
             onClick={() =>
               setListFilters({
                 tubeType: "",
@@ -1545,7 +1545,7 @@ const AdminProducts = () => {
                 filteredProducts.map((product) => (
                   <TableRow key={product.id}>
                     <TableCell>
-                      <div className="h-10 w-10 rounded bg-cosmetic-beige-100 overflow-hidden">
+                      <div className="h-10 w-10 rounded bg-gray-100 overflow-hidden">
                         {product.images && product.images.length > 0 ? (
                           <img
                             src={product.images[0].url}
@@ -1553,7 +1553,7 @@ const AdminProducts = () => {
                             className="h-full w-full object-cover"
                           />
                         ) : (
-                          <div className="h-full w-full flex items-center justify-center text-cosmetic-beige-300">
+                          <div className="h-full w-full flex items-center justify-center text-gray-300">
                             <Eye className="h-4 w-4" />
                           </div>
                         )}
@@ -1570,7 +1570,7 @@ const AdminProducts = () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleViewProduct(product)}
-                          className="text-cosmetic-brown-300 hover:text-cosmetic-brown-500"
+                          className="text-gray-600 hover:text-gray-900"
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -1578,7 +1578,7 @@ const AdminProducts = () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleEditProduct(product)}
-                          className="text-cosmetic-brown-300 hover:text-cosmetic-brown-500"
+                          className="text-gray-600 hover:text-gray-900"
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -1605,11 +1605,11 @@ const AdminProducts = () => {
           </Table>
         </div>
         <div className="border-t px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="text-sm text-cosmetic-brown-300">共 {totalProducts} 条</div>
+          <div className="text-sm text-gray-600">共 {totalProducts} 条</div>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-cosmetic-brown-300">每页</span>
+            <span className="text-sm text-gray-600">每页</span>
             <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(Number(value))}>
-              <SelectTrigger className="w-20 h-8 bg-white border-cosmetic-beige-200">
+              <SelectTrigger className="w-20 h-8 bg-white border-gray-200">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1690,7 +1690,7 @@ const AdminProducts = () => {
                     <div className="space-y-6">
                       {/* 基本信息部分 */}
                       <div className="space-y-4 border-b pb-6">
-                        <h3 className="text-lg font-medium text-cosmetic-brown-500">基本信息</h3>
+                        <h3 className="text-lg font-medium text-gray-900">基本信息</h3>
                         <FormField
                           control={editForm.control}
                           name="name"
@@ -1878,8 +1878,8 @@ const AdminProducts = () => {
                                 key={design}
                                 className={`px-3 py-1.5 rounded-full text-sm cursor-pointer transition-colors ${
                                   selectedFunctionalDesigns.includes(design)
-                                    ? "bg-cosmetic-gold-300 text-white"
-                                    : "bg-cosmetic-beige-100 text-cosmetic-brown-400 hover:bg-cosmetic-beige-200"
+                                    ? "bg-gray-900 text-white"
+                                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                                 }`}
                                 onClick={() => toggleFunctionalDesign(design)}
                               >
@@ -1917,7 +1917,7 @@ const AdminProducts = () => {
 
                       {/* 详细参数部分 */}
                       <div className="space-y-4 border-b pb-6">
-                        <h3 className="text-lg font-medium text-cosmetic-brown-500">产品尺寸与规格</h3>
+                        <h3 className="text-lg font-medium text-gray-900">产品尺寸与规格</h3>
                         
                         <div className="grid grid-cols-2 gap-4">
                           <FormField
@@ -2045,7 +2045,7 @@ const AdminProducts = () => {
                     <Button
                       type="button"
                       variant="outline"
-                      className="border-cosmetic-beige-300 text-cosmetic-brown-300 hover:bg-cosmetic-beige-200 hover:text-cosmetic-brown-500"
+                      className="border-gray-300 text-gray-600 hover:bg-gray-200 hover:text-gray-900"
                       onClick={() => {
                         setIsEditMode(false);
                         initImagesFromProduct(selectedProduct);
@@ -2055,7 +2055,7 @@ const AdminProducts = () => {
                     </Button>
                     <Button
                       type="submit"
-                      className="bg-cosmetic-gold-400 hover:bg-cosmetic-gold-500 text-white"
+                      className="bg-gray-900 hover:bg-gray-800 text-white"
                     >
                       保存产品
                     </Button>
@@ -2086,7 +2086,7 @@ const AdminProducts = () => {
                 <div className="space-y-6">
                   {/* 基本信息部分 */}
                   <div className="space-y-4 border-b pb-6">
-                    <h3 className="text-lg font-medium text-cosmetic-brown-500">基本信息</h3>
+                    <h3 className="text-lg font-medium text-gray-900">基本信息</h3>
                     <FormField
                       control={createForm.control}
                       name="name"
@@ -2274,8 +2274,8 @@ const AdminProducts = () => {
                             key={design}
                             className={`px-3 py-1.5 rounded-full text-sm cursor-pointer transition-colors ${
                               selectedFunctionalDesigns.includes(design)
-                                ? "bg-cosmetic-gold-300 text-white"
-                                : "bg-cosmetic-beige-100 text-cosmetic-brown-400 hover:bg-cosmetic-beige-200"
+                                ? "bg-gray-900 text-white"
+                                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                             }`}
                             onClick={() => toggleFunctionalDesign(design)}
                           >
@@ -2313,7 +2313,7 @@ const AdminProducts = () => {
 
                   {/* 详细参数部分 */}
                   <div className="space-y-4 border-b pb-6">
-                    <h3 className="text-lg font-medium text-cosmetic-brown-500">产品尺寸与规格</h3>
+                    <h3 className="text-lg font-medium text-gray-900">产品尺寸与规格</h3>
                     
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
@@ -2440,7 +2440,7 @@ const AdminProducts = () => {
                   <Button 
                     type="button"
                     variant="outline" 
-                    className="border-cosmetic-beige-300 text-cosmetic-brown-300 hover:bg-cosmetic-beige-200 hover:text-cosmetic-brown-500"
+                    className="border-gray-300 text-gray-600 hover:bg-gray-200 hover:text-gray-900"
                     onClick={() => {
                       setIsCreateDialogOpen(false);
                       resetImages();
@@ -2450,7 +2450,7 @@ const AdminProducts = () => {
                   </Button>
                   <Button 
                     type="submit"
-                    className="bg-cosmetic-gold-400 hover:bg-cosmetic-gold-500 text-white"
+                    className="bg-gray-900 hover:bg-gray-800 text-white"
                   >
                     添加产品
                   </Button>

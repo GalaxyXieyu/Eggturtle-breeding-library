@@ -85,6 +85,11 @@ export default {
 					'brown-500': '#544A40',
 					'brown-600': '#453A31',
 					'brown-900': '#1A1612',
+				},
+				admin: {
+					'yellow': '#FFD400',
+					'yellow-light': '#FFF9E6',
+					'yellow-dark': '#E6BF00',
 				}
 			},
 			borderRadius: {

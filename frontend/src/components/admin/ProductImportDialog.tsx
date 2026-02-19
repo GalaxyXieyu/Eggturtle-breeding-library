@@ -112,7 +112,7 @@ export function ProductImportDialog({ onSuccess }: ProductImportDialogProps) {
       <DialogTrigger asChild>
         <Button
           variant="outline"
-          className="gap-2 border-cosmetic-beige-300 text-cosmetic-brown-400 hover:bg-cosmetic-beige-100 flex-1 sm:flex-none"
+          className="gap-2 border-gray-300 text-gray-700 hover:bg-gray-100 flex-1 sm:flex-none"
         >
           <Upload className="h-4 w-4" />
           批量导入
@@ -127,10 +127,10 @@ export function ProductImportDialog({ onSuccess }: ProductImportDialogProps) {
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto py-4 space-y-6">
-          <Alert className="border-cosmetic-beige-200 bg-cosmetic-beige-50 text-cosmetic-brown-400">
-            <FileDown className="h-4 w-4 text-cosmetic-gold-500" />
+          <Alert className="border-gray-200 bg-gray-50 text-gray-700">
+            <FileDown className="h-4 w-4 text-gray-900" />
             <div className="space-y-2">
-              <AlertTitle className="text-cosmetic-brown-500">导入说明</AlertTitle>
+              <AlertTitle className="text-gray-900">导入说明</AlertTitle>
               <AlertDescription className="space-y-2">
                 <ul className="list-disc list-inside space-y-1">
                   <li>先下载模板，按模板格式填写。</li>
@@ -145,7 +145,7 @@ export function ProductImportDialog({ onSuccess }: ProductImportDialogProps) {
                 </ul>
                 <Button
                   variant="link"
-                  className="h-auto p-0 text-cosmetic-gold-500 hover:text-cosmetic-gold-600 underline"
+                  className="h-auto p-0 text-gray-900 hover:text-gray-900 underline"
                   onClick={handleDownloadTemplate}
                 >
                   下载 Excel 模板
@@ -165,7 +165,7 @@ export function ProductImportDialog({ onSuccess }: ProductImportDialogProps) {
                 id="excel-file"
                 type="file"
                 accept=".xlsx, .xls"
-                className="border-cosmetic-beige-200"
+                className="border-gray-200"
                 onChange={(e) => setExcelFile(e.target.files?.[0] || null)}
               />
             </div>
@@ -179,7 +179,7 @@ export function ProductImportDialog({ onSuccess }: ProductImportDialogProps) {
                 id="zip-file"
                 type="file"
                 accept=".zip"
-                className="border-cosmetic-beige-200"
+                className="border-gray-200"
                 onChange={(e) => setZipFile(e.target.files?.[0] || null)}
               />
             </div>
@@ -189,8 +189,8 @@ export function ProductImportDialog({ onSuccess }: ProductImportDialogProps) {
           {result && (
             <div className="space-y-4 border-t pt-4">
               <div className="grid grid-cols-3 gap-4 text-center">
-                <div className="bg-cosmetic-beige-50 p-3 rounded-lg border border-cosmetic-beige-200">
-                  <div className="text-sm text-cosmetic-brown-300">总数</div>
+                <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                  <div className="text-sm text-gray-600">总数</div>
                   <div className="text-xl font-bold">{result.total}</div>
                 </div>
                 <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-200">
@@ -204,7 +204,7 @@ export function ProductImportDialog({ onSuccess }: ProductImportDialogProps) {
               </div>
 
               {(result.errors.length > 0 || result.warnings.length > 0) && (
-                <ScrollArea className="h-40 rounded-md border border-cosmetic-beige-200 p-4 bg-cosmetic-beige-50">
+                <ScrollArea className="h-40 rounded-md border border-gray-200 p-4 bg-gray-50">
                   {result.errors.map((err, i) => (
                     <div key={`err-${i}`} className="flex items-start gap-2 text-sm text-rose-700 mb-2">
                       <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
@@ -226,14 +226,14 @@ export function ProductImportDialog({ onSuccess }: ProductImportDialogProps) {
         <DialogFooter className="pt-4 border-t">
           <Button
             variant="outline"
-            className="border-cosmetic-beige-300 text-cosmetic-brown-300 hover:bg-cosmetic-beige-200 hover:text-cosmetic-brown-500"
+            className="border-gray-300 text-gray-600 hover:bg-gray-200 hover:text-gray-900"
             onClick={() => setOpen(false)}
             disabled={isLoading}
           >
             关闭
           </Button>
           <Button
-            className="bg-cosmetic-gold-400 hover:bg-cosmetic-gold-500 text-white"
+            className="bg-gray-900 hover:bg-gray-800 text-white"
             onClick={handleImport}
             disabled={isLoading || !excelFile}
           >

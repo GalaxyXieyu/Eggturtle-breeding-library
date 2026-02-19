@@ -1,6 +1,6 @@
-import { CosmeticProduct } from "../types/cosmetics";
+import { Product } from "../types/products";
 
-export const mockProducts: CosmeticProduct[] = [
+export const mockProducts: Product[] = [
   {
     id: "prod-001",
     name: "经典圆柱口红管",

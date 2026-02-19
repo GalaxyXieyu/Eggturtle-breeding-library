@@ -1,16 +1,16 @@
 import React, { useState } from "react";
 import FilterSection from "@/components/FilterSection";
 import ProductGrid from "@/components/ProductGrid";
-import { FilterOptions, SortOption, CosmeticProduct } from "@/types/cosmetics";
+import { FilterOptions, SortOption, Product } from "@/types/products";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 interface ProductDisplayProps {
-  products: CosmeticProduct[];
+  products: Product[];
   filters: Partial<FilterOptions>;
   sortOption: SortOption;
   onFilterChange: (filters: Partial<FilterOptions>) => void;
   onSortChange: (sort: SortOption) => void;
-  onAddToCart: (product: CosmeticProduct) => void;
+  onAddToCart: (product: Product) => void;
   isFilterSticky: boolean;
   showMobileFilters: boolean;
   onMobileFilterClose: () => void;

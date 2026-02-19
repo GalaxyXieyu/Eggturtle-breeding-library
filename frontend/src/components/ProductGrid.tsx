@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import ProductCard from "@/components/ProductCard";
-import { CosmeticProduct } from "@/types/cosmetics";
+import { Product } from "@/types/products";
 import { 
   Pagination, 
   PaginationContent, 
@@ -16,8 +16,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useLanguage } from "@/contexts/LanguageContext";
 
 interface ProductGridProps {
-  products: CosmeticProduct[];
-  onAddToCart: (product: CosmeticProduct) => void;
+  products: Product[];
+  onAddToCart: (product: Product) => void;
   itemsPerPage?: number;
   onItemsPerPageChange?: (itemsPerPage: number) => void;
 }

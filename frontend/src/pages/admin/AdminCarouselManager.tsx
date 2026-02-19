@@ -326,7 +326,7 @@ const AdminCarouselManager: React.FC = () => {
     <AdminLayout>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-cosmetic-brown-500">轮播图管理</h1>
+          <h1 className="text-3xl font-bold text-gray-900">轮播图管理</h1>
           <Button 
             onClick={() => {
               setSelectedImage(null);
@@ -334,7 +334,7 @@ const AdminCarouselManager: React.FC = () => {
               createForm.reset();
               setIsCreateDialogOpen(true);
             }}
-            className="bg-cosmetic-gold-400 hover:bg-cosmetic-gold-500 text-white"
+            className="bg-gray-900 hover:bg-gray-800 text-white"
           >
             <Plus className="h-4 w-4 mr-2" />
             添加轮播图
@@ -401,7 +401,7 @@ const AdminCarouselManager: React.FC = () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleEditCarousel(carousel)}
-                          className="text-cosmetic-brown-300 hover:text-cosmetic-brown-500"
+                          className="text-gray-600 hover:text-gray-900"
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -441,7 +441,7 @@ const AdminCarouselManager: React.FC = () => {
 
                 {imagePreview ? (
                   <div className="relative">
-                    <div className="aspect-video rounded-lg overflow-hidden bg-cosmetic-beige-100 flex items-center justify-center">
+                    <div className="aspect-video rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
                       <img
                         src={imagePreview}
                         alt="Preview"
@@ -460,7 +460,7 @@ const AdminCarouselManager: React.FC = () => {
                   </div>
                 ) : (
                   <div
-                    className="border-2 border-dashed border-cosmetic-beige-200 rounded-lg p-8 cursor-pointer hover:bg-cosmetic-beige-50 transition-colors"
+                    className="border-2 border-dashed border-gray-200 rounded-lg p-8 cursor-pointer hover:bg-gray-50 transition-colors"
                     onClick={triggerFileInput}
                   >
                     <input
@@ -471,9 +471,9 @@ const AdminCarouselManager: React.FC = () => {
                       onChange={handleImageChange}
                     />
                     <div className="flex flex-col items-center justify-center space-y-2">
-                      <Upload className="h-10 w-10 text-cosmetic-beige-300" />
-                      <p className="text-sm text-cosmetic-brown-300">点击上传轮播图片</p>
-                      <p className="text-xs text-cosmetic-brown-200">支持 JPG, PNG, GIF 格式</p>
+                      <Upload className="h-10 w-10 text-gray-300" />
+                      <p className="text-sm text-gray-600">点击上传轮播图片</p>
+                      <p className="text-xs text-gray-500">支持 JPG, PNG, GIF 格式</p>
                     </div>
                   </div>
                 )}
@@ -570,7 +570,7 @@ const AdminCarouselManager: React.FC = () => {
                 </Button>
                 <Button
                   type="submit"
-                  className="bg-cosmetic-gold-400 hover:bg-cosmetic-gold-500 text-white"
+                  className="bg-gray-900 hover:bg-gray-800 text-white"
                 >
                   创建
                 </Button>
@@ -598,7 +598,7 @@ const AdminCarouselManager: React.FC = () => {
 
                 {imagePreview ? (
                   <div className="relative">
-                    <div className="aspect-video rounded-lg overflow-hidden bg-cosmetic-beige-100 flex items-center justify-center">
+                    <div className="aspect-video rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
                       <img
                         src={imagePreview}
                         alt="Preview"
@@ -617,7 +617,7 @@ const AdminCarouselManager: React.FC = () => {
                   </div>
                 ) : (
                   <div
-                    className="border-2 border-dashed border-cosmetic-beige-200 rounded-lg p-8 cursor-pointer hover:bg-cosmetic-beige-50 transition-colors"
+                    className="border-2 border-dashed border-gray-200 rounded-lg p-8 cursor-pointer hover:bg-gray-50 transition-colors"
                     onClick={triggerFileInput}
                   >
                     <input
@@ -628,9 +628,9 @@ const AdminCarouselManager: React.FC = () => {
                       onChange={handleImageChange}
                     />
                     <div className="flex flex-col items-center justify-center space-y-2">
-                      <Upload className="h-10 w-10 text-cosmetic-beige-300" />
-                      <p className="text-sm text-cosmetic-brown-300">点击上传轮播图片</p>
-                      <p className="text-xs text-cosmetic-brown-200">支持 JPG, PNG, GIF 格式</p>
+                      <Upload className="h-10 w-10 text-gray-300" />
+                      <p className="text-sm text-gray-600">点击上传轮播图片</p>
+                      <p className="text-xs text-gray-500">支持 JPG, PNG, GIF 格式</p>
                     </div>
                   </div>
                 )}
@@ -728,7 +728,7 @@ const AdminCarouselManager: React.FC = () => {
                 </Button>
                 <Button
                   type="submit"
-                  className="bg-cosmetic-gold-400 hover:bg-cosmetic-gold-500 text-white"
+                  className="bg-gray-900 hover:bg-gray-800 text-white"
                 >
                   保存
                 </Button>

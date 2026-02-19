@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { productService, adminProductService } from '@/services/productService';
-import { CosmeticProduct, FilterOptions, SortOption, Material, Shape, TubeType, BoxType, ProcessType, FunctionalDesign } from '@/types/cosmetics';
+import { Product, FilterOptions, SortOption, Material, Shape, TubeType, BoxType, ProcessType, FunctionalDesign } from '@/types/products';
 import { useToast } from '@/hooks/use-toast';
 
 // Backend API data structure (snake_case) - matching the one in productService
@@ -130,7 +130,7 @@ export const useUpdateProduct = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: ({ id, productData }: { id: string; productData: Partial<CosmeticProduct> }) =>
+    mutationFn: ({ id, productData }: { id: string; productData: Partial<Product> }) =>
       adminProductService.updateProduct(id, productData),
     onSuccess: (updatedProduct) => {
       // Update the specific product in cache

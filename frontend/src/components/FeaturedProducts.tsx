@@ -5,14 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ShoppingCart, ImageIcon } from "lucide-react";
-import { CosmeticProduct } from "@/types/cosmetics";
+import { Product } from "@/types/products";
 import { useLanguage } from "@/contexts/LanguageContext";
 import Autoplay from "embla-carousel-autoplay";
 import OptimizedImage from "@/components/OptimizedImage";
 import { getOptimizedImageProps, hasValidImages } from "@/utils/productImageHelpers";
 
 interface FeaturedProductsProps {
-  products: CosmeticProduct[];
+  products: Product[];
 }
 
 const FeaturedProducts: React.FC<FeaturedProductsProps> = ({ products }) => {

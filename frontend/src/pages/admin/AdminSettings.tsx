@@ -256,10 +256,10 @@ const AdminSettings = () => {
             </Card>
 
             <div className="flex justify-end">
-              <Button 
+              <Button
                 onClick={handleSaveSettings}
                 disabled={isSaving}
-                className="bg-cosmetic-gold-400 hover:bg-cosmetic-gold-500 text-white"
+                className="bg-gray-900 hover:bg-gray-800 text-white"
               >
                 <Settings className="mr-2 h-4 w-4" />
                 {isSaving ? "保存中..." : "保存公司信息"}
@@ -305,7 +305,7 @@ const AdminSettings = () => {
             </Card>
 
             <div className="flex justify-end">
-              <Button className="bg-cosmetic-gold-400 hover:bg-cosmetic-gold-500 text-white">
+              <Button className="bg-gray-900 hover:bg-gray-800 text-white">
                 <Settings className="mr-2 h-4 w-4" />
                 保存设置
               </Button>
@@ -345,7 +345,7 @@ const AdminSettings = () => {
               </div>
 
               <div className="flex justify-end">
-                <Button className="bg-cosmetic-gold-400 hover:bg-cosmetic-gold-500 text-white">
+                <Button className="bg-gray-900 hover:bg-gray-800 text-white">
                   <User className="mr-2 h-4 w-4" />
                   更新账户
                 </Button>
