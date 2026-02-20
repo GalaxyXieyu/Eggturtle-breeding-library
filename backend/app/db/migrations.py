@@ -123,16 +123,16 @@ def migrate_product_stage_status(db_path: str | Path) -> None:
 
         if "stage" not in cols:
             conn.execute(
-                "ALTER TABLE products ADD COLUMN stage VARCHAR NOT NULL DEFAULT 'unknown'"
+                "ALTER TABLE products ADD COLUMN stage VARCHAR NOT NULL DEFAULT 'hatchling'"
             )
         if "status" not in cols:
             conn.execute(
-                "ALTER TABLE products ADD COLUMN status VARCHAR NOT NULL DEFAULT 'draft'"
+                "ALTER TABLE products ADD COLUMN status VARCHAR NOT NULL DEFAULT 'active'"
             )
 
         # Backfill any NULLs defensively (older sqlite edge cases / manual edits)
-        conn.execute("UPDATE products SET stage='unknown' WHERE stage IS NULL")
-        conn.execute("UPDATE products SET status='draft' WHERE status IS NULL")
+        conn.execute("UPDATE products SET stage='hatchling' WHERE stage IS NULL")
+        conn.execute("UPDATE products SET status='active' WHERE status IS NULL")
 
         if not _index_exists(conn, "ix_products_stage"):
             conn.execute("CREATE INDEX ix_products_stage ON products (stage)")

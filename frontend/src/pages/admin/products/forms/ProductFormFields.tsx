@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import type { Control } from "react-hook-form";
+import { PRODUCT_STATUSES, TURTLE_STAGES } from "@/constants/filterOptions";
 
 import type { ProductFormValues } from "./productSchema";
 
@@ -67,10 +68,21 @@ export function ProductFormFields({ control, mode }: Props) {
               name="stage"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Stage</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="unknown" />
-                  </FormControl>
+                  <FormLabel>阶段</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="选择阶段" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {TURTLE_STAGES.map((item) => (
+                        <SelectItem key={item.value} value={item.value}>
+                          {item.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -81,7 +93,7 @@ export function ProductFormFields({ control, mode }: Props) {
               name="status"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Status</FormLabel>
+                  <FormLabel>状态</FormLabel>
                   <Select value={field.value} onValueChange={field.onChange}>
                     <FormControl>
                       <SelectTrigger>
@@ -89,10 +101,11 @@ export function ProductFormFields({ control, mode }: Props) {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="draft">draft</SelectItem>
-                      <SelectItem value="active">active</SelectItem>
-                      <SelectItem value="reserved">reserved</SelectItem>
-                      <SelectItem value="sold">sold</SelectItem>
+                      {PRODUCT_STATUSES.map((item) => (
+                        <SelectItem key={item.value} value={item.value}>
+                          {item.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />

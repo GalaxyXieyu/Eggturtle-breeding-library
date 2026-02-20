@@ -1,4 +1,7 @@
-# OpenClaw Product Upload Skill
+# OpenClaw Product Upload Skill (Deprecated Backup)
+
+> This backup is deprecated.
+> Use `skills/openclaw-product-upload.skill.md` as the source of truth.
 
 Upload products to TurtleAlbum backend with guided workflow, validation, and environment safety.
 

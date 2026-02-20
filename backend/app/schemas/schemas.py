@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from typing import List, Optional, Dict, Any, Union
 from datetime import datetime
 from enum import Enum
@@ -36,6 +36,8 @@ class ProductImageResponse(ProductImageBase):
 
 # Product schemas - 完全没有枚举约束
 class ProductBase(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
     name: str
     code: str
     description: Optional[str] = None
@@ -76,6 +78,8 @@ class ProductCreate(ProductBase):
     images: List[ProductImageCreate] = []
 
 class ProductUpdate(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
     name: Optional[str] = None
     code: Optional[str] = None
     description: Optional[str] = None

@@ -37,8 +37,8 @@ export function ProductEditForm({ product, onSubmit, onCancel, isSaving, images 
       description: product.description,
       inStock: product.inStock,
       popularityScore: product.popularityScore,
-      stage: product.stage || "unknown",
-      status: product.status || "draft",
+      stage: product.stage || "hatchling",
+      status: product.status || "active",
       isFeatured: product.isFeatured,
     });
   }, [form, product]);

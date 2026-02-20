@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { Product } from "@/types/products";
 import { createApiUrl, createImageUrl, API_ENDPOINTS } from "@/lib/api";
+import { formatCnyPriceOrNotForSale } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -337,7 +338,7 @@ const AdminFeaturedProducts = () => {
                     </TableCell>
                     <TableCell className="font-medium">{featured.product.name}</TableCell>
                     <TableCell>{featured.product.code}</TableCell>
-                    <TableCell>¥{(featured.product.pricing.price ?? 0).toFixed(2)}</TableCell>
+                    <TableCell>{formatCnyPriceOrNotForSale(featured.product.pricing.price)}</TableCell>
                     <TableCell>{featured.sortOrder}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
@@ -400,7 +401,7 @@ const AdminFeaturedProducts = () => {
                     <p className="font-semibold text-gray-900 truncate">{featured.product.name}</p>
                     <p className="text-sm text-gray-600 mt-0.5">货号: {featured.product.code}</p>
                     <div className="mt-1 text-sm text-gray-900 font-medium">
-                      ¥{(featured.product.pricing.price ?? 0).toFixed(2)}
+                      {formatCnyPriceOrNotForSale(featured.product.pricing.price)}
                     </div>
                   </div>
                 </div>

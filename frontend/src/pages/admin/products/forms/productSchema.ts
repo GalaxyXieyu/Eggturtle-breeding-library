@@ -23,6 +23,6 @@ export const productFormDefaultValues: ProductFormValues = {
   inStock: true,
   popularityScore: 0,
   isFeatured: false,
-  stage: "unknown",
-  status: "draft",
+  stage: "hatchling",
+  status: "active",
 };

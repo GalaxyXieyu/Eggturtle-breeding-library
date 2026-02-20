@@ -103,6 +103,8 @@ async def update_product(
 
     # Update fields
     update_data = product_data.model_dump(exclude_unset=True)
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
 
     # Persist enum values as plain strings.
     if "status" in update_data and hasattr(update_data["status"], "value"):

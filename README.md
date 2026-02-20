@@ -18,6 +18,12 @@ turtle_album/
 └── Dockerfile
 ```
 
+## 业务文档（字段与逻辑）
+
+- 字段命名与业务规则（插件对接）：`docs/turtle-album/FIELD_NAMING_AND_BUSINESS_RULES.md`
+- OpenClaw 上传技能规范：`skills/openclaw-product-upload.skill.md`
+- OpenClaw 上传脚本：`scripts/openclaw_upload_product.py`
+
 ## 快速开始
 
 ### 方式一：使用开发脚本（推荐）

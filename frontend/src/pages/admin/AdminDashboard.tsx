@@ -6,6 +6,7 @@ import { Package, ShoppingCart, Heart } from "lucide-react";
 import { useProducts } from "@/hooks/useProducts";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { Product } from "@/types/products";
+import { formatCnyPriceOrNotForSale } from "@/lib/utils";
 
 const AdminDashboard = () => {
   // Require authentication
@@ -137,7 +138,7 @@ const AdminDashboard = () => {
                     </p>
                   </div>
                   <div className="text-xs sm:text-sm font-medium text-gray-900">
-                    ¥{(product.pricing.price ?? 0).toFixed(2)}
+                    {formatCnyPriceOrNotForSale(product.pricing.price)}
                   </div>
                 </div>
               ))}
@@ -171,7 +172,7 @@ const AdminDashboard = () => {
                     </p>
                   </div>
                   <div className="text-xs sm:text-sm font-medium text-gray-900">
-                    ¥{(product.pricing.price ?? 0).toFixed(2)}
+                    {formatCnyPriceOrNotForSale(product.pricing.price)}
                   </div>
                 </div>
               ))}

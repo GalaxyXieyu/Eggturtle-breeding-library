@@ -182,8 +182,8 @@ def convert_product_to_response(product: Product) -> dict:
         "code": product.code,
         "description": product.description,
 
-        "stage": getattr(product, "stage", "unknown"),
-        "status": getattr(product, "status", "draft"),
+        "stage": getattr(product, "stage", "hatchling"),
+        "status": getattr(product, "status", "active"),
 
         # Turtle-album extensions
         "seriesId": product.series_id,

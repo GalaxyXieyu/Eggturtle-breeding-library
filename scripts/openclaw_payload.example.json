@@ -1,0 +1,15 @@
+{
+  "code": "WHITE-1",
+  "name": "White-1",
+  "description": "Breeder record",
+  "stage": "hatchling",
+  "status": "active",
+  "series_id": "replace-with-series-id",
+  "sex": "female",
+  "price": 0,
+  "in_stock": true,
+  "sire_code": "F",
+  "dam_code": null,
+  "images": []
+}
+

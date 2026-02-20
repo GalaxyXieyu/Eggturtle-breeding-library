@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import type { Product } from "@/types/products";
 import type { Series } from "@/types/turtleAlbum";
 import { ArrowUpDown, Edit, Eye, Trash2 } from "lucide-react";
+import { getStageLabel, getStatusLabel } from "@/constants/filterOptions";
 
 import { getPageNumbers } from "./pagination";
 
@@ -64,8 +65,8 @@ export function ProductsTableDesktop({
               </TableHead>
               <TableHead>性别</TableHead>
               <TableHead>种类</TableHead>
-              <TableHead>Stage</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>阶段</TableHead>
+              <TableHead>状态</TableHead>
               <TableHead className="text-right">操作</TableHead>
             </TableRow>
           </TableHeader>
@@ -94,10 +95,10 @@ export function ProductsTableDesktop({
                     {product.sex === "male" ? "公" : product.sex === "female" ? "母" : "-"}
                   </TableCell>
                   <TableCell>{seriesList.find((s) => s.id === product.seriesId)?.name || "-"}</TableCell>
-                  <TableCell>{product.stage || "-"}</TableCell>
+                  <TableCell>{product.stage ? getStageLabel(product.stage) : "-"}</TableCell>
                   <TableCell>
                     <Badge variant="secondary" className="text-xs">
-                      {product.status || "draft"}
+                      {getStatusLabel(product.status || "active")}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
