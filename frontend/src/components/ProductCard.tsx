@@ -118,21 +118,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, size = 
           ) : (
             <ImageIcon className={`${styles.iconSize} text-cosmetic-beige-300 group-hover:text-cosmetic-gold-400 transition-colors duration-300`} />
           )}
-          {(() => {
-            // Handle functionalDesigns being either array or string
-            const designs = Array.isArray(product.functionalDesigns) 
-              ? product.functionalDesigns 
-              : product.functionalDesigns ? [product.functionalDesigns] : [];
-            
-            return designs.length > 0 && (
-              <div className={`absolute ${size === 'compact' ? 'top-1 left-1' : size === 'small' ? 'top-2 left-2' : 'top-3 left-3'}`}>
-                <Badge className={`bg-gradient-to-r from-cosmetic-gold-500 to-cosmetic-gold-600 text-white border-0 shadow-md ${styles.badgeSize} font-medium rounded-full backdrop-blur-sm group-hover:scale-105 transition-transform duration-300`}>
-                  {designs[0]}
-                </Badge>
-              </div>
-            );
-          })()}
-          
+
           {/* 图片悬停覆盖层 */}
           <div className="absolute inset-0 bg-gradient-to-t from-cosmetic-brown-900/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300"></div>
         </div>
@@ -152,33 +138,14 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, size = 
             {t("code")}: {product.code}
           </span>
         </div>
-        
+
         {/* 产品详细信息 - 根据size调整 */}
         {size !== 'compact' && (
           <div className={`bg-gradient-to-r from-cosmetic-beige-50/80 to-cosmetic-gold-50/60 rounded-lg ${styles.detailsPadding} border border-cosmetic-beige-200/30 backdrop-blur-sm`}>
-            <div className={`grid grid-cols-2 gap-x-3 gap-y-2 ${styles.detailsSize}`}>
-            {product.tubeType && (
-              <div className="flex flex-col">
-                <span className="font-semibold text-cosmetic-brown-500 mb-0.5">{t("type")}:</span>
-                <span className="text-cosmetic-brown-400 leading-tight">{product.tubeType}</span>
-              </div>
-            )}
-            {product.boxType && (
-              <div className="flex flex-col">
-                <span className="font-semibold text-cosmetic-brown-500 mb-0.5">{t("type")}:</span>
-                <span className="text-cosmetic-brown-400 leading-tight">{product.boxType}</span>
-              </div>
-            )}
-            <div className="flex flex-col">
-              <span className="font-semibold text-cosmetic-brown-500 mb-0.5">{t("material")}:</span>
-              <span className="text-cosmetic-brown-400 leading-tight">{product.material}</span>
-            </div>
-            <div className="flex flex-col">
-              <span className="font-semibold text-cosmetic-brown-500 mb-0.5">{t("shape")}:</span>
-              <span className="text-cosmetic-brown-400 leading-tight">{product.shape}</span>
+            <div className={`text-center ${styles.detailsSize} text-cosmetic-brown-400`}>
+              产品详情请联系客服咨询
             </div>
           </div>
-        </div>
         )}
       </div>
 

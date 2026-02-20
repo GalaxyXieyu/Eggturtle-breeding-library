@@ -93,7 +93,7 @@ const FeaturedProducts: React.FC<FeaturedProductsProps> = ({ products }) => {
                       <div className="aspect-square mb-5 overflow-hidden rounded-2xl bg-gradient-to-br from-cosmetic-beige-50/40 via-white/60 to-cosmetic-gold-50/30 relative group-hover:shadow-xl group-hover:shadow-cosmetic-gold-300/30 transition-all duration-700 border border-cosmetic-gold-200/20">
                         {/* 图片背景装饰 */}
                         <div className="absolute inset-0 bg-gradient-to-tr from-cosmetic-gold-100/10 to-cosmetic-beige-100/10 opacity-30 group-hover:opacity-50 transition-opacity duration-700"></div>
-                        
+
                         {(() => {
                           const imageProps = getOptimizedImageProps(product, 0, 'card-preview');
                           return imageProps ? (
@@ -112,32 +112,9 @@ const FeaturedProducts: React.FC<FeaturedProductsProps> = ({ products }) => {
                             <ImageIcon className="h-16 w-16 text-cosmetic-beige-300" />
                           );
                         })()}
-                        
+
                         {/* 悬停时的内容覆盖层 */}
                         <div className="absolute inset-0 bg-gradient-to-t from-cosmetic-brown-900/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500 rounded-2xl"></div>
-                        
-                        {/* 功能设计标签 - 重新设计 */}
-                        {(() => {
-                          // Helper function to get first functional design
-                          const getFirstFunctionalDesign = () => {
-                            if (Array.isArray(product.functionalDesigns) && product.functionalDesigns.length > 0) {
-                              return product.functionalDesigns[0];
-                            } else if (typeof product.functionalDesigns === 'string' && product.functionalDesigns.trim()) {
-                              return product.functionalDesigns.trim();
-                            }
-                            return null;
-                          };
-
-                          const firstDesign = getFirstFunctionalDesign();
-                          
-                          return firstDesign ? (
-                          <div className="absolute top-3 left-3">
-                            <Badge className="bg-gradient-to-r from-cosmetic-gold-500 to-cosmetic-gold-600 text-white border-0 shadow-lg backdrop-blur-sm px-3 py-1.5 text-xs font-semibold rounded-full transform group-hover:scale-110 group-hover:rotate-1 transition-all duration-500 animate-pulse">
-                                ✨ {firstDesign}
-                            </Badge>
-                          </div>
-                          ) : null;
-                        })()}
                       </div>
                       
                       {/* 产品信息 - 增强设计 */}
@@ -145,11 +122,7 @@ const FeaturedProducts: React.FC<FeaturedProductsProps> = ({ products }) => {
                         <h3 className="font-bold text-cosmetic-brown-600 text-lg leading-tight line-clamp-2 group-hover:text-cosmetic-brown-500 transition-colors duration-500 font-serif tracking-wide">
                           {product.name}
                         </h3>
-                        
-                        <p className="text-sm text-cosmetic-brown-400/80 line-clamp-1 opacity-70 group-hover:opacity-90 transition-opacity duration-500 font-medium">
-                          {product.tubeType || product.boxType}
-                        </p>
-                        
+
                         {/* 装饰性分割线 */}
                         <div className="flex justify-center py-1">
                           <div className="w-8 h-px bg-gradient-to-r from-transparent via-cosmetic-gold-400/50 to-transparent group-hover:w-12 transition-all duration-500"></div>

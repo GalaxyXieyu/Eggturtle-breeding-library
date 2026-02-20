@@ -1,13 +1,10 @@
-
 import React from "react";
 import AdminLayout from "@/components/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, ShoppingCart, Heart, Award } from "lucide-react";
+import { Package, ShoppingCart, Heart } from "lucide-react";
 import { useProducts } from "@/hooks/useProducts";
 import { useRequireAuth } from "@/hooks/useAuth";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Product } from "@/types/products";
 
 const AdminDashboard = () => {
@@ -27,45 +24,6 @@ const AdminDashboard = () => {
   const totalProducts = products.length;
   const inStockProducts = products.filter(product => product.inStock).length;
   const popularProducts = products.filter(product => product.popularityScore > 7).length;
-  const productTypes = [
-    ...new Set([
-      ...products.map(product => product.tubeType).filter(Boolean),
-      ...products.map(product => product.boxType).filter(Boolean),
-    ]),
-  ].length;
-
-  const productTypesData = Object.entries(
-    products.reduce<Record<string, number>>((acc, product) => {
-      const tubeType = product.tubeType;
-      const boxType = product.boxType;
-      if (tubeType) acc[tubeType] = (acc[tubeType] || 0) + 1;
-      if (boxType) acc[boxType] = (acc[boxType] || 0) + 1;
-      return acc;
-    }, {})
-  )
-    .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 8);
-
-  // 改为统计形状和工艺类型分布（更有意义）
-  const shapeProcessData = Object.entries(
-    products.reduce<Record<string, number>>((acc, product) => {
-      // 统计形状
-      const shape = product.shape;
-      if (shape && shape !== 'n/a') {
-        acc[`形状: ${shape}`] = (acc[`形状: ${shape}`] || 0) + 1;
-      }
-      // 统计工艺类型
-      const processType = product.processType;
-      if (processType && processType !== 'n/a') {
-        acc[`工艺: ${processType}`] = (acc[`工艺: ${processType}`] || 0) + 1;
-      }
-      return acc;
-    }, {})
-  )
-    .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 7);
 
   // Recent products
   const recentProducts = [...products]
@@ -76,9 +34,6 @@ const AdminDashboard = () => {
   const topProducts = [...products]
     .sort((a, b) => b.popularityScore - a.popularityScore)
     .slice(0, 5);
-
-  // Colors for the pie chart - 使用更柔和的灰色系，黄色只作点缀
-  const COLORS = ['#6B7280', '#9CA3AF', '#D1D5DB', '#FFD400', '#4B5563', '#E5E7EB', '#374151'];
 
   // Show loading state
   if (isLoading) {
@@ -116,7 +71,7 @@ const AdminDashboard = () => {
   return (
     <AdminLayout title="控制面板">
       {/* Stats Cards */}
-      <div className="grid grid-cols-4 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-6 mb-4 sm:mb-8">
+      <div className="grid grid-cols-3 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-6 mb-4 sm:mb-8">
         <Card>
           <CardContent className="p-2 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
@@ -150,169 +105,6 @@ const AdminDashboard = () => {
             <div className="hidden sm:flex h-10 w-10 sm:h-12 sm:w-12 bg-gray-100 rounded-full items-center justify-center text-gray-700">
               <Heart className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-2 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <p className="text-xs sm:text-sm font-medium text-gray-600 leading-tight">产品类型</p>
-              <h3 className="text-xl sm:text-3xl font-bold text-gray-900 mt-0.5 sm:mt-1 leading-none">{productTypes}</h3>
-            </div>
-            <div className="hidden sm:flex h-10 w-10 sm:h-12 sm:w-12 bg-gray-100 rounded-full items-center justify-center text-gray-700">
-              <Award className="h-5 w-5 sm:h-6 sm:w-6" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Charts (desktop) */}
-      <div className="hidden lg:grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6 mb-4 sm:mb-8">
-        <Card>
-          <CardHeader className="px-4 pt-4 pb-2 sm:px-6 sm:pt-6 sm:pb-3">
-            <CardTitle className="text-xl sm:text-2xl">产品类型分布</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 sm:px-6 sm:pb-6">
-            <div className="h-56 sm:h-80">
-              {productTypesData.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-gray-600">
-                  暂无数据
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={productTypesData}>
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#FFFFFF',
-                        borderColor: '#E5E7EB',
-                        borderRadius: '4px'
-                      }}
-                    />
-                    <Bar dataKey="value" fill="#6B7280" />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="px-4 pt-4 pb-2 sm:px-6 sm:pt-6 sm:pb-3">
-            <CardTitle className="text-xl sm:text-2xl">形状与工艺分布</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 sm:px-6 sm:pb-6">
-            <div className="h-56 sm:h-80 flex items-center justify-center">
-              {shapeProcessData.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-gray-600">
-                  暂无数据
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={shapeProcessData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {shapeProcessData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#FFFFFF',
-                        borderColor: '#E5E7EB',
-                        borderRadius: '4px'
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Charts (mobile tabs) */}
-      <div className="lg:hidden mb-4">
-        <Card>
-          <CardHeader className="px-3 pt-3 pb-2">
-            <CardTitle className="text-lg">数据分布</CardTitle>
-          </CardHeader>
-          <CardContent className="px-3 pb-3">
-            <Tabs defaultValue="types" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-3">
-                <TabsTrigger value="types">产品类型</TabsTrigger>
-                <TabsTrigger value="shapeProcess">形状/工艺</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="types" className="mt-0">
-                <div className="h-52">
-                  {productTypesData.length === 0 ? (
-                    <div className="h-full flex items-center justify-center text-gray-600">
-                      暂无数据
-                    </div>
-                  ) : (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={productTypesData}>
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: '#FFFFFF',
-                            borderColor: '#E5E7EB',
-                            borderRadius: '4px'
-                          }}
-                        />
-                        <Bar dataKey="value" fill="#6B7280" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  )}
-                </div>
-              </TabsContent>
-
-              <TabsContent value="shapeProcess" className="mt-0">
-                <div className="h-52 flex items-center justify-center">
-                  {shapeProcessData.length === 0 ? (
-                    <div className="h-full flex items-center justify-center text-gray-600">
-                      暂无数据
-                    </div>
-                  ) : (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={shapeProcessData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          outerRadius={64}
-                          fill="#8884d8"
-                          dataKey="value"
-                        >
-                          {shapeProcessData.map((entry, index) => (
-                            <Cell key={`mobile-cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: '#FFFFFF',
-                            borderColor: '#E5E7EB',
-                            borderRadius: '4px'
-                          }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  )}
-                </div>
-              </TabsContent>
-            </Tabs>
           </CardContent>
         </Card>
       </div>

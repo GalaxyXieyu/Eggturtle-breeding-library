@@ -1811,11 +1811,6 @@ export const mockProducts: Product[] = [
 ];
 
 export const filterOptions = {
-  tubeTypes: ["口红管", "唇釉管", "固体棒", "睫毛膏瓶", "眼线液瓶", "唇膜瓶", "粉底膏霜瓶"],
-  boxTypes: ["腮红盒", "粉饼高光盒", "散粉盒", "气垫盒"],
-  functionalDesigns: ["磁吸", "卡扣", "双头", "双层", "透明/透色", "带镜子", "带刷位", "贴片"],
-  shapes: ["圆形", "正方形", "长方形", "椭圆形", "波浪纹", "迷你", "儿童卡通", "不规则"],
-  materials: ["petg", "注塑/吹瓶"],
   capacityRange: {
     min: 1,
     max: 30

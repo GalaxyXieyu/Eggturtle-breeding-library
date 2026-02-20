@@ -21,8 +21,6 @@ const translations = {
   // Product Card
   "code": "货号",
   "type": "型号",
-  "material": "材质",
-  "shape": "形状",
   "cost": "成本",
   "noProductsFound": "未找到符合条件的产品",
   "addToCartInquiry": "加购询价",

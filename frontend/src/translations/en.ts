@@ -22,8 +22,6 @@ const en = {
   // Product Card
   "code": "Code",
   "type": "Type",
-  "material": "Material",
-  "shape": "Shape",
   "cost": "Cost",
   "noProductsFound": "No products found",
   "addToCartInquiry": "Add & Inquiry",
@@ -49,9 +47,6 @@ const en = {
   priceLowToHigh: "Price: Low to High",
   priceHighToLow: "Price: High to Low",
   relevance: "Relevance",
-  tubeType: "Tube Type",
-  boxType: "Box Type",
-  functionalDesign: "Functional Design",
   capacity: "Capacity",
   compartments: "Compartments",
   apply: "Apply",

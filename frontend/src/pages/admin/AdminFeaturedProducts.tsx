@@ -307,7 +307,6 @@ const AdminFeaturedProducts = () => {
                 <TableHead>产品图片</TableHead>
                 <TableHead>产品名称</TableHead>
                 <TableHead>产品货号</TableHead>
-                <TableHead>类型</TableHead>
                 <TableHead>价格</TableHead>
                 <TableHead>排序</TableHead>
                 <TableHead className="text-right">操作</TableHead>
@@ -316,7 +315,7 @@ const AdminFeaturedProducts = () => {
             <TableBody>
               {featuredProducts.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                     {isLoading ? "加载中..." : "暂无活动产品数据"}
                   </TableCell>
                 </TableRow>
@@ -338,9 +337,6 @@ const AdminFeaturedProducts = () => {
                     </TableCell>
                     <TableCell className="font-medium">{featured.product.name}</TableCell>
                     <TableCell>{featured.product.code}</TableCell>
-                    <TableCell>
-                      {featured.product.tubeType || featured.product.boxType || featured.product.processType || "-"}
-                    </TableCell>
                     <TableCell>¥{featured.product.pricing.factoryPrice.toFixed(2)}</TableCell>
                     <TableCell>{featured.sortOrder}</TableCell>
                     <TableCell className="text-right">
@@ -403,9 +399,6 @@ const AdminFeaturedProducts = () => {
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-gray-900 truncate">{featured.product.name}</p>
                     <p className="text-sm text-gray-600 mt-0.5">货号: {featured.product.code}</p>
-                    <p className="text-sm text-gray-600 truncate mt-0.5">
-                      {featured.product.tubeType || featured.product.boxType || featured.product.processType || "-"}
-                    </p>
                     <div className="mt-1 text-sm text-gray-900 font-medium">
                       ¥{featured.product.pricing.factoryPrice.toFixed(2)}
                     </div>

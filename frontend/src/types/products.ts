@@ -31,10 +31,16 @@ export interface Product {
 
 export interface FilterOptions {
   searchText?: string;
+  seriesId?: string;
+  stage?: string;
+  status?: 'draft' | 'active' | 'reserved' | 'sold';
+  priceRange?: { min: number; max: number };
 }
 
 export interface FilterOptionsResponse {
   priceRange: { min: number; max: number };
+  stages: string[];
+  statuses: string[];
 }
 
 export type SortOption = 'newest' | 'popular' | 'price_low' | 'price_high';
