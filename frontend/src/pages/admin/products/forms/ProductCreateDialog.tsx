@@ -64,7 +64,7 @@ export function ProductCreateDialog({
           >
             <div className="space-y-4 mt-4">
               {images}
-              <ProductFormFields control={form.control} mode="create" />
+              <ProductFormFields control={form.control} />
 
               <div className="flex justify-end gap-4 mt-8">
                 <Button

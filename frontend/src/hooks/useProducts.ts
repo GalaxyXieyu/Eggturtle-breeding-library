@@ -10,6 +10,7 @@ interface BackendProductCreate {
   description?: string;
   stage?: string;
   status?: 'draft' | 'active' | 'reserved' | 'sold';
+  series_id?: string | null;
   dimensions: {
     weight?: number;
     length?: number;
@@ -126,7 +127,7 @@ export const useUpdateProduct = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: ({ id, productData }: { id: string; productData: Partial<Product> }) =>
+    mutationFn: ({ id, productData }: { id: string; productData: Record<string, unknown> }) =>
       adminProductService.updateProduct(id, productData),
     onSuccess: (updatedProduct) => {
       // Update the specific product in cache

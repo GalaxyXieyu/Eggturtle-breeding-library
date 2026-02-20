@@ -34,6 +34,7 @@ export function ProductEditForm({ product, onSubmit, onCancel, isSaving, images 
       ...productFormDefaultValues,
       name: product.name,
       code: product.code,
+      seriesId: product.seriesId || "",
       description: product.description,
       inStock: product.inStock,
       popularityScore: product.popularityScore,
@@ -49,7 +50,7 @@ export function ProductEditForm({ product, onSubmit, onCancel, isSaving, images 
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <div className="space-y-4 pb-24">
             {images}
-            <ProductFormFields control={form.control} mode="edit" />
+            <ProductFormFields control={form.control} />
           </div>
 
           <div className="sticky bottom-0 -mx-6 px-6 py-4 bg-white border-t flex justify-end gap-4">

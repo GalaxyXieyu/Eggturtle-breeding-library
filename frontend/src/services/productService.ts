@@ -8,6 +8,7 @@ interface BackendProductCreate {
   description?: string;
   stage?: string;
   status?: 'draft' | 'active' | 'reserved' | 'sold';
+  series_id?: string | null;
   cost_price: number;
   price: number;
   has_sample: boolean;
@@ -163,7 +164,7 @@ export const adminProductService = {
   },
 
   // Update existing product
-  async updateProduct(id: string, productData: Partial<Product>): Promise<Product> {
+  async updateProduct(id: string, productData: Record<string, unknown>): Promise<Product> {
     try {
       const response = await apiClient.put<ApiResponse<Product>>(
         ENDPOINTS.PRODUCT_BY_ID(id),

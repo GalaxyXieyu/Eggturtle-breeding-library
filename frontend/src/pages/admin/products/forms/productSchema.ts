@@ -3,6 +3,8 @@ import * as z from "zod";
 export const productFormSchema = z.object({
   name: z.string().min(1, "产品名称不能为空"),
   code: z.string().min(1, "货号不能为空"),
+  // Backend write key is series_id; frontend keeps seriesId then maps before submit.
+  seriesId: z.string().optional().default(""),
   // Create flow keeps description optional; edit flow can still fill it.
   description: z.string().optional().default(""),
   hasSample: z.boolean().default(false),
@@ -18,6 +20,7 @@ export type ProductFormValues = z.infer<typeof productFormSchema>;
 export const productFormDefaultValues: ProductFormValues = {
   name: "",
   code: "",
+  seriesId: "",
   description: "",
   hasSample: false,
   inStock: true,

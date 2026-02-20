@@ -24,7 +24,6 @@ import type { ProductFormValues } from "./productSchema";
 
 type Props = {
   control: Control<ProductFormValues>;
-  mode: "create" | "edit";
 };
 
 export function ProductFormFields({ control }: Props) {
@@ -55,6 +54,20 @@ export function ProductFormFields({ control }: Props) {
               <FormLabel>货号</FormLabel>
               <FormControl>
                 <Input {...field} placeholder="输入产品货号" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={control}
+          name="seriesId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>系列ID</FormLabel>
+              <FormControl>
+                <Input {...field} placeholder="输入系列ID（可选）" />
               </FormControl>
               <FormMessage />
             </FormItem>

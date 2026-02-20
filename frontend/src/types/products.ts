@@ -20,6 +20,8 @@ export interface Product {
   description: string;
   stage: string;
   status: 'draft' | 'active' | 'reserved' | 'sold';
+  seriesId?: string | null;
+  sex?: 'male' | 'female' | string | null;
   images: ProductImage[];
   pricing: ProductPricing;
   inStock: boolean;
