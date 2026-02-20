@@ -30,10 +30,7 @@ interface BreederCarouselProps {
 }
 
 const BreederCarousel: React.FC<BreederCarouselProps> = ({ mainImage, breederCode, breederSex, activeSeries, seriesIntroItems }) => {
-  const [currentSlide, setCurrentSlide] = React.useState(() => (seriesIntroItems.length > 0 ? 1 : 0)); // Image is always visible; intro is optional
-  const [touchStart, setTouchStart] = React.useState(0);
-  const [touchEnd, setTouchEnd] = React.useState(0);
-  const [showSwipeHint, setShowSwipeHint] = React.useState(true);
+  const [currentSlide, setCurrentSlide] = React.useState(() => (seriesIntroItems.length > 0 ? 1 : 0)); // 0=intro, 1=image
 
   const hasSeriesIntro = seriesIntroItems.length > 0;
 
@@ -49,44 +46,7 @@ const BreederCarousel: React.FC<BreederCarouselProps> = ({ mainImage, breederCod
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasSeriesIntro]);
 
-  // Hide swipe hint after 3 seconds
-  React.useEffect(() => {
-    if (hasSeriesIntro) {
-      const timer = setTimeout(() => {
-        setShowSwipeHint(false);
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [hasSeriesIntro]);
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStart(e.targetTouches[0].clientX);
-    setShowSwipeHint(false); // Hide hint when user starts touching
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
-
-  const handleTouchEnd = () => {
-    if (!hasSeriesIntro) return;
-    if (!touchStart || !touchEnd) return;
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > 50;
-    const isRightSwipe = distance < -50;
-
-    // Right swipe: show series intro (slide 0)
-    if (isRightSwipe && currentSlide === 1 && hasSeriesIntro) {
-      setCurrentSlide(0);
-    }
-    // Left swipe: back to image (slide 1)
-    if (isLeftSwipe && currentSlide === 0) {
-      setCurrentSlide(1);
-    }
-
-    setTouchStart(0);
-    setTouchEnd(0);
-  };
 
   const effectiveSlide = hasSeriesIntro ? currentSlide : 0;
 
@@ -94,9 +54,6 @@ const BreederCarousel: React.FC<BreederCarouselProps> = ({ mainImage, breederCod
     <div className="overflow-hidden rounded-3xl border border-black/5 bg-white shadow-[0_14px_38px_rgba(0,0,0,0.14)]">
       <div
         className="relative aspect-[4/5] bg-neutral-100"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
       >
         <Link
           to="/"
@@ -132,18 +89,6 @@ const BreederCarousel: React.FC<BreederCarouselProps> = ({ mainImage, breederCod
           </div>
         ) : null}
 
-        {/* Swipe hint */}
-        {hasSeriesIntro && showSwipeHint && currentSlide === 1 ? (
-          <div className="absolute inset-x-0 bottom-20 z-10 flex justify-center animate-[bounce_1s_ease-in-out_infinite]">
-            <div className="flex items-center gap-2 rounded-full bg-black/60 px-4 py-2 text-sm text-white backdrop-blur-sm">
-              <svg className="h-4 w-4 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              <span>右滑查看系列介绍</span>
-            </div>
-          </div>
-        ) : null}
-
         {/* Slides container */}
         <div
           className="flex h-full transition-transform duration-300 ease-out"
@@ -159,11 +104,18 @@ const BreederCarousel: React.FC<BreederCarouselProps> = ({ mainImage, breederCod
                   </svg>
                   <span>系列介绍</span>
                 </div>
-                <div className="mt-2 text-xl font-bold text-white sm:text-2xl">{activeSeries?.name}</div>
-                <div className="mt-4 flex-1 space-y-3 text-sm leading-relaxed text-white/90">
-                  {seriesIntroItems.map((line, idx) => (
-                    <p key={idx}>{line}</p>
-                  ))}
+                <div className="mt-2 flex items-center justify-between">
+  <div className="text-xl font-bold text-white sm:text-2xl">{activeSeries?.name}</div>
+  <button
+    type="button"
+    onClick={() => setCurrentSlide(1)}
+    className="rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white"
+  >
+    返回图片
+  </button>
+</div>
+                <div className="mt-4 flex-1 whitespace-pre-wrap text-sm leading-relaxed text-white/90">
+                  {activeSeries?.description || ""}
                 </div>
               </div>
             </div>
@@ -177,7 +129,17 @@ const BreederCarousel: React.FC<BreederCarouselProps> = ({ mainImage, breederCod
               <div className="flex h-full w-full items-center justify-center text-sm text-neutral-400">暂无图片</div>
             )}
             <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/35 to-transparent" />
-            <div className="absolute bottom-3 left-3 flex flex-wrap gap-2">
+<div className="absolute bottom-3 left-3 flex flex-wrap gap-2">
+              {hasSeriesIntro ? (
+                <button
+                  type="button"
+                  onClick={() => setCurrentSlide(0)}
+                  className="rounded-full bg-black/70 px-3 py-1 text-xs font-medium text-white"
+                >
+                  查看系列说明
+                </button>
+              ) : null}
+
               <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-neutral-900">
                 {sexLabel(breederSex)}
               </span>
