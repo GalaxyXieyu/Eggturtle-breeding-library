@@ -88,10 +88,7 @@ def _image_has_small_variant(product_code: str, image_url: str) -> bool:
 
 def convert_product_to_response(product: Product) -> dict:
     """Convert Product model to response format matching frontend expectations."""
-    # Convert functional_designs from string to list
-    functional_designs = []
-    if product.functional_designs:
-        functional_designs = [design.strip() for design in product.functional_designs.split(',') if design.strip()]
+    # Convert images
 
     images = []
     for img in sorted(product.images, key=lambda x: x.sort_order):
@@ -138,21 +135,11 @@ def convert_product_to_response(product: Product) -> dict:
         "sireImageUrl": product.sire_image_url,
         "damImageUrl": product.dam_image_url,
 
-        "productType": product.product_type,
-        "tubeType": product.tube_type,
-        "boxType": product.box_type,
-        "processType": product.process_type,
-        "functionalDesigns": functional_designs,
-        "shape": product.shape,
-        "material": product.material,
-        "dimensions": product.dimensions or {},
         "images": images,
         "pricing": {
             "costPrice": product.cost_price,
             "factoryPrice": product.factory_price,
-            "hasSample": product.has_sample,
-            "boxDimensions": product.box_dimensions,
-            "boxQuantity": product.box_quantity
+            "hasSample": product.has_sample
         },
         "inStock": product.in_stock,
         "popularityScore": product.popularity_score,

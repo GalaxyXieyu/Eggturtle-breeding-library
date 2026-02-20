@@ -53,26 +53,10 @@ class Product(Base):
     sire_image_url = Column(String)
     dam_image_url = Column(String)
 
-    # Product type and classification fields - now more flexible
-    product_type = Column(String)  # 'tube' or 'box' based on Excel data
-    tube_type = Column(String)     # Various tube types from Excel
-    box_type = Column(String)      # Various box types from Excel
-    process_type = Column(String)  # Process type from Excel
-
-    # Basic properties - now flexible strings
-    functional_designs = Column(String)  # Store as comma-separated string or single value
-    shape = Column(String, nullable=False)
-    material = Column(String, nullable=False)
-
-    # Dimensions (stored as JSON for flexibility)
-    dimensions = Column(JSON)  # ProductDimensions object with weight, length, width, height, capacity, compartments
-
     # Pricing information
     cost_price = Column(Float, default=0.0)
     factory_price = Column(Float, nullable=False)
     has_sample = Column(Boolean, default=False)
-    box_dimensions = Column(String)
-    box_quantity = Column(Integer)
 
     # Stage/status fields (string-based for flexibility; enforced at API level)
     stage = Column(String, nullable=False, default="unknown", index=True)

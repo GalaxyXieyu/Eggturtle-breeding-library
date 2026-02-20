@@ -32,8 +32,9 @@ FastAPI backend for Turtle Album, providing public breeder browsing APIs and adm
    pip install -r requirements.txt
    ```
 
-4. **Run the server:**
+4. **Run migrations and start server:**
    ```bash
+   python scripts/db_migrate.py upgrade
    python run.py
    ```
 
@@ -128,6 +129,10 @@ python tests/run_tests.py
 
 ``` 
 backend/
+├── alembic/               # Alembic migration scripts
+│   ├── env.py
+│   └── versions/
+├── alembic.ini            # Alembic config
 ├── app/
 │   ├── main.py            # FastAPI app entry
 │   ├── api/routers/       # API routers
@@ -191,7 +196,37 @@ The application uses SQLite for development with the following models:
 
 ### Database Initialization
 
-The database is automatically created when the server starts. The admin user is also created automatically.
+Schema is managed by **Alembic**.
+
+- On startup, the app ensures DB is upgraded to Alembic `head`.
+- For legacy unversioned SQLite files, startup runs a one-time compatibility bridge and stamps baseline.
+- Before legacy bridge, app creates an automatic backup in `data/archive/` (or `/data/archive/` in container).
+- Destructive sqlite migrations (drop columns) are disabled by default during auto bridge.
+- Admin user is still created automatically after schema validation.
+
+To explicitly enable destructive sqlite migrations during auto bridge:
+
+```env
+AUTO_APPLY_DESTRUCTIVE_SQLITE_MIGRATIONS=true
+```
+
+### Migration Workflow (Standard)
+
+```bash
+cd backend
+
+# Upgrade DB to latest revision (run before local start / deploy)
+python scripts/db_migrate.py upgrade
+
+# After model changes, generate migration revision
+python scripts/db_migrate.py revision --autogenerate -m "describe_change"
+
+# Roll back one revision when needed
+python scripts/db_migrate.py downgrade -1
+
+# Check current revision
+python scripts/db_migrate.py current
+```
 
 ## 📸 Image Upload
 
@@ -213,8 +248,10 @@ The database is automatically created when the server starts. The admin user is 
 ### Database Changes
 
 1. Modify models in `app/models/models.py`
-2. Delete existing database file for development
-3. Restart server to recreate tables
+2. Create migration: `python scripts/db_migrate.py revision --autogenerate -m "describe_change"`
+3. Review migration script in `alembic/versions/`
+4. Apply migration: `python scripts/db_migrate.py upgrade`
+5. Run tests
 
 ### Running in Development Mode
 
@@ -246,6 +283,11 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
    DATABASE_URL=postgresql://user:password@localhost/dbname
    ```
 
+   Then migrate before boot:
+   ```bash
+   cd backend && python scripts/db_migrate.py upgrade
+   ```
+
 4. **Disable debug mode:**
    ```env
    DEBUG=False
@@ -260,6 +302,8 @@ pip install gunicorn
 # Run with gunicorn
 gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
 ```
+
+Deployment note: GitHub Actions deploy workflow enables `/data` PVC guard by default (`REQUIRE_DATA_PVC=true`) to prevent sqlite data loss on rollout.
 
 ## 🐛 Troubleshooting
 

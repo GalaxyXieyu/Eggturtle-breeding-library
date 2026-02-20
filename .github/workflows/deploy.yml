@@ -11,6 +11,7 @@ env:
   K8S_WORKLOAD_NAME: ${{ vars.K8S_WORKLOAD_NAME || 'turtles-album' }}
   K8S_WORKLOAD_KIND: ${{ vars.K8S_WORKLOAD_KIND || 'auto' }}
   K8S_CONTAINER_NAME: ${{ vars.K8S_CONTAINER_NAME || '' }}
+  REQUIRE_DATA_PVC: ${{ vars.REQUIRE_DATA_PVC || 'true' }}
 
 jobs:
   test:
@@ -141,6 +142,39 @@ jobs:
           if [ -z "$CONTAINER_NAME" ]; then
             echo "::error::Cannot resolve container name for $WORKLOAD_KIND/$WORKLOAD_NAME"
             exit 1
+          fi
+
+          if [ "${REQUIRE_DATA_PVC}" = "true" ]; then
+            echo "Checking /data persistence guard..."
+            MOUNT_ROWS=$(kubectl get "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE" \
+              -o jsonpath="{range .spec.template.spec.containers[?(@.name=='$CONTAINER_NAME')].volumeMounts[*]}{.name}:{.mountPath}{'\n'}{end}")
+
+            DATA_VOLUME_NAME=$(printf '%s\n' "$MOUNT_ROWS" | awk -F: '$2=="/data" || $2=="/data/app.db"{print $1; exit}')
+            if [ -z "$DATA_VOLUME_NAME" ]; then
+              echo "::error::Missing /data volumeMount for $WORKLOAD_KIND/$WORKLOAD_NAME container=$CONTAINER_NAME. Refusing deploy to prevent sqlite data loss."
+              echo "Current volumeMounts:"
+              printf '%s\n' "$MOUNT_ROWS"
+              exit 1
+            fi
+
+            PVC_NAME=$(kubectl get "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE" \
+              -o jsonpath="{.spec.template.spec.volumes[?(@.name=='$DATA_VOLUME_NAME')].persistentVolumeClaim.claimName}")
+            if [ -z "$PVC_NAME" ]; then
+              echo "::error::Volume '$DATA_VOLUME_NAME' is not backed by persistentVolumeClaim. Refusing deploy."
+              kubectl get "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE" -o yaml | sed -n '1,220p'
+              exit 1
+            fi
+
+            PVC_PHASE=$(kubectl get pvc "$PVC_NAME" -n "$NAMESPACE" -o jsonpath='{.status.phase}')
+            if [ "$PVC_PHASE" != "Bound" ]; then
+              echo "::error::PVC '$PVC_NAME' phase=$PVC_PHASE (expected Bound). Refusing deploy."
+              kubectl get pvc "$PVC_NAME" -n "$NAMESPACE" -o yaml | sed -n '1,220p'
+              exit 1
+            fi
+
+            echo "PVC guard passed: volume=$DATA_VOLUME_NAME pvc=$PVC_NAME phase=$PVC_PHASE"
+          else
+            echo "Skipping /data PVC guard (REQUIRE_DATA_PVC=${REQUIRE_DATA_PVC})"
           fi
 
           kubectl set image "$WORKLOAD_KIND"/"$WORKLOAD_NAME" "$CONTAINER_NAME"="$IMAGE_REF" -n "$NAMESPACE"

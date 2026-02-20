@@ -9,11 +9,11 @@ from pathlib import Path
 
 from app.db.session import (
     DATABASE_URL,
-    create_tables,
     get_db,
     get_sqlite_file_path,
     validate_schema_or_raise,
 )
+from app.db.alembic_manager import upgrade_or_bootstrap_schema
 from app.core.security import create_admin_user
 from app.schemas.schemas import ErrorResponse
 
@@ -86,29 +86,21 @@ if not os.path.exists("static"):
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 # NOTE: Do not mount UPLOAD_DIR directly; serve via API for future auth control.
 
-# Initialize schema on startup.
-# This project uses SQLAlchemy `create_all()` (no Alembic migrations).
+# Initialize and validate schema on startup.
 @app.on_event("startup")
 async def startup_event():
-    # 1) Ensure tables exist for a fresh DB.
-    create_tables()
+    # 1) Apply Alembic migrations (with legacy sqlite bridge for old unversioned DBs).
+    try:
+        migration_mode = upgrade_or_bootstrap_schema()
+        logger.info(f"Database migration ready: {migration_mode}")
+    except Exception as e:
+        logger.error(f"Database migration failed: {e}")
+        raise
 
-    # 2) Run idempotent sqlite migrations for existing DB files.
-    sqlite_file = get_sqlite_file_path()
-    if sqlite_file and sqlite_file.exists():
-        try:
-            from app.db.migrations import migrate_series_code_and_rel, migrate_product_stage_status
-
-            migrate_series_code_and_rel(sqlite_file)
-            migrate_product_stage_status(sqlite_file)
-            logger.info("SQLite migrations applied (idempotent)")
-        except Exception as e:
-            logger.error(f"SQLite migrations failed: {e}")
-            raise
-
-    # 3) Fail fast if schema still mismatches the current code.
+    # 2) Fail fast if schema still mismatches the current code.
     validate_schema_or_raise()
 
+    sqlite_file = get_sqlite_file_path()
     if sqlite_file:
         logger.info(f"Using SQLite DB: {sqlite_file}")
     else:

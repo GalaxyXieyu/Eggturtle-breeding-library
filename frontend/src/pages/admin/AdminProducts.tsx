@@ -123,30 +123,12 @@ const formSchema = z.object({
   name: z.string().min(1, "产品名称不能为空"),
   code: z.string().min(1, "货号不能为空"),
   description: z.string().min(1, "产品描述不能为空"),
-  material: z.string().min(1, "材质不能为空"),
-  shape: z.string().min(1, "形状不能为空"),
-  tubeType: z.string().optional(),
-  boxType: z.string().optional(),
-  processType: z.string().optional(),
   hasSample: z.boolean().default(false),
-  boxDimensions: z.string().optional(),
-  boxQuantity: z.coerce.number().optional(),
   inStock: z.boolean().default(true),
   popularityScore: z.coerce.number().min(0).max(100).default(0),
   isFeatured: z.boolean().default(false),
   stage: z.string().default("unknown"),
-  status: z.enum(["draft", "active", "reserved", "sold"]).default("draft"),
-  dimensions: z.object({
-    weight: z.coerce.number().optional(),
-    length: z.coerce.number().optional(),
-    width: z.coerce.number().optional(),
-    height: z.coerce.number().optional(),
-    capacity: z.object({
-      min: z.coerce.number().optional(),
-      max: z.coerce.number().optional()
-    }).optional(),
-    compartments: z.coerce.number().min(1).optional()
-  }).optional()
+  status: z.enum(["draft", "active", "reserved", "sold"]).default("draft")
 });
 
 const AdminProducts = () => {
@@ -2062,130 +2044,8 @@ const AdminProducts = () => {
                       </div>
 
                       {/* 详细参数部分 */}
-                      <div className="space-y-4 border-b pb-6">
-                        <h3 className="text-lg font-medium text-gray-900">产品尺寸与规格</h3>
-                        
-                        <div className="grid grid-cols-2 gap-4">
-                          <FormField
-                            control={editForm.control}
-                            name="dimensions.weight"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>重量 (g)</FormLabel>
-                                <FormControl>
-                                  <Input {...field} type="number" step="0.1" placeholder="输入重量" />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <div className="grid grid-cols-2 gap-2">
-                            <FormField
-                              control={editForm.control}
-                              name="dimensions.capacity.min"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>容量下限 (ml)</FormLabel>
-                                  <FormControl>
-                                    <Input {...field} type="number" step="0.1" placeholder="最小" />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={editForm.control}
-                              name="dimensions.capacity.max"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>容量上限 (ml)</FormLabel>
-                                  <FormControl>
-                                    <Input {...field} type="number" step="0.1" placeholder="最大" />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-4">
-                          <FormField
-                            control={editForm.control}
-                            name="dimensions.length"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>长度 (mm)</FormLabel>
-                                <FormControl>
-                                  <Input {...field} type="number" step="0.1" placeholder="输入长度" />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={editForm.control}
-                            name="dimensions.width"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>宽度 (mm)</FormLabel>
-                                <FormControl>
-                                  <Input {...field} type="number" step="0.1" placeholder="输入宽度" />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={editForm.control}
-                            name="dimensions.height"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>高度 (mm)</FormLabel>
-                                <FormControl>
-                                  <Input {...field} type="number" step="0.1" placeholder="输入高度" />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <FormField
-                            control={editForm.control}
-                            name="boxDimensions"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>纸箱尺寸</FormLabel>
-                                <FormControl>
-                                  <Input {...field} placeholder="例如: 50x30x20cm" />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={editForm.control}
-                            name="boxQuantity"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>装箱数量</FormLabel>
-                                <FormControl>
-                                  <Input {...field} type="number" placeholder="输入装箱数量" />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-                      </div>
                     </div>
-                    
+
                   </div>
                   <div className="sticky bottom-0 -mx-6 px-6 py-4 bg-white border-t flex justify-end gap-4">
                     <Button
@@ -2496,130 +2356,8 @@ const AdminProducts = () => {
                   </div>
 
                   {/* 详细参数部分 */}
-                  <div className="space-y-4 border-b pb-6">
-                    <h3 className="text-lg font-medium text-gray-900">产品尺寸与规格</h3>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={createForm.control}
-                        name="dimensions.weight"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>重量 (g)</FormLabel>
-                            <FormControl>
-                              <Input {...field} type="number" step="0.1" placeholder="输入重量" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <div className="grid grid-cols-2 gap-2">
-                        <FormField
-                          control={createForm.control}
-                          name="dimensions.capacity.min"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>容量下限 (ml)</FormLabel>
-                              <FormControl>
-                                <Input {...field} type="number" step="0.1" placeholder="最小" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={createForm.control}
-                          name="dimensions.capacity.max"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>容量上限 (ml)</FormLabel>
-                              <FormControl>
-                                <Input {...field} type="number" step="0.1" placeholder="最大" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-4">
-                      <FormField
-                        control={createForm.control}
-                        name="dimensions.length"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>长度 (mm)</FormLabel>
-                            <FormControl>
-                              <Input {...field} type="number" step="0.1" placeholder="输入长度" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={createForm.control}
-                        name="dimensions.width"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>宽度 (mm)</FormLabel>
-                            <FormControl>
-                              <Input {...field} type="number" step="0.1" placeholder="输入宽度" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={createForm.control}
-                        name="dimensions.height"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>高度 (mm)</FormLabel>
-                            <FormControl>
-                              <Input {...field} type="number" step="0.1" placeholder="输入高度" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={createForm.control}
-                        name="boxDimensions"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>纸箱尺寸</FormLabel>
-                            <FormControl>
-                              <Input {...field} placeholder="例如: 50x30x20cm" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={createForm.control}
-                        name="boxQuantity"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>装箱数量</FormLabel>
-                            <FormControl>
-                              <Input {...field} type="number" placeholder="输入装箱数量" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
                 </div>
-                
+
                 <div className="flex justify-end gap-4 mt-8">
                   <Button 
                     type="button"

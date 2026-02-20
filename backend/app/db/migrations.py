@@ -1,10 +1,7 @@
-"""Lightweight, idempotent sqlite migrations.
+"""Legacy lightweight sqlite migrations.
 
-This project uses SQLAlchemy `create_all()` (no Alembic), which will not ALTER
-existing tables. For production safety, we run small sqlite DDL migrations that
-are safe to run multiple times.
-
-Keep migrations focused and additive.
+These helpers are kept only for bridging old unversioned sqlite databases to the
+Alembic baseline revision. New schema changes must go through Alembic revisions.
 """
 
 from __future__ import annotations
@@ -48,7 +45,7 @@ def migrate_series_code_and_rel(db_path: str | Path) -> None:
         conn.execute("PRAGMA foreign_keys=ON")
 
         if not _table_exists(conn, "series") or not _table_exists(conn, "products"):
-            # Caller should run create_all() first.
+            # Caller should ensure baseline tables exist first.
             return
 
         # 1) series.code
@@ -141,6 +138,82 @@ def migrate_product_stage_status(db_path: str | Path) -> None:
             conn.execute("CREATE INDEX ix_products_stage ON products (stage)")
         if not _index_exists(conn, "ix_products_status"):
             conn.execute("CREATE INDEX ix_products_status ON products (status)")
+
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def migrate_remove_product_dimensions(db_path: str | Path) -> None:
+    """Migration v2026-02-20.
+
+    - products: drop dimensions, box_dimensions, box_quantity columns
+
+    Safe to run multiple times.
+    """
+
+    db_path = Path(db_path).expanduser().resolve()
+    if not db_path.exists():
+        raise FileNotFoundError(f"DB not found: {db_path}")
+
+    conn = sqlite3.connect(str(db_path))
+    try:
+        conn.execute("PRAGMA foreign_keys=ON")
+
+        if not _table_exists(conn, "products"):
+            return
+
+        cols = [r[1] for r in conn.execute("PRAGMA table_info(products)").fetchall()]
+
+        # Drop columns if they exist (SQLite 3.35.0+)
+        if "dimensions" in cols:
+            conn.execute("ALTER TABLE products DROP COLUMN dimensions")
+        if "box_dimensions" in cols:
+            conn.execute("ALTER TABLE products DROP COLUMN box_dimensions")
+        if "box_quantity" in cols:
+            conn.execute("ALTER TABLE products DROP COLUMN box_quantity")
+
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def migrate_remove_packaging_fields(db_path: str | Path) -> None:
+    """Migration v2026-02-20.
+
+    - products: drop product_type, tube_type, box_type, process_type, functional_designs, shape, material columns
+
+    Safe to run multiple times.
+    """
+
+    db_path = Path(db_path).expanduser().resolve()
+    if not db_path.exists():
+        raise FileNotFoundError(f"DB not found: {db_path}")
+
+    conn = sqlite3.connect(str(db_path))
+    try:
+        conn.execute("PRAGMA foreign_keys=ON")
+
+        if not _table_exists(conn, "products"):
+            return
+
+        cols = [r[1] for r in conn.execute("PRAGMA table_info(products)").fetchall()]
+
+        # Drop packaging-related columns if they exist (SQLite 3.35.0+)
+        if "product_type" in cols:
+            conn.execute("ALTER TABLE products DROP COLUMN product_type")
+        if "tube_type" in cols:
+            conn.execute("ALTER TABLE products DROP COLUMN tube_type")
+        if "box_type" in cols:
+            conn.execute("ALTER TABLE products DROP COLUMN box_type")
+        if "process_type" in cols:
+            conn.execute("ALTER TABLE products DROP COLUMN process_type")
+        if "functional_designs" in cols:
+            conn.execute("ALTER TABLE products DROP COLUMN functional_designs")
+        if "shape" in cols:
+            conn.execute("ALTER TABLE products DROP COLUMN shape")
+        if "material" in cols:
+            conn.execute("ALTER TABLE products DROP COLUMN material")
 
         conn.commit()
     finally:

@@ -30,23 +30,8 @@ class BatchImportService:
         '货号': 'code',
         '产品名称': 'name',
         '产品描述': 'description',
-        '产品类型': 'product_type',
-        '管型': 'tube_type',
-        '盒型': 'box_type',
-        '形状': 'shape',
-        '材质': 'material',
-        '功能设计': 'functional_designs',
         '出厂价格': 'factory_price',
-        '是否有样品': 'has_sample',
-        '重量': 'weight',
-        '长度': 'length',
-        '宽度': 'width',
-        '高度': 'height',
-        '容量最小值': 'capacity_min',
-        '容量最大值': 'capacity_max',
-        '分隔数量': 'compartments',
-        '纸箱尺寸': 'box_dimensions',
-        '装箱数量': 'box_quantity'
+        '是否有样品': 'has_sample'
     }
     MAX_ZIP_FILES = 5000
     MAX_ZIP_UNCOMPRESSED_BYTES = 500 * 1024 * 1024
@@ -63,23 +48,8 @@ class BatchImportService:
             '货号': 'P001',
             '产品名称': 'Sample Product',
             '产品描述': 'This is a sample product',
-            '产品类型': 'tube',
-            '管型': 'Round Tube',
-            '盒型': '',
-            '形状': 'Circular',
-            '材质': 'ABS',
-            '功能设计': 'Magnetic',
             '出厂价格': 1.5,
-            '是否有样品': '是',
-            '重量': 10.5,
-            '长度': 100,
-            '宽度': 20,
-            '高度': 20,
-            '容量最小值': 5,
-            '容量最大值': 10,
-            '分隔数量': 0,
-            '纸箱尺寸': '50x50x50',
-            '装箱数量': 100
+            '是否有样品': '是'
         }
         df.loc[0] = sample_data
 
@@ -223,41 +193,12 @@ class BatchImportService:
                         product_data = {
                             'name': BatchImportService._clean_string(row.get('产品名称')) or f"Product {product_code}",
                             'description': BatchImportService._clean_string(row.get('产品描述')) or "",
-                            'product_type': BatchImportService._clean_string(row.get('产品类型')) or "tube",
-                            'tube_type': BatchImportService._clean_string(row.get('管型')),
-                            'box_type': BatchImportService._clean_string(row.get('盒型')),
-                            'shape': BatchImportService._clean_string(row.get('形状')) or "圆形",
-                            'material': BatchImportService._clean_string(row.get('材质')) or "AS",
-                            'functional_designs': BatchImportService._clean_string(row.get('功能设计')) or "",
                             'factory_price': BatchImportService._safe_float(row.get('出厂价格')) or 0.0,
                             'has_sample': BatchImportService._clean_string(row.get('是否有样品')) == '是',
-                            'box_dimensions': BatchImportService._clean_string(row.get('纸箱尺寸')),
-                            'box_quantity': BatchImportService._safe_int(row.get('装箱数量')),
                             'cost_price': 0.0,
                             'in_stock': True,
                             'popularity_score': 50
                         }
-
-                        dimensions = {}
-                        w = BatchImportService._safe_float(row.get('重量'))
-                        l = BatchImportService._safe_float(row.get('长度'))
-                        wd = BatchImportService._safe_float(row.get('宽度'))
-                        h = BatchImportService._safe_float(row.get('高度'))
-                        c_min = BatchImportService._safe_float(row.get('容量最小值'))
-                        c_max = BatchImportService._safe_float(row.get('容量最大值'))
-                        comp = BatchImportService._safe_int(row.get('分隔数量'))
-
-                        if w is not None: dimensions['weight'] = w
-                        if l is not None: dimensions['length'] = l
-                        if wd is not None: dimensions['width'] = wd
-                        if h is not None: dimensions['height'] = h
-                        if c_min is not None or c_max is not None:
-                            dimensions['capacity'] = {}
-                            if c_min is not None: dimensions['capacity']['min'] = c_min
-                            if c_max is not None: dimensions['capacity']['max'] = c_max
-                        if comp is not None: dimensions['compartments'] = comp
-
-                        product_data['dimensions'] = dimensions
 
                         if existing_product:
                             for key, value in product_data.items():

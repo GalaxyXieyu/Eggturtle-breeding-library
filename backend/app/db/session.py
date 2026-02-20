@@ -67,8 +67,8 @@ def create_tables():
 
 def validate_schema_or_raise() -> None:
     """
-    Validate critical turtle-album schema. `create_all` does not alter old tables,
-    so we fail fast when columns are missing.
+    Validate critical turtle-album schema after migrations.
+    We still fail fast when columns are missing to avoid partial startup.
     """
     required_columns: Dict[str, Set[str]] = {
         "products": {"series_id", "sex", "offspring_unit_price", "stage", "status"},
@@ -106,6 +106,6 @@ def validate_schema_or_raise() -> None:
     raise RuntimeError(
         "Database schema is incompatible with current code. "
         + "; ".join(error_parts)
-        + ". Please upgrade DB (sqlite) via: backend/scripts/migrate_series_code_and_rel.py "
-        + "or recreate via backend/scripts/turtle_album_init_db.py --reset (dev only)."
+        + ". Please run migrations via: cd backend && python scripts/db_migrate.py upgrade. "
+        + "For local dev reset only, use backend/scripts/turtle_album_init_db.py --reset."
     )

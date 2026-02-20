@@ -18,7 +18,8 @@ async def list_breeders(
     db: Session = Depends(get_db),
 ):
     """Public: list breeders (repurposed Product) with optional series/sex filters."""
-    query = db.query(Product)
+    from sqlalchemy.orm import joinedload
+    query = db.query(Product).options(joinedload(Product.images))
 
     # Only turtle-album records: must have series_id + sex populated.
     query = query.filter(Product.series_id.isnot(None)).filter(Product.sex.isnot(None))
@@ -45,8 +46,10 @@ async def get_breeder_detail(
     db: Session = Depends(get_db),
 ):
     """Public: breeder (post) detail."""
+    from sqlalchemy.orm import joinedload
     breeder = (
         db.query(Product)
+        .options(joinedload(Product.images))
         .filter(Product.id == breeder_id)
         .filter(Product.series_id.isnot(None))
         .filter(Product.sex.isnot(None))
@@ -68,8 +71,10 @@ async def get_breeder_records(
     - For female: include matingRecordsAsFemale + eggRecords
     - For male: include matingRecordsAsMale
     """
+    from sqlalchemy.orm import joinedload
     breeder = (
         db.query(Product)
+        .options(joinedload(Product.images))
         .filter(Product.id == breeder_id)
         .filter(Product.series_id.isnot(None))
         .filter(Product.sex.isnot(None))

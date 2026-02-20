@@ -17,19 +17,6 @@ class ProductStatus(str, Enum):
     SOLD = "sold"
 
 # Base schemas
-class ProductDimensions(BaseModel):
-    weight: Optional[float] = None
-    length: Optional[float] = None
-    width: Optional[float] = None
-    height: Optional[float] = None
-    capacity: Optional[Dict[str, float]] = None  # {"min": float, "max": float}
-    compartments: Optional[int] = None
-
-class ProductPricing(BaseModel):
-    has_sample: bool = False
-    box_dimensions: Optional[str] = None
-    box_quantity: Optional[int] = None
-
 class ProductImageBase(BaseModel):
     url: str
     alt: str
@@ -66,19 +53,9 @@ class ProductBase(BaseModel):
     sire_image_url: Optional[str] = None
     dam_image_url: Optional[str] = None
 
-    product_type: Optional[str] = None
-    tube_type: Optional[str] = None
-    box_type: Optional[str] = None
-    process_type: Optional[str] = None
-    functional_designs: List[str] = []
-    shape: str
-    material: str
-    dimensions: ProductDimensions
     cost_price: Optional[float] = None
     factory_price: float
     has_sample: bool = False
-    box_dimensions: Optional[str] = None
-    box_quantity: Optional[int] = None
     in_stock: bool = True
     popularity_score: int = 0
     is_featured: bool = False
@@ -103,14 +80,6 @@ class ProductUpdate(BaseModel):
     sire_image_url: Optional[str] = None
     dam_image_url: Optional[str] = None
 
-    product_type: Optional[str] = None
-    tube_type: Optional[str] = None
-    box_type: Optional[str] = None
-    process_type: Optional[str] = None
-    functional_designs: Optional[List[str]] = None
-    shape: Optional[str] = None
-    material: Optional[str] = None
-    dimensions: Optional[ProductDimensions] = None
     cost_price: Optional[float] = None
     factory_price: Optional[float] = None
     has_sample: Optional[bool] = None

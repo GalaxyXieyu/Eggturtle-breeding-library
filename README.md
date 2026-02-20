@@ -49,6 +49,7 @@ cd backend
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+python scripts/db_migrate.py upgrade
 python run.py
 ```
 
@@ -70,9 +71,30 @@ npm run dev
 - 前端端口：默认 `http://localhost:8080`，如被占用会自动使用 `8081`（端口会写入 `/tmp/turtle-frontend.log`）。
 - 后端端口：`http://localhost:8000`，健康检查：`http://localhost:8000/health`。
 - 主数据库文件（dev）：`backend/data/app.db`。
+- 数据库结构变更统一使用 Alembic，禁止再用“删库重建”作为常规流程。
 - 生产环境：Docker 默认 `DATABASE_URL=sqlite:////data/app.db`（建议挂载 `/data` 做持久化）。
 - 历史 DB 统一放 `backend/data/archive/`。
 - 不要在仓库根目录或 `backend/` 根目录散落 `*.db`。
+
+## 数据库迁移规范（Alembic）
+
+```bash
+cd backend
+
+# 1) 同步到最新版本（开发/部署前都要执行）
+python scripts/db_migrate.py upgrade
+
+# 2) 生成迁移（修改 models 后）
+python scripts/db_migrate.py revision --autogenerate -m "describe_change"
+
+# 3) 回滚一个版本（需要时）
+python scripts/db_migrate.py downgrade -1
+```
+
+- 已有历史 SQLite（未带 `alembic_version`）会在服务首次启动时自动桥接并标记 baseline。
+- 首次桥接旧 SQLite 前会自动备份到 `backend/data/archive/`（生产容器对应 `/data/archive/`）。
+- 新增 schema 变更必须提交 Alembic revision（`backend/alembic/versions/`）。
+- 默认不会自动执行“删列”类破坏性 SQLite 迁移；如确需自动执行，设置 `AUTO_APPLY_DESTRUCTIVE_SQLITE_MIGRATIONS=true`。
 
 ## 截图/验证约定（避免误会）
 
@@ -87,6 +109,7 @@ cd frontend && npm run lint
 cd frontend && npm run build
 
 # Backend
+cd backend && python scripts/db_migrate.py upgrade
 cd backend && python -m pytest tests/ -v
 ```
 
@@ -94,4 +117,4 @@ cd backend && python -m pytest tests/ -v
 
 - Docker 镜像默认 `DATABASE_URL=sqlite:////data/app.db`
 - 推荐生产环境挂载 `/data`（持久化 DB 与上传图片）
-
+- CI 默认启用 `/data` PVC 强校验（`REQUIRE_DATA_PVC=true`），未挂 PVC 会阻止发布

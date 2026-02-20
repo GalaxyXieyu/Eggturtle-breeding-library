@@ -1,9 +1,10 @@
-"""SQLite migration entrypoint for turtle_album.
+"""Legacy sqlite migration entrypoint for turtle_album.
 
-Use this for manual runs. Production should run migrations automatically on
-startup (see `app/main.py`).
+This script is kept for compatibility with old unversioned sqlite snapshots.
+For normal day-to-day migrations, use Alembic:
+  cd backend && python scripts/db_migrate.py upgrade
 
-Usage:
+Legacy usage:
   python3 backend/scripts/migrate_series_code_and_rel.py --db ./backend/data/app.db
 """
 
@@ -12,7 +13,11 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from app.db.migrations import migrate_series_code_and_rel, migrate_product_stage_status
+from app.db.migrations import (
+    migrate_series_code_and_rel,
+    migrate_product_stage_status,
+    migrate_remove_product_dimensions,
+)
 
 
 def main() -> None:
@@ -23,7 +28,8 @@ def main() -> None:
     db_path = Path(args.db).expanduser().resolve()
     migrate_series_code_and_rel(db_path)
     migrate_product_stage_status(db_path)
-    print("OK: migrated series code + relation table + products stage/status")
+    migrate_remove_product_dimensions(db_path)
+    print("OK: migrated series code + relation table + products stage/status + removed dimensions")
 
 
 if __name__ == "__main__":
