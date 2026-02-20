@@ -107,6 +107,11 @@ def convert_product_to_response(product: Product) -> dict:
             elif not _image_has_small_variant(product.code, url):
                 continue
 
+        # Normalize local image URLs to absolute paths so frontend routing doesn't break.
+        # e.g. "images/xx.jpg" -> "/images/xx.jpg"
+        if not (url.startswith("http://") or url.startswith("https://")) and not url.startswith("/"):
+            url = "/" + url
+
         images.append(
             {
                 "id": img.id,
