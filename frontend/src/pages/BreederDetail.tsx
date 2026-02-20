@@ -469,9 +469,9 @@ const BreederDetail: React.FC = () => {
                     ) : null}
                   </div>
 
-                  <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-neutral-200/70 bg-neutral-50/40 p-3 sm:p-4">
-                    <ParentPill label="父本" variant="father" code={breederQ.data.sireCode} query={sireBreederQ} />
-                    <ParentPill label="母本" variant="mother" code={breederQ.data.damCode} query={damBreederQ} />
+                  <div className="mt-4 flex flex-wrap items-center justify-center gap-2 rounded-2xl border border-neutral-200/70 bg-neutral-50/40 p-3 sm:p-4">
+                    <ParentPill label="父本：" variant="father" code={breederQ.data.sireCode} query={sireBreederQ} />
+                    <ParentPill label="母本：" variant="mother" code={breederQ.data.damCode} query={damBreederQ} />
                   </div>
 
                   {breederQ.data.description ? (
