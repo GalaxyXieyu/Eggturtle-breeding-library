@@ -103,18 +103,9 @@ import { ProductDetailView } from "./products/ProductDetailView";
 import { ProductImagesManager } from "./products/images/ProductImagesManager";
 import { useProductImages } from "./products/images/useProductImages";
 
-// Form validation schema
-const formSchema = z.object({
-  name: z.string().min(1, "产品名称不能为空"),
-  code: z.string().min(1, "货号不能为空"),
-  description: z.string().min(1, "产品描述不能为空"),
-  hasSample: z.boolean().default(false),
-  inStock: z.boolean().default(true),
-  popularityScore: z.coerce.number().min(0).max(100).default(0),
-  isFeatured: z.boolean().default(false),
-  stage: z.string().default("hatchling"),
-  status: z.enum(["draft", "active", "reserved", "sold"]).default("active")
-});
+import { ProductCreateDialog } from "./products/forms/ProductCreateDialog";
+import { ProductEditForm } from "./products/forms/ProductEditForm";
+import type { ProductFormValues } from "./products/forms/productSchema";
 
 const AdminProducts = () => {
   // Protect admin route
@@ -304,7 +295,6 @@ const AdminProducts = () => {
     setIsEditMode(true);
     setIsProductDetailOpen(true);
 
-    editForm.setValue("isFeatured", product.isFeatured);
     images.initFromProduct(product);
   };
 
@@ -315,54 +305,7 @@ const AdminProducts = () => {
     }
   };
 
-  // Init forms
-  const editForm = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: "",
-      code: "",
-      description: "",
-      hasSample: false,
-      inStock: true,
-      popularityScore: 0,
-      stage: "unknown",
-      status: "draft"
-    }
-  });
-
-  const createForm = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: "",
-      code: "",
-      description: "",
-      hasSample: false,
-      inStock: true,
-      popularityScore: 0,
-      stage: "unknown",
-      status: "draft"
-    }
-  });
-
-  useEffect(() => {
-    if (selectedProduct && isEditMode) {
-      // Update form values when selected product changes
-      editForm.reset({
-        name: selectedProduct.name,
-        code: selectedProduct.code,
-        description: selectedProduct.description,
-        hasSample: false,
-        inStock: selectedProduct.inStock,
-        popularityScore: selectedProduct.popularityScore,
-        stage: selectedProduct.stage || "unknown",
-        status: selectedProduct.status || "draft"
-      });
-
-      images.initFromProduct(selectedProduct);
-    }
-  }, [selectedProduct, editForm, isEditMode]);
-
-  const handleCreateProduct = async (values: z.infer<typeof formSchema>) => {
+  const handleCreateProduct = async (values: ProductFormValues) => {
     try {
       // First create the product without images
       const backendProductData = {
@@ -401,7 +344,6 @@ const AdminProducts = () => {
 
           // After creation, jump into edit/detail view so images can be managed (set main/delete/reorder).
           setIsCreateDialogOpen(false);
-          createForm.reset();
 
           if (created?.id) {
             setSelectedProduct(created);
@@ -416,7 +358,7 @@ const AdminProducts = () => {
     }
   };
 
-  const handleSaveProduct = (values: z.infer<typeof formSchema>) => {
+  const handleSaveProduct = (values: ProductFormValues) => {
     if (!selectedProduct) return;
 
     const updatedProductData = {
@@ -545,306 +487,36 @@ const AdminProducts = () => {
         detail={productDetails}
         edit={
           selectedProduct && isEditMode ? (
-            <div className="mt-6">
-                          <Form {...editForm}>
-                            <form onSubmit={editForm.handleSubmit(handleSaveProduct)}>
-                              <div className="space-y-4 pb-24">
-                                <ProductImagesManager mode="edit" productId={selectedProduct.id} images={images} />
-            
-                                <div className="space-y-6">
-                                  {/* 基本信息部分 */}
-                                  <div className="space-y-4 border-b pb-6">
-                                    <h3 className="text-lg font-medium text-gray-900">基本信息</h3>
-                                    <FormField
-                                      control={editForm.control}
-                                      name="name"
-                                      render={({ field }) => (
-                                        <FormItem>
-                                          <FormLabel>产品名称</FormLabel>
-                                          <FormControl>
-                                            <Input {...field} placeholder="输入产品名称" />
-                                          </FormControl>
-                                          <FormMessage />
-                                        </FormItem>
-                                      )}
-                                    />
-            
-                                    <FormField
-                                      control={editForm.control}
-                                      name="code"
-                                      render={({ field }) => (
-                                        <FormItem>
-                                          <FormLabel>货号</FormLabel>
-                                          <FormControl>
-                                            <Input {...field} placeholder="输入产品货号" />
-                                          </FormControl>
-                                          <FormMessage />
-                                        </FormItem>
-                                      )}
-                                    />
-            
-                                    <FormField
-                                      control={editForm.control}
-                                      name="stage"
-                                      render={({ field }) => (
-                                        <FormItem>
-                                          <FormLabel>Stage</FormLabel>
-                                          <FormControl>
-                                            <Input {...field} placeholder="unknown" />
-                                          </FormControl>
-                                          <FormMessage />
-                                        </FormItem>
-                                      )}
-                                    />
-            
-                                    <FormField
-                                      control={editForm.control}
-                                      name="status"
-                                      render={({ field }) => (
-                                        <FormItem>
-                                          <FormLabel>Status</FormLabel>
-                                          <Select value={field.value} onValueChange={field.onChange}>
-                                            <FormControl>
-                                              <SelectTrigger>
-                                                <SelectValue placeholder="选择状态" />
-                                              </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                              <SelectItem value="draft">draft</SelectItem>
-                                              <SelectItem value="active">active</SelectItem>
-                                              <SelectItem value="reserved">reserved</SelectItem>
-                                              <SelectItem value="sold">sold</SelectItem>
-                                            </SelectContent>
-                                          </Select>
-                                          <FormMessage />
-                                        </FormItem>
-                                      )}
-                                    />
-            
-                                    <FormField
-                                      control={editForm.control}
-                                      name="description"
-                                      render={({ field }) => (
-                                        <FormItem>
-                                          <FormLabel>产品描述</FormLabel>
-                                          <FormControl>
-                                            <Textarea 
-                                              {...field} 
-                                              placeholder="输入产品描述"
-                                              className="min-h-[100px]"
-                                            />
-                                          </FormControl>
-                                          <FormMessage />
-                                        </FormItem>
-                                      )}
-                                    />
-            
-                                    {/* Featured Product Toggle */}
-                                    <FormField
-                                      control={editForm.control}
-                                      name="isFeatured"
-                                      render={({ field }) => (
-                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                          <div className="space-y-0.5">
-                                            <FormLabel className="text-base">精选产品</FormLabel>
-                                            <div className="text-sm text-muted-foreground">
-                                              将此产品标记为精选产品，在首页展示
-                                            </div>
-                                          </div>
-                                          <FormControl>
-                                            <Switch
-                                              checked={field.value}
-                                              onCheckedChange={field.onChange}
-                                            />
-                                          </FormControl>
-                                        </FormItem>
-                                      )}
-                                    />
-                                  </div>
-            
-                                  {/* 详细参数部分 */}
-                                </div>
-            
-                              </div>
-                              <div className="sticky bottom-0 -mx-6 px-6 py-4 bg-white border-t flex justify-end gap-4">
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  className="border-gray-300 text-gray-600 hover:bg-gray-200 hover:text-gray-900"
-                                  onClick={() => {
-                                    setIsEditMode(false);
-                                    images.initFromProduct(selectedProduct);
-                                  }}
-                                >
-                                  取消
-                                </Button>
-                                <Button
-                                  type="submit"
-                                  className="bg-gray-900 hover:bg-gray-800 text-white"
-                                >
-                                  保存产品
-                                </Button>
-                              </div>
-                            </form>
-                          </Form>
-                        </div>
+            <ProductEditForm
+              product={selectedProduct}
+              onSubmit={handleSaveProduct}
+              onCancel={() => {
+                setIsEditMode(false);
+                images.initFromProduct(selectedProduct);
+              }}
+              isSaving={updateProductMutation.isPending}
+              images={
+                <ProductImagesManager
+                  mode="edit"
+                  productId={selectedProduct.id}
+                  images={images}
+                />
+              }
+            />
           ) : null
         }
+        
       />
 
-{/* Create Product Dialog */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>添加产品</DialogTitle>
-            <DialogDescription>
-              填写以下表单添加新产品
-            </DialogDescription>
-          </DialogHeader>
-          
-          <Form {...createForm}>
-            <form onSubmit={createForm.handleSubmit(handleCreateProduct)}>
-              <div className="space-y-4 mt-4">
-                <ProductImagesManager mode="create" images={images} />
+      <ProductCreateDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        onSubmit={handleCreateProduct}
+        isSaving={createProductMutation.isPending}
+        images={<ProductImagesManager mode="create" images={images} />}
+        onCancel={() => images.reset()}
+      />
 
-                <div className="space-y-6">
-                  {/* 基本信息部分 */}
-                  <div className="space-y-4 border-b pb-6">
-                    <h3 className="text-lg font-medium text-gray-900">基本信息</h3>
-                    <FormField
-                      control={createForm.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>产品名称</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="输入产品名称" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={createForm.control}
-                      name="code"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>货号</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="输入产品货号" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={createForm.control}
-                      name="stage"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Stage</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="unknown" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={createForm.control}
-                      name="status"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Status</FormLabel>
-                          <Select value={field.value} onValueChange={field.onChange}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="选择状态" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="draft">draft</SelectItem>
-                              <SelectItem value="active">active</SelectItem>
-                              <SelectItem value="reserved">reserved</SelectItem>
-                              <SelectItem value="sold">sold</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={createForm.control}
-                      name="description"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>产品描述</FormLabel>
-                          <FormControl>
-                            <Textarea 
-                              {...field} 
-                              placeholder="输入产品描述"
-                              className="min-h-[100px]"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {/* Featured Product Toggle */}
-                    <FormField
-                      control={createForm.control}
-                      name="isFeatured"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel className="text-base">精选产品</FormLabel>
-                            <div className="text-sm text-muted-foreground">
-                              将此产品标记为精选产品，在首页展示
-                            </div>
-                          </div>
-                          <FormControl>
-                            <Switch
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  {/* 详细参数部分 */}
-                </div>
-
-                <div className="flex justify-end gap-4 mt-8">
-                  <Button 
-                    type="button"
-                    variant="outline" 
-                    className="border-gray-300 text-gray-600 hover:bg-gray-200 hover:text-gray-900"
-                    onClick={() => {
-                      setIsCreateDialogOpen(false);
-                      images.reset();
-                    }}
-                  >
-                    取消
-                  </Button>
-                  <Button 
-                    type="submit"
-                    className="bg-gray-900 hover:bg-gray-800 text-white"
-                  >
-                    添加产品
-                  </Button>
-                </div>
-              </div>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
     </AdminLayout>
   );
 };
