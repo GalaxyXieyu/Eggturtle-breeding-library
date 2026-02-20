@@ -26,7 +26,9 @@ def upgrade() -> None:
     op.execute("UPDATE products SET price = factory_price WHERE price IS NULL")
 
     # Enforce non-null after backfill.
-    op.alter_column("products", "price", existing_type=sa.Float(), nullable=False)
+    # SQLite requires a table rebuild for ALTER COLUMN; use batch_alter_table.
+    with op.batch_alter_table("products") as batch_op:
+        batch_op.alter_column("price", existing_type=sa.Float(), nullable=False)
 
 
 def downgrade() -> None:
