@@ -50,19 +50,28 @@ jobs:
       - name: Start API server
         run: |
           cd backend
-          timeout 30s bash -c '../.venv-backend/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 &' 
+
+          # Run server in background and capture logs for debugging.
+          ../.venv-backend/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 > ../uvicorn.log 2>&1 &
+          UVICORN_PID=$!
+          echo "uvicorn pid=$UVICORN_PID"
 
           # Startup can include Alembic migrations; poll /health instead of fixed sleep.
-          for i in $(seq 1 30); do
+          for i in $(seq 1 60); do
             if curl -fsS http://localhost:8000/health >/dev/null; then
               echo "API is healthy"
               exit 0
+            fi
+            if ! kill -0 "$UVICORN_PID" 2>/dev/null; then
+              echo "::error::uvicorn exited early"
+              break
             fi
             sleep 1
           done
 
           echo "::error::API did not become healthy in time"
-          curl -s http://localhost:8000/health || true
+          echo "Last 200 lines of uvicorn.log:"
+          tail -n 200 ../uvicorn.log || true
           exit 1
 
       - name: Run API tests
