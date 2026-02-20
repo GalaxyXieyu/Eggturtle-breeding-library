@@ -75,16 +75,68 @@ def _image_has_small_variant(product_code: str, image_url: str) -> bool:
     """检查图片是否有 small 变体，支持 Docker 环境"""
     if not image_url:
         return False
-    
+
     # 从 URL 中提取文件名
     p = Path(image_url)
     stem = p.stem
     if not stem:
         return False
-    
+
     # 检查 UPLOAD_DIR 下的 small 目录
     base_dir = os.path.join(UPLOAD_DIR, product_code, "small")
-    return _file_exists(os.path.join(base_dir, f"{stem}.webp")) or _file_exists(os.path.join(base_dir, f"{stem}.jpg"))
+    return _file_exists(os.path.join(base_dir, f"{stem}.webp")) or _file_exists(
+        os.path.join(base_dir, f"{stem}.jpg")
+    )
+
+
+def _normalize_image_url(image_url: str) -> str:
+    """Normalize stored image paths to the canonical public static URL.
+
+    Canonical format: /static/images/...
+
+    This keeps backward compatibility with existing DB values like:
+    - images/xxx.jpg
+    - /images/xxx.jpg
+    - static/images/xxx.jpg
+    - /static/images/xxx.jpg
+
+    External URLs (http/https) and API-served paths (/api/images/...) are left untouched.
+    """
+
+    if not image_url:
+        return ""
+
+    # Keep external URLs as-is
+    if image_url.startswith("http://") or image_url.startswith("https://"):
+        return image_url
+
+    # Keep explicit API route (if present in some deployments)
+    if image_url.startswith("/api/images/"):
+        return image_url
+
+    # Normalize various local path styles to /static/images/...
+    url = image_url
+
+    if url.startswith("/static/images/"):
+        return url
+    if url.startswith("/static/"):
+        return url
+
+    if url.startswith("static/images/"):
+        return "/" + url
+    if url.startswith("static/"):
+        return "/" + url
+
+    if url.startswith("/images/"):
+        return "/static/images/" + url[len("/images/") :].lstrip("/")
+    if url.startswith("images/"):
+        return "/static/" + url
+
+    # If it's some other relative path, assume it's under images/
+    if url.startswith("/"):
+        return "/static/images/" + url.lstrip("/")
+
+    return "/static/images/" + url
 
 def convert_product_to_response(product: Product) -> dict:
     """Convert Product model to response format matching frontend expectations."""
@@ -107,10 +159,8 @@ def convert_product_to_response(product: Product) -> dict:
             elif not _image_has_small_variant(product.code, url):
                 continue
 
-        # Normalize local image URLs to absolute paths so frontend routing doesn't break.
-        # e.g. "images/xx.jpg" -> "/images/xx.jpg"
-        if not (url.startswith("http://") or url.startswith("https://")) and not url.startswith("/"):
-            url = "/" + url
+        # Normalize local image URLs to the canonical public static path.
+        url = _normalize_image_url(url)
 
         images.append(
             {
@@ -137,8 +187,8 @@ def convert_product_to_response(product: Product) -> dict:
         "offspringUnitPrice": product.offspring_unit_price,
         "sireCode": product.sire_code,
         "damCode": product.dam_code,
-        "sireImageUrl": product.sire_image_url,
-        "damImageUrl": product.dam_image_url,
+        "sireImageUrl": _normalize_image_url(product.sire_image_url) if product.sire_image_url else None,
+        "damImageUrl": _normalize_image_url(product.dam_image_url) if product.dam_image_url else None,
 
         "images": images,
         "pricing": {

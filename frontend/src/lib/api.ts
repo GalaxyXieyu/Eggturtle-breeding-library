@@ -174,6 +174,12 @@ export const createImageUrl = (imagePath: string): string => {
     return imagePath;
   }
 
+  // If backend returned legacy /images/... paths, remap to canonical /static/images/...
+  if (imagePath.startsWith('/images/')) {
+    const remapped = `/static/images/${imagePath.slice('/images/'.length)}`;
+    return API_BASE_URL ? `${API_BASE_URL}${remapped}` : remapped;
+  }
+
   // If it's already a complete path (starts with /), return as is
   if (imagePath.startsWith('/')) {
     return API_BASE_URL ? `${API_BASE_URL}${imagePath}` : imagePath;
