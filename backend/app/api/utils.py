@@ -118,25 +118,29 @@ def _normalize_image_url(image_url: str) -> str:
     url = image_url
 
     if url.startswith("/static/images/"):
-        return url
+        from urllib.parse import quote
+        return quote(url, safe="/%")
     if url.startswith("/static/"):
-        return url
+        from urllib.parse import quote
+        return quote(url, safe="/%")
+
+    from urllib.parse import quote
 
     if url.startswith("static/images/"):
-        return "/" + url
+        return quote("/" + url, safe="/%")
     if url.startswith("static/"):
-        return "/" + url
+        return quote("/" + url, safe="/%")
 
     if url.startswith("/images/"):
-        return "/static/images/" + url[len("/images/") :].lstrip("/")
+        return quote("/static/images/" + url[len("/images/") :].lstrip("/"), safe="/%")
     if url.startswith("images/"):
-        return "/static/" + url
+        return quote("/static/" + url, safe="/%")
 
     # If it's some other relative path, assume it's under images/
     if url.startswith("/"):
-        return "/static/images/" + url.lstrip("/")
+        return quote("/static/images/" + url.lstrip("/"), safe="/%")
 
-    return "/static/images/" + url
+    return quote("/static/images/" + url, safe="/%")
 
 def convert_product_to_response(product: Product) -> dict:
     """Convert Product model to response format matching frontend expectations."""
