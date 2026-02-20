@@ -30,12 +30,24 @@ interface BreederCarouselProps {
 }
 
 const BreederCarousel: React.FC<BreederCarouselProps> = ({ mainImage, breederCode, breederSex, activeSeries, seriesIntroItems }) => {
-  const [currentSlide, setCurrentSlide] = React.useState(1); // Start at slide 1 (image)
+  const [currentSlide, setCurrentSlide] = React.useState(() => (seriesIntroItems.length > 0 ? 1 : 0)); // Image is always visible; intro is optional
   const [touchStart, setTouchStart] = React.useState(0);
   const [touchEnd, setTouchEnd] = React.useState(0);
   const [showSwipeHint, setShowSwipeHint] = React.useState(true);
 
   const hasSeriesIntro = seriesIntroItems.length > 0;
+
+  // Keep currentSlide valid when the intro is (not) present. Data can arrive async.
+  React.useEffect(() => {
+    if (hasSeriesIntro) {
+      // Default to showing the image when intro becomes available.
+      if (currentSlide === 0) setCurrentSlide(1);
+    } else {
+      // If intro disappears, ensure we stay on the image slide.
+      if (currentSlide !== 0) setCurrentSlide(0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasSeriesIntro]);
 
   // Hide swipe hint after 3 seconds
   React.useEffect(() => {
@@ -57,6 +69,7 @@ const BreederCarousel: React.FC<BreederCarouselProps> = ({ mainImage, breederCod
   };
 
   const handleTouchEnd = () => {
+    if (!hasSeriesIntro) return;
     if (!touchStart || !touchEnd) return;
     const distance = touchStart - touchEnd;
     const isLeftSwipe = distance > 50;
@@ -74,6 +87,8 @@ const BreederCarousel: React.FC<BreederCarouselProps> = ({ mainImage, breederCod
     setTouchStart(0);
     setTouchEnd(0);
   };
+
+  const effectiveSlide = hasSeriesIntro ? currentSlide : 0;
 
   return (
     <div className="overflow-hidden rounded-3xl border border-black/5 bg-white shadow-[0_14px_38px_rgba(0,0,0,0.14)]">
@@ -98,14 +113,18 @@ const BreederCarousel: React.FC<BreederCarouselProps> = ({ mainImage, breederCod
           <div className="absolute right-3 top-3 z-10 flex gap-1.5 rounded-full bg-black/40 px-2 py-1.5 backdrop-blur-sm">
             <button
               type="button"
-              onClick={() => setCurrentSlide(0)}
+              onClick={() => {
+                if (hasSeriesIntro) setCurrentSlide(0);
+              }}
               className={`h-1.5 rounded-full transition-all ${
                 currentSlide === 0 ? 'w-6 bg-white' : 'w-1.5 bg-white/50'
               }`}
             />
             <button
               type="button"
-              onClick={() => setCurrentSlide(1)}
+              onClick={() => {
+                if (hasSeriesIntro) setCurrentSlide(1);
+              }}
               className={`h-1.5 rounded-full transition-all ${
                 currentSlide === 1 ? 'w-6 bg-white' : 'w-1.5 bg-white/50'
               }`}
@@ -128,7 +147,7 @@ const BreederCarousel: React.FC<BreederCarouselProps> = ({ mainImage, breederCod
         {/* Slides container */}
         <div
           className="flex h-full transition-transform duration-300 ease-out"
-          style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+          style={{ transform: `translateX(-${effectiveSlide * 100}%)` }}
         >
           {/* Slide 0: Series intro (negative screen) */}
           {hasSeriesIntro ? (
