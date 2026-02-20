@@ -18,11 +18,12 @@ const sexLabel = (sex?: Sex | null) => {
 interface SeriesIntroCardProps {
   seriesId?: string | null;
   seriesName?: string;
-  seriesIntroItems: string[];
+  seriesDescription?: string;
+  counts?: { male: number; female: number; unknown: number };
   breeders: Breeder[];
 }
 
-const SeriesIntroCard: React.FC<SeriesIntroCardProps> = ({ seriesId, seriesName, seriesIntroItems, breeders }) => {
+const SeriesIntroCard: React.FC<SeriesIntroCardProps> = ({ seriesId, seriesName, seriesDescription, counts, breeders }) => {
   const [isManuallyCollapsed, setIsManuallyCollapsed] = React.useState(false);
   const [hasManuallyInteracted, setHasManuallyInteracted] = React.useState(false);
   const [isScrollCollapsed, setIsScrollCollapsed] = React.useState(false);
@@ -54,7 +55,8 @@ const SeriesIntroCard: React.FC<SeriesIntroCardProps> = ({ seriesId, seriesName,
     };
   }, [hasManuallyInteracted]);
 
-  if (seriesIntroItems.length === 0) return null;
+  const desc = (seriesDescription || '').trim();
+  if (!desc) return null;
 
   const firstBreeder = breeders[0];
   const bgImage = firstBreeder?.images?.find((i) => i.type === 'main') || firstBreeder?.images?.[0];
@@ -95,7 +97,7 @@ const SeriesIntroCard: React.FC<SeriesIntroCardProps> = ({ seriesId, seriesName,
               <div className="ml-1 flex items-center gap-1">
                 <div className="text-base font-bold text-white sm:text-lg">{seriesName}</div>
                 <div className="rounded-full bg-white/20 px-2 py-0.5 text-xs font-medium text-white backdrop-blur-sm">
-                  {seriesIntroItems.length}条
+                  {counts ? `公${counts.male} 母${counts.female}` + (counts.unknown ? ` 未知${counts.unknown}` : '') : ''}
                 </div>
               </div>
             </div>
@@ -124,11 +126,7 @@ const SeriesIntroCard: React.FC<SeriesIntroCardProps> = ({ seriesId, seriesName,
             }`}
           >
             <div className="px-4 pb-3 sm:px-5">
-              <div className="space-y-2.5 text-sm leading-relaxed text-white/90">
-                {seriesIntroItems.map((item, idx) => (
-                  <p key={idx}>{item}</p>
-                ))}
-              </div>
+              <div className="whitespace-pre-wrap text-sm leading-relaxed text-white/90">{desc}</div>
             </div>
           </div>
         </div>
@@ -343,10 +341,16 @@ const SeriesFeed: React.FC = () => {
           }
 
           const activeSeries = (seriesQ.data || []).find((s) => s.id === seriesId) || null;
-          const seriesIntroItems = (activeSeries?.description || '')
-            .split(/\n+/)
-            .map((s) => s.trim())
-            .filter(Boolean);
+          const seriesDescription = activeSeries?.description || '';
+          const counts = allBreeders.reduce(
+            (acc, b) => {
+              if (b.sex === 'male') acc.male += 1;
+              else if (b.sex === 'female') acc.female += 1;
+              else acc.unknown += 1;
+              return acc;
+            },
+            { male: 0, female: 0, unknown: 0 }
+          );
 
           // Show all breeders in a single masonry grid
           return (
@@ -354,7 +358,8 @@ const SeriesFeed: React.FC = () => {
               <SeriesIntroCard
                 seriesId={seriesId}
                 seriesName={activeSeries?.name}
-                seriesIntroItems={seriesIntroItems}
+                seriesDescription={seriesDescription}
+                counts={counts}
                 breeders={allBreeders}
               />
               <Masonry list={allBreeders} />
