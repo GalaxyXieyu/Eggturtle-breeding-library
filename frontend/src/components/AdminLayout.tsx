@@ -11,7 +11,8 @@ import {
   Menu,
   X,
   Image,
-  Star
+  Star,
+  Layers
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth, useRequireAuth } from "@/hooks/useAuth";
@@ -58,6 +59,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title }) => {
   const navItems = [
     { path: "/admin/dashboard", label: "控制面板", icon: LayoutDashboard },
     { path: "/admin/products", label: "产品管理", icon: Package },
+    { path: "/admin/series", label: "系列管理", icon: Layers },
     { path: "/admin/carousels", label: "轮播图管理", icon: Image },
     { path: "/admin/featured-products", label: "活动产品", icon: Star },
     { path: "/admin/settings", label: "系统设置", icon: Settings },

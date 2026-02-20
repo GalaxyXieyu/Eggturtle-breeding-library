@@ -2,6 +2,7 @@ export type Sex = 'male' | 'female';
 
 export interface Series {
   id: string;
+  code?: string | null;
   name: string;
   sortOrder: number;
   description?: string | null;

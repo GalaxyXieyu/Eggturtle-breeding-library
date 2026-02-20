@@ -14,6 +14,7 @@ import AdminProducts from "./pages/admin/AdminProducts";
 import AdminCarouselManager from "./pages/admin/AdminCarouselManager";
 import AdminFeaturedProducts from "./pages/admin/AdminFeaturedProducts";
 import AdminSettings from "./pages/admin/AdminSettings";
+import AdminSeries from "./pages/admin/AdminSeries";
 import NotFound from "./pages/NotFound";
 
 // Create QueryClient instance outside component to prevent recreation on re-renders
@@ -43,6 +44,7 @@ const App = () => {
               <Route path="/admin" element={<AdminLogin />} />
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
               <Route path="/admin/products" element={<AdminProducts />} />
+              <Route path="/admin/series" element={<AdminSeries />} />
               <Route path="/admin/carousels" element={<AdminCarouselManager />} />
               <Route path="/admin/featured-products" element={<AdminFeaturedProducts />} />
               <Route path="/admin/settings" element={<AdminSettings />} />

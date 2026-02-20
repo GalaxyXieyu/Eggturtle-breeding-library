@@ -17,6 +17,7 @@ def _series_to_dict(s: Series) -> dict:
         "id": s.id,
         "code": s.code,
         "name": s.name,
+        "description": s.description,
         "sortOrder": s.sort_order,
         "isActive": s.is_active,
         "createdAt": s.created_at.isoformat() if s.created_at else None,
@@ -66,7 +67,14 @@ async def admin_create_series(
         if existing_code:
             raise HTTPException(status_code=400, detail="Series code already exists")
 
-    series = Series(code=code, name=name, sort_order=sort_order, is_active=payload.is_active)
+    description = payload.description.strip() if payload.description else None
+    series = Series(
+        code=code,
+        name=name,
+        description=description,
+        sort_order=sort_order,
+        is_active=payload.is_active,
+    )
     db.add(series)
     db.commit()
     db.refresh(series)
@@ -113,6 +121,9 @@ async def admin_update_series(
         if existing:
             raise HTTPException(status_code=400, detail="Series name already exists")
         series.name = name
+
+    if payload.description is not None:
+        series.description = payload.description.strip() if payload.description else None
 
     if payload.sort_order is not None:
         series.sort_order = payload.sort_order

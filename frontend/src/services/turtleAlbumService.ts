@@ -3,6 +3,7 @@ import type { Breeder, BreederRecords, Series, Sex, FamilyTree } from '@/types/t
 
 const ENDPOINTS = {
   SERIES: '/api/series',
+  ADMIN_SERIES: '/api/admin/series',
   BREEDERS: '/api/breeders',
   BREEDER_DETAIL: (id: string) => `/api/breeders/${id}`,
   BREEDER_RECORDS: (id: string) => `/api/breeders/${id}/records`,
@@ -26,6 +27,53 @@ export const turtleAlbumService = {
     try {
       const res = await apiClient.get<ApiResponse<Series[]>>(ENDPOINTS.SERIES);
       return res.data.data || [];
+    } catch (e) {
+      const err = handleApiError(e);
+      throw new ApiRequestError(err.message, { status: err.status, code: err.code });
+    }
+  },
+
+  async adminListSeries(params?: { includeInactive?: boolean }): Promise<Series[]> {
+    try {
+      const res = await apiClient.get<ApiResponse<Series[]>>(ENDPOINTS.ADMIN_SERIES, {
+        params: { include_inactive: params?.includeInactive ?? true },
+      });
+      return res.data.data || [];
+    } catch (e) {
+      const err = handleApiError(e);
+      throw new ApiRequestError(err.message, { status: err.status, code: err.code });
+    }
+  },
+
+  async adminCreateSeries(payload: {
+    code?: string | null;
+    name: string;
+    description?: string | null;
+    sort_order?: number | null;
+    is_active?: boolean;
+  }): Promise<Series> {
+    try {
+      const res = await apiClient.post<ApiResponse<Series>>(ENDPOINTS.ADMIN_SERIES, payload);
+      return res.data.data;
+    } catch (e) {
+      const err = handleApiError(e);
+      throw new ApiRequestError(err.message, { status: err.status, code: err.code });
+    }
+  },
+
+  async adminUpdateSeries(
+    seriesId: string,
+    payload: {
+      code?: string | null;
+      name?: string | null;
+      description?: string | null;
+      sort_order?: number | null;
+      is_active?: boolean | null;
+    }
+  ): Promise<Series> {
+    try {
+      const res = await apiClient.put<ApiResponse<Series>>(`${ENDPOINTS.ADMIN_SERIES}/${seriesId}`, payload);
+      return res.data.data;
     } catch (e) {
       const err = handleApiError(e);
       throw new ApiRequestError(err.message, { status: err.status, code: err.code });

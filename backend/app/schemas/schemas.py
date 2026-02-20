@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from typing import List, Optional, Dict, Any, Union
 from datetime import datetime
 from enum import Enum
@@ -54,13 +54,23 @@ class ProductBase(BaseModel):
     dam_image_url: Optional[str] = None
 
     cost_price: Optional[float] = None
-    # Canonical selling price
-    price: float
+    # Canonical selling price. For breeder records that are not for sale,
+    # operators may omit this and the API will default it to 0.
+    price: Optional[float] = None
     has_sample: bool = False
 
     in_stock: bool = True
     popularity_score: int = 0
     is_featured: bool = False
+
+    @model_validator(mode="after")
+    def _validate_breeder_rules(self):
+        sex = (self.sex or "").lower()
+        if self.offspring_unit_price is not None and sex != "female":
+            raise ValueError("offspring_unit_price is only allowed for female breeders")
+        if self.price is not None and self.price < 0:
+            raise ValueError("price must be >= 0")
+        return self
 
 class ProductCreate(ProductBase):
     images: List[ProductImageCreate] = []
@@ -89,6 +99,15 @@ class ProductUpdate(BaseModel):
     in_stock: Optional[bool] = None
     popularity_score: Optional[int] = None
     is_featured: Optional[bool] = None
+
+    @model_validator(mode="after")
+    def _validate_breeder_rules(self):
+        sex = (self.sex or "").lower() if self.sex is not None else None
+        if self.offspring_unit_price is not None and sex is not None and sex != "female":
+            raise ValueError("offspring_unit_price is only allowed for female breeders")
+        if self.price is not None and self.price < 0:
+            raise ValueError("price must be >= 0")
+        return self
 
 class ProductResponse(ProductBase):
     id: str
@@ -143,6 +162,7 @@ class ApiResponse(BaseModel):
 class SeriesCreate(BaseModel):
     code: Optional[str] = None
     name: str
+    description: Optional[str] = None
     sort_order: Optional[int] = None
     is_active: bool = True
 
@@ -150,6 +170,7 @@ class SeriesCreate(BaseModel):
 class SeriesUpdate(BaseModel):
     code: Optional[str] = None
     name: Optional[str] = None
+    description: Optional[str] = None
     sort_order: Optional[int] = None
     is_active: Optional[bool] = None
 
