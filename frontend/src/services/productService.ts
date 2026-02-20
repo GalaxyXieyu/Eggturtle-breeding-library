@@ -9,7 +9,7 @@ interface BackendProductCreate {
   stage?: string;
   status?: 'draft' | 'active' | 'reserved' | 'sold';
   cost_price: number;
-  factory_price: number;
+  price: number;
   has_sample: boolean;
   in_stock: boolean;
   popularity_score: number;

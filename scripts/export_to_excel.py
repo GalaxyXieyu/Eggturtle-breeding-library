@@ -193,7 +193,7 @@ class ExcelExporter:
                 product.get("code", ""),
                 product.get("name", ""),
                 product.get("description", ""),
-                product.get("factory_price", 0),
+                product.get("price", 0),
                 product.get("cost_price", 0),
                 "有货" if product.get("in_stock") else "缺货",
                 "是" if product.get("has_sample") else "否",

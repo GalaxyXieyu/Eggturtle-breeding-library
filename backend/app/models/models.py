@@ -55,7 +55,8 @@ class Product(Base):
 
     # Pricing information
     cost_price = Column(Float, default=0.0)
-    factory_price = Column(Float, nullable=False)
+    # Canonical selling price
+    price = Column(Float, nullable=False)
     has_sample = Column(Boolean, default=False)
 
     # Stage/status fields (string-based for flexibility; enforced at API level)

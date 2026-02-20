@@ -42,7 +42,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 2.5,
-      factoryPrice: 3.8,
+      price: 3.8,
       hasSample: true,
       boxDimensions: "300x200x150mm",
       boxQuantity: 1000
@@ -93,7 +93,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 3.8,
-      factoryPrice: 5.5,
+      price: 5.5,
       hasSample: true,
       boxDimensions: "350x350x200mm",
       boxQuantity: 500
@@ -145,7 +145,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 4.2,
-      factoryPrice: 6.8,
+      price: 6.8,
       hasSample: true,
       boxDimensions: "400x400x300mm",
       boxQuantity: 400
@@ -196,7 +196,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 2.0,
-      factoryPrice: 3.2,
+      price: 3.2,
       hasSample: true,
       boxDimensions: "250x150x100mm",
       boxQuantity: 1200
@@ -247,7 +247,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 3.5,
-      factoryPrice: 5.2,
+      price: 5.2,
       hasSample: true,
       boxDimensions: "380x280x200mm",
       boxQuantity: 600
@@ -299,7 +299,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 1.8,
-      factoryPrice: 2.9,
+      price: 2.9,
       hasSample: true,
       boxDimensions: "200x150x100mm",
       boxQuantity: 2000
@@ -350,7 +350,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 4.5,
-      factoryPrice: 7.2,
+      price: 7.2,
       hasSample: true,
       boxDimensions: "420x420x350mm",
       boxQuantity: 350
@@ -402,7 +402,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 2.8,
-      factoryPrice: 4.5,
+      price: 4.5,
       hasSample: true,
       boxDimensions: "300x150x100mm",
       boxQuantity: 1000
@@ -454,7 +454,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 3.2,
-      factoryPrice: 5.0,
+      price: 5.0,
       hasSample: true,
       boxDimensions: "320x320x150mm",
       boxQuantity: 800
@@ -505,7 +505,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 2.2,
-      factoryPrice: 3.6,
+      price: 3.6,
       hasSample: true,
       boxDimensions: "270x180x120mm",
       boxQuantity: 1100
@@ -556,7 +556,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 1.6,
-      factoryPrice: 2.8,
+      price: 2.8,
       hasSample: true,
       boxDimensions: "220x140x90mm",
       boxQuantity: 1500
@@ -607,7 +607,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 2.3,
-      factoryPrice: 3.8,
+      price: 3.8,
       hasSample: true,
       boxDimensions: "260x170x110mm",
       boxQuantity: 1000
@@ -658,7 +658,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 4.0,
-      factoryPrice: 6.2,
+      price: 6.2,
       hasSample: true,
       boxDimensions: "360x360x220mm",
       boxQuantity: 480
@@ -709,7 +709,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 2.6,
-      factoryPrice: 4.3,
+      price: 4.3,
       hasSample: true,
       boxDimensions: "280x180x150mm",
       boxQuantity: 900
@@ -760,7 +760,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 3.9,
-      factoryPrice: 6.0,
+      price: 6.0,
       hasSample: true,
       boxDimensions: "350x350x180mm",
       boxQuantity: 550
@@ -811,7 +811,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 2.1,
-      factoryPrice: 3.4,
+      price: 3.4,
       hasSample: true,
       boxDimensions: "240x160x110mm",
       boxQuantity: 1200
@@ -862,7 +862,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 2.5,
-      factoryPrice: 4.1,
+      price: 4.1,
       hasSample: true,
       boxDimensions: "270x170x140mm",
       boxQuantity: 950
@@ -914,7 +914,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 5.2,
-      factoryPrice: 8.5,
+      price: 8.5,
       hasSample: true,
       boxDimensions: "450x450x250mm",
       boxQuantity: 300
@@ -965,7 +965,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 2.9,
-      factoryPrice: 4.8,
+      price: 4.8,
       hasSample: true,
       boxDimensions: "300x220x170mm",
       boxQuantity: 700
@@ -1017,7 +1017,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 5.5,
-      factoryPrice: 9.0,
+      price: 9.0,
       hasSample: true,
       boxDimensions: "430x430x320mm",
       boxQuantity: 280
@@ -1056,7 +1056,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 3.5,
-      factoryPrice: 5.8,
+      price: 5.8,
       hasSample: true,
       boxDimensions: "320x220x160mm",
       boxQuantity: 800
@@ -1095,7 +1095,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 4.1,
-      factoryPrice: 6.5,
+      price: 6.5,
       hasSample: true,
       boxDimensions: "340x340x210mm",
       boxQuantity: 520
@@ -1134,7 +1134,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 5.8,
-      factoryPrice: 8.2,
+      price: 8.2,
       hasSample: true,
       boxDimensions: "410x410x330mm",
       boxQuantity: 320
@@ -1173,7 +1173,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 2.7,
-      factoryPrice: 4.2,
+      price: 4.2,
       hasSample: true,
       boxDimensions: "280x190x130mm",
       boxQuantity: 950
@@ -1212,7 +1212,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 4.3,
-      factoryPrice: 6.9,
+      price: 6.9,
       hasSample: true,
       boxDimensions: "360x360x250mm",
       boxQuantity: 450
@@ -1251,7 +1251,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 3.2,
-      factoryPrice: 4.9,
+      price: 4.9,
       hasSample: true,
       boxDimensions: "370x270x190mm",
       boxQuantity: 650
@@ -1291,7 +1291,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 7.5,
-      factoryPrice: 12.0,
+      price: 12.0,
       hasSample: true,
       boxDimensions: "520x420x300mm",
       boxQuantity: 200
@@ -1330,7 +1330,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 1.2,
-      factoryPrice: 2.1,
+      price: 2.1,
       hasSample: true,
       boxDimensions: "180x120x80mm",
       boxQuantity: 2500
@@ -1369,7 +1369,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 3.1,
-      factoryPrice: 4.9,
+      price: 4.9,
       hasSample: true,
       boxDimensions: "290x210x140mm",
       boxQuantity: 850
@@ -1408,7 +1408,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 8.5,
-      factoryPrice: 13.2,
+      price: 13.2,
       hasSample: true,
       boxDimensions: "380x380x280mm",
       boxQuantity: 250
@@ -1447,7 +1447,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 2.4,
-      factoryPrice: 3.9,
+      price: 3.9,
       hasSample: true,
       boxDimensions: "260x160x120mm",
       boxQuantity: 1050
@@ -1486,7 +1486,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 6.8,
-      factoryPrice: 10.5,
+      price: 10.5,
       hasSample: true,
       boxDimensions: "440x440x360mm",
       boxQuantity: 280
@@ -1525,7 +1525,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 2.1,
-      factoryPrice: 3.4,
+      price: 3.4,
       hasSample: true,
       boxDimensions: "240x140x90mm",
       boxQuantity: 1400
@@ -1564,7 +1564,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 4.7,
-      factoryPrice: 7.3,
+      price: 7.3,
       hasSample: true,
       boxDimensions: "390x330x230mm",
       boxQuantity: 380
@@ -1603,7 +1603,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 6.2,
-      factoryPrice: 9.8,
+      price: 9.8,
       hasSample: true,
       boxDimensions: "320x240x180mm",
       boxQuantity: 450
@@ -1642,7 +1642,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 4.5,
-      factoryPrice: 7.1,
+      price: 7.1,
       hasSample: true,
       boxDimensions: "400x400x200mm",
       boxQuantity: 480
@@ -1681,7 +1681,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 12.5,
-      factoryPrice: 18.9,
+      price: 18.9,
       hasSample: true,
       boxDimensions: "390x390x300mm",
       boxQuantity: 180
@@ -1720,7 +1720,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 3.4,
-      factoryPrice: 5.2,
+      price: 5.2,
       hasSample: true,
       boxDimensions: "310x200x150mm",
       boxQuantity: 720
@@ -1759,7 +1759,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 3.8,
-      factoryPrice: 5.9,
+      price: 5.9,
       hasSample: true,
       boxDimensions: "290x180x160mm",
       boxQuantity: 650
@@ -1798,7 +1798,7 @@ export const mockProducts: Product[] = [
     ],
     pricing: {
       costPrice: 5.1,
-      factoryPrice: 7.8,
+      price: 7.8,
       hasSample: true,
       boxDimensions: "430x430x320mm",
       boxQuantity: 350

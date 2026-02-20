@@ -50,7 +50,7 @@ async def create_product(
         dam_image_url=product_data.dam_image_url,
 
         cost_price=product_data.cost_price or 0,
-        factory_price=product_data.factory_price,
+        price=product_data.price,
         has_sample=product_data.has_sample,
         in_stock=product_data.in_stock,
         popularity_score=product_data.popularity_score,
@@ -102,6 +102,7 @@ async def update_product(
 
     # Update fields
     update_data = product_data.model_dump(exclude_unset=True)
+
     for field, value in update_data.items():
         setattr(product, field, value)
 

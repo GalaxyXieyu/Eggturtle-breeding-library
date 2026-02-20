@@ -138,8 +138,8 @@ def convert_product_to_response(product: Product) -> dict:
         "images": images,
         "pricing": {
             "costPrice": product.cost_price,
-            "factoryPrice": product.factory_price,
-            "hasSample": product.has_sample
+            "price": product.price,
+            "hasSample": product.has_sample,
         },
         "inStock": product.in_stock,
         "popularityScore": product.popularity_score,

@@ -74,7 +74,7 @@ Collect the following required fields:
    - Common values: "Ceramic", "Plastic", "Stainless Steel", "Glass"
    - Suggest from existing products
 
-5. **Factory Price** (factory_price)
+5. **Price** (price)
    - Must be > 0
    - Reasonable range: 1-10000 (warn if outside)
    - Format: Float with 2 decimal places
@@ -242,7 +242,7 @@ Required Fields:
 - Name: Ceramic Bowl Feeder
 - Shape: Round
 - Material: Ceramic
-- Factory Price: ¥25.50
+- Price: ¥25.50
 
 Optional Fields:
 - Description: High-quality ceramic feeding bowl for reptiles...
@@ -280,7 +280,7 @@ Body:
   "description": "...",
   "shape": "Round",
   "material": "Ceramic",
-  "factory_price": 25.50,
+  "price": 25.50,
   "dimensions": {
     "weight": 0.5,
     "length": 15.0,

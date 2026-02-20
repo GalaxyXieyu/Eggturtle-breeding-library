@@ -87,7 +87,8 @@ def seed_turtle_album(db_session):
             # legacy-required product fields
             shape="turtle",
             material="n/a",
-            factory_price=0.0,
+            price=0.0,
+            price=0.0,
             in_stock=True,
             is_featured=False,
         )

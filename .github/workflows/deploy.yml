@@ -190,5 +190,51 @@ jobs:
           fi
 
           kubectl set image "$WORKLOAD_KIND"/"$WORKLOAD_NAME" "$CONTAINER_NAME"="$IMAGE_REF" -n "$NAMESPACE"
+
+          # Run Alembic migrations via a one-off Job using the same image and the same /data PVC.
+          # This avoids manual intervention and keeps DB schema in sync with code.
+          MIGRATE_JOB="${WORKLOAD_NAME}-migrate-${GITHUB_SHA}"
+          echo "Running DB migrations via Job: $MIGRATE_JOB"
+
+          if [ -z "$PVC_NAME" ]; then
+            echo "::error::Cannot resolve PVC_NAME for /data; refusing to run migrations."
+            exit 1
+          fi
+
+          cat <<YAML | kubectl apply -n "$NAMESPACE" -f -
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: ${MIGRATE_JOB}
+            labels:
+              app.kubernetes.io/name: ${WORKLOAD_NAME}
+              app.kubernetes.io/component: migrate
+          spec:
+            backoffLimit: 0
+            ttlSecondsAfterFinished: 600
+            template:
+              spec:
+                restartPolicy: Never
+                containers:
+                  - name: migrate
+                    image: ${IMAGE_REF}
+                    imagePullPolicy: Always
+                    command: ["sh", "-lc", "python scripts/db_migrate.py upgrade"]
+                    env:
+                      - name: DATABASE_URL
+                        value: "${DATABASE_URL:-sqlite:////data/app.db}"
+                    volumeMounts:
+                      - name: data
+                        mountPath: /data
+                volumes:
+                  - name: data
+                    persistentVolumeClaim:
+                      claimName: ${PVC_NAME}
+          YAML
+
+          kubectl wait --for=condition=complete job/"$MIGRATE_JOB" -n "$NAMESPACE" --timeout=600s
+          kubectl logs job/"$MIGRATE_JOB" -n "$NAMESPACE" || true
+
+          echo "Restarting workload after migrations..."
           kubectl rollout restart "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE"
           kubectl rollout status "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE" --timeout=180s

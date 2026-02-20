@@ -137,7 +137,7 @@ const AdminDashboard = () => {
                     </p>
                   </div>
                   <div className="text-xs sm:text-sm font-medium text-gray-900">
-                    ¥{product.pricing.factoryPrice.toFixed(2)}
+                    ¥{(product.pricing.price ?? 0).toFixed(2)}
                   </div>
                 </div>
               ))}
@@ -171,7 +171,7 @@ const AdminDashboard = () => {
                     </p>
                   </div>
                   <div className="text-xs sm:text-sm font-medium text-gray-900">
-                    ¥{product.pricing.factoryPrice.toFixed(2)}
+                    ¥{(product.pricing.price ?? 0).toFixed(2)}
                   </div>
                 </div>
               ))}

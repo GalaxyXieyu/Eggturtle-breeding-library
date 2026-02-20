@@ -61,7 +61,8 @@ def _upsert_breeder(
             # legacy-required fields
             shape="turtle",
             material="n/a",
-            factory_price=0.0,
+            price=0.0,
+            price=0.0,
             in_stock=True,
             is_featured=False,
         )

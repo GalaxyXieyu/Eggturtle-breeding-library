@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any, Union
 from datetime import datetime
 from enum import Enum
@@ -54,8 +54,10 @@ class ProductBase(BaseModel):
     dam_image_url: Optional[str] = None
 
     cost_price: Optional[float] = None
-    factory_price: float
+    # Canonical selling price
+    price: float
     has_sample: bool = False
+
     in_stock: bool = True
     popularity_score: int = 0
     is_featured: bool = False
@@ -81,8 +83,9 @@ class ProductUpdate(BaseModel):
     dam_image_url: Optional[str] = None
 
     cost_price: Optional[float] = None
-    factory_price: Optional[float] = None
+    price: Optional[float] = None
     has_sample: Optional[bool] = None
+
     in_stock: Optional[bool] = None
     popularity_score: Optional[int] = None
     is_featured: Optional[bool] = None

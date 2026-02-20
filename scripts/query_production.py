@@ -140,7 +140,7 @@ class DataQualityAnalyzer:
     """数据质量分析器"""
 
     # 重要字段定义
-    CRITICAL_FIELDS = ["code", "name", "factory_price"]
+    CRITICAL_FIELDS = ["code", "name", "price"]
     IMPORTANT_FIELDS = ["description", "series_id", "images"]
     OPTIONAL_FIELDS = [
         "cost_price", "has_sample",
@@ -271,7 +271,7 @@ def print_product_list(products: List[Dict[str, Any]]):
         images_count = len(product.get("images", []))
         in_stock = "✅" if product.get("in_stock") else "❌"
         print(f"{i:3d}. {product['code']:15s} | {product['name']:30s} | "
-              f"¥{product['factory_price']:7.2f} | 图片: {images_count} | 库存: {in_stock}")
+              f"¥{product['price']:7.2f} | 图片: {images_count} | 库存: {in_stock}")
 
 
 def print_product_detail(product: Dict[str, Any]):
@@ -284,7 +284,7 @@ def print_product_detail(product: Dict[str, Any]):
     print(f"  描述: {product.get('description', '(无)')[:50]}...")
     print(f"  形状: {product['shape']}")
     print(f"  材质: {product['material']}")
-    print(f"  出厂价: ¥{product['factory_price']:.2f}")
+    print(f"  出厂价: ¥{product['price']:.2f}")
 
     if product.get("dimensions"):
         dims = product["dimensions"]

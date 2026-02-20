@@ -9,7 +9,7 @@ export interface ProductImage {
 
 export interface ProductPricing {
   costPrice: number;
-  factoryPrice: number;
+  price: number;
   hasSample: boolean;
 }
 

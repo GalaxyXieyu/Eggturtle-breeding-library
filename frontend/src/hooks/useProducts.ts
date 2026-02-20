@@ -22,7 +22,7 @@ interface BackendProductCreate {
     compartments?: number;
   };
   cost_price: number;
-  factory_price: number;
+  price: number;
   has_sample: boolean;
   box_dimensions?: string;
   box_quantity?: number;

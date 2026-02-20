@@ -37,7 +37,8 @@ def create_breeder(db, series_id, code, name, sex, sire_code=None, dam_code=None
         dam_code=dam_code,
         shape="turtle",
         material="n/a",
-        factory_price=0.0,
+        price=0.0,
+        price=0.0,
         in_stock=True,
         is_featured=False,
     )

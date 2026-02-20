@@ -30,7 +30,7 @@ class BatchImportService:
         '货号': 'code',
         '产品名称': 'name',
         '产品描述': 'description',
-        '出厂价格': 'factory_price',
+        '出厂价格': 'price',
         '是否有样品': 'has_sample'
     }
     MAX_ZIP_FILES = 5000
@@ -193,7 +193,7 @@ class BatchImportService:
                         product_data = {
                             'name': BatchImportService._clean_string(row.get('产品名称')) or f"Product {product_code}",
                             'description': BatchImportService._clean_string(row.get('产品描述')) or "",
-                            'factory_price': BatchImportService._safe_float(row.get('出厂价格')) or 0.0,
+                            'price': BatchImportService._safe_float(row.get('出厂价格')) or 0.0,
                             'has_sample': BatchImportService._clean_string(row.get('是否有样品')) == '是',
                             'cost_price': 0.0,
                             'in_stock': True,

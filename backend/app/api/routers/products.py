@@ -38,7 +38,7 @@ async def get_filter_options(db: Session = Depends(get_db)):
     price_min = 0
     price_max = 0
     try:
-        prices = [p[0] for p in db.query(Product.factory_price).filter(Product.factory_price.isnot(None)).all()]
+        prices = [p[0] for p in db.query(Product.price).filter(Product.price.isnot(None)).all()]
         if prices:
             price_min = min(prices)
             price_max = max(prices)
@@ -95,9 +95,9 @@ async def get_products(
 
     # Apply price range filter
     if price_min is not None:
-        query = query.filter(Product.factory_price >= price_min)
+        query = query.filter(Product.price >= price_min)
     if price_max is not None:
-        query = query.filter(Product.factory_price <= price_max)
+        query = query.filter(Product.price <= price_max)
 
     # Apply sorting
     if sort == SortOption.NEWEST:
@@ -105,9 +105,9 @@ async def get_products(
     elif sort == SortOption.POPULAR:
         query = query.order_by(Product.popularity_score.desc())
     elif sort == SortOption.PRICE_LOW:
-        query = query.order_by(Product.factory_price.asc())
+        query = query.order_by(Product.price.asc())
     elif sort == SortOption.PRICE_HIGH:
-        query = query.order_by(Product.factory_price.desc())
+        query = query.order_by(Product.price.desc())
     else:
         query = query.order_by(Product.created_at.desc())
 

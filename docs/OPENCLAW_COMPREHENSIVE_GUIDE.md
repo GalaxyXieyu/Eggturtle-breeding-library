@@ -69,7 +69,7 @@ TurtleAlbum 使用 SQLite 数据库，包含以下核心表：
 | `name` | VARCHAR | NOT NULL | 产品名称 | "陶瓷喂食碗" |
 | `shape` | VARCHAR | NOT NULL | 形状 | "圆形" |
 | `material` | VARCHAR | NOT NULL | 材质 | "陶瓷" |
-| `factory_price` | FLOAT | NOT NULL | 出厂价格 | 25.50 |
+| `price` | FLOAT | NOT NULL | 售价格 | 25.50 |
 
 #### 基础信息字段
 
@@ -123,7 +123,7 @@ TurtleAlbum 使用 SQLite 数据库，包含以下核心表：
 | 字段 | 类型 | 说明 | 默认值 |
 |------|------|------|--------|
 | `cost_price` | FLOAT | 成本价 | 0.0 |
-| `factory_price` | FLOAT | 出厂价（必填） | - |
+| `price` | FLOAT | 售价（必填） | - |
 
 #### 包装与物流字段
 
@@ -183,7 +183,7 @@ TurtleAlbum 使用 SQLite 数据库，包含以下核心表：
 | `name` | String | 产品名称 | "陶瓷喂食碗" | ❌ |
 | `shape` | String | 形状 | "圆形" | ❌ |
 | `material` | String | 材质 | "陶瓷" | ❌ |
-| `factory_price` | Float | 出厂价格 | 25.50 | ❌ |
+| `price` | Float | 售价格 | 25.50 | ❌ |
 
 ### 2. 基础信息（可选但重要）- 2 个字段
 
@@ -225,7 +225,7 @@ TurtleAlbum 使用 SQLite 数据库，包含以下核心表：
 
 | 字段 | 类型 | 说明 | 示例 | 容易忽略？ |
 |------|------|------|------|-----------|\n| `cost_price` | Float | 成本价 | 15.00 | ⚠️ **是** - 利润计算 |
-| `factory_price` | Float | 出厂价（必填） | 25.50 | ❌ |
+| `price` | Float | 售价（必填） | 25.50 | ❌ |
 
 ### 7. 包装与物流 - 3 个字段
 
@@ -400,7 +400,7 @@ Meaningful: Should contain descriptive information
 - ❌ "产品" - 过于通用
 - ❌ "Item 1" - 无意义
 
-#### 3. Factory Price - 出厂价格
+#### 3. Factory Price - 售价格
 ```
 Must be > 0
 Reasonable range: 1-10000 (warn if outside)
