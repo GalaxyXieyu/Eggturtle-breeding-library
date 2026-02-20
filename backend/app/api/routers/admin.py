@@ -38,7 +38,7 @@ async def create_product(
         description=product_data.description,
 
         stage=product_data.stage,
-        status=product_data.status,
+        status=product_data.status.value if hasattr(product_data.status, "value") else product_data.status,
 
         # Turtle-album extensions
         series_id=product_data.series_id,
@@ -50,7 +50,8 @@ async def create_product(
         dam_image_url=product_data.dam_image_url,
 
         cost_price=product_data.cost_price or 0,
-        price=product_data.price,
+        # For breeder records that are not for sale, operators may omit price.
+        price=product_data.price if product_data.price is not None else 0.0,
         has_sample=product_data.has_sample,
         in_stock=product_data.in_stock,
         popularity_score=product_data.popularity_score,
@@ -102,6 +103,23 @@ async def update_product(
 
     # Update fields
     update_data = product_data.model_dump(exclude_unset=True)
+
+    # Persist enum values as plain strings.
+    if "status" in update_data and hasattr(update_data["status"], "value"):
+        update_data["status"] = update_data["status"].value
+
+    # Cross-field validation needs existing DB values (e.g. sex not provided during update).
+    resolved_sex = (update_data.get("sex") or product.sex or "").lower()
+    if update_data.get("offspring_unit_price") is not None and resolved_sex != "female":
+        raise HTTPException(status_code=400, detail="offspring_unit_price is only allowed for female breeders")
+
+    # If switching away from female, always clear offspring_unit_price.
+    if "sex" in update_data and resolved_sex != "female":
+        update_data["offspring_unit_price"] = None
+
+    # Treat explicit null as 'not for sale' (0.0) to keep DB non-null.
+    if "price" in update_data and update_data["price"] is None:
+        update_data["price"] = 0.0
 
     for field, value in update_data.items():
         setattr(product, field, value)
