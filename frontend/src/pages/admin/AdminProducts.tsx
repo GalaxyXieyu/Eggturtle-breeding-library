@@ -316,7 +316,7 @@ const AdminProducts = () => {
         status: values.status,
         has_sample: values.hasSample,
         cost_price: 0, // Default value, can be updated later
-        factory_price: 0, // Default value, can be updated later
+        price: 0, // Default value, can be updated later
         in_stock: values.inStock,
         popularity_score: values.popularityScore,
         images: [] // Create product without images first
@@ -432,7 +432,6 @@ const AdminProducts = () => {
           onImportSuccess={() => queryClient.invalidateQueries({ queryKey: PRODUCT_QUERY_KEYS.lists() })}
           onCreateClick={() => {
             images.reset();
-            setSelectedFunctionalDesigns([]);
             setIsCreateDialogOpen(true);
           }}
         />
