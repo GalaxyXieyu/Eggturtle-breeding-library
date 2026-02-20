@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import WeChatContactFab from '@/components/turtle-album/WeChatContactFab';
 
 import { createImageUrl } from '@/lib/api';
+import { getBreederImagePath } from '@/utils/breederImage';
 
 import { turtleAlbumService } from '@/services/turtleAlbumService';
 import type { Breeder, Sex } from '@/types/turtleAlbum';
@@ -295,7 +296,7 @@ const SeriesFeed: React.FC = () => {
           const allBreeders = filteredBreeders;
 
           const Card = ({ b }: { b: (typeof allBreeders)[number] }) => {
-            const mainImage = (b.images || []).find((i) => i.type === 'main') || (b.images || [])[0];
+            const mainImagePath = getBreederImagePath(b);
 
             return (
               <Link
@@ -304,11 +305,11 @@ const SeriesFeed: React.FC = () => {
                 className="group w-full overflow-hidden rounded-2xl border border-neutral-200/90 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)] transition active:scale-[0.995] hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-[0_12px_34px_rgba(0,0,0,0.14)]"
               >
                 <div className="relative aspect-[4/5] bg-neutral-100">
-                  {mainImage?.url ? (
-                    <img src={createImageUrl(mainImage.url)} alt={mainImage.alt || b.code} className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="h-full w-full bg-neutral-100" />
-                  )}
+                  <img
+                    src={createImageUrl(mainImagePath)}
+                    alt={b.code}
+                    className="h-full w-full object-cover"
+                  />
                   <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/30 to-transparent" />
                   <div className="absolute right-2 top-2 rounded-full bg-white/90 px-2.5 py-1 text-xs text-black">
                     {sexLabel(b.sex)}

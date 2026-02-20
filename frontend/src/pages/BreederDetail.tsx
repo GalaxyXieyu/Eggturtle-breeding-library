@@ -6,6 +6,7 @@ import WeChatContactFab from '@/components/turtle-album/WeChatContactFab';
 import FamilyTreeComponent from '@/components/turtle-album/FamilyTree';
 
 import { createImageUrl } from '@/lib/api';
+import { getBreederImagePath } from '@/utils/breederImage';
 
 import { ApiRequestError, turtleAlbumService } from '@/services/turtleAlbumService';
 
@@ -147,11 +148,11 @@ const BreederCarousel: React.FC<BreederCarouselProps> = ({ mainImage, breederCod
 
           {/* Slide 1: Image (main screen) */}
           <div className="relative h-full w-full shrink-0">
-            {mainImage?.url ? (
-              <img src={createImageUrl(mainImage.url)} alt={mainImage.alt || breederCode} className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-sm text-neutral-400">暂无图片</div>
-            )}
+            <img
+              src={createImageUrl(mainImage?.url?.trim() || '')}
+              alt={mainImage?.alt || breederCode}
+              className="h-full w-full object-cover"
+            />
             <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/35 to-transparent" />
             <div className="absolute bottom-3 left-3 right-3 flex flex-wrap items-center gap-2">
               {hasSeriesIntro ? (
@@ -333,7 +334,7 @@ const BreederDetail: React.FC = () => {
                 <div className="mb-2 text-sm font-medium text-neutral-800">你可以先看这些记录：</div>
                 <div className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3">
                   {(fallbackBreedersQ.data || []).map((b) => {
-                    const mainImage = (b.images || []).find((i) => i.type === 'main') || (b.images || [])[0];
+                    const mainImagePath = getBreederImagePath(b);
                     return (
                       <Link
                         key={b.id}
@@ -341,9 +342,11 @@ const BreederDetail: React.FC = () => {
                         className="group overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_30px_rgba(0,0,0,0.12)]"
                       >
                         <div className="relative aspect-[4/5] bg-neutral-100">
-                          {mainImage?.url ? (
-                            <img src={createImageUrl(mainImage.url)} alt={mainImage.alt || b.code} className="h-full w-full object-cover" />
-                          ) : null}
+                          <img
+                            src={createImageUrl(mainImagePath)}
+                            alt={b.code}
+                            className="h-full w-full object-cover"
+                          />
                         </div>
                         <div className="p-2.5">
                           <div className="text-sm font-semibold text-neutral-900">{b.code}</div>
@@ -361,7 +364,7 @@ const BreederDetail: React.FC = () => {
         {breederQ.data ? (
           <div className="grid items-stretch gap-4 lg:grid-cols-[minmax(340px,420px)_1fr] xl:gap-5">
             <BreederCarousel
-              mainImage={(breederQ.data.images || []).find((i) => i.type === 'main') || (breederQ.data.images || [])[0]}
+              mainImage={{ url: getBreederImagePath(breederQ.data), alt: breederQ.data.code }}
               breederCode={breederQ.data.code}
               breederSex={breederQ.data.sex}
               activeSeries={activeSeries}
