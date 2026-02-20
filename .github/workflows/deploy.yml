@@ -159,6 +159,18 @@ jobs:
 
             PVC_NAME=$(kubectl get "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE" \
               -o jsonpath="{.spec.template.spec.volumes[?(@.name=='$DATA_VOLUME_NAME')].persistentVolumeClaim.claimName}")
+
+            # StatefulSet commonly uses volumeClaimTemplates instead of .spec.template.spec.volumes.
+            if [ -z "$PVC_NAME" ] && [ "$WORKLOAD_KIND" = "statefulset" ]; then
+              TEMPLATE_NAME=$(kubectl get statefulset/"$WORKLOAD_NAME" -n "$NAMESPACE" \
+                -o jsonpath="{.spec.volumeClaimTemplates[?(@.metadata.name=='$DATA_VOLUME_NAME')].metadata.name}")
+              if [ -n "$TEMPLATE_NAME" ]; then
+                PVC_NAME=$(kubectl get pvc -n "$NAMESPACE" \
+                  -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' \
+                  | grep -E "^${TEMPLATE_NAME}-${WORKLOAD_NAME}-[0-9]+$" | head -n 1 || true)
+              fi
+            fi
+
             if [ -z "$PVC_NAME" ]; then
               echo "::error::Volume '$DATA_VOLUME_NAME' is not backed by persistentVolumeClaim. Refusing deploy."
               kubectl get "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE" -o yaml | sed -n '1,220p'
