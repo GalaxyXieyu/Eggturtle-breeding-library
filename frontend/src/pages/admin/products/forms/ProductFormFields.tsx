@@ -23,9 +23,10 @@ import type { ProductFormValues } from "./productSchema";
 
 type Props = {
   control: Control<ProductFormValues>;
+  mode: "create" | "edit";
 };
 
-export function ProductFormFields({ control }: Props) {
+export function ProductFormFields({ control, mode }: Props) {
   return (
     <div className="space-y-6">
       <div className="space-y-4 border-b pb-6">
@@ -59,43 +60,47 @@ export function ProductFormFields({ control }: Props) {
           )}
         />
 
-        <FormField
-          control={control}
-          name="stage"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Stage</FormLabel>
-              <FormControl>
-                <Input {...field} placeholder="unknown" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {mode === "edit" && (
+          <>
+            <FormField
+              control={control}
+              name="stage"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Stage</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="unknown" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        <FormField
-          control={control}
-          name="status"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Status</FormLabel>
-              <Select value={field.value} onValueChange={field.onChange}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="选择状态" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="draft">draft</SelectItem>
-                  <SelectItem value="active">active</SelectItem>
-                  <SelectItem value="reserved">reserved</SelectItem>
-                  <SelectItem value="sold">sold</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+            <FormField
+              control={control}
+              name="status"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Status</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="选择状态" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="draft">draft</SelectItem>
+                      <SelectItem value="active">active</SelectItem>
+                      <SelectItem value="reserved">reserved</SelectItem>
+                      <SelectItem value="sold">sold</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </>
+        )}
 
         <FormField
           control={control}
