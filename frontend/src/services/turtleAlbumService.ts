@@ -1,10 +1,11 @@
 import apiClient, { ApiResponse, handleApiError } from '@/lib/api';
-import type { Breeder, BreederRecords, Series, Sex, FamilyTree } from '@/types/turtleAlbum';
+import type { Breeder, BreederRecords, Series, Sex, FamilyTree, BreederSummary } from '@/types/turtleAlbum';
 
 const ENDPOINTS = {
   SERIES: '/api/series',
   ADMIN_SERIES: '/api/admin/series',
   BREEDERS: '/api/breeders',
+  BREEDER_BY_CODE: (code: string) => `/api/breeders/by-code/${encodeURIComponent(code)}`,
   BREEDER_DETAIL: (id: string) => `/api/breeders/${id}`,
   BREEDER_RECORDS: (id: string) => `/api/breeders/${id}/records`,
   BREEDER_FAMILY_TREE: (id: string) => `/api/breeders/${id}/family-tree`,
@@ -90,6 +91,16 @@ export const turtleAlbumService = {
         },
       });
       return res.data.data || [];
+    } catch (e) {
+      const err = handleApiError(e);
+      throw new ApiRequestError(err.message, { status: err.status, code: err.code });
+    }
+  },
+
+  async getBreederByCode(code: string): Promise<BreederSummary> {
+    try {
+      const res = await apiClient.get<ApiResponse<BreederSummary>>(ENDPOINTS.BREEDER_BY_CODE(code));
+      return res.data.data;
     } catch (e) {
       const err = handleApiError(e);
       throw new ApiRequestError(err.message, { status: err.status, code: err.code });

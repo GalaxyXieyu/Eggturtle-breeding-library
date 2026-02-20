@@ -40,6 +40,44 @@ async def list_breeders(
     )
 
 
+@router.get("/by-code/{code}", response_model=ApiResponse)
+async def get_breeder_by_code(
+    code: str,
+    db: Session = Depends(get_db),
+):
+    """Public: breeder summary by exact code.
+
+    Used by the frontend to map sireCode/damCode -> breeder id.
+    """
+    from sqlalchemy.orm import joinedload
+
+    breeder = (
+        db.query(Product)
+        .options(joinedload(Product.images))
+        .filter(Product.code == code)
+        .filter(Product.series_id.isnot(None))
+        .filter(Product.sex.isnot(None))
+        .first()
+    )
+    if not breeder:
+        raise HTTPException(status_code=404, detail="Breeder not found")
+
+    main_image_url = None
+    if breeder.images:
+        main_image = next((img for img in breeder.images if img.type == "main"), None)
+        main_image_url = (main_image.url if main_image else breeder.images[0].url) if breeder.images else None
+
+    return ApiResponse(
+        data={
+            "id": breeder.id,
+            "code": breeder.code,
+            "name": breeder.name,
+            "mainImageUrl": main_image_url,
+        },
+        message="Breeder retrieved successfully",
+    )
+
+
 @router.get("/{breeder_id}", response_model=ApiResponse)
 async def get_breeder_detail(
     breeder_id: str,

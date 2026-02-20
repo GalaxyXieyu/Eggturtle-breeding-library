@@ -1,5 +1,5 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 
 import WeChatContactFab from '@/components/turtle-album/WeChatContactFab';
@@ -9,6 +9,7 @@ import { createImageUrl } from '@/lib/api';
 import { getBreederImagePath } from '@/utils/breederImage';
 
 import { ApiRequestError, turtleAlbumService } from '@/services/turtleAlbumService';
+import type { BreederSummary } from '@/types/turtleAlbum';
 
 const isBreederNotFoundError = (error: unknown) => {
   if (error instanceof ApiRequestError && error.status === 404) return true;
@@ -245,6 +246,64 @@ const SeriesDescriptionCard: React.FC<{ seriesName: string; seriesIntroItems: st
   );
 };
 
+const ParentLinkRow: React.FC<{
+  label: string;
+  code?: string | null;
+  query: UseQueryResult<BreederSummary, Error>;
+}> = ({ label, code, query }) => {
+  const trimmedCode = (code || '').trim();
+  const hasCode = !!trimmedCode;
+
+  const isClickable = hasCode && !!query.data?.id;
+  const href = isClickable ? `/breeder/${query.data?.id}` : '#';
+
+  let primaryText = '未知';
+  let secondaryText: string | null = null;
+
+  if (hasCode) {
+    if (query.isFetching) {
+      primaryText = trimmedCode;
+      secondaryText = '查询中...';
+    } else if (query.data) {
+      primaryText = query.data.code;
+      secondaryText = query.data.name && query.data.name !== query.data.code ? query.data.name : null;
+    } else {
+      primaryText = trimmedCode;
+      secondaryText = '未知';
+    }
+  }
+
+  const baseClass =
+    'group flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition sm:px-5';
+  const disabledClass = 'cursor-not-allowed text-neutral-500';
+  const enabledClass = 'text-neutral-900 hover:bg-neutral-50';
+
+  const content = (
+    <>
+      <div className="text-sm font-medium text-neutral-600">{label}</div>
+      <div className="min-w-0 text-right">
+        <div className={`truncate text-sm font-semibold ${isClickable ? 'text-blue-700 group-hover:underline' : ''}`}>
+          {primaryText}
+        </div>
+        {secondaryText ? <div className="truncate text-xs text-neutral-500">{secondaryText}</div> : null}
+      </div>
+    </>
+  );
+
+  if (!isClickable) {
+    return (
+      <button type="button" disabled className={`${baseClass} ${disabledClass}`}>
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <Link to={href} className={`${baseClass} ${enabledClass}`}>
+      {content}
+    </Link>
+  );
+};
 
 const BreederDetail: React.FC = () => {
   const { id } = useParams();
@@ -291,6 +350,23 @@ const BreederDetail: React.FC = () => {
         .filter(Boolean),
     [activeSeries?.description],
   );
+
+  const sireCode = breederQ.data?.sireCode || null;
+  const damCode = breederQ.data?.damCode || null;
+
+  const sireBreederQ = useQuery({
+    queryKey: ['turtle-album', 'breeder-by-code', sireCode],
+    queryFn: () => turtleAlbumService.getBreederByCode((sireCode || '').trim()),
+    enabled: !!(sireCode || '').trim(),
+    retry: false,
+  });
+
+  const damBreederQ = useQuery({
+    queryKey: ['turtle-album', 'breeder-by-code', damCode],
+    queryFn: () => turtleAlbumService.getBreederByCode((damCode || '').trim()),
+    enabled: !!(damCode || '').trim(),
+    retry: false,
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-stone-100 via-white to-amber-50/40 text-black">
@@ -390,26 +466,10 @@ const BreederDetail: React.FC = () => {
                     ) : null}
                   </div>
 
-                  {(breederQ.data.sireCode || breederQ.data.damCode) ? (
-                    <div className="mt-4 flex flex-wrap gap-2 text-xs sm:text-sm">
-                      {breederQ.data.sireCode ? (
-                        <div className="flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-blue-700">
-                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                          </svg>
-                          <span>父本：{breederQ.data.sireCode}</span>
-                        </div>
-                      ) : null}
-                      {breederQ.data.damCode ? (
-                        <div className="flex items-center gap-1.5 rounded-full border border-pink-200 bg-pink-50 px-3 py-1 text-pink-700">
-                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                          </svg>
-                          <span>母本：{breederQ.data.damCode}</span>
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
+                  <div className="mt-4 overflow-hidden rounded-2xl border border-neutral-200/70 bg-neutral-50/40 divide-y divide-neutral-200/70">
+                    <ParentLinkRow label="父本" code={breederQ.data.sireCode} query={sireBreederQ} />
+                    <ParentLinkRow label="母本" code={breederQ.data.damCode} query={damBreederQ} />
+                  </div>
 
                   {breederQ.data.description ? (
                     <div className="mt-4 rounded-2xl border border-amber-200/60 bg-gradient-to-br from-amber-50/80 to-yellow-50/50 p-3">

@@ -33,6 +33,13 @@ export interface Breeder {
   updatedAt?: string;
 }
 
+export interface BreederSummary {
+  id: string;
+  code: string;
+  name: string;
+  mainImageUrl?: string | null;
+}
+
 export interface MatingRecord {
   id: string;
   femaleId: string;
