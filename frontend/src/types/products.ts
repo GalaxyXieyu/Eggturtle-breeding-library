@@ -22,6 +22,7 @@ export interface Product {
   status: 'draft' | 'active' | 'reserved' | 'sold';
   seriesId?: string | null;
   sex?: 'male' | 'female' | string | null;
+  offspringUnitPrice?: number | null;
   sireCode?: string | null;
   damCode?: string | null;
   images: ProductImage[];

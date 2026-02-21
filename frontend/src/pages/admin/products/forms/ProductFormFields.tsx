@@ -17,8 +17,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import type { Control } from "react-hook-form";
+import { useQuery } from '@tanstack/react-query';
+import { useWatch, type Control } from "react-hook-form";
 import { PRODUCT_STATUSES, TURTLE_STAGES } from "@/constants/filterOptions";
+
+import { turtleAlbumService } from '@/services/turtleAlbumService';
 
 import type { ProductFormValues } from "./productSchema";
 
@@ -27,6 +30,13 @@ type Props = {
 };
 
 export function ProductFormFields({ control }: Props) {
+  const seriesQ = useQuery({
+    queryKey: ['admin', 'series'],
+    queryFn: () => turtleAlbumService.adminListSeries({ includeInactive: true }),
+  });
+
+  const sex = useWatch({ control, name: 'sex' });
+
   return (
     <div className="space-y-6">
       <div className="space-y-4 border-b pb-6">
@@ -65,14 +75,71 @@ export function ProductFormFields({ control }: Props) {
           name="seriesId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>系列ID</FormLabel>
-              <FormControl>
-                <Input {...field} placeholder="输入系列ID（可选）" />
-              </FormControl>
+              <FormLabel>系列</FormLabel>
+              <Select value={field.value || ''} onValueChange={field.onChange}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder={seriesQ.isLoading ? '加载系列中...' : '选择系列（可选）'} />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="">不选择</SelectItem>
+                  {(seriesQ.data || []).map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}
         />
+
+        <FormField
+          control={control}
+          name="sex"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>性别</FormLabel>
+              <Select value={field.value || ''} onValueChange={field.onChange}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="选择性别（种龟必填）" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="">不填</SelectItem>
+                  <SelectItem value="female">母</SelectItem>
+                  <SelectItem value="male">公</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {sex === 'female' ? (
+          <FormField
+            control={control}
+            name="offspringUnitPrice"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>子代单价</FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    inputMode="decimal"
+                    placeholder="例如：18000"
+                    value={field.value === undefined ? '' : String(field.value)}
+                    onChange={(e) => field.onChange(e.target.value)}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        ) : null}
 
         <FormField
           control={control}

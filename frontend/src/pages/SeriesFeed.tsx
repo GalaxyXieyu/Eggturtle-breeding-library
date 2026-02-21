@@ -175,12 +175,64 @@ const SeriesFeed: React.FC = () => {
     queryFn: () => turtleAlbumService.listSeries(),
   });
 
-  // Default to the first series (sorted by backend sort_order) to avoid a mixed feed.
+  const SERIES_ID_STORAGE_KEY = 'turtle-album.seriesId';
+
+  // Default series selection:
+  // 1) Prefer user's last selected series (localStorage)
+  // 2) Otherwise pick the first series that actually has data (probe with limit=1)
+  // 3) Fallback to the first series
   React.useEffect(() => {
     if (seriesId) return;
-    if (!seriesQ.data || seriesQ.data.length === 0) return;
-    setSeriesId(seriesQ.data[0].id);
+    const list = seriesQ.data || [];
+    if (list.length === 0) return;
+
+    const cached = (() => {
+      try {
+        return window.localStorage.getItem(SERIES_ID_STORAGE_KEY);
+      } catch {
+        return null;
+      }
+    })();
+
+    if (cached && list.some((s) => s.id === cached)) {
+      setSeriesId(cached);
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      // Probe a few series to avoid a cold-open "暂无数据" first impression.
+      const candidates = list.slice(0, 5);
+      for (const s of candidates) {
+        try {
+          const res = await turtleAlbumService.listBreeders({ seriesId: s.id, limit: 1 });
+          if (cancelled) return;
+          if (res.length > 0) {
+            setSeriesId(s.id);
+            return;
+          }
+        } catch {
+          // Ignore probe errors; we'll fallback.
+        }
+      }
+
+      if (!cancelled) setSeriesId(list[0].id);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [seriesId, seriesQ.data]);
+
+  React.useEffect(() => {
+    if (!seriesId) return;
+    try {
+      window.localStorage.setItem(SERIES_ID_STORAGE_KEY, seriesId);
+    } catch {
+      // ignore
+    }
+  }, [seriesId]);
 
   const breedersQ = useQuery({
     queryKey: ['turtle-album', 'breeders', { seriesId, sex }],

@@ -36,6 +36,8 @@ export function ProductEditForm({ product, onSubmit, onCancel, isSaving, images 
       name: product.name,
       code: product.code,
       seriesId: product.seriesId || "",
+      sex: (product.sex === 'male' || product.sex === 'female' ? product.sex : "") as any,
+      offspringUnitPrice: typeof (product as any).offspringUnitPrice === 'number' ? (product as any).offspringUnitPrice : undefined,
       sireCode: product.sireCode || "",
       damCode: product.damCode || "",
       description: product.description,

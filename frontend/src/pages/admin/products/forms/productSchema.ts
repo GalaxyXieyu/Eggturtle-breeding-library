@@ -5,6 +5,15 @@ export const productFormSchema = z.object({
   code: z.string().min(1, "货号不能为空"),
   // Backend write key is series_id; frontend keeps seriesId then maps before submit.
   seriesId: z.string().optional().default(""),
+  sex: z.enum(["", "male", "female"]).default(""),
+  offspringUnitPrice: z.preprocess(
+    (v) => {
+      if (v === "" || v === null || v === undefined) return undefined;
+      const n = typeof v === "string" ? Number(v) : (v as number);
+      return Number.isFinite(n) ? n : undefined;
+    },
+    z.number().nonnegative().optional()
+  ),
   // Backend write keys are sire_code/dam_code; frontend keeps camelCase then maps before submit.
   sireCode: z.string().optional().default(""),
   damCode: z.string().optional().default(""),
@@ -24,6 +33,8 @@ export const productFormDefaultValues: ProductFormValues = {
   name: "",
   code: "",
   seriesId: "",
+  sex: "",
+  offspringUnitPrice: undefined,
   sireCode: "",
   damCode: "",
   description: "",
