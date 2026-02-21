@@ -19,7 +19,7 @@ const translations = {
   "allProducts": "全部产品",
 
   // Product Card
-  "code": "货号",
+  "code": "编号",
   "type": "型号",
   "cost": "成本",
   "noProductsFound": "未找到符合条件的产品",

@@ -122,7 +122,7 @@ export function ProductImportDialog({ onSuccess }: ProductImportDialogProps) {
         <DialogHeader>
           <DialogTitle>批量导入产品</DialogTitle>
           <DialogDescription>
-            上传 Excel 产品数据；可选上传图片 ZIP（按货号分文件夹）
+            上传 Excel 产品数据；可选上传图片 ZIP（按编号分文件夹）
           </DialogDescription>
         </DialogHeader>
 
@@ -134,9 +134,9 @@ export function ProductImportDialog({ onSuccess }: ProductImportDialogProps) {
               <AlertDescription className="space-y-2">
                 <ul className="list-disc list-inside space-y-1">
                   <li>先下载模板，按模板格式填写。</li>
-                  <li>必填列：<strong>货号</strong>。</li>
+                  <li>必填列：<strong>编号</strong>。</li>
                   <li>
-                    图片（可选）：上传 ZIP，内部文件夹以货号命名。
+                    图片（可选）：上传 ZIP，内部文件夹以编号命名。
                     <ul className="list-disc list-inside ml-4 mt-1 text-xs opacity-80">
                       <li>示例：ZIP 内有 <code>P001</code> 文件夹，里面是 <code>1.jpg</code>、<code>2.jpg</code></li>
                       <li>系统会自动关联到对应产品。</li>
