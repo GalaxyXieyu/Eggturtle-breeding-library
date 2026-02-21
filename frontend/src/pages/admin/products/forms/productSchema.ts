@@ -2,7 +2,7 @@ import * as z from "zod";
 
 export const productFormSchema = z.object({
   name: z.string().min(1, "产品名称不能为空"),
-  code: z.string().min(1, "货号不能为空"),
+  code: z.string().min(1, "编号不能为空"),
   // Backend write key is series_id; frontend keeps seriesId then maps before submit.
   seriesId: z.string().optional().default(""),
   sex: z.enum(["", "male", "female"]).default(""),

@@ -61,9 +61,9 @@ export function ProductFormFields({ control }: Props) {
           name="code"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>货号</FormLabel>
+              <FormLabel>编号</FormLabel>
               <FormControl>
-                <Input {...field} placeholder="输入产品货号" />
+                <Input {...field} placeholder="输入编号" />
               </FormControl>
               <FormMessage />
             </FormItem>

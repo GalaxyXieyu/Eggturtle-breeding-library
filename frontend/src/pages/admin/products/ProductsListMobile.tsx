@@ -55,7 +55,7 @@ export function ProductsListMobile({
 
                 <div className="flex-1 min-w-0">
                   <h3 className="font-medium text-gray-900 truncate mb-1">{product.name}</h3>
-                  <p className="text-sm text-gray-600 mb-1">货号: {product.code}</p>
+                  <p className="text-sm text-gray-600 mb-1">编号: {product.code}</p>
                   <div className="flex gap-2 text-sm text-gray-600">
                     <span>{product.sex === "male" ? "公" : product.sex === "female" ? "母" : "-"}</span>
                     <span>•</span>

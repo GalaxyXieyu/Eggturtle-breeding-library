@@ -59,7 +59,7 @@ export function ProductsTableDesktop({
               </TableHead>
               <TableHead onClick={() => onSort("code")} className="cursor-pointer">
                 <div className="flex items-center">
-                  货号
+                  编号
                   <ArrowUpDown className="ml-2 h-4 w-4" />
                 </div>
               </TableHead>

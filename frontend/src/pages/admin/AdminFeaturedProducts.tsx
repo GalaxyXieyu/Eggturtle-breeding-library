@@ -307,7 +307,7 @@ const AdminFeaturedProducts = () => {
               <TableRow>
                 <TableHead>产品图片</TableHead>
                 <TableHead>产品名称</TableHead>
-                <TableHead>产品货号</TableHead>
+                <TableHead>产品编号</TableHead>
                 <TableHead>价格</TableHead>
                 <TableHead>排序</TableHead>
                 <TableHead className="text-right">操作</TableHead>
@@ -399,7 +399,7 @@ const AdminFeaturedProducts = () => {
 
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-gray-900 truncate">{featured.product.name}</p>
-                    <p className="text-sm text-gray-600 mt-0.5">货号: {featured.product.code}</p>
+                    <p className="text-sm text-gray-600 mt-0.5">编号: {featured.product.code}</p>
                     <div className="mt-1 text-sm text-gray-900 font-medium">
                       {formatCnyPriceOrNotForSale(featured.product.pricing.price)}
                     </div>

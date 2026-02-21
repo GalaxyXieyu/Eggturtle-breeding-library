@@ -109,7 +109,7 @@ export function ProductDetailView({
         )}
 
         <h3 className="text-xl font-medium text-gray-900">{product.name}</h3>
-        <p className="text-sm text-gray-600 mt-1">货号: {product.code}</p>
+        <p className="text-sm text-gray-600 mt-1">编号: {product.code}</p>
       </div>
 
       <div>
