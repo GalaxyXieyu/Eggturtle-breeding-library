@@ -1,7 +1,7 @@
 import * as z from "zod";
 
 export const productFormSchema = z.object({
-  name: z.string().min(1, "产品名称不能为空"),
+  // Business rule: product name is not an input field; backend will receive name=code.
   code: z.string().min(1, "编号不能为空"),
   // Backend write key is series_id; frontend keeps seriesId then maps before submit.
   seriesId: z.string().optional().default(""),
@@ -23,14 +23,11 @@ export const productFormSchema = z.object({
   inStock: z.boolean().default(true),
   popularityScore: z.coerce.number().min(0).max(100).default(0),
   isFeatured: z.boolean().default(false),
-  stage: z.string().default("hatchling"),
-  status: z.enum(["active", "reserved", "sold"]).default("active"),
 });
 
 export type ProductFormValues = z.infer<typeof productFormSchema>;
 
 export const productFormDefaultValues: ProductFormValues = {
-  name: "",
   code: "",
   seriesId: "",
   sex: "",
@@ -42,6 +39,4 @@ export const productFormDefaultValues: ProductFormValues = {
   inStock: true,
   popularityScore: 0,
   isFeatured: false,
-  stage: "hatchling",
-  status: "active",
 };

@@ -25,9 +25,8 @@ class ImportResult:
 
 class BatchImportService:
     # Standard columns expected in the Excel file
-    REQUIRED_COLUMNS = ['货号']
     COLUMN_MAPPING = {
-        '货号': 'code',
+        '编号': 'code',
         '产品名称': 'name',
         '产品描述': 'description',
         '出厂价格': 'price',
@@ -45,7 +44,7 @@ class BatchImportService:
         
         # Add a sample row
         sample_data = {
-            '货号': 'P001',
+            '编号': 'P001',
             '产品名称': 'Sample Product',
             '产品描述': 'This is a sample product',
             '出厂价格': 1.5,
@@ -150,11 +149,16 @@ class BatchImportService:
             return {"success": False, "message": f"Failed to read Excel file: {str(e)}"}
 
         # Validate columns
-        missing_columns = [col for col in BatchImportService.REQUIRED_COLUMNS if col not in df.columns]
-        if missing_columns:
+        if "编号" not in df.columns:
+            # Hard requirement: the column must be named "编号".
+            if "货号" in df.columns:
+                return {
+                    "success": False,
+                    "message": "缺少必填列：编号。检测到旧列名：货号，请将 Excel 列头从【货号】改为【编号】后重试。"
+                }
             return {
-                "success": False, 
-                "message": f"Missing required columns: {', '.join(missing_columns)}"
+                "success": False,
+                "message": "缺少必填列：编号"
             }
 
         # 2. Handle Zip File (if provided)
@@ -170,7 +174,7 @@ class BatchImportService:
                 return {"success": False, "message": f"Failed to process ZIP file: {str(e)}"}
 
         # 3. Process Rows
-        # 收集未匹配的货号，用于最后汇总
+        # 收集未匹配的编号，用于最后汇总
         unmatched_codes = []
         all_zip_folders = BatchImportService._get_all_folder_names(temp_dir) if temp_dir else []
         
@@ -181,9 +185,9 @@ class BatchImportService:
 
                 product_code = None
                 try:
-                    product_code = BatchImportService._clean_string(row.get('货号'))
+                    product_code = BatchImportService._clean_string(row.get('编号'))
                     if not product_code:
-                        result.warnings.append(f"第 {row_num} 行: 跳过 - 缺少货号")
+                        result.warnings.append(f"第 {row_num} 行: 跳过 - 缺少编号")
                         result.failed_count += 1
                         continue
 
@@ -218,9 +222,9 @@ class BatchImportService:
                                 product.code, temp_dir, product.id, db
                             )
                             if images_found > 0:
-                                result.warnings.append(f"第 {row_num} 行: 货号 {product_code} 成功导入 {images_found} 张图片")
+                                result.warnings.append(f"第 {row_num} 行: 编号 {product_code} 成功导入 {images_found} 张图片")
                             else:
-                                # 记录未匹配的货号
+                                # 记录未匹配的编号
                                 unmatched_codes.append(product_code)
 
                     result.success_count += 1
@@ -228,7 +232,7 @@ class BatchImportService:
                 except Exception as e:
                     result.failed_count += 1
                     code = product_code or "未知"
-                    result.errors.append(f"第 {row_num} 行: 导入货号 [{code}] 失败: {str(e)}")
+                    result.errors.append(f"第 {row_num} 行: 导入编号 [{code}] 失败: {str(e)}")
                     continue
             
             db.commit()
@@ -239,18 +243,18 @@ class BatchImportService:
             if temp_dir and os.path.exists(temp_dir):
                 shutil.rmtree(temp_dir)
 
-        # 如果有未匹配的货号，添加汇总提示
+        # 如果有未匹配的编号，添加汇总提示
         if unmatched_codes and all_zip_folders:
             # 过滤出实际的产品文件夹（排除 thumbnail/small 等子目录）
             product_folders = [f for f in all_zip_folders if not f in {'thumbnail', 'small', 'medium', 'large', 'carousel'}]
             result.warnings.append(
-                f"⚠️ 以下 {len(unmatched_codes)} 个货号未找到对应图片文件夹: {unmatched_codes}"
+                f"⚠️ 以下 {len(unmatched_codes)} 个编号未找到对应图片文件夹: {unmatched_codes}"
             )
             result.warnings.append(
                 f"📁 ZIP 中的文件夹列表: {sorted(product_folders)}"
             )
             result.warnings.append(
-                "💡 提示: 请检查 Excel 货号与 ZIP 文件夹名是否一致（支持自动匹配 O1↔O01 格式）"
+                "💡 提示: 请检查 Excel 编号与 ZIP 文件夹名是否一致（支持自动匹配 O1↔O01 格式）"
             )
 
         return {
@@ -265,7 +269,7 @@ class BatchImportService:
     @staticmethod
     def _normalize_code(code: str) -> str:
         """
-        规范化货号，移除数字部分的前导零，统一格式。
+        规范化编号，移除数字部分的前导零，统一格式。
         支持多种格式：
         - O01 -> o1, O001 -> o1, O1 -> o1
         - F-01 -> f-1, F_01 -> f_1

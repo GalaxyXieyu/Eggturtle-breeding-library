@@ -7,7 +7,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
 import type { Product } from "@/types/products";
-import { normalizeStageValue, normalizeStatusValue } from "@/constants/filterOptions";
 
 import { ProductFormFields } from "./ProductFormFields";
 import {
@@ -33,7 +32,6 @@ export function ProductEditForm({ product, onSubmit, onCancel, isSaving, images 
   useEffect(() => {
     form.reset({
       ...productFormDefaultValues,
-      name: product.name,
       code: product.code,
       seriesId: product.seriesId || "",
       sex: (product.sex === 'male' || product.sex === 'female' ? product.sex : "") as any,
@@ -43,8 +41,6 @@ export function ProductEditForm({ product, onSubmit, onCancel, isSaving, images 
       description: product.description,
       inStock: product.inStock,
       popularityScore: product.popularityScore,
-      stage: normalizeStageValue(product.stage),
-      status: normalizeStatusValue(product.status),
       isFeatured: product.isFeatured,
     });
   }, [form, product]);

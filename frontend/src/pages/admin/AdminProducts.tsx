@@ -309,11 +309,9 @@ const AdminProducts = () => {
     try {
       // First create the product without images
       const backendProductData = {
-        name: values.name,
+        name: values.code,
         code: values.code,
         description: values.description || "",
-        stage: values.stage,
-        status: values.status,
         series_id: values.seriesId?.trim() || null,
         sex: values.sex || null,
         offspring_unit_price: values.sex === 'female' ? values.offspringUnitPrice ?? null : null,
@@ -367,11 +365,9 @@ const AdminProducts = () => {
     if (!selectedProduct) return;
 
     const updatedProductData = {
-      name: values.name,
+      name: values.code,
       code: values.code,
       description: values.description || "",
-      stage: values.stage,
-      status: values.status,
       series_id: values.seriesId?.trim() || null,
       sex: values.sex || null,
       offspring_unit_price: values.sex === 'female' ? values.offspringUnitPrice ?? null : null,

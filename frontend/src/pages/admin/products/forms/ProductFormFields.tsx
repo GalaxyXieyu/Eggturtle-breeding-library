@@ -19,7 +19,6 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { useQuery } from '@tanstack/react-query';
 import { useWatch, type Control } from "react-hook-form";
-import { PRODUCT_STATUSES, TURTLE_STAGES } from "@/constants/filterOptions";
 
 import { turtleAlbumService } from '@/services/turtleAlbumService';
 
@@ -41,20 +40,6 @@ export function ProductFormFields({ control }: Props) {
     <div className="space-y-6">
       <div className="space-y-4 border-b pb-6">
         <h3 className="text-lg font-medium text-gray-900">基本信息</h3>
-
-        <FormField
-          control={control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>产品名称</FormLabel>
-              <FormControl>
-                <Input {...field} placeholder="输入产品名称" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
 
         <FormField
           control={control}
@@ -164,56 +149,6 @@ export function ProductFormFields({ control }: Props) {
               <FormControl>
                 <Input {...field} placeholder="输入母本编号（可选）" />
               </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={control}
-          name="stage"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>阶段</FormLabel>
-              <Select value={field.value} onValueChange={field.onChange}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="选择阶段" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {TURTLE_STAGES.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={control}
-          name="status"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>状态</FormLabel>
-              <Select value={field.value} onValueChange={field.onChange}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="选择状态" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {PRODUCT_STATUSES.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
               <FormMessage />
             </FormItem>
           )}

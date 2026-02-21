@@ -254,57 +254,67 @@ const ParentPill: React.FC<{
 }> = ({ label, variant, code, query }) => {
   const trimmedCode = (code || '').trim();
   const hasCode = !!trimmedCode;
+  const parentId = query.data?.id;
+  const isLoading = hasCode && (query.isLoading || (query.isFetching && !query.data && !query.isError));
+  const hasWarning = hasCode && query.isError && !query.data;
+  const displayCode = hasCode ? query.data?.code || trimmedCode : '无';
+  const isClickable = !!parentId;
 
-  const isClickable = hasCode && !!query.data?.id;
-  const href = isClickable ? `/breeder/${query.data?.id}` : '#';
-
-  let primaryText = '未知';
-  let secondaryText: string | null = null;
-
-  if (hasCode) {
-    if (query.isFetching) {
-      primaryText = trimmedCode;
-      secondaryText = '查询中...';
-    } else if (query.data) {
-      primaryText = query.data.code;
-      secondaryText = query.data.name && query.data.name !== query.data.code ? query.data.name : null;
-    } else {
-      primaryText = trimmedCode;
-      secondaryText = '未知';
-    }
-  }
-
+  // Keep this low-salience: color is already strong, so avoid big backgrounds.
   const pillBase =
-    'inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition focus:outline-none focus:ring-2 focus:ring-offset-2';
-
-  const enabledColors =
+    'inline-flex max-w-full items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-semibold transition';
+  const theme =
     variant === 'father'
-      ? 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-300'
-      : 'bg-pink-500 text-white hover:bg-pink-600 focus:ring-pink-300';
+      ? {
+          normal: 'border-sky-200 text-sky-700',
+          loading: 'border-sky-200 text-sky-700',
+          hover: 'hover:border-sky-300',
+          focus: 'focus-visible:ring-sky-300',
+        }
+      : {
+          normal: 'border-rose-200 text-rose-700',
+          loading: 'border-rose-200 text-rose-700',
+          hover: 'hover:border-rose-300',
+          focus: 'focus-visible:ring-rose-300',
+        };
+  const warningColor = 'border-amber-200 text-amber-700';
+  const placeholderColor = 'border-neutral-200 text-neutral-400';
+  const stateColor = !hasCode
+    ? placeholderColor
+    : hasWarning
+      ? warningColor
+      : isLoading
+        ? theme.loading
+        : theme.normal;
+  const interactiveColor = !hasCode || hasWarning ? '' : theme.hover;
 
-  const disabledColors = 'cursor-not-allowed bg-neutral-200 text-neutral-500';
-
-  const text = (
+  const content = (
     <>
-      <span className="shrink-0 opacity-90">{label}</span>
-      <span className="max-w-[12rem] truncate sm:max-w-[14rem]">{primaryText}</span>
+      <span className="shrink-0 tracking-wide">{label}</span>
+      <span className={`truncate ${!hasCode ? 'text-neutral-400' : ''}`}>{displayCode}</span>
+      {isLoading ? (
+        <span
+          aria-hidden="true"
+          className="h-3 w-3 shrink-0 animate-spin rounded-full border border-current border-r-transparent opacity-70"
+        />
+      ) : null}
     </>
   );
 
-  const title = secondaryText ? `${label} ${primaryText} - ${secondaryText}` : `${label} ${primaryText}`;
+  const title = `${label} ${displayCode}`;
 
-  if (!isClickable) {
-    return (
-      <button type="button" disabled title={title} className={`${pillBase} ${disabledColors}`}>
-        {text}
-      </button>
-    );
-  }
-
-  return (
-    <Link to={href} title={title} className={`${pillBase} ${enabledColors}`}>
-      {text}
+  return isClickable ? (
+    <Link
+      to={`/breeder/${parentId}`}
+      title={title}
+      className={`${pillBase} ${stateColor} ${interactiveColor} focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 ${theme.focus}`}
+    >
+      {content}
     </Link>
+  ) : (
+    <span title={title} className={`${pillBase} ${stateColor} cursor-default`}>
+      {content}
+    </span>
   );
 };
 
@@ -469,9 +479,9 @@ const BreederDetail: React.FC = () => {
                     ) : null}
                   </div>
 
-                  <div className="mt-4 flex flex-wrap items-center justify-center gap-2 rounded-2xl border border-neutral-200/70 bg-neutral-50/40 p-3 sm:p-4">
-                    <ParentPill label="父本：" variant="father" code={breederQ.data.sireCode} query={sireBreederQ} />
-                    <ParentPill label="母本：" variant="mother" code={breederQ.data.damCode} query={damBreederQ} />
+                  <div className="mt-4 flex w-full items-center gap-2">
+                    <ParentPill label="父本" variant="father" code={breederQ.data.sireCode} query={sireBreederQ} />
+                    <ParentPill label="母本" variant="mother" code={breederQ.data.damCode} query={damBreederQ} />
                   </div>
 
                   {breederQ.data.description ? (
