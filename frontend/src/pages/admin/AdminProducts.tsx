@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import AdminLayout from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -176,8 +176,8 @@ const AdminProducts = () => {
     },
   });
 
-  // Use API data
-  const products = apiProductsData?.products || [];
+  // Use API data (memoized to keep a stable empty array during loading)
+  const products = useMemo(() => apiProductsData?.products ?? [], [apiProductsData?.products]);
   const totalProducts = apiProductsData?.total || 0;
   const totalPages = apiProductsData?.totalPages || 1;
   const getPrimaryImageUrl = (product: Product): string | null => {
@@ -211,21 +211,25 @@ const AdminProducts = () => {
 
   // Show error toast if API call fails
   useEffect(() => {
-    if (productsError) {
-      toast({
-        title: "加载失败",
-        description: "获取产品列表时发生错误",
-        variant: "destructive",
-      });
-    }
+    if (!productsError) return;
+
+    // If we start using request cancellation (AbortController/signal), ignore cancellation errors.
+    const maybeAxios = productsError as { code?: string; name?: string };
+    if (maybeAxios?.code === "ERR_CANCELED" || maybeAxios?.name === "CanceledError") return;
+    if (productsError instanceof Error && productsError.message === "canceled") return;
+
+    toast({
+      title: "加载失败",
+      description: "获取产品列表时发生错误",
+      variant: "destructive",
+    });
   }, [productsError, toast]);
 
+  // Reset pagination and list when query-related controls change.
   useEffect(() => {
     setCurrentPage(1);
-  }, [
-    searchQuery,
-    itemsPerPage,
-  ]);
+    setFilteredProducts([]);
+  }, [searchQuery, itemsPerPage, listFilters]);
 
   // Generate page numbers for display (with ellipsis for long lists)
   const getPageNumbers = () => {

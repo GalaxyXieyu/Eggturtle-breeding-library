@@ -36,6 +36,17 @@ export interface FilterOptions {
   searchText?: string;
   seriesId?: string;
   priceRange?: { min: number; max: number };
+
+  // Client-side filters used by older components.
+  developmentLineMaterials?: string[];
+  capacityRange?: { min?: number; max?: number };
+  compartmentRange?: { min?: number; max?: number };
+
+  // Admin/backend query filters (snake_case).
+  sex?: string;
+  series_id?: string;
+  price_min?: number;
+  price_max?: number;
 }
 
 export interface FilterOptionsResponse {

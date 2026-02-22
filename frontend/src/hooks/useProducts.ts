@@ -54,10 +54,12 @@ export const useProducts = (params?: {
   search?: string;
   enabled?: boolean;
 }) => {
+  const { enabled, ...serviceParams } = params ?? {};
+
   return useQuery({
-    queryKey: PRODUCT_QUERY_KEYS.list(params?.filters, params?.sort, params?.page, params?.search),
-    queryFn: () => productService.getProducts(params),
-    enabled: params?.enabled !== false,
+    queryKey: PRODUCT_QUERY_KEYS.list(serviceParams.filters, serviceParams.sort, serviceParams.page, serviceParams.search),
+    queryFn: ({ signal }) => productService.getProducts({ ...serviceParams, signal }),
+    enabled: enabled !== false,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
   });

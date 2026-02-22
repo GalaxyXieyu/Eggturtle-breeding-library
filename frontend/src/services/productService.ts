@@ -1,3 +1,5 @@
+import axios from 'axios';
+
 import apiClient, { ApiResponse, handleApiError, createImageUrl } from '@/lib/api';
 import { Product, FilterOptions, FilterOptionsResponse, SortOption } from '@/types/products';
 
@@ -34,6 +36,7 @@ export const productService = {
     page?: number;
     limit?: number;
     search?: string;
+    signal?: AbortSignal;
   }): Promise<{
     products: Product[];
     total: number;
@@ -41,9 +44,38 @@ export const productService = {
     totalPages: number;
   }> {
     try {
-      const queryParams: Record<string, unknown> = { ...params };
+      // Build query params explicitly so we don't accidentally send unsupported keys (e.g. `enabled`).
+      const queryParams: Record<string, unknown> = {};
+
+      if (typeof params?.page === 'number') queryParams.page = params.page;
+      if (typeof params?.limit === 'number') queryParams.limit = params.limit;
+      if (typeof params?.search === 'string' && params.search.trim()) queryParams.search = params.search.trim();
+      if (params?.sort) queryParams.sort = params.sort;
+
+      // Flatten filters into query params. Backend expects snake_case.
       if (params?.filters) {
-        delete queryParams.filters;
+        const filters = params.filters as Record<string, unknown>;
+
+        // Common frontend filter keys
+        if (!queryParams.search && typeof filters.searchText === 'string' && filters.searchText.trim()) {
+          queryParams.search = filters.searchText.trim();
+        }
+
+        // Admin (snake_case) filters
+        if (typeof filters.sex === 'string' && filters.sex) queryParams.sex = filters.sex;
+        if (typeof filters.series_id === 'string' && filters.series_id) queryParams.series_id = filters.series_id;
+        if (typeof filters.price_min === 'number') queryParams.price_min = filters.price_min;
+        if (typeof filters.price_max === 'number') queryParams.price_max = filters.price_max;
+
+        // Public (camelCase) filters -> backend snake_case
+        if (!queryParams.series_id && typeof filters.seriesId === 'string' && filters.seriesId) {
+          queryParams.series_id = filters.seriesId;
+        }
+        if (filters.priceRange && typeof filters.priceRange === 'object') {
+          const pr = filters.priceRange as { min?: unknown; max?: unknown };
+          if (typeof pr.min === 'number') queryParams.price_min = pr.min;
+          if (typeof pr.max === 'number') queryParams.price_max = pr.max;
+        }
       }
 
       const response = await apiClient.get<ApiResponse<{
@@ -51,7 +83,7 @@ export const productService = {
         total: number;
         page: number;
         totalPages: number;
-      }>>(ENDPOINTS.PRODUCTS, { params: queryParams });
+      }>>(ENDPOINTS.PRODUCTS, { params: queryParams, signal: params?.signal });
 
       // Process image URLs with safety check
       const rawProducts = response.data.data?.products || [];
@@ -68,6 +100,11 @@ export const productService = {
         products: processedProducts,
       };
     } catch (error) {
+      // Let TanStack Query treat request aborts as cancellations (no error state/toast).
+      if (axios.isAxiosError(error) && error.code === 'ERR_CANCELED') {
+        throw error;
+      }
+
       const apiError = handleApiError(error);
       throw new Error(apiError.message);
     }
