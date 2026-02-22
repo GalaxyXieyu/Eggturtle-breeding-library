@@ -188,6 +188,7 @@ def convert_product_to_response(product: Product) -> dict:
         "offspringUnitPrice": product.offspring_unit_price,
         "sireCode": product.sire_code,
         "damCode": product.dam_code,
+        "mateCode": getattr(product, "mate_code", None),
         "sireImageUrl": _normalize_image_url(product.sire_image_url) if product.sire_image_url else None,
         "damImageUrl": _normalize_image_url(product.dam_image_url) if product.dam_image_url else None,
 

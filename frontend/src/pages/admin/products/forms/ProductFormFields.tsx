@@ -156,6 +156,20 @@ export function ProductFormFields({ control }: Props) {
 
         <FormField
           control={control}
+          name="mateCode"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>配偶编号</FormLabel>
+              <FormControl>
+                <Input {...field} placeholder="输入配偶编号（可选，仅母龟）" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={control}
           name="description"
           render={({ field }) => (
             <FormItem>

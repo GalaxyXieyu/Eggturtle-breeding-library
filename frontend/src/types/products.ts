@@ -22,6 +22,7 @@ export interface Product {
   offspringUnitPrice?: number | null;
   sireCode?: string | null;
   damCode?: string | null;
+  mateCode?: string | null;
   images: ProductImage[];
   pricing: ProductPricing;
   inStock: boolean;

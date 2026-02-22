@@ -14,9 +14,10 @@ export const productFormSchema = z.object({
     },
     z.number().nonnegative().optional()
   ),
-  // Backend write keys are sire_code/dam_code; frontend keeps camelCase then maps before submit.
+  // Backend write keys are sire_code/dam_code/mate_code; frontend keeps camelCase then maps before submit.
   sireCode: z.string().optional().default(""),
   damCode: z.string().optional().default(""),
+  mateCode: z.string().optional().default(""),
   // Create flow keeps description optional; edit flow can still fill it.
   description: z.string().optional().default(""),
   hasSample: z.boolean().default(false),
@@ -34,6 +35,7 @@ export const productFormDefaultValues: ProductFormValues = {
   offspringUnitPrice: undefined,
   sireCode: "",
   damCode: "",
+  mateCode: "",
   description: "",
   hasSample: false,
   inStock: true,

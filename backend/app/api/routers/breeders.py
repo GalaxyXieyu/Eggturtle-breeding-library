@@ -6,6 +6,7 @@ from app.db.session import get_db
 from app.models.models import Product, MatingRecord, EggRecord
 from app.schemas.schemas import ApiResponse
 from app.api.utils import convert_product_to_response
+from app.services.breeder_mate import parse_current_mate_code
 
 router = APIRouter()
 
@@ -95,7 +96,15 @@ async def get_breeder_detail(
     if not breeder:
         raise HTTPException(status_code=404, detail="Breeder not found")
 
-    return ApiResponse(data=convert_product_to_response(breeder), message="Breeder retrieved successfully")
+    data = convert_product_to_response(breeder)
+
+    mate = _resolve_current_mate(db, breeder)
+    if mate:
+        data["currentMate"] = {"id": mate.id, "code": mate.code}
+    else:
+        data["currentMate"] = None
+
+    return ApiResponse(data=data, message="Breeder retrieved successfully")
 
 
 @router.get("/{breeder_id}/records", response_model=ApiResponse)
@@ -123,12 +132,16 @@ async def get_breeder_records(
     data = {
         "breederId": breeder.id,
         "sex": breeder.sex,
+        "currentMate": None,
         "matingRecordsAsFemale": [],
         "matingRecordsAsMale": [],
         "eggRecords": [],
     }
 
     if breeder.sex == "female":
+        mate = _resolve_current_mate(db, breeder)
+        data["currentMate"] = {"id": mate.id, "code": mate.code} if mate else None
+
         matings = (
             db.query(MatingRecord)
             .filter(MatingRecord.female_id == breeder.id)
@@ -226,6 +239,60 @@ def _get_breeder_by_code(db: Session, code: Optional[str]) -> Optional[Product]:
     )
 
 
+def _resolve_current_mate(db: Session, breeder: Product) -> Optional[Product]:
+    """Resolve the current mate (male breeder) for a female breeder.
+
+    Priority:
+    1) Latest "更换配偶为..." event in breeder.description
+    2) Latest mating record's male
+    """
+
+    if not breeder or breeder.sex != "female":
+        return None
+
+    # First priority: explicit mate_code (admin-managed).
+    explicit_code = (getattr(breeder, "mate_code", None) or "").strip()
+    if explicit_code:
+        candidates = [explicit_code]
+        if explicit_code.endswith("公"):
+            candidates.append(explicit_code[: -1])
+        else:
+            candidates.append(explicit_code + "公")
+
+        for c in candidates:
+            mate = _get_breeder_by_code(db, c)
+            if mate and mate.sex == "male":
+                return mate
+
+    # Second priority: last "更换配偶为..." event in description.
+    code = parse_current_mate_code(getattr(breeder, "description", None))
+    if code:
+        # Notes may include or omit the trailing "公" marker; try both.
+        candidates = [code]
+        if code.endswith("公"):
+            candidates.append(code[: -1])
+        else:
+            candidates.append(code + "公")
+
+        for c in candidates:
+            mate = _get_breeder_by_code(db, c)
+            if mate and mate.sex == "male":
+                return mate
+
+    latest = (
+        db.query(MatingRecord)
+        .filter(MatingRecord.female_id == breeder.id)
+        .order_by(MatingRecord.mated_at.desc())
+        .first()
+    )
+    if latest and latest.male_id:
+        mate = db.query(Product).filter(Product.id == latest.male_id).first()
+        if mate and mate.sex == "male":
+            return mate
+
+    return None
+
+
 def _build_node(breeder: Product, generation: int, relationship: str) -> dict:
     """Build a family tree node from a breeder."""
     if not breeder:
@@ -273,6 +340,9 @@ async def get_breeder_family_tree(
 
     # Build current node
     current = _build_node(breeder, 0, "current")
+
+    mate = _resolve_current_mate(db, breeder)
+    current_mate = {"id": mate.id, "code": mate.code} if mate else None
 
     # Get ancestors
     ancestors = {}
@@ -466,6 +536,7 @@ async def get_breeder_family_tree(
 
     data = {
         "current": current,
+        "currentMate": current_mate,
         "ancestors": ancestors,
         "offspring": offspring,
         "siblings": siblings,

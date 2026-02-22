@@ -23,6 +23,8 @@ export interface Breeder {
 
   sireCode?: string | null;
   damCode?: string | null;
+  mateCode?: string | null;
+  currentMate?: { id: string; code: string } | null;
   sireImageUrl?: string | null;
   damImageUrl?: string | null;
   isFeatured?: boolean | null;
@@ -63,6 +65,7 @@ export interface EggRecord {
 export interface BreederRecords {
   breederId: string;
   sex: Sex;
+  currentMate?: { id: string; code: string } | null;
   matingRecordsAsFemale: MatingRecord[];
   matingRecordsAsMale: MatingRecord[];
   eggRecords: EggRecord[];
@@ -102,6 +105,7 @@ export interface FamilyTreeEggRecord {
 
 export interface FamilyTree {
   current: FamilyTreeNode;
+  currentMate?: { id: string; code: string } | null;
   ancestors: {
     father?: FamilyTreeNode;
     mother?: FamilyTreeNode;

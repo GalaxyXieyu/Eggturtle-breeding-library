@@ -316,6 +316,7 @@ const AdminProducts = () => {
         offspring_unit_price: values.sex === 'female' ? values.offspringUnitPrice ?? null : null,
         sire_code: values.sireCode?.trim() || null,
         dam_code: values.damCode?.trim() || null,
+        mate_code: values.mateCode?.trim() || null,
         has_sample: values.hasSample,
         cost_price: 0, // Default value, can be updated later
         price: 0, // Default value, can be updated later
@@ -371,6 +372,7 @@ const AdminProducts = () => {
       offspring_unit_price: values.sex === 'female' ? values.offspringUnitPrice ?? null : null,
       sire_code: values.sireCode?.trim() || null,
       dam_code: values.damCode?.trim() || null,
+      mate_code: values.mateCode?.trim() || null,
       has_sample: values.hasSample,
       in_stock: values.inStock,
       popularity_score: values.popularityScore,

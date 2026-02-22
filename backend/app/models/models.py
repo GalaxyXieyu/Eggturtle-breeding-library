@@ -50,6 +50,8 @@ class Product(Base):
     # Optional lineage (shown only when provided)
     sire_code = Column(String)
     dam_code = Column(String)
+    # Optional spouse/mate code (female-only concept; enforced at API-level)
+    mate_code = Column(String)
     sire_image_url = Column(String)
     dam_image_url = Column(String)
 

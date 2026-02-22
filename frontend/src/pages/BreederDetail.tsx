@@ -248,7 +248,7 @@ const SeriesDescriptionCard: React.FC<{ seriesName: string; seriesIntroItems: st
 
 const ParentPill: React.FC<{
   label: string;
-  variant: 'father' | 'mother';
+  variant: 'father' | 'mother' | 'mate';
   code?: string | null;
   query: UseQueryResult<BreederSummary, Error>;
 }> = ({ label, variant, code, query }) => {
@@ -270,12 +270,19 @@ const ParentPill: React.FC<{
           hover: 'hover:border-sky-300 hover:bg-sky-50',
           focus: 'focus-visible:ring-sky-300',
         }
-      : {
-          normal: 'border-rose-200 bg-rose-50/70 text-rose-700',
-          loading: 'border-rose-200 bg-rose-50/70 text-rose-700',
-          hover: 'hover:border-rose-300 hover:bg-rose-50',
-          focus: 'focus-visible:ring-rose-300',
-        };
+      : variant === 'mother'
+        ? {
+            normal: 'border-rose-200 bg-rose-50/70 text-rose-700',
+            loading: 'border-rose-200 bg-rose-50/70 text-rose-700',
+            hover: 'hover:border-rose-300 hover:bg-rose-50',
+            focus: 'focus-visible:ring-rose-300',
+          }
+        : {
+            normal: 'border-amber-200 bg-amber-50/70 text-amber-800',
+            loading: 'border-amber-200 bg-amber-50/70 text-amber-800',
+            hover: 'hover:border-amber-300 hover:bg-amber-50',
+            focus: 'focus-visible:ring-amber-300',
+          };
   const warningColor = 'border-amber-200 bg-amber-50/70 text-amber-700';
   const stateColor = hasWarning ? warningColor : isLoading ? theme.loading : theme.normal;
   const interactiveColor = isClickable && !hasWarning ? theme.hover : '';
@@ -359,6 +366,9 @@ const BreederDetail: React.FC = () => {
   const sireCode = breederQ.data?.sireCode || null;
   const damCode = breederQ.data?.damCode || null;
 
+  const mateCode = (breederQ.data as any)?.currentMate?.code || breederQ.data?.mateCode || null;
+  const mateId = (breederQ.data as any)?.currentMate?.id || null;
+
   const sireBreederQ = useQuery({
     queryKey: ['turtle-album', 'breeder-by-code', sireCode],
     queryFn: () => turtleAlbumService.getBreederByCode((sireCode || '').trim()),
@@ -370,6 +380,13 @@ const BreederDetail: React.FC = () => {
     queryKey: ['turtle-album', 'breeder-by-code', damCode],
     queryFn: () => turtleAlbumService.getBreederByCode((damCode || '').trim()),
     enabled: !!(damCode || '').trim(),
+    retry: false,
+  });
+
+  const mateBreederQ = useQuery({
+    queryKey: ['turtle-album', 'breeder-by-code', mateCode],
+    queryFn: () => turtleAlbumService.getBreederByCode((mateCode || '').trim()),
+    enabled: breederQ.data?.sex === 'female' && !!(mateCode || '').trim() && !mateId,
     retry: false,
   });
 
@@ -474,6 +491,16 @@ const BreederDetail: React.FC = () => {
                   <div className="mt-4 flex w-full flex-nowrap items-center gap-2">
                     <ParentPill label="父本" variant="father" code={breederQ.data.sireCode} query={sireBreederQ} />
                     <ParentPill label="母本" variant="mother" code={breederQ.data.damCode} query={damBreederQ} />
+                    {breederQ.data.sex === 'female' && breederQ.data.currentMate?.id ? (
+                      <Link
+                        to={`/breeder/${breederQ.data.currentMate.id}`}
+                        title={`当前配偶 ${breederQ.data.currentMate.code}`}
+                        className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50/70 px-2 py-0.5 text-[11px] font-semibold text-amber-800 transition hover:border-amber-300 hover:bg-amber-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-1"
+                      >
+                        <span className="shrink-0 tracking-wide">当前配偶</span>
+                        <span className="truncate">{breederQ.data.currentMate.code}</span>
+                      </Link>
+                    ) : null}
                   </div>
 
                   {breederQ.data.description ? (

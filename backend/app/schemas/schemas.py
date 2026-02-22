@@ -42,6 +42,7 @@ class ProductBase(BaseModel):
     offspring_unit_price: Optional[float] = None
     sire_code: Optional[str] = None
     dam_code: Optional[str] = None
+    mate_code: Optional[str] = None
     sire_image_url: Optional[str] = None
     dam_image_url: Optional[str] = None
 
@@ -79,6 +80,7 @@ class ProductUpdate(BaseModel):
     offspring_unit_price: Optional[float] = None
     sire_code: Optional[str] = None
     dam_code: Optional[str] = None
+    mate_code: Optional[str] = None
     sire_image_url: Optional[str] = None
     dam_image_url: Optional[str] = None
 

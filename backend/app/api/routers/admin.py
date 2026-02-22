@@ -43,6 +43,7 @@ async def create_product(
         offspring_unit_price=product_data.offspring_unit_price,
         sire_code=product_data.sire_code,
         dam_code=product_data.dam_code,
+        mate_code=product_data.mate_code,
         sire_image_url=product_data.sire_image_url,
         dam_image_url=product_data.dam_image_url,
 
