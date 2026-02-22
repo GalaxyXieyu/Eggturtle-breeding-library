@@ -88,6 +88,7 @@
 ## 7. 关联文档
 
 - 编号与排序规范（草案，需评审后落地）：`docs/CODE_RULES_AND_SORTING.md`
+- 图片存储迁移（从 code 目录改为 product_id 目录）：`docs/IMAGE_STORAGE_MIGRATION_TO_PRODUCT_ID.md`
 
 ## 8. 常见操作清单
 
