@@ -10,36 +10,41 @@ BACKEND_ROOT = os.path.abspath(os.path.join(HERE, ".."))
 if BACKEND_ROOT not in sys.path:
     sys.path.insert(0, BACKEND_ROOT)
 
-from app.api.utils import _normalize_image_url, convert_product_to_response
+from app.api.utils import convert_product_to_response, normalize_local_image_url
+
+
+PRODUCT_ID = "550e8400-e29b-41d4-a716-446655440000"
 
 
 @pytest.mark.parametrize(
     "raw,expected",
     [
-        ("images/p01/a.jpg", "/static/images/p01/a.jpg"),
-        ("/images/p01/a.jpg", "/static/images/p01/a.jpg"),
-        ("static/images/p01/a.jpg", "/static/images/p01/a.jpg"),
-        ("/static/images/p01/a.jpg", "/static/images/p01/a.jpg"),
-        ("/static/other/p01/a.jpg", "/static/other/p01/a.jpg"),
+        (f"images/{PRODUCT_ID}/a.jpg", f"/static/images/{PRODUCT_ID}/a.jpg"),
+        (f"/images/{PRODUCT_ID}/a.jpg", f"/static/images/{PRODUCT_ID}/a.jpg"),
+        (f"static/images/{PRODUCT_ID}/a.jpg", f"/static/images/{PRODUCT_ID}/a.jpg"),
+        (f"/static/images/{PRODUCT_ID}/a.jpg", f"/static/images/{PRODUCT_ID}/a.jpg"),
         ("https://example.com/a.jpg", "https://example.com/a.jpg"),
         ("/api/images/a.jpg", "/api/images/a.jpg"),
+        # Strict mode: do not normalize code-based paths anymore.
+        ("images/p01/a.jpg", ""),
+        ("/static/other/p01/a.jpg", ""),
     ],
 )
-def test_normalize_image_url(raw: str, expected: str) -> None:
-    assert _normalize_image_url(raw) == expected
+def test_normalize_local_image_url(raw: str, expected: str) -> None:
+    assert normalize_local_image_url(raw) == expected
 
 
 def test_convert_product_to_response_normalizes_images_and_parents() -> None:
     img = SimpleNamespace(
         id=1,
-        url="/images/p01/a.jpg",
+        url=f"/images/{PRODUCT_ID}/a.jpg",
         alt="alt",
         type="main",
         sort_order=1,
     )
 
     product = SimpleNamespace(
-        id=1,
+        id=PRODUCT_ID,
         name="n",
         code="p01",
         description="d",
@@ -48,8 +53,8 @@ def test_convert_product_to_response_normalizes_images_and_parents() -> None:
         offspring_unit_price=None,
         sire_code=None,
         dam_code=None,
-        sire_image_url="images/p01/sire.jpg",
-        dam_image_url="/images/p01/dam.jpg",
+        sire_image_url=f"images/{PRODUCT_ID}/sire.jpg",
+        dam_image_url=f"/images/{PRODUCT_ID}/dam.jpg",
         images=[img],
         cost_price=0,
         price=0,
@@ -64,6 +69,6 @@ def test_convert_product_to_response_normalizes_images_and_parents() -> None:
     )
 
     resp = convert_product_to_response(product)
-    assert resp["images"][0]["url"] == "/static/images/p01/a.jpg"
-    assert resp["sireImageUrl"] == "/static/images/p01/sire.jpg"
-    assert resp["damImageUrl"] == "/static/images/p01/dam.jpg"
+    assert resp["images"][0]["url"] == f"/static/images/{PRODUCT_ID}/a.jpg"
+    assert resp["sireImageUrl"] == f"/static/images/{PRODUCT_ID}/sire.jpg"
+    assert resp["damImageUrl"] == f"/static/images/{PRODUCT_ID}/dam.jpg"

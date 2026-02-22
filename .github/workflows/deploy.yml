@@ -209,7 +209,37 @@ jobs:
             echo "Skipping /data PVC guard (REQUIRE_DATA_PVC=${REQUIRE_DATA_PVC})"
           fi
 
-          kubectl set image "$WORKLOAD_KIND"/"$WORKLOAD_NAME" "$CONTAINER_NAME"="$IMAGE_REF" -n "$NAMESPACE"
+          # No backward compatibility: image path migration requires a short maintenance window.
+          ORIGINAL_REPLICAS=$(kubectl get "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE" -o jsonpath='{.spec.replicas}')
+          if [ -z "$ORIGINAL_REPLICAS" ]; then
+            ORIGINAL_REPLICAS=1
+          fi
+
+          echo "Scaling down workload to 0 (original replicas=$ORIGINAL_REPLICAS)..."
+          kubectl scale "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE" --replicas=0
+
+          # Wait for pods to exit before doing non-compatible migrations.
+          SELECTOR=$(kubectl get "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE" -o go-template='{{range $k,$v := .spec.selector.matchLabels}}{{printf "%s=%s," $k $v}}{{end}}' | sed 's/,$//')
+          if [ -n "$SELECTOR" ]; then
+            echo "Waiting for pods to terminate: selector=$SELECTOR"
+            for i in $(seq 1 180); do
+              PODS=$(kubectl get pods -n "$NAMESPACE" -l "$SELECTOR" -o name 2>/dev/null || true)
+              if [ -z "$PODS" ]; then
+                echo "All pods are gone."
+                break
+              fi
+              sleep 1
+            done
+
+            PODS=$(kubectl get pods -n "$NAMESPACE" -l "$SELECTOR" -o name 2>/dev/null || true)
+            if [ -n "$PODS" ]; then
+              echo "::error::Pods still exist after waiting:"
+              printf '%s\n' "$PODS"
+              exit 1
+            fi
+          else
+            echo "Warning: cannot resolve selector for $WORKLOAD_KIND/$WORKLOAD_NAME; skipping pod wait."
+          fi
 
           # Run Alembic migrations via a one-off Job using the same image and the same /data PVC.
           # This avoids manual intervention and keeps DB schema in sync with code.
@@ -255,6 +285,48 @@ jobs:
           kubectl wait --for=condition=complete job/"$MIGRATE_JOB" -n "$NAMESPACE" --timeout=600s
           kubectl logs job/"$MIGRATE_JOB" -n "$NAMESPACE" || true
 
-          echo "Restarting workload after migrations..."
-          kubectl rollout restart "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE"
-          kubectl rollout status "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE" --timeout=180s
+          # Migrate image folders + normalize product_images.url.
+          IMAGE_MIGRATE_JOB="${WORKLOAD_NAME}-image-migrate-${GITHUB_SHA}"
+          echo "Running image migration via Job: $IMAGE_MIGRATE_JOB"
+
+          cat <<YAML | kubectl apply -n "$NAMESPACE" -f -
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: ${IMAGE_MIGRATE_JOB}
+            labels:
+              app.kubernetes.io/name: ${WORKLOAD_NAME}
+              app.kubernetes.io/component: image-migrate
+          spec:
+            backoffLimit: 0
+            ttlSecondsAfterFinished: 600
+            template:
+              spec:
+                restartPolicy: Never
+                containers:
+                  - name: image-migrate
+                    image: ${IMAGE_REF}
+                    imagePullPolicy: Always
+                    command: ["sh", "-lc", "python scripts/migrate_images_to_product_id.py --apply"]
+                    env:
+                      - name: DATABASE_URL
+                        value: "${DATABASE_URL:-sqlite:////data/app.db}"
+                      - name: UPLOAD_DIR
+                        value: "/data/images"
+                    volumeMounts:
+                      - name: data
+                        mountPath: /data
+                volumes:
+                  - name: data
+                    persistentVolumeClaim:
+                      claimName: ${PVC_NAME}
+          YAML
+
+          kubectl wait --for=condition=complete job/"$IMAGE_MIGRATE_JOB" -n "$NAMESPACE" --timeout=3600s
+          kubectl logs job/"$IMAGE_MIGRATE_JOB" -n "$NAMESPACE" || true
+
+          echo "Updating workload image and scaling back up..."
+          kubectl set image "$WORKLOAD_KIND"/"$WORKLOAD_NAME" "$CONTAINER_NAME"="$IMAGE_REF" -n "$NAMESPACE"
+          kubectl scale "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE" --replicas="$ORIGINAL_REPLICAS"
+
+          kubectl rollout status "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE" --timeout=300s

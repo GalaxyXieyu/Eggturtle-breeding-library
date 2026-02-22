@@ -1,7 +1,8 @@
 from app.models.models import Product
 import os
+import uuid
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 # 获取实际的图片目录（支持 Docker 环境）
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "static/images")
@@ -71,36 +72,17 @@ def _to_local_static_path(image_url: str) -> str:
         return os.path.join("static", "images", path.lstrip("/"))
     return os.path.join("static", "images", path)
 
-def _image_has_small_variant(product_code: str, image_url: str) -> bool:
-    """检查图片是否有 small 变体，支持 Docker 环境"""
-    if not image_url:
-        return False
+def normalize_local_image_url(image_url: str) -> str:
+    """将 DB 存储的图片路径规范化为对外可访问的静态 URL（严格模式）。
 
-    # 从 URL 中提取文件名
-    p = Path(image_url)
-    stem = p.stem
-    if not stem:
-        return False
+    规范：只允许产品图片使用 `images/<product_id>/<filename>` 的结构，并输出为：
+    - `/static/images/<product_id>/<filename>`
 
-    # 检查 UPLOAD_DIR 下的 small 目录
-    base_dir = os.path.join(UPLOAD_DIR, product_code, "small")
-    return _file_exists(os.path.join(base_dir, f"{stem}.webp")) or _file_exists(
-        os.path.join(base_dir, f"{stem}.jpg")
-    )
+    例外：
+    - 外链（http/https）原样返回
+    - `/api/images/...`（若部分部署使用 API 提供原图）原样返回
 
-
-def _normalize_image_url(image_url: str) -> str:
-    """Normalize stored image paths to the canonical public static URL.
-
-    Canonical format: /static/images/...
-
-    This keeps backward compatibility with existing DB values like:
-    - images/xxx.jpg
-    - /images/xxx.jpg
-    - static/images/xxx.jpg
-    - /static/images/xxx.jpg
-
-    External URLs (http/https) and API-served paths (/api/images/...) are left untouched.
+    不再兼容旧的 `images/<code>/...`（迁移后应不存在）。
     """
 
     if not image_url:
@@ -114,33 +96,40 @@ def _normalize_image_url(image_url: str) -> str:
     if image_url.startswith("/api/images/"):
         return image_url
 
-    # Normalize various local path styles to /static/images/...
-    url = image_url
+    parsed = urlparse(image_url)
+    path = parsed.path or image_url
 
-    if url.startswith("/static/images/"):
-        from urllib.parse import quote
-        return quote(url, safe="/%")
-    if url.startswith("/static/"):
-        from urllib.parse import quote
-        return quote(url, safe="/%")
+    # Extract `<folder>/<filename>` after known prefixes.
+    prefix = None
+    for candidate in ("/static/images/", "static/images/", "/images/", "images/"):
+        if path.startswith(candidate):
+            prefix = candidate
+            break
 
-    from urllib.parse import quote
+    if prefix is None:
+        return ""
 
-    if url.startswith("static/images/"):
-        return quote("/" + url, safe="/%")
-    if url.startswith("static/"):
-        return quote("/" + url, safe="/%")
+    rest = path[len(prefix) :].lstrip("/")
+    if not rest or "/" not in rest:
+        return ""
 
-    if url.startswith("/images/"):
-        return quote("/static/images/" + url[len("/images/") :].lstrip("/"), safe="/%")
-    if url.startswith("images/"):
-        return quote("/static/" + url, safe="/%")
+    folder, filename = rest.split("/", 1)
+    if not folder or not filename or "/" in filename:
+        return ""
 
-    # If it's some other relative path, assume it's under images/
-    if url.startswith("/"):
-        return quote("/static/images/" + url.lstrip("/"), safe="/%")
+    # Enforce `<uuid>` folder to fully drop code-based storage.
+    try:
+        folder = str(uuid.UUID(folder))
+    except Exception:
+        return ""
 
-    return quote("/static/images/" + url, safe="/%")
+    return quote(f"/static/images/{folder}/{filename}", safe="/%")
+
+
+# Backward compatible name used by older code/tests.
+# NOTE: strict mode (no code-based compatibility).
+def _normalize_image_url(image_url: str) -> str:
+    return normalize_local_image_url(image_url)
 
 def convert_product_to_response(product: Product) -> dict:
     """Convert Product model to response format matching frontend expectations."""
@@ -152,27 +141,9 @@ def convert_product_to_response(product: Product) -> dict:
         if not url:
             continue
 
-        # Turtle-album may use:
-        # - external URLs
-        # - API-served originals (e.g. /api/images/xxx.jpg)
-        # - local optimized variants under /static/images/...
-        # For local paths we should not drop images just because small variants don't exist.
-        if not (url.startswith("http://") or url.startswith("https://")):
-            # Accept the common local path formats directly.
-            # Older DB rows may store relative paths like "images/<code>/xxx.jpg".
-            if (
-                url.startswith("/api/images/")
-                or url.startswith("/images/")
-                or url.startswith("/static/")
-                or url.startswith("images/")
-                or url.startswith("static/")
-            ):
-                pass
-            elif not _image_has_small_variant(product.code, url):
-                continue
-
-        # Normalize local image URLs to the canonical public static path.
-        url = _normalize_image_url(url)
+        url = normalize_local_image_url(url)
+        if not url:
+            continue
 
         images.append(
             {
@@ -197,8 +168,8 @@ def convert_product_to_response(product: Product) -> dict:
         "sireCode": product.sire_code,
         "damCode": product.dam_code,
         "mateCode": getattr(product, "mate_code", None),
-        "sireImageUrl": _normalize_image_url(product.sire_image_url) if product.sire_image_url else None,
-        "damImageUrl": _normalize_image_url(product.dam_image_url) if product.dam_image_url else None,
+        "sireImageUrl": normalize_local_image_url(product.sire_image_url) if product.sire_image_url else None,
+        "damImageUrl": normalize_local_image_url(product.dam_image_url) if product.dam_image_url else None,
 
         "images": images,
         "pricing": {

@@ -161,7 +161,7 @@ async def save_carousel_image(file: UploadFile) -> str:
         if os.path.exists(temp_path):
             os.remove(temp_path)
 
-async def save_product_images_optimized(files: List[UploadFile], product_code: str) -> List[Dict[str, Any]]:
+async def save_product_images_optimized(files: List[UploadFile], product_id: str) -> List[Dict[str, Any]]:
     """保存并优化产品图片，生成多个尺寸"""
     if not files:
         return []
@@ -175,7 +175,7 @@ async def save_product_images_optimized(files: List[UploadFile], product_code: s
     }
     
     # 创建产品图片目录
-    product_dir = os.path.join(IMAGES_DIR, product_code)
+    product_dir = os.path.join(IMAGES_DIR, str(product_id))
     os.makedirs(product_dir, exist_ok=True)
     
     # 为每个尺寸创建子目录
@@ -219,12 +219,12 @@ async def save_product_images_optimized(files: List[UploadFile], product_code: s
                 optimize_single_image(temp_path, webp_path, size_dims, quality=80, format='WebP', crop_square=True)
             
             # 返回图片信息
-            relative_path = f"images/{product_code}/{unique_stem}.jpg"
+            relative_path = f"images/{product_id}/{unique_stem}.jpg"
             image_type = "main" if i == 0 else "gallery"
             
             saved_images.append({
                 "url": relative_path,
-                "alt": f"{product_code} - Image {i+1}",
+                "alt": f"{product_id} - Image {i+1}",
                 "type": image_type,
                 "filename": f"{unique_stem}.jpg",
                 "original_name": file.filename
@@ -247,11 +247,11 @@ def delete_file(file_path: str) -> bool:
         if file_path.startswith("images/") and "/" in file_path:
             parts = file_path.replace("images/", "").split("/")
             if len(parts) >= 2:
-                product_code = parts[0]
+                product_folder = parts[0]
                 filename = parts[1]
                 file_stem = Path(filename).stem
                 
-                product_dir = os.path.join(IMAGES_DIR, product_code)
+                product_dir = os.path.join(IMAGES_DIR, product_folder)
                 
                 # 删除原图
                 for ext in ['.jpg', '.webp']:

@@ -328,7 +328,7 @@ class BatchImportService:
                 src_path = os.path.join(found_folder, filename)
                 
                 # Define destination
-                # We reuse the structure: static/images/{code}/{size}/{name}.jpg
+                # 存储结构统一为: <UPLOAD_DIR>/<product_id>/{size?}/{name}.{ext}
                 # We need to generate unique names to avoid conflicts if re-importing
                 file_stem = Path(filename).stem
                 unique_stem = f"{file_stem}_{uuid.uuid4().hex[:6]}"
@@ -341,7 +341,7 @@ class BatchImportService:
                     'large': (800, 800)
                 }
 
-                product_dir = os.path.join(IMAGES_DIR, product_code)
+                product_dir = os.path.join(IMAGES_DIR, str(product_id))
                 os.makedirs(product_dir, exist_ok=True)
                 
                 # Optimize Main Images
@@ -366,7 +366,7 @@ class BatchImportService:
                 image = ProductImage(
                     id=str(uuid.uuid4()),
                     product_id=product_id,
-                    url=f"images/{product_code}/{unique_stem}.jpg",
+                    url=f"images/{product_id}/{unique_stem}.jpg",
                     alt=f"{product_code} - {filename}",
                     type="main" if (max_sort == -1 and i == 0) else "gallery",
                     sort_order=max_sort + 1 + i

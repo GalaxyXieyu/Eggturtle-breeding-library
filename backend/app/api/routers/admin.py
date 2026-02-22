@@ -191,7 +191,7 @@ async def upload_product_images(
 
     # Save and optimize uploaded files
     try:
-        saved_images_info = await save_product_images_optimized(images, product.code)
+        saved_images_info = await save_product_images_optimized(images, product.id)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
