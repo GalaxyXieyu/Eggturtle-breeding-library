@@ -158,7 +158,15 @@ def convert_product_to_response(product: Product) -> dict:
         # - local optimized variants under /static/images/...
         # For local paths we should not drop images just because small variants don't exist.
         if not (url.startswith("http://") or url.startswith("https://")):
-            if url.startswith("/api/images/") or url.startswith("/images/") or url.startswith("/static/"):
+            # Accept the common local path formats directly.
+            # Older DB rows may store relative paths like "images/<code>/xxx.jpg".
+            if (
+                url.startswith("/api/images/")
+                or url.startswith("/images/")
+                or url.startswith("/static/")
+                or url.startswith("images/")
+                or url.startswith("static/")
+            ):
                 pass
             elif not _image_has_small_variant(product.code, url):
                 continue
