@@ -211,7 +211,9 @@ jobs:
 
           # No backward compatibility: image path migration requires a short maintenance window.
           ORIGINAL_REPLICAS=$(kubectl get "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE" -o jsonpath='{.spec.replicas}')
-          if [ -z "$ORIGINAL_REPLICAS" ]; then
+          # Some clusters keep spec.replicas=0 for statefulsets; treat 0 as "at least 1"
+          # so the service won't stay down after maintenance jobs.
+          if [ -z "$ORIGINAL_REPLICAS" ] || [ "$ORIGINAL_REPLICAS" = "0" ]; then
             ORIGINAL_REPLICAS=1
           fi
 
