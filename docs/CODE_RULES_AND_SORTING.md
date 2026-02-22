@@ -12,9 +12,9 @@
 
 目标：移动端瀑布流与列表显示按“数字意义”排序：`1,2,3,...,10`。
 
-## 1. 已确认的编号/录入口径（本次先做排序用）
+## 1. 已确认的编号/录入口径（先文档化，再动工）
 
-> 注意：本节仅覆盖“瀑布流排序与后台录入”的口径；子代溯源编号（例如 `白化-1-1`）后续再单独讨论，不作为本次实现范围。
+本节口径已在群里确认，可作为后续实现与验收依据。
 
 ### 1.1 前缀来源
 
@@ -24,16 +24,27 @@
 
 ### 1.2 横杠规则
 
-- 编号中必须使用横杠 `-` 作为分隔符（便于排序与后续扩展）。
+- 编号中必须使用横杠 `-` 作为分隔符（便于排序与后续扩展/解析）。
 
-### 1.3 性别编码（当前业务口径）
+### 1.3 基础代性别编码
 
-- 公龟（`sex=male`）：使用字母编号（只输入字母，系统自动大写）
+- 公龟（`sex=male`）：`<前缀>-<字母>`（字母自动转大写）
   - 例：`HB-G`
-- 母龟（`sex=female`）：使用数字编号（只输入数字）
+- 母龟（`sex=female`）：`<前缀>-<数字>`
   - 例：`白化-10`、`HB-5`
 
-说明：这套规则与“子代按母系链式编号（`白化-1-1`）”存在潜在冲突，本次先不处理子代编号体系。
+### 1.4 子代编号（可反推上一代母龟）
+
+目标：通过编号能清晰反推上一代母龟。
+
+- 上一代母龟：`白化-1`
+- 子代如果是母：编号 `白化-1-1`、`白化-1-2` ...
+- 子代如果是公：编号 `白化-1-A`、`白化-1-B` ...（字母自动转大写）
+
+反推规则：
+- 对于 `白化-1-<suffix>`：上一代母龟编号为去掉最后一段后的 `白化-1`。
+
+备注：这里的“公用字母、母用数字”同样适用于子代 suffix（不影响通过 `-` 分段反推母龟）。
 ## 2. 落地方案（满足排序 + 不增加录入负担）
 
 ### 2.1 前缀自动化（后台）
@@ -47,33 +58,50 @@
 
 ### 2.3 数据库存储：新增“排序字段”，不要求补零
 
-新增字段（`products`）：
+新增字段（`products`，仅用于排序/筛选，不改变展示编号）：
 - `code_prefix`：字符串（例如 `白化` / `HB`）
-- `code_number`：整数，可空（母龟编号）
-- `code_letter`：字符串(1)，可空（公龟编号）
+- `code_parent_number`：整数，可空（例如 `白化-10` 的 10；`白化-1-A` 的 1）
+- `code_child_number`：整数，可空（例如 `白化-1-2` 的 2）
+- `code_child_letter`：字符串(1)，可空（例如 `白化-1-A` 的 A）
 
 说明：
-- `products.code` 仍然保留完整展示编号（例如 `白化-10` / `HB-G`）。
-- `code_prefix/number/letter` 仅用于排序与筛选。
+- `products.code` 仍然保留完整展示编号（例如 `白化-10` / `HB-G` / `白化-1-A`）。
+- 以上字段只用于排序，不要求你输入补零。
+- 解析时会自动大写字母段（与现有“编号统一大写”策略一致）。
 ### 2.4 解析规则（系统自动，不增加人工负担）
 
-从 `products.code` 解析：
-- `^<prefix>-<number>$` => `code_prefix=<prefix>`, `code_number=<number>`, `code_letter=NULL`
-- `^<prefix>-<letter>$` => `code_prefix=<prefix>`, `code_letter=<letter>`, `code_number=NULL`
+从 `products.code` 解析（横杠分段）：
+- `^<prefix>-<number>$`
+  - `code_prefix=<prefix>`
+  - `code_parent_number=<number>`
+- `^<prefix>-<letter>$`
+  - `code_prefix=<prefix>`
+  - `code_child_letter=NULL`（这是基础代公龟，不带 parent_number）
+- `^<prefix>-<parent_number>-<child_number>$`
+  - `code_prefix=<prefix>`
+  - `code_parent_number=<parent_number>`
+  - `code_child_number=<child_number>`
+- `^<prefix>-<parent_number>-<child_letter>$`
+  - `code_prefix=<prefix>`
+  - `code_parent_number=<parent_number>`
+  - `code_child_letter=<child_letter>`
 
-并在 create/update 时自动回填/校正。
+并在 create/update 时自动回填/校正（字母段统一大写）。
 
 ### 2.5 排序规则（移动端瀑布流/列表统一）
 
-建议排序键：
-1) `code_prefix`（同系列一起）
-2) `code_number` ASC NULLS LAST（母龟数字先排）
-3) `code_letter` ASC NULLS LAST（公龟字母后排）
-4) `code` 兜底
+建议排序键（同系列内自然排序）：
+1) `code_prefix` ASC
+2) `code_parent_number` ASC NULLS LAST
+3) `code_child_number` ASC NULLS LAST
+4) `code_child_letter` ASC NULLS LAST
+5) `code` 兜底
 
-这样：`白化-1, 白化-2, ... 白化-10, 白化-A, 白化-B ...`。
+预期效果：
+- `白化-1, 白化-2, ... 白化-10`
+- 子代：在同一母龟下 `白化-1-1, 白化-1-2, ...`，同时公子代 `白化-1-A, 白化-1-B ...` 也能稳定排序。
 
-> 若业务希望“公龟也夹在数字中间”，可调整 2/3 的优先级，但需要明确定义。
+注意：同一母龟下“先排数字子代还是先排字母子代”需要业务定一个顺序（默认：数字在前、字母在后）。
 
 ## 3. 图片/数据安全原则（必须满足）
 
