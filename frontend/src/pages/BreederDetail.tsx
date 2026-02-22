@@ -391,6 +391,12 @@ const BreederDetail: React.FC = () => {
     retry: false,
   });
 
+  const resolvedMateId = mateId || mateBreederQ.data?.id || null;
+  const resolvedMateCode = (
+    (breederQ.data as any)?.currentMate?.code || mateBreederQ.data?.code || mateCode || ''
+  ).trim();
+  const mateForTree = breederQ.data?.sex === 'female' && resolvedMateCode ? { id: resolvedMateId, code: resolvedMateCode } : null;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-stone-100 via-white to-amber-50/40 text-black">
       <WeChatContactFab
@@ -494,9 +500,6 @@ const BreederDetail: React.FC = () => {
                     <ParentPill label="母本" variant="mother" code={breederQ.data.damCode} query={damBreederQ} />
                     {breederQ.data.sex === 'female' && (mateCode || '').trim() ? (
                       (() => {
-                        const resolvedMateId = mateId || mateBreederQ.data?.id || null;
-                        const resolvedMateCode =
-                          (breederQ.data as any)?.currentMate?.code || mateBreederQ.data?.code || mateCode;
                         const pillClassName =
                           'inline-flex max-w-full items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50/70 px-2 py-0.5 text-[11px] font-semibold text-amber-800 transition hover:border-amber-300 hover:bg-amber-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-1';
 
@@ -562,7 +565,7 @@ const BreederDetail: React.FC = () => {
           ) : null}
           {familyTreeQ.data ? (
             <div className="rounded-2xl border border-black/5 bg-white shadow-[0_8px_24px_rgba(0,0,0,0.06)]">
-              <FamilyTreeComponent familyTree={familyTreeQ.data} />
+              <FamilyTreeComponent familyTree={familyTreeQ.data} mate={mateForTree} />
             </div>
           ) : null}
         </div>

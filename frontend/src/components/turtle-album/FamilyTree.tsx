@@ -5,6 +5,7 @@ import type { FamilyTree, FamilyTreeNode } from '@/types/turtleAlbum';
 
 interface FamilyTreeProps {
   familyTree: FamilyTree;
+  mate?: { id?: string | null; code?: string | null } | null;
 }
 
 interface TreeNodeProps {
@@ -59,7 +60,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({ node, showSiblings, onToggleSibling
   );
 };
 
-const FamilyTreeComponent: React.FC<FamilyTreeProps> = ({ familyTree }) => {
+const FamilyTreeComponent: React.FC<FamilyTreeProps> = ({ familyTree, mate }) => {
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const [showFatherSiblings, setShowFatherSiblings] = React.useState(false);
   const [showMotherSiblings, setShowMotherSiblings] = React.useState(false);
@@ -76,6 +77,10 @@ const FamilyTreeComponent: React.FC<FamilyTreeProps> = ({ familyTree }) => {
   }, []);
 
   const { current, ancestors, offspring, siblings } = familyTree;
+
+  const mateCode = (mate?.code ?? familyTree.currentMate?.code ?? '').trim();
+  const mateId = mate?.id ?? familyTree.currentMate?.id ?? null;
+  const showMateNode = current.sex === 'female' && !!mateCode;
 
   // Check if there are any great-grandparents
   const hasGreatGrandparents = !!(
@@ -219,13 +224,38 @@ const FamilyTreeComponent: React.FC<FamilyTreeProps> = ({ familyTree }) => {
           {/* Current animal column */}
           <div className="flex flex-col gap-4">
             <div className="text-center text-xs font-medium text-amber-600">当前</div>
-            <div className="flex flex-col gap-3">
+
+            <div className="flex flex-col items-center gap-2">
               <div className="relative">
                 <div className="absolute -inset-1 rounded-lg bg-gradient-to-r from-amber-400 to-orange-400 opacity-75 blur"></div>
                 <div className="relative">
                   <TreeNode node={current} />
                 </div>
               </div>
+
+              {showMateNode ? (
+                <div className="flex flex-col items-center gap-1.5">
+                  <div className="h-3 w-px bg-neutral-300" />
+                  {mateId ? (
+                    <Link
+                      to={`/breeder/${mateId}`}
+                      title={`配偶 ${mateCode}`}
+                      className="flex h-12 w-20 flex-col items-center justify-center rounded-lg border-2 border-amber-200 bg-amber-50/70 px-1 text-[10px] font-semibold text-amber-800 shadow-sm transition hover:border-amber-300 hover:bg-amber-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-1"
+                    >
+                      <span className="tracking-wide text-amber-700">配偶</span>
+                      <span className="max-w-full truncate text-[11px] font-bold text-amber-900">{mateCode}</span>
+                    </Link>
+                  ) : (
+                    <span
+                      title={`配偶 ${mateCode}（未找到详情）`}
+                      className="flex h-12 w-20 cursor-not-allowed flex-col items-center justify-center rounded-lg border-2 border-amber-200 bg-amber-50/70 px-1 text-[10px] font-semibold text-amber-800 opacity-60 shadow-sm"
+                    >
+                      <span className="tracking-wide text-amber-700">配偶</span>
+                      <span className="max-w-full truncate text-[11px] font-bold text-amber-900">{mateCode}</span>
+                    </span>
+                  )}
+                </div>
+              ) : null}
             </div>
           </div>
 
