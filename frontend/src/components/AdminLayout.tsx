@@ -88,7 +88,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title }) => {
         `}
       >
         <div className="p-6 border-b border-neutral-200 hidden lg:block">
-          <Link to="/admin/dashboard" className="flex items-center">
+          <Link to="/admin/products" className="flex items-center">
             <span className="font-semibold text-base tracking-wide text-neutral-900">Turtle Album</span>
           </Link>
         </div>

@@ -36,8 +36,8 @@ export const useAuth = () => {
         description: `欢迎回来，${authData.user.username}！`,
       });
       
-      // Redirect to admin dashboard
-      window.location.href = '/admin/dashboard';
+      // Redirect to admin products (default landing)
+      window.location.href = '/admin/products';
     },
     onError: (error: Error) => {
       const authError = handleAuthError(error);
@@ -127,8 +127,8 @@ export const useRedirectIfAuthenticated = () => {
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      // Redirect to dashboard if already authenticated
-      window.location.href = '/admin/dashboard';
+      // Redirect to admin products (default landing) if already authenticated
+      window.location.href = '/admin/products';
     }
   }, [isAuthenticated, isLoading]);
 

@@ -42,6 +42,7 @@ const App = () => {
               <Route path="/" element={<SeriesFeed />} />
               <Route path="/breeder/:id" element={<BreederDetail />} />
               <Route path="/admin" element={<AdminLogin />} />
+              <Route path="/admin/" element={<AdminLogin />} />
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
               <Route path="/admin/products" element={<AdminProducts />} />
               <Route path="/admin/series" element={<AdminSeries />} />
