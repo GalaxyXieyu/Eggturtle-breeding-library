@@ -12,6 +12,7 @@ Usage:
 
 import requests
 import json
+import os
 import argparse
 from typing import Optional, List, Dict, Any
 from datetime import datetime
@@ -23,7 +24,7 @@ class TurtleAlbumAPI:
     ENVIRONMENTS = {
         "dev": "http://localhost:8000",
         "staging": "https://staging.turtlealbum.com",
-        "prod": "https://turtlealbum.com"
+        "prod": "https://qmngzrlhklmt.sealoshzh.site",
     }
 
     def __init__(self, env: str, username: str, password: str):
@@ -52,7 +53,11 @@ class TurtleAlbumAPI:
                 timeout=10
             )
             response.raise_for_status()
-            self.token = response.json()["access_token"]
+            body = response.json() if response.content else {}
+            token = ((body or {}).get("data") or {}).get("token")
+            if not token:
+                raise ValueError("Login succeeded but token missing in response")
+            self.token = token
             print(f"✅ 登录成功 ({self.env})")
         except requests.exceptions.RequestException as e:
             print(f"❌ 登录失败: {e}")
@@ -65,17 +70,21 @@ class TurtleAlbumAPI:
             "Content-Type": "application/json"
         }
 
-    def get_all_products(self, page: int = 1, page_size: int = 100) -> Dict[str, Any]:
-        """获取所有产品"""
+    def get_all_products(self, page: int = 1, limit: int = 100, search: Optional[str] = None) -> Dict[str, Any]:
+        """获取产品列表（支持 search）"""
         try:
+            params: Dict[str, Any] = {"page": page, "limit": limit}
+            if search:
+                params["search"] = search
             response = requests.get(
                 f"{self.base_url}/api/products",
-                params={"page": page, "page_size": page_size},
+                params=params,
                 headers=self.get_headers(),
-                timeout=10
+                timeout=10,
             )
             response.raise_for_status()
-            return response.json()
+            body = response.json() if response.content else {}
+            return (body or {}).get("data") or {}
         except requests.exceptions.RequestException as e:
             print(f"❌ 获取产品列表失败: {e}")
             raise
@@ -86,10 +95,11 @@ class TurtleAlbumAPI:
             response = requests.get(
                 f"{self.base_url}/api/products/{product_id}",
                 headers=self.get_headers(),
-                timeout=10
+                timeout=10,
             )
             response.raise_for_status()
-            return response.json()
+            body = response.json() if response.content else {}
+            return (body or {}).get("data") or {}
         except requests.exceptions.RequestException as e:
             print(f"❌ 获取产品失败: {e}")
             raise
@@ -100,10 +110,11 @@ class TurtleAlbumAPI:
             response = requests.get(
                 f"{self.base_url}/api/series",
                 headers=self.get_headers(),
-                timeout=10
+                timeout=10,
             )
             response.raise_for_status()
-            return response.json()
+            body = response.json() if response.content else {}
+            return (body or {}).get("data") or {}
         except requests.exceptions.RequestException as e:
             print(f"❌ 获取系列列表失败: {e}")
             raise
@@ -123,14 +134,22 @@ class TurtleAlbumAPI:
             raise
 
     def search_products(self, code: Optional[str] = None, name: Optional[str] = None) -> List[Dict[str, Any]]:
-        """搜索产品"""
-        products_data = self.get_all_products()
-        results = []
+        """搜索产品（走后端 search 参数）"""
+        q = (code or name or "").strip()
+        if not q:
+            return []
 
-        for product in products_data["products"]:
-            if code and code.lower() in product["code"].lower():
+        data = self.get_all_products(page=1, limit=1000, search=q)
+        products = data.get("products") or []
+
+        # Keep behavior: allow substring match on code/name.
+        results: List[Dict[str, Any]] = []
+        for product in products:
+            p_code = str(product.get("code") or "")
+            p_name = str(product.get("name") or "")
+            if code and code.lower() in p_code.lower():
                 results.append(product)
-            elif name and name.lower() in product["name"].lower():
+            elif name and name.lower() in p_name.lower():
                 results.append(product)
 
         return results
@@ -139,14 +158,10 @@ class TurtleAlbumAPI:
 class DataQualityAnalyzer:
     """数据质量分析器"""
 
-    # 重要字段定义
-    CRITICAL_FIELDS = ["code", "name", "price"]
-    IMPORTANT_FIELDS = ["description", "series_id", "images"]
-    OPTIONAL_FIELDS = [
-        "cost_price", "has_sample",
-        "in_stock", "popularity_score", "is_featured",
-        "sire_code", "dam_code"
-    ]
+    # 重要字段定义（按当前 API 返回字段，主要用于报告展示）
+    CRITICAL_FIELDS = ["code"]
+    IMPORTANT_FIELDS = ["description", "seriesId", "images"]
+    OPTIONAL_FIELDS = ["pricing.price", "pricing.costPrice", "pricing.hasSample", "inStock", "isFeatured"]
 
     @staticmethod
     def analyze_product(product: Dict[str, Any]) -> Dict[str, Any]:
@@ -180,17 +195,18 @@ class DataQualityAnalyzer:
             missing_fields.append("images")
             warnings.append("缺少产品图片，无法展示")
 
-        if product.get("series_id"):
+        if product.get("seriesId"):
             score += 1
         else:
-            missing_fields.append("series_id")
+            missing_fields.append("seriesId")
             warnings.append("未分配系列，影响分类和筛选")
 
         # 检查可选字段
-        if product.get("cost_price") and product["cost_price"] > 0:
+        pricing = product.get("pricing") or {}
+        if pricing.get("costPrice") and float(pricing.get("costPrice") or 0) > 0:
             score += 0.5
 
-        if product.get("has_sample"):
+        if pricing.get("hasSample"):
             score += 0.5
 
         # 确定质量等级
@@ -264,48 +280,60 @@ class DataQualityAnalyzer:
 
 
 def print_product_list(products: List[Dict[str, Any]]):
-    """打印产品列表"""
+    """打印产品列表（当前 TurtleAlbum 产品结构）"""
     print(f"\n📦 产品列表 (共 {len(products)} 个)")
-    print("-" * 80)
+    print("-" * 100)
     for i, product in enumerate(products, 1):
-        images_count = len(product.get("images", []))
-        in_stock = "✅" if product.get("in_stock") else "❌"
-        print(f"{i:3d}. {product['code']:15s} | {product['name']:30s} | "
-              f"¥{product['price']:7.2f} | 图片: {images_count} | 库存: {in_stock}")
+        code = str(product.get("code") or "")
+        name = str(product.get("name") or "") or code
+        sex = str(product.get("sex") or "-")
+        series_id = str(product.get("seriesId") or "-")
+        pricing = product.get("pricing") or {}
+        price = pricing.get("price")
+        price_str = f"¥{float(price):.2f}" if price is not None else "-"
+        images_count = len(product.get("images") or [])
+        in_stock = "✅" if product.get("inStock") else "❌"
+
+        print(
+            f"{i:3d}. {code:12s} | {name:12.12s} | sex={sex:6s} | series={series_id:6s} | "
+            f"{price_str:10s} | imgs={images_count:2d} | stock={in_stock}"
+        )
 
 
 def print_product_detail(product: Dict[str, Any]):
-    """打印产品详情"""
-    print(f"\n📦 产品详情: {product['code']}")
+    """打印产品详情（当前 TurtleAlbum 产品结构）"""
+    code = str(product.get("code") or "")
+    name = str(product.get("name") or "") or code
+    print(f"\n📦 产品详情: {code}")
     print("=" * 80)
 
     print("\n基础信息:")
-    print(f"  名称: {product['name']}")
-    print(f"  描述: {product.get('description', '(无)')[:50]}...")
-    print(f"  形状: {product['shape']}")
-    print(f"  材质: {product['material']}")
-    print(f"  出厂价: ¥{product['price']:.2f}")
+    print(f"  名称: {name}")
+    print(f"  系列: {product.get('seriesId') or '-'}")
+    print(f"  性别: {product.get('sex') or '-'}")
+    print(f"  配偶编号: {product.get('mateCode') or '-'}")
+    print(f"  子代单价: {product.get('offspringUnitPrice') or '-'}")
+    print(f"  父本编号: {product.get('sireCode') or '-'}")
+    print(f"  母本编号: {product.get('damCode') or '-'}")
 
-    if product.get("dimensions"):
-        dims = product["dimensions"]
-        print("\n尺寸信息:")
-        if dims.get("weight"):
-            print(f"  重量: {dims['weight']} kg")
-        if dims.get("length") and dims.get("width") and dims.get("height"):
-            print(f"  尺寸: {dims['length']}x{dims['width']}x{dims['height']} cm")
-        if dims.get("capacity"):
-            cap = dims["capacity"]
-            print(f"  容量: {cap.get('min', 0)}-{cap.get('max', 0)} ml")
+    pricing = product.get("pricing") or {}
+    print("\n价格/库存:")
+    print(f"  本体价格: {pricing.get('price')}")
+    print(f"  成本价: {pricing.get('costPrice')}")
+    print(f"  有货: {'✅' if product.get('inStock') else '❌'}")
+    print(f"  有样品: {'✅' if pricing.get('hasSample') else '❌'}")
+    print(f"  精选: {'✅' if product.get('isFeatured') else '❌'}")
+    print(f"  人气: {product.get('popularityScore') or 0}")
 
-    print("\n库存状态:")
-    print(f"  有货: {'✅' if product.get('in_stock') else '❌'}")
-    print(f"  有样品: {'✅' if product.get('has_sample') else '❌'}")
-    print(f"  精选产品: {'✅' if product.get('is_featured') else '❌'}")
+    desc = str(product.get("description") or "").strip()
+    print("\n备注/描述:")
+    print("  " + (desc if desc else "(无)"))
 
-    if product.get("images"):
-        print(f"\n图片: (共 {len(product['images'])} 张)")
-        for img in product["images"]:
-            print(f"  - {img['type']:10s} | {img['url']}")
+    images = product.get("images") or []
+    if images:
+        print(f"\n图片: (共 {len(images)} 张)")
+        for img in images:
+            print(f"  - {img.get('type') or '-':6s} | {img.get('url')}")
 
     # 数据质量分析
     analysis = DataQualityAnalyzer.analyze_product(product)
@@ -353,8 +381,16 @@ def main():
     parser = argparse.ArgumentParser(description="TurtleAlbum 生产数据查询工具")
     parser.add_argument("--env", choices=["dev", "staging", "prod"], default="dev",
                         help="环境 (dev/staging/prod)")
-    parser.add_argument("--username", default="admin", help="用户名")
-    parser.add_argument("--password", required=True, help="密码")
+    parser.add_argument(
+        "--username",
+        default=os.getenv("TURTLEALBUM_ADMIN_USERNAME") or "admin",
+        help="用户名 (默认: env TURTLEALBUM_ADMIN_USERNAME 或 admin)",
+    )
+    parser.add_argument(
+        "--password",
+        default=os.getenv("TURTLEALBUM_ADMIN_PASSWORD"),
+        help="密码 (或设置 TURTLEALBUM_ADMIN_PASSWORD)",
+    )
     parser.add_argument("--action", choices=["list", "search", "detail", "quality-report", "series"],
                         required=True, help="操作类型")
     parser.add_argument("--code", help="产品编号 (用于 search/detail)")
@@ -363,13 +399,18 @@ def main():
 
     args = parser.parse_args()
 
+    if not (args.password or "").strip():
+        args.password = (os.getenv("TURTLEALBUM_ADMIN_PASSWORD") or "").strip() or None
+    if not args.password:
+        parser.error("密码必填: 传 --password 或设置 env TURTLEALBUM_ADMIN_PASSWORD")
+
     # 初始化 API 客户端
     api = TurtleAlbumAPI(args.env, args.username, args.password)
 
     # 执行操作
     if args.action == "list":
         products_data = api.get_all_products()
-        print_product_list(products_data["products"])
+        print_product_list(products_data.get("products") or [])
 
     elif args.action == "search":
         if not args.code and not args.name:
@@ -385,7 +426,7 @@ def main():
     elif args.action == "detail":
         if args.product_id:
             product_data = api.get_product(args.product_id)
-            print_product_detail(product_data["data"])
+            print_product_detail(product_data)
         elif args.code:
             results = api.search_products(code=args.code)
             if results:
@@ -397,16 +438,19 @@ def main():
 
     elif args.action == "quality-report":
         products_data = api.get_all_products()
-        report = DataQualityAnalyzer.generate_quality_report(products_data["products"])
+        report = DataQualityAnalyzer.generate_quality_report(products_data.get("products") or [])
         print_quality_report(report)
 
     elif args.action == "series":
-        series_data = api.get_all_series()
-        print(f"\n📚 系列列表 (共 {len(series_data['data'])} 个)")
+        series_list = api.get_all_series() or []
+        print(f"\n📚 系列列表 (共 {len(series_list)} 个)")
         print("-" * 80)
-        for i, series in enumerate(series_data["data"], 1):
-            active = "✅" if series.get("is_active") else "❌"
-            print(f"{i:3d}. {series['code']:20s} | {series['name']:30s} | 激活: {active}")
+        for i, series in enumerate(series_list, 1):
+            # Current API uses camelCase.
+            active = "✅" if series.get("isActive") else "❌"
+            series_id = str(series.get("id") or "")
+            name = str(series.get("name") or "")
+            print(f"{i:3d}. {series_id:36s} | {name:20s} | 激活: {active}")
 
 
 if __name__ == "__main__":

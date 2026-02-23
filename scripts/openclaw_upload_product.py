@@ -2,7 +2,7 @@
 """OpenClaw product uploader with lineage confirmation and readback verification.
 
 Examples:
-  python3 scripts/openclaw_upload_product.py --env dev --username admin --password admin123
+  python3 scripts/openclaw_upload_product.py --env dev --username admin --password '***'
   python3 scripts/openclaw_upload_product.py --env prod --username admin --password '***' --payload-file /tmp/product.json --confirm-prod
 
 Key behaviors:
@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
@@ -336,7 +337,12 @@ def run(args: argparse.Namespace) -> UploadResult:
 
     print(f"\nTarget: {args.env} ({base_url})")
     print("Authenticating...")
-    client = TurtleAlbumClient(base_url=base_url, username=args.username, password=args.password)
+
+    password = (args.password or "").strip()
+    if not password:
+        raise UploadError("Missing password. Provide --password or set TURTLEALBUM_ADMIN_PASSWORD")
+
+    client = TurtleAlbumClient(base_url=base_url, username=args.username, password=password)
 
     code = str(payload["code"]).strip()
     search_results = client.list_products_by_search(code)
@@ -384,8 +390,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="OpenClaw product uploader")
     parser.add_argument("--env", default="dev", help="Environment: dev/staging/prod")
     parser.add_argument("--base-url", help="Custom base URL (overrides --env)")
-    parser.add_argument("--username", required=True, help="Admin username")
-    parser.add_argument("--password", required=True, help="Admin password")
+    parser.add_argument(
+        "--username",
+        default=os.getenv("TURTLEALBUM_ADMIN_USERNAME") or "admin",
+        help="Admin username (default: env TURTLEALBUM_ADMIN_USERNAME or 'admin')",
+    )
+    parser.add_argument(
+        "--password",
+        default=os.getenv("TURTLEALBUM_ADMIN_PASSWORD"),
+        help="Admin password (or set TURTLEALBUM_ADMIN_PASSWORD)",
+    )
     parser.add_argument("--payload-file", help="JSON payload file. If omitted, interactive mode is used.")
     parser.add_argument("--product-id", help="Explicit target product id when code is duplicated")
     parser.add_argument("--confirm-prod", action="store_true", help="Confirm production write")
@@ -401,6 +415,14 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
+
+    if not (args.password or "").strip():
+        args.password = (os.getenv("TURTLEALBUM_ADMIN_PASSWORD") or "").strip() or None
+    if not args.password:
+        parser.error(
+            "Admin password is required. Pass --password or set env TURTLEALBUM_ADMIN_PASSWORD."
+        )
+
     try:
         run(args)
         return 0
