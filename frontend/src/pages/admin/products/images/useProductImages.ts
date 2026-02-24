@@ -43,6 +43,23 @@ export function useProductImages({ toast, editApi }: UseProductImagesArgs) {
 
   const currentUpload = imageUploads[currentImageIndex];
 
+  const normalizeImagesForUi = useCallback((images: ProductImage[]): ProductImage[] => {
+    const sorted = [...(images || [])].sort((a, b) => {
+      const aMain = a.type === "main" ? 0 : 1;
+      const bMain = b.type === "main" ? 0 : 1;
+      if (aMain !== bMain) return aMain - bMain;
+
+      const ao = typeof a.sort_order === "number" ? a.sort_order : 0;
+      const bo = typeof b.sort_order === "number" ? b.sort_order : 0;
+      if (ao !== bo) return ao - bo;
+
+      return a.id.localeCompare(b.id);
+    });
+
+    // For UI interactions we treat array order as source-of-truth.
+    return sorted.map((img, index) => ({ ...img, sort_order: index }));
+  }, []);
+
   const reset = useCallback(() => {
     setImageUploads([]);
     setCurrentImageIndex(0);
@@ -55,22 +72,28 @@ export function useProductImages({ toast, editApi }: UseProductImagesArgs) {
     }
   }, []);
 
-  const initFromProduct = useCallback((product: Product) => {
-    if (product.images && product.images.length > 0) {
-      const initialUploads: ProductImageUpload[] = product.images.map((img) => ({
-        id: img.id,
-        preview: img.url,
-        type: img.type,
-        // Placeholder file object; used to keep a consistent shape.
-        file: new File([], "existing-image", { type: "image/jpeg" }),
-      }));
-      setImageUploads(initialUploads);
-      setCurrentImageIndex(0);
-      setHasImageOrderChanged(false);
-      return;
-    }
-    reset();
-  }, [reset]);
+  const initFromProduct = useCallback(
+    (product: Product) => {
+      if (product.images && product.images.length > 0) {
+        const normalizedImages = normalizeImagesForUi(product.images);
+
+        const initialUploads: ProductImageUpload[] = normalizedImages.map((img) => ({
+          id: img.id,
+          preview: img.url,
+          type: img.type,
+          // Placeholder file object; used to keep a consistent shape.
+          file: new File([], "existing-image", { type: "image/jpeg" }),
+        }));
+
+        setImageUploads(initialUploads);
+        setCurrentImageIndex(0);
+        setHasImageOrderChanged(false);
+        return;
+      }
+      reset();
+    },
+    [normalizeImagesForUi, reset]
+  );
 
   const getFilesForCreate = useCallback(() => {
     // In create mode we only want the actual selected files.
@@ -177,10 +200,12 @@ export function useProductImages({ toast, editApi }: UseProductImagesArgs) {
             returnedImages.forEach(push);
 
             return next;
-          })().map((img, index) => ({ ...img, sort_order: index }));
+          })();
 
-          editApi.onImagesSynced({ productId: args.productId, images: mergedImages });
-          initFromProduct({ id: args.productId, images: mergedImages } as Product);
+          const normalizedMerged = normalizeImagesForUi(mergedImages);
+
+          editApi.onImagesSynced({ productId: args.productId, images: normalizedMerged });
+          initFromProduct({ id: args.productId, images: normalizedMerged } as Product);
 
           toast({
             title: "图片已上传",
@@ -198,7 +223,7 @@ export function useProductImages({ toast, editApi }: UseProductImagesArgs) {
 
       addFilesAsPreviews(args.files);
     },
-    [addFilesAsPreviews, editApi, imageUploads, initFromProduct, toast]
+    [addFilesAsPreviews, editApi, imageUploads, initFromProduct, normalizeImagesForUi, toast]
   );
 
   const removeImage = useCallback(
@@ -246,9 +271,30 @@ export function useProductImages({ toast, editApi }: UseProductImagesArgs) {
 
       try {
         const result = await editApi.setMainImage(args);
-        editApi.onImagesSynced({ productId: args.productId, images: result.images });
-        initFromProduct({ id: args.productId, images: result.images } as Product);
-        toast({ title: "主图已更新" });
+
+        // Immediate UI update: ensure main image is pinned to index 0.
+        const normalizedAfterSetMain = normalizeImagesForUi(result.images || []);
+        editApi.onImagesSynced({ productId: args.productId, images: normalizedAfterSetMain });
+        initFromProduct({ id: args.productId, images: normalizedAfterSetMain } as Product);
+        setCurrentImageIndex(0);
+
+        // Persist UI order via reorder endpoint.
+        try {
+          const orders = normalizedAfterSetMain.map((img, index) => ({ id: img.id, sort_order: index }));
+          const reorderResult = await editApi.reorderImages({ productId: args.productId, orders });
+          const normalizedAfterReorder = normalizeImagesForUi(reorderResult.images || []);
+          editApi.onImagesSynced({ productId: args.productId, images: normalizedAfterReorder });
+          initFromProduct({ id: args.productId, images: normalizedAfterReorder } as Product);
+          setHasImageOrderChanged(false);
+          toast({ title: "主图已更新", description: "已将主图置顶并保存排序" });
+        } catch (error) {
+          setHasImageOrderChanged(true);
+          toast({
+            title: "主图已更新，但排序保存失败",
+            description: "请点击“保存排序”重试",
+            variant: "destructive",
+          });
+        }
       } catch (error) {
         toast({
           title: "设置失败",
@@ -257,7 +303,7 @@ export function useProductImages({ toast, editApi }: UseProductImagesArgs) {
         });
       }
     },
-    [editApi, initFromProduct, toast]
+    [editApi, initFromProduct, normalizeImagesForUi, toast]
   );
 
   const handleDragStart = useCallback((e: React.DragEvent, index: number) => {
@@ -342,7 +388,11 @@ export function useProductImages({ toast, editApi }: UseProductImagesArgs) {
       try {
         const orders = imageUploads.map((upload, index) => ({ id: upload.id, sort_order: index }));
         const result = await editApi.reorderImages({ productId: args.productId, orders });
-        editApi.onImagesSynced({ productId: args.productId, images: result.images });
+
+        const normalized = normalizeImagesForUi(result.images || []);
+        editApi.onImagesSynced({ productId: args.productId, images: normalized });
+        initFromProduct({ id: args.productId, images: normalized } as Product);
+
         setHasImageOrderChanged(false);
         toast({ title: "图片排序已保存", description: "图片显示顺序已更新" });
       } catch (error) {
@@ -353,7 +403,7 @@ export function useProductImages({ toast, editApi }: UseProductImagesArgs) {
         });
       }
     },
-    [editApi, imageUploads, toast]
+    [editApi, imageUploads, initFromProduct, normalizeImagesForUi, toast]
   );
 
   const flags = useMemo(

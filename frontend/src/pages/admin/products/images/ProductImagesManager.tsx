@@ -94,9 +94,22 @@ export function ProductImagesManager({ mode, productId, images }: Props) {
 
           {images.imageUploads.length > 1 ? (
             <div className="mt-2">
-              <div className="text-xs text-gray-700 mb-2 flex items-center gap-1">
-                <GripVertical className="h-3 w-3" />
-                拖拽图片可调整顺序
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <div className="text-xs text-gray-700 flex items-center gap-1">
+                  <GripVertical className="h-3 w-3" />
+                  拖拽图片可调整顺序
+                </div>
+
+                {mode === "edit" && productId && images.flags.hasImageOrderChanged ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-8"
+                    onClick={() => void images.saveOrder({ productId })}
+                  >
+                    保存排序
+                  </Button>
+                ) : null}
               </div>
 
               <div className="flex gap-2 overflow-x-auto pb-2">
