@@ -2,7 +2,14 @@ import React from "react";
 
 import { Button } from "@/components/ui/button";
 
-import { ChevronLeft, ChevronRight, GripVertical, Upload, X } from "lucide-react";
+import {
+  ArrowUpToLine,
+  ChevronLeft,
+  ChevronRight,
+  GripVertical,
+  Upload,
+  X,
+} from "lucide-react";
 
 import type { useProductImages } from "./useProductImages";
 
@@ -116,7 +123,7 @@ export function ProductImagesManager({ mode, productId, images }: Props) {
                 {images.imageUploads.map((upload, index) => (
                   <div
                     key={upload.id}
-                    className={`relative w-16 h-16 flex-shrink-0 rounded-md overflow-hidden border-2 cursor-move transition-all duration-200 ${
+                    className={`group relative w-16 h-16 flex-shrink-0 rounded-md overflow-hidden border-2 cursor-move transition-all duration-200 ${
                       index === images.currentImageIndex ? "border-gray-900" : "border-transparent"
                     } ${images.flags.draggedIndex === index ? "opacity-50 scale-95" : ""} ${
                       images.flags.dragOverIndex === index
@@ -138,35 +145,17 @@ export function ProductImagesManager({ mode, productId, images }: Props) {
                       className="w-full h-full object-cover pointer-events-none"
                     />
 
-                    <div className="absolute top-0 right-0 bg-black/20 rounded-bl p-1">
+                    <div className="absolute top-1 left-1 bg-black/30 rounded p-0.5">
                       <GripVertical className="h-2 w-2 text-white" />
                     </div>
 
                     {images.imageUploads.length > 1 ? (
-                      <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between gap-1 p-0.5 bg-black/30">
-                        <button
+                      <div className="absolute top-1 right-1 z-10 flex flex-col gap-1 rounded bg-black/20 p-0.5 backdrop-blur-sm transition-opacity md:opacity-0 md:pointer-events-none md:group-hover:opacity-100 md:group-hover:pointer-events-auto">
+                        <Button
                           type="button"
-                          className={`h-5 px-1 rounded bg-white/90 text-[10px] leading-none text-gray-900 ${
-                            index === 0 ? "opacity-50 cursor-not-allowed" : "hover:bg-white"
-                          }`}
-                          aria-label="左移图片"
-                          title="左移"
-                          disabled={index === 0}
-                          onPointerDown={(e) => e.stopPropagation()}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            images.moveImageLeft(index);
-                          }}
-                        >
-                          左移
-                        </button>
-
-                        <button
-                          type="button"
-                          className={`h-5 px-1 rounded bg-white/90 text-[10px] leading-none text-gray-900 ${
-                            index === 0 ? "opacity-50 cursor-not-allowed" : "hover:bg-white"
-                          }`}
+                          variant="secondary"
+                          size="icon"
+                          className="h-6 w-6 p-0 bg-white/90 hover:bg-white text-gray-900 shadow-sm"
                           aria-label="置顶图片"
                           title="置顶"
                           disabled={index === 0}
@@ -177,16 +166,32 @@ export function ProductImagesManager({ mode, productId, images }: Props) {
                             images.moveImageToFront(index);
                           }}
                         >
-                          置顶
-                        </button>
+                          <ArrowUpToLine className="h-3.5 w-3.5" />
+                        </Button>
 
-                        <button
+                        <Button
                           type="button"
-                          className={`h-5 px-1 rounded bg-white/90 text-[10px] leading-none text-gray-900 ${
-                            index === images.imageUploads.length - 1
-                              ? "opacity-50 cursor-not-allowed"
-                              : "hover:bg-white"
-                          }`}
+                          variant="secondary"
+                          size="icon"
+                          className="h-6 w-6 p-0 bg-white/90 hover:bg-white text-gray-900 shadow-sm"
+                          aria-label="左移图片"
+                          title="左移"
+                          disabled={index === 0}
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            images.moveImageLeft(index);
+                          }}
+                        >
+                          <ChevronLeft className="h-3.5 w-3.5" />
+                        </Button>
+
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="icon"
+                          className="h-6 w-6 p-0 bg-white/90 hover:bg-white text-gray-900 shadow-sm"
                           aria-label="右移图片"
                           title="右移"
                           disabled={index === images.imageUploads.length - 1}
@@ -197,8 +202,8 @@ export function ProductImagesManager({ mode, productId, images }: Props) {
                             images.moveImageRight(index);
                           }}
                         >
-                          右移
-                        </button>
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
                     ) : null}
 
