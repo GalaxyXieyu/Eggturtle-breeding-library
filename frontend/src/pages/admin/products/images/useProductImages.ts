@@ -306,6 +306,45 @@ export function useProductImages({ toast, editApi }: UseProductImagesArgs) {
     [editApi, initFromProduct, normalizeImagesForUi, toast]
   );
 
+  const moveImage = useCallback(
+    (fromIndex: number, toIndex: number) => {
+      if (fromIndex === toIndex) return;
+      if (fromIndex < 0 || toIndex < 0) return;
+      if (fromIndex >= imageUploads.length || toIndex >= imageUploads.length) return;
+
+      const next = [...imageUploads];
+      const moved = next[fromIndex];
+      if (!moved) return;
+
+      next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+
+      setImageUploads(next);
+
+      // Keep current index pointing at the same image across reorders.
+      setCurrentImageIndex((prev) => {
+        if (fromIndex === prev) return toIndex;
+        if (fromIndex < prev && toIndex >= prev) return prev - 1;
+        if (fromIndex > prev && toIndex <= prev) return prev + 1;
+        return prev;
+      });
+
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      setHasImageOrderChanged(true);
+
+      toast({
+        title: "图片顺序已更新",
+        description: "您可以继续调整图片顺序",
+      });
+    },
+    [imageUploads, toast]
+  );
+
+  const moveImageToFront = useCallback((index: number) => moveImage(index, 0), [moveImage]);
+  const moveImageLeft = useCallback((index: number) => moveImage(index, index - 1), [moveImage]);
+  const moveImageRight = useCallback((index: number) => moveImage(index, index + 1), [moveImage]);
+
   const handleDragStart = useCallback((e: React.DragEvent, index: number) => {
     setDraggedIndex(index);
     e.dataTransfer.effectAllowed = "move";
@@ -350,32 +389,9 @@ export function useProductImages({ toast, editApi }: UseProductImagesArgs) {
         return;
       }
 
-      const next = [...imageUploads];
-      const draggedItem = next[draggedIndex];
-
-      next.splice(draggedIndex, 1);
-      next.splice(dropIndex, 0, draggedItem);
-
-      setImageUploads(next);
-
-      // Keep current index pointing at the same image.
-      setCurrentImageIndex((prev) => {
-        if (draggedIndex === prev) return dropIndex;
-        if (draggedIndex < prev && dropIndex >= prev) return prev - 1;
-        if (draggedIndex > prev && dropIndex <= prev) return prev + 1;
-        return prev;
-      });
-
-      setDragOverIndex(null);
-      setDraggedIndex(null);
-      setHasImageOrderChanged(true);
-
-      toast({
-        title: "图片顺序已更新",
-        description: "您可以继续拖拽调整图片顺序",
-      });
+      moveImage(draggedIndex, dropIndex);
     },
-    [draggedIndex, imageUploads, toast]
+    [draggedIndex, moveImage]
   );
 
   const saveOrder = useCallback(
@@ -465,6 +481,11 @@ export function useProductImages({ toast, editApi }: UseProductImagesArgs) {
     saveOrder,
 
     getFilesForCreate,
+
+    moveImage,
+    moveImageLeft,
+    moveImageRight,
+    moveImageToFront,
 
     drag: {
       handleDragStart,

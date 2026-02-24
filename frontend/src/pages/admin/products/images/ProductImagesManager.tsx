@@ -97,7 +97,7 @@ export function ProductImagesManager({ mode, productId, images }: Props) {
               <div className="mb-2 flex items-center justify-between gap-2">
                 <div className="text-xs text-gray-700 flex items-center gap-1">
                   <GripVertical className="h-3 w-3" />
-                  拖拽图片可调整顺序
+                  拖拽或点击按钮可调整顺序
                 </div>
 
                 {mode === "edit" && productId && images.flags.hasImageOrderChanged ? (
@@ -141,6 +141,66 @@ export function ProductImagesManager({ mode, productId, images }: Props) {
                     <div className="absolute top-0 right-0 bg-black/20 rounded-bl p-1">
                       <GripVertical className="h-2 w-2 text-white" />
                     </div>
+
+                    {images.imageUploads.length > 1 ? (
+                      <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between gap-1 p-0.5 bg-black/30">
+                        <button
+                          type="button"
+                          className={`h-5 px-1 rounded bg-white/90 text-[10px] leading-none text-gray-900 ${
+                            index === 0 ? "opacity-50 cursor-not-allowed" : "hover:bg-white"
+                          }`}
+                          aria-label="左移图片"
+                          title="左移"
+                          disabled={index === 0}
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            images.moveImageLeft(index);
+                          }}
+                        >
+                          左移
+                        </button>
+
+                        <button
+                          type="button"
+                          className={`h-5 px-1 rounded bg-white/90 text-[10px] leading-none text-gray-900 ${
+                            index === 0 ? "opacity-50 cursor-not-allowed" : "hover:bg-white"
+                          }`}
+                          aria-label="置顶图片"
+                          title="置顶"
+                          disabled={index === 0}
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            images.moveImageToFront(index);
+                          }}
+                        >
+                          置顶
+                        </button>
+
+                        <button
+                          type="button"
+                          className={`h-5 px-1 rounded bg-white/90 text-[10px] leading-none text-gray-900 ${
+                            index === images.imageUploads.length - 1
+                              ? "opacity-50 cursor-not-allowed"
+                              : "hover:bg-white"
+                          }`}
+                          aria-label="右移图片"
+                          title="右移"
+                          disabled={index === images.imageUploads.length - 1}
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            images.moveImageRight(index);
+                          }}
+                        >
+                          右移
+                        </button>
+                      </div>
+                    ) : null}
 
                     {images.flags.dragOverIndex === index && images.flags.draggedIndex !== index ? (
                       <div className="absolute inset-0 bg-gray-200/50 flex items-center justify-center">
