@@ -151,8 +151,8 @@ export default function BreederEventTimeline({ breederId }: Props) {
   };
 
   return (
-    <div className="mt-8 px-1 sm:px-3 lg:px-5 2xl:px-6">
-      <div className="mb-4 flex items-center justify-between gap-3">
+    <div className="mt-8 px-3 sm:px-4 lg:px-5 2xl:px-6">
+      <div className="mb-4 flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
           <svg className="h-5 w-5 text-neutral-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path
@@ -165,9 +165,9 @@ export default function BreederEventTimeline({ breederId }: Props) {
           <h2 className="text-lg font-semibold text-neutral-900">种龟事件</h2>
           {statusBadge(status)}
         </div>
-        <div className="flex items-center gap-2 text-xs text-neutral-600">
+        <div className="flex flex-col items-end gap-1 text-xs text-neutral-600 sm:flex-row sm:items-center sm:gap-2">
           <span>最近产蛋 {formatMmDd(lastEggQ.data?.items?.[0]?.eventDate || null)}</span>
-          <span className="text-neutral-300">·</span>
+          <span className="hidden text-neutral-300 sm:inline">·</span>
           <span>最近交配 {formatMmDd(lastMatingQ.data?.items?.[0]?.eventDate || null)}</span>
         </div>
       </div>
