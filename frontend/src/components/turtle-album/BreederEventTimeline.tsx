@@ -110,7 +110,26 @@ export default function BreederEventTimeline({ breederId }: Props) {
     return pages.flatMap((p) => p.items || []);
   }, [timelineQ.data]);
 
-  const nodeItems = React.useMemo(() => items.slice(0, 30), [items]);
+  const DEFAULT_NODE_COUNT = 12;
+
+  // items is most-recent-first (from API pagination); show a readable subset and render oldest -> newest left-to-right.
+  const nodeItems = React.useMemo(() => {
+    const recent = items.slice(0, DEFAULT_NODE_COUNT);
+    return [...recent].reverse();
+  }, [items]);
+
+  const timelineScrollRef = React.useRef<HTMLDivElement | null>(null);
+
+  // When data/filter changes, keep the mini timeline scrolled to the newest (right-most).
+  React.useEffect(() => {
+    const el = timelineScrollRef.current;
+    if (!el) return;
+
+    const raf = window.requestAnimationFrame(() => {
+      el.scrollLeft = Math.max(0, el.scrollWidth - el.clientWidth);
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [filter, nodeItems.length]);
 
   const status = React.useMemo(() => {
     const lastEgg = lastEggQ.data?.items?.[0]?.eventDate || null;
@@ -148,11 +167,14 @@ export default function BreederEventTimeline({ breederId }: Props) {
       </div>
 
       {/* Mini horizontal timeline */}
-      <div className="mb-4 overflow-x-auto rounded-2xl border border-black/5 bg-white p-3 shadow-[0_6px_18px_rgba(0,0,0,0.05)]">
+      <div
+        ref={timelineScrollRef}
+        className="mb-4 overflow-x-auto rounded-2xl border border-black/5 bg-white p-3 shadow-[0_6px_18px_rgba(0,0,0,0.05)]"
+      >
         {nodeItems.length === 0 ? (
           <div className="text-sm text-neutral-500">暂无事件</div>
         ) : (
-          <div className="flex min-w-max flex-row-reverse items-center gap-3">
+          <div className="flex min-w-max flex-row items-center gap-4">
             {nodeItems.map((e) => (
               <button
                 key={e.id}
