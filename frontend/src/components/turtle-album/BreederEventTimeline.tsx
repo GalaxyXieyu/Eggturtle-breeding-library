@@ -140,21 +140,21 @@ export default function BreederEventTimeline({ breederId }: Props) {
 
   const DEFAULT_NODE_COUNT = 12;
 
-  // items is most-recent-first (from API pagination); show a readable subset and render oldest -> newest left-to-right.
+  // items is most-recent-first (from API pagination). For the mini timeline we keep newest on the left,
+  // so users can swipe right to see older history (e.g. 2026 on the left, 2025 further right).
   const nodeItems = React.useMemo(() => {
-    const recent = items.slice(0, DEFAULT_NODE_COUNT);
-    return [...recent].reverse();
+    return items.slice(0, DEFAULT_NODE_COUNT);
   }, [items]);
 
   const timelineScrollRef = React.useRef<HTMLDivElement | null>(null);
 
-  // When data/filter changes, keep the mini timeline scrolled to the newest (right-most).
+  // When data/filter changes, keep the mini timeline at the start (newest on the left).
   React.useEffect(() => {
     const el = timelineScrollRef.current;
     if (!el) return;
 
     const raf = window.requestAnimationFrame(() => {
-      el.scrollLeft = Math.max(0, el.scrollWidth - el.clientWidth);
+      el.scrollLeft = 0;
     });
     return () => window.cancelAnimationFrame(raf);
   }, [filter, nodeItems.length]);
