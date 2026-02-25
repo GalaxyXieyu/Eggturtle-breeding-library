@@ -97,9 +97,7 @@ const FamilyTreeComponent: React.FC<FamilyTreeProps> = ({ familyTree, currentSex
   });
 
   const maleMates: MaleMateLoadItem[] = maleMateLoadQ.data?.items || [];
-  const mateThumbLimit = 8;
-  const mateThumbItems = maleMates.slice(0, mateThumbLimit);
-  const mateMoreCount = Math.max(0, maleMates.length - mateThumbItems.length);
+  const mateThumbItems = maleMates;
 
   // Check if there are any great-grandparents
   const hasGreatGrandparents = !!(
@@ -323,12 +321,16 @@ const FamilyTreeComponent: React.FC<FamilyTreeProps> = ({ familyTree, currentSex
                     <div className="text-center text-[11px] font-medium text-neutral-500">配偶母龟</div>
                     <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
                       {mateThumbItems.map((it) => {
-                        const imgUrl = (it.femaleMainImageUrl || '').trim();
+                        const imgUrl = (it.femaleThumbnailUrl || it.femaleMainImageUrl || '').trim();
+                        const statusLabel =
+                          it.status === 'warning' ? '⚠️逾期未交配' : it.status === 'need_mating' ? '待交配' : '';
+                        const statusClass = it.status === 'warning' ? 'bg-red-600' : 'bg-amber-500';
+
                         return (
                           <Link
                             key={it.femaleId}
                             to={`/breeder/${it.femaleId}`}
-                            title={it.femaleCode}
+                            title={[it.femaleCode, statusLabel].filter(Boolean).join(' | ')}
                             className="group relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm transition hover:border-amber-300 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-1"
                           >
                             {imgUrl ? (
@@ -344,20 +346,19 @@ const FamilyTreeComponent: React.FC<FamilyTreeProps> = ({ familyTree, currentSex
                                 </svg>
                               </div>
                             )}
+
+                            {statusLabel ? (
+                              <div className={`absolute left-1 top-1 rounded px-1 py-0.5 text-[10px] font-semibold text-white shadow ${statusClass}`}>
+                                {statusLabel}
+                              </div>
+                            ) : null}
+
                             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-1 py-0.5">
                               <div className="truncate text-[10px] font-medium text-white">{it.femaleCode}</div>
                             </div>
                           </Link>
                         );
                       })}
-                      {mateMoreCount > 0 ? (
-                        <div
-                          title={`还有 ${mateMoreCount} 只`}
-                          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border border-neutral-200 bg-neutral-50 text-xs font-semibold text-neutral-600"
-                        >
-                          +{mateMoreCount}
-                        </div>
-                      ) : null}
                     </div>
                   </div>
                 ) : null

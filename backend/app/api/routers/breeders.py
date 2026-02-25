@@ -8,7 +8,7 @@ from typing import Optional
 from app.db.session import get_db
 from app.models.models import Product, MatingRecord, EggRecord, BreederEvent
 from app.schemas.schemas import ApiResponse
-from app.api.utils import convert_product_to_response
+from app.api.utils import convert_product_to_response, normalize_local_image_url
 from app.services.breeder_mate import parse_current_mate_code
 
 router = APIRouter()
@@ -667,19 +667,31 @@ async def get_male_mate_load(
         days_since_egg = (now.date() - last_egg_at.date()).days if last_egg_at else None
 
         # Main image URL for list rendering (avoid frontend N+1).
+        # Note: normalize to public static URL (strict mode) to keep frontend rendering consistent.
         female_main_image_url = None
-        if getattr(female, "images", None):
-            main_image = next((img for img in female.images if img.type == "main"), None)
+        female_thumbnail_url = None
+
+        imgs = list(getattr(female, "images", None) or [])
+        if imgs:
+            # stable ordering to make "images[0]" deterministic
+            imgs_sorted = sorted(imgs, key=lambda x: (getattr(x, "sort_order", 0) or 0))
+
+            thumb = next((img for img in imgs_sorted if getattr(img, "url", None)), None)
+            if thumb and getattr(thumb, "url", None):
+                female_thumbnail_url = normalize_local_image_url(thumb.url) or None
+
+            main_image = next((img for img in imgs_sorted if getattr(img, "type", None) == "main" and getattr(img, "url", None)), None)
             if main_image:
-                female_main_image_url = main_image.url
-            elif female.images:
-                female_main_image_url = female.images[0].url
+                female_main_image_url = normalize_local_image_url(main_image.url) or None
+            elif thumb and getattr(thumb, "url", None):
+                female_main_image_url = female_thumbnail_url
 
         items.append(
             {
                 "femaleId": female.id,
                 "femaleCode": female.code,
                 "femaleMainImageUrl": female_main_image_url,
+                "femaleThumbnailUrl": female_thumbnail_url,
                 "lastEggAt": last_egg_at.isoformat() if last_egg_at else None,
                 "lastMatingAt": last_mating_at.isoformat() if last_mating_at else None,
                 "lastMatingWithThisMaleAt": last_mating_with_male_at.isoformat() if last_mating_with_male_at else None,
