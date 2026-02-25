@@ -1,5 +1,15 @@
 import apiClient, { ApiResponse, handleApiError } from '@/lib/api';
-import type { Breeder, BreederRecords, Series, Sex, FamilyTree, BreederSummary } from '@/types/turtleAlbum';
+import type {
+  Breeder,
+  BreederRecords,
+  Series,
+  Sex,
+  FamilyTree,
+  BreederSummary,
+  BreederEventListResponse,
+  BreederEventType,
+  MaleMateLoadResponse,
+} from '@/types/turtleAlbum';
 
 const ENDPOINTS = {
   SERIES: '/api/series',
@@ -8,6 +18,8 @@ const ENDPOINTS = {
   BREEDER_BY_CODE: (code: string) => `/api/breeders/by-code/${encodeURIComponent(code)}`,
   BREEDER_DETAIL: (id: string) => `/api/breeders/${id}`,
   BREEDER_RECORDS: (id: string) => `/api/breeders/${id}/records`,
+  BREEDER_EVENTS: (id: string) => `/api/breeders/${id}/events`,
+  BREEDER_MATE_LOAD: (id: string) => `/api/breeders/${id}/mate-load`,
   BREEDER_FAMILY_TREE: (id: string) => `/api/breeders/${id}/family-tree`,
 };
 
@@ -130,6 +142,35 @@ export const turtleAlbumService = {
   async getBreederFamilyTree(id: string): Promise<FamilyTree> {
     try {
       const res = await apiClient.get<ApiResponse<FamilyTree>>(ENDPOINTS.BREEDER_FAMILY_TREE(id));
+      return res.data.data;
+    } catch (e) {
+      const err = handleApiError(e);
+      throw new ApiRequestError(err.message, { status: err.status, code: err.code });
+    }
+  },
+
+  async getBreederEvents(
+    id: string,
+    params?: { type?: BreederEventType | 'all'; limit?: number; cursor?: string | null }
+  ): Promise<BreederEventListResponse> {
+    try {
+      const res = await apiClient.get<ApiResponse<BreederEventListResponse>>(ENDPOINTS.BREEDER_EVENTS(id), {
+        params: {
+          type: params?.type && params.type !== 'all' ? params.type : undefined,
+          limit: params?.limit ?? 10,
+          cursor: params?.cursor || undefined,
+        },
+      });
+      return res.data.data;
+    } catch (e) {
+      const err = handleApiError(e);
+      throw new ApiRequestError(err.message, { status: err.status, code: err.code });
+    }
+  },
+
+  async getBreederMateLoad(id: string): Promise<MaleMateLoadResponse> {
+    try {
+      const res = await apiClient.get<ApiResponse<MaleMateLoadResponse>>(ENDPOINTS.BREEDER_MATE_LOAD(id));
       return res.data.data;
     } catch (e) {
       const err = handleApiError(e);

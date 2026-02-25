@@ -72,6 +72,49 @@ export interface BreederRecords {
   eggRecords: EggRecord[];
 }
 
+export type BreederEventType = 'mating' | 'egg' | 'change_mate';
+
+export interface BreederEventItem {
+  id: string;
+  productId: string;
+  eventType: BreederEventType;
+  eventDate: string | null;
+  maleCode?: string | null;
+  eggCount?: number | null;
+  note?: string | null;
+  oldMateCode?: string | null;
+  newMateCode?: string | null;
+  createdAt?: string | null;
+}
+
+export interface BreederEventListResponse {
+  items: BreederEventItem[];
+  nextCursor?: string | null;
+  hasMore: boolean;
+}
+
+export type NeedMatingStatus = 'normal' | 'need_mating' | 'warning';
+
+export interface MaleMateLoadItem {
+  femaleId: string;
+  femaleCode: string;
+  lastEggAt: string | null;
+  lastMatingAt: string | null;
+  lastMatingWithThisMaleAt: string | null;
+  status: NeedMatingStatus;
+}
+
+export interface MaleMateLoadResponse {
+  maleId: string;
+  maleCode: string;
+  totals: {
+    relatedFemales: number;
+    needMating: number;
+    warning: number;
+  };
+  items: MaleMateLoadItem[];
+}
+
 export interface FamilyTreeNode {
   id: string;
   code: string;

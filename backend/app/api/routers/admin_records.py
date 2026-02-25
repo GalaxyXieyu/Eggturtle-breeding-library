@@ -1,14 +1,56 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.security import User, get_current_active_user
 from app.db.session import get_db
-from app.models.models import EggRecord, MatingRecord, Product
+from app.models.models import EggRecord, MatingRecord, Product, BreederEvent
 from app.schemas.schemas import ApiResponse, EggRecordCreate, MatingRecordCreate
 
 router = APIRouter()
+
+
+class BreederEventCreate(BaseModel):
+    product_id: str
+    event_type: str  # mating|egg|change_mate
+    event_date: str  # ISO datetime/date or mm.dd
+
+    male_code: str | None = None
+    egg_count: int | None = None
+    note: str | None = None
+
+    old_mate_code: str | None = None
+    new_mate_code: str | None = None
+
+
+def _parse_event_date(value: str) -> datetime:
+    v = (value or "").strip()
+    if not v:
+        raise HTTPException(status_code=400, detail="event_date is required")
+
+    # Support operator-friendly short input: mm.dd
+    if "." in v and len(v.split(".")) == 2:
+        mm, dd = v.split(".")
+        if mm.isdigit() and dd.isdigit():
+            year = datetime.utcnow().year
+            try:
+                return datetime(year, int(mm), int(dd))
+            except Exception:
+                raise HTTPException(status_code=400, detail="Invalid mm.dd date")
+
+    if v.endswith("Z"):
+        v = v[:-1] + "+00:00"
+
+    try:
+        dt = datetime.fromisoformat(v)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid event_date format")
+
+    if dt.tzinfo is not None:
+        dt = dt.replace(tzinfo=None)
+    return dt
 
 
 def _ensure_breeder(db: Session, breeder_id: str) -> Product:
@@ -76,6 +118,20 @@ async def admin_create_mating_record(
         notes=payload.notes,
     )
     db.add(record)
+    db.flush()  # Ensure record.id/created_at exist before creating the derived event.
+
+    event = BreederEvent(
+        product_id=female.id,
+        event_type="mating",
+        event_date=payload.mated_at,
+        male_code=getattr(male, "code", None),
+        note=payload.notes,
+        source_type="mating_record",
+        source_id=record.id,
+        created_at=record.created_at or payload.mated_at,
+    )
+    db.add(event)
+
     db.commit()
     db.refresh(record)
 
@@ -91,6 +147,11 @@ async def admin_delete_mating_record(
     record = db.query(MatingRecord).filter(MatingRecord.id == record_id).first()
     if not record:
         raise HTTPException(status_code=404, detail="Mating record not found")
+
+    db.query(BreederEvent).filter(
+        BreederEvent.source_type == "mating_record",
+        BreederEvent.source_id == record.id,
+    ).delete(synchronize_session=False)
 
     db.delete(record)
     db.commit()
@@ -114,6 +175,20 @@ async def admin_create_egg_record(
         notes=payload.notes,
     )
     db.add(record)
+    db.flush()
+
+    event = BreederEvent(
+        product_id=female.id,
+        event_type="egg",
+        event_date=payload.laid_at,
+        egg_count=payload.count,
+        note=payload.notes,
+        source_type="egg_record",
+        source_id=record.id,
+        created_at=record.created_at or payload.laid_at,
+    )
+    db.add(event)
+
     db.commit()
     db.refresh(record)
 
@@ -130,7 +205,75 @@ async def admin_delete_egg_record(
     if not record:
         raise HTTPException(status_code=404, detail="Egg record not found")
 
+    db.query(BreederEvent).filter(
+        BreederEvent.source_type == "egg_record",
+        BreederEvent.source_id == record.id,
+    ).delete(synchronize_session=False)
+
     db.delete(record)
     db.commit()
 
     return ApiResponse(data=None, message="Egg record deleted successfully")
+
+
+@router.post("/breeder-events", response_model=ApiResponse)
+async def admin_create_breeder_event(
+    payload: BreederEventCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Admin: manually create a breeder event.
+
+    This exists mainly for cases where operators want to record an event by code/date
+    without creating full mating_records/egg_records rows.
+
+    Notes:
+    - For mating events, if male_code is omitted, we default to the female's current mate_code.
+    - event_date supports ISO formats and mm.dd (uses current year).
+    """
+
+    female = _ensure_breeder(db, payload.product_id)
+    _ensure_sex(female, "female", "product")
+
+    if payload.event_type not in {"mating", "egg", "change_mate"}:
+        raise HTTPException(status_code=400, detail="Invalid event_type")
+
+    event_dt = _parse_event_date(payload.event_date)
+
+    male_code = (payload.male_code or "").strip() or None
+    if payload.event_type == "mating" and not male_code:
+        male_code = (getattr(female, "mate_code", None) or "").strip() or None
+
+    now = datetime.utcnow()
+    e = BreederEvent(
+        product_id=female.id,
+        event_type=payload.event_type,
+        event_date=event_dt,
+        male_code=male_code,
+        egg_count=payload.egg_count,
+        note=payload.note,
+        old_mate_code=payload.old_mate_code,
+        new_mate_code=payload.new_mate_code,
+        source_type="manual",
+        source_id=None,
+        created_at=now,
+    )
+    db.add(e)
+    db.commit()
+    db.refresh(e)
+
+    return ApiResponse(
+        data={
+            "id": e.id,
+            "productId": e.product_id,
+            "eventType": e.event_type,
+            "eventDate": e.event_date.isoformat() if e.event_date else None,
+            "maleCode": e.male_code,
+            "eggCount": e.egg_count,
+            "note": e.note,
+            "oldMateCode": e.old_mate_code,
+            "newMateCode": e.new_mate_code,
+            "createdAt": e.created_at.isoformat() if e.created_at else None,
+        },
+        message="Breeder event created successfully",
+    )

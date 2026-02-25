@@ -150,6 +150,34 @@ class EggRecord(Base):
     female = relationship("Product", back_populates="egg_records")
 
 
+class BreederEvent(Base):
+    __tablename__ = "breeder_events"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    # The female breeder/product id this event belongs to.
+    product_id = Column(String, ForeignKey("products.id"), nullable=False, index=True)
+
+    # 'mating' | 'egg' | 'change_mate'
+    event_type = Column(String, nullable=False, index=True)
+    event_date = Column(DateTime, nullable=False, index=True)
+
+    # Event-specific payload
+    male_code = Column(String)
+    egg_count = Column(Integer)
+    note = Column(Text)
+
+    old_mate_code = Column(String)
+    new_mate_code = Column(String)
+
+    # Optional bookkeeping so we can keep derived events in sync with legacy tables.
+    source_type = Column(String, index=True)
+    source_id = Column(String, index=True)
+
+    created_at = Column(DateTime, default=utc_now, index=True, nullable=False)
+
+    product = relationship("Product", backref="breeder_events")
+
+
 class ProductImage(Base):
     __tablename__ = "product_images"
 

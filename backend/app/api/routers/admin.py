@@ -1,10 +1,12 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List
 
 from app.db.session import get_db
-from app.models.models import Product, ProductImage, SeriesProductRelation
+from app.models.models import Product, ProductImage, SeriesProductRelation, BreederEvent
 from app.schemas.schemas import ProductCreate, ProductUpdate, ApiResponse
 from app.core.security import get_current_active_user, User
 from app.core.file_utils import delete_file, save_product_images_optimized
@@ -138,6 +140,17 @@ async def update_product(
             update_data.get("description"),
         )
 
+    # Auto-record mate_code transitions into the breeder timeline.
+    prev_mate_code = getattr(product, "mate_code", None)
+    next_mate_code_for_event = None
+    mate_code_changed = False
+    if "mate_code" in update_data:
+        next_mate_code_for_event = normalize_code_upper(update_data.get("mate_code"))
+
+        prev_canon = (prev_mate_code or "").strip().upper() or None
+        next_canon = (next_mate_code_for_event or "").strip().upper() or None
+        mate_code_changed = prev_canon != next_canon
+
     for field, value in update_data.items():
         if field in {"code", "sire_code", "dam_code", "mate_code"}:
             value = normalize_code_upper(value)
@@ -152,6 +165,21 @@ async def update_product(
 
     db.commit()
     db.refresh(product)
+
+    if mate_code_changed and (getattr(product, "sex", "") or "").lower() == "female":
+        now = datetime.utcnow()
+        db.add(
+            BreederEvent(
+                product_id=product.id,
+                event_type="change_mate",
+                event_date=now,
+                old_mate_code=normalize_code_upper(prev_mate_code),
+                new_mate_code=next_mate_code_for_event,
+                source_type="mate_code_update",
+                source_id=product.id,
+                created_at=now,
+            )
+        )
 
     _sync_primary_series_relation(db, product)
     db.commit()

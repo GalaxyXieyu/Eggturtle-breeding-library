@@ -150,12 +150,12 @@ export function ProductImagesManager({ mode, productId, images }: Props) {
                     </div>
 
                     {images.imageUploads.length > 1 ? (
-                      <div className="absolute top-1 right-1 z-10 flex flex-col gap-1 rounded bg-black/20 p-0.5 backdrop-blur-sm transition-opacity md:opacity-0 md:pointer-events-none md:group-hover:opacity-100 md:group-hover:pointer-events-auto">
+                      <div className="absolute top-1 right-1 z-10 grid grid-cols-2 gap-1 rounded bg-black/20 p-0.5 backdrop-blur-sm transition-opacity md:opacity-0 md:pointer-events-none md:group-hover:opacity-100 md:group-hover:pointer-events-auto">
                         <Button
                           type="button"
                           variant="secondary"
                           size="icon"
-                          className="h-6 w-6 p-0 bg-white/90 hover:bg-white text-gray-900 shadow-sm"
+                          className="col-span-2 justify-self-center h-6 w-6 p-0 bg-white/90 hover:bg-white text-gray-900 shadow-sm"
                           aria-label="置顶图片"
                           title="置顶"
                           disabled={index === 0}

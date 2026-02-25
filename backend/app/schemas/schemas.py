@@ -181,6 +181,36 @@ class EggRecordCreate(BaseModel):
     count: Optional[int] = None
     notes: Optional[str] = None
 
+
+# Turtle-album: unified breeder timeline events (public read)
+class BreederEventType(str, Enum):
+    MATING = "mating"
+    EGG = "egg"
+    CHANGE_MATE = "change_mate"
+
+
+class BreederEventItem(BaseModel):
+    id: str
+    product_id: str
+    event_type: BreederEventType
+    event_date: datetime
+
+    male_code: Optional[str] = None
+    egg_count: Optional[int] = None
+    note: Optional[str] = None
+
+    old_mate_code: Optional[str] = None
+    new_mate_code: Optional[str] = None
+
+    created_at: Optional[datetime] = None
+
+
+class BreederEventListResponse(BaseModel):
+    items: List[BreederEventItem]
+    next_cursor: Optional[str] = None
+    has_more: bool = False
+
+
 class ErrorResponse(BaseModel):
     message: str
     success: bool = False

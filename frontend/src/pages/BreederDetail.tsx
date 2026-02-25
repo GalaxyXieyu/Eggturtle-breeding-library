@@ -4,6 +4,9 @@ import { Link, useParams } from 'react-router-dom';
 
 import WeChatContactFab from '@/components/turtle-album/WeChatContactFab';
 import FamilyTreeComponent from '@/components/turtle-album/FamilyTree';
+import BreederEventTimeline from '@/components/turtle-album/BreederEventTimeline';
+import BreederStatusSummary from '@/components/turtle-album/BreederStatusSummary';
+import MaleMateLoadCard from '@/components/turtle-album/MaleMateLoadCard';
 
 import { createImageUrl } from '@/lib/api';
 import { getBreederImagePath } from '@/utils/breederImage';
@@ -627,6 +630,8 @@ const BreederDetail: React.FC = () => {
                     ) : null}
                   </div>
 
+                  {breederQ.data.sex === 'female' ? <BreederStatusSummary breederId={breederId} /> : null}
+
                   {breederQ.data.description ? (
                     <div className="mt-4 rounded-2xl border border-amber-200/60 bg-gradient-to-br from-amber-50/80 to-yellow-50/50 p-3">
                       <div className="whitespace-pre-wrap text-sm leading-relaxed text-amber-900">
@@ -639,6 +644,9 @@ const BreederDetail: React.FC = () => {
             </div>
           </div>
         ) : null}
+
+        {breederQ.data?.sex === 'female' ? <BreederEventTimeline breederId={breederId} /> : null}
+        {breederQ.data?.sex === 'male' ? <MaleMateLoadCard maleBreederId={breederId} /> : null}
 
         {/* Family Tree Section */}
         <div className="mt-8 px-1 sm:px-3 lg:px-5 2xl:px-6">

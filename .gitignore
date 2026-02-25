@@ -28,6 +28,11 @@ dist-ssr
 # Python virtual environments
 backend/venv
 
+# Local env files (secrets)
+.env
+.env.*
+!.env.example
+
 # Database files
 *.db
 *.db.*.bak

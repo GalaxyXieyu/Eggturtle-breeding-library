@@ -1,10 +1,12 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import nullslast
+from sqlalchemy import nullslast, func
 from typing import Optional
 
 from app.db.session import get_db
-from app.models.models import Product, MatingRecord, EggRecord
+from app.models.models import Product, MatingRecord, EggRecord, BreederEvent
 from app.schemas.schemas import ApiResponse
 from app.api.utils import convert_product_to_response
 from app.services.breeder_mate import parse_current_mate_code
@@ -245,6 +247,300 @@ async def get_breeder_records(
         ]
 
     return ApiResponse(data=data, message="Breeder records retrieved successfully")
+
+
+def _parse_iso_dt(value: str) -> datetime:
+    v = (value or "").strip()
+    if v.endswith("Z"):
+        v = v[:-1] + "+00:00"
+    try:
+        dt = datetime.fromisoformat(v)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid datetime format")
+
+    # DB stores naive datetimes; normalize cursor values to naive for comparisons.
+    if dt.tzinfo is not None:
+        dt = dt.replace(tzinfo=None)
+    return dt
+
+
+def _encode_event_cursor(e: BreederEvent) -> str:
+    event_dt = e.event_date.isoformat() if e.event_date else ""
+    created_dt = (e.created_at or e.event_date).isoformat() if (e.created_at or e.event_date) else ""
+    return f"{event_dt}|{created_dt}|{e.id}"
+
+
+def _decode_event_cursor(cursor: str) -> tuple[datetime, datetime, str]:
+    parts = (cursor or "").split("|")
+    if len(parts) != 3:
+        raise HTTPException(status_code=400, detail="Invalid cursor")
+    return (_parse_iso_dt(parts[0]), _parse_iso_dt(parts[1]), parts[2])
+
+
+@router.get("/{breeder_id}/events", response_model=ApiResponse)
+async def get_breeder_events(
+    breeder_id: str,
+    event_type: Optional[str] = Query(None, alias="type", description="mating|egg|change_mate"),
+    limit: int = Query(10, ge=1, le=100),
+    cursor: Optional[str] = Query(None, description="Opaque cursor from previous page"),
+    db: Session = Depends(get_db),
+):
+    """Public: unified breeder timeline events (mating/egg/change-mate).
+
+    Sorted newest-first by (event_date, created_at, id). Pagination is cursor-based.
+    """
+
+    breeder = (
+        db.query(Product)
+        .filter(Product.id == breeder_id)
+        .filter(Product.series_id.isnot(None))
+        .filter(Product.sex.isnot(None))
+        .first()
+    )
+    if not breeder:
+        raise HTTPException(status_code=404, detail="Breeder not found")
+
+    q = db.query(BreederEvent).filter(BreederEvent.product_id == breeder.id)
+
+    if event_type:
+        if event_type not in {"mating", "egg", "change_mate"}:
+            raise HTTPException(status_code=400, detail="Invalid event type")
+        q = q.filter(BreederEvent.event_type == event_type)
+
+    if cursor:
+        cursor_event_date, cursor_created_at, cursor_id = _decode_event_cursor(cursor)
+        q = q.filter(
+            (BreederEvent.event_date < cursor_event_date)
+            | ((BreederEvent.event_date == cursor_event_date) & (BreederEvent.created_at < cursor_created_at))
+            | (
+                (BreederEvent.event_date == cursor_event_date)
+                & (BreederEvent.created_at == cursor_created_at)
+                & (BreederEvent.id < cursor_id)
+            )
+        )
+
+    rows = (
+        q.order_by(
+            BreederEvent.event_date.desc(),
+            BreederEvent.created_at.desc(),
+            BreederEvent.id.desc(),
+        )
+        .limit(limit + 1)
+        .all()
+    )
+
+    has_more = len(rows) > limit
+    items = rows[:limit]
+    next_cursor = _encode_event_cursor(items[-1]) if has_more and items else None
+
+    return ApiResponse(
+        data={
+            "items": [
+                {
+                    "id": e.id,
+                    "productId": e.product_id,
+                    "eventType": e.event_type,
+                    "eventDate": e.event_date.isoformat() if e.event_date else None,
+                    "maleCode": e.male_code,
+                    "eggCount": e.egg_count,
+                    "note": e.note,
+                    "oldMateCode": e.old_mate_code,
+                    "newMateCode": e.new_mate_code,
+                    "createdAt": e.created_at.isoformat() if e.created_at else None,
+                }
+                for e in items
+            ],
+            "nextCursor": next_cursor,
+            "hasMore": has_more,
+        },
+        message="Breeder events retrieved successfully",
+    )
+
+
+def _canonical_mate_code_candidates(code: str) -> list[str]:
+    c = (code or "").strip()
+    if not c:
+        return []
+    if c.endswith("公"):
+        return [c, c[:-1]]
+    return [c, c + "公"]
+
+
+def _compute_need_mating_status(now: datetime, last_egg_at: Optional[datetime], last_mating_at: Optional[datetime]) -> str:
+    """Return one of: normal | need_mating | warning.
+
+    Rule: after the most recent egg record, if there is no mating record on/after that date:
+    - <10 days -> need_mating
+    - >=10 days -> warning
+    """
+
+    if not last_egg_at:
+        return "normal"
+
+    # Any mating after the last egg clears the need.
+    if last_mating_at and last_mating_at.date() >= last_egg_at.date():
+        return "normal"
+
+    days = (now.date() - last_egg_at.date()).days
+    if days >= 10:
+        return "warning"
+    return "need_mating"
+
+
+@router.get("/{breeder_id}/mate-load", response_model=ApiResponse)
+async def get_male_mate_load(
+    breeder_id: str,
+    limit: int = Query(80, ge=1, le=300),
+    include_fallback: bool = Query(True, description="Fallback to products.mate_code when few/no events exist"),
+    db: Session = Depends(get_db),
+):
+    """Public: for male breeder detail page.
+
+    Returns related females + workload stats.
+
+    Data priority:
+    1) Structured events (mating events where male_code == this male's code)
+    2) Fallback: female products whose mate_code matches this male's code (or with/without trailing '公').
+    """
+
+    breeder = (
+        db.query(Product)
+        .filter(Product.id == breeder_id)
+        .filter(Product.series_id.isnot(None))
+        .filter(Product.sex.isnot(None))
+        .first()
+    )
+    if not breeder:
+        raise HTTPException(status_code=404, detail="Breeder not found")
+
+    if (breeder.sex or "").lower() != "male":
+        raise HTTPException(status_code=400, detail="mate-load only supported for male breeders")
+
+    male_code = (breeder.code or "").strip()
+    if not male_code:
+        raise HTTPException(status_code=400, detail="Breeder code is required")
+
+    # Latest mating with this male per female.
+    last_mating_with_male_sq = (
+        db.query(
+            BreederEvent.product_id.label("female_id"),
+            func.max(BreederEvent.event_date).label("last_mating_with_male_at"),
+        )
+        .filter(BreederEvent.event_type == "mating")
+        .filter(BreederEvent.male_code == male_code)
+        .group_by(BreederEvent.product_id)
+        .subquery()
+    )
+
+    last_egg_sq = (
+        db.query(
+            BreederEvent.product_id.label("female_id"),
+            func.max(BreederEvent.event_date).label("last_egg_at"),
+        )
+        .filter(BreederEvent.event_type == "egg")
+        .group_by(BreederEvent.product_id)
+        .subquery()
+    )
+
+    last_mating_any_sq = (
+        db.query(
+            BreederEvent.product_id.label("female_id"),
+            func.max(BreederEvent.event_date).label("last_mating_at"),
+        )
+        .filter(BreederEvent.event_type == "mating")
+        .group_by(BreederEvent.product_id)
+        .subquery()
+    )
+
+    female_ids: set[str] = set()
+
+    for row in db.query(last_mating_with_male_sq.c.female_id).all():
+        if row and row[0]:
+            female_ids.add(row[0])
+
+    if include_fallback:
+        candidates = _canonical_mate_code_candidates(male_code)
+        if candidates:
+            fallback_rows = (
+                db.query(Product.id)
+                .filter(Product.series_id.isnot(None))
+                .filter(Product.sex == "female")
+                .filter(Product.mate_code.in_(candidates))
+                .all()
+            )
+            for r in fallback_rows:
+                female_ids.add(r[0])
+
+    if not female_ids:
+        return ApiResponse(
+            data={
+                "maleId": breeder.id,
+                "maleCode": male_code,
+                "totals": {"relatedFemales": 0, "needMating": 0, "warning": 0},
+                "items": [],
+            },
+            message="Male mate load retrieved successfully",
+        )
+
+    rows = (
+        db.query(
+            Product,
+            last_egg_sq.c.last_egg_at,
+            last_mating_any_sq.c.last_mating_at,
+            last_mating_with_male_sq.c.last_mating_with_male_at,
+        )
+        .outerjoin(last_egg_sq, last_egg_sq.c.female_id == Product.id)
+        .outerjoin(last_mating_any_sq, last_mating_any_sq.c.female_id == Product.id)
+        .outerjoin(last_mating_with_male_sq, last_mating_with_male_sq.c.female_id == Product.id)
+        .filter(Product.id.in_(list(female_ids)))
+        .filter(Product.series_id.isnot(None))
+        .filter(Product.sex == "female")
+        .all()
+    )
+
+    now = datetime.utcnow()
+
+    items: list[dict] = []
+    need_count = 0
+    warning_count = 0
+
+    for female, last_egg_at, last_mating_at, last_mating_with_male_at in rows:
+        status = _compute_need_mating_status(now, last_egg_at, last_mating_at)
+        if status == "need_mating":
+            need_count += 1
+        elif status == "warning":
+            warning_count += 1
+
+        items.append(
+            {
+                "femaleId": female.id,
+                "femaleCode": female.code,
+                "lastEggAt": last_egg_at.isoformat() if last_egg_at else None,
+                "lastMatingAt": last_mating_at.isoformat() if last_mating_at else None,
+                "lastMatingWithThisMaleAt": last_mating_with_male_at.isoformat() if last_mating_with_male_at else None,
+                "status": status,
+            }
+        )
+
+    severity = {"warning": 2, "need_mating": 1, "normal": 0}
+    items.sort(
+        key=lambda it: (
+            severity.get(it["status"], 0),
+            it["lastEggAt"] or "",
+            it["femaleCode"] or "",
+        ),
+        reverse=True,
+    )
+
+    return ApiResponse(
+        data={
+            "maleId": breeder.id,
+            "maleCode": male_code,
+            "totals": {"relatedFemales": len(items), "needMating": need_count, "warning": warning_count},
+            "items": items[:limit],
+        },
+        message="Male mate load retrieved successfully",
+    )
 
 
 def _get_breeder_by_code(db: Session, code: Optional[str]) -> Optional[Product]:
