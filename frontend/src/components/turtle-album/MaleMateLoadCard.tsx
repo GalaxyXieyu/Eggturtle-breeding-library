@@ -10,14 +10,14 @@ function statusBadge(status: NeedMatingStatus, daysSinceEgg?: number | null) {
   if (status === 'warning') {
     return (
       <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700">
-        ⚠️逾期未交配{typeof daysSinceEgg === 'number' ? ` ${daysSinceEgg}d` : ''}
+        ⚠️逾期未交配{typeof daysSinceEgg === 'number' ? ` ${daysSinceEgg}天` : ''}
       </span>
     );
   }
   if (status === 'need_mating') {
     return (
       <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">
-        待配{typeof daysSinceEgg === 'number' ? ` ${daysSinceEgg}d` : ''}
+        待配{typeof daysSinceEgg === 'number' ? ` ${daysSinceEgg}天` : ''}
       </span>
     );
   }

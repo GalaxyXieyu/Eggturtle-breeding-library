@@ -434,7 +434,7 @@ const SeriesFeed: React.FC = () => {
                   {statusBadge ? (
                     <div className={`absolute left-2 top-2 rounded-full px-2.5 py-1 text-xs font-medium ${statusBadge.className}`}>
                       {statusBadge.label}
-                      {daysSinceEgg !== null ? ` ${daysSinceEgg}d` : ''}
+                      {daysSinceEgg !== null ? ` ${daysSinceEgg}天` : ''}
                     </div>
                   ) : null}
 
