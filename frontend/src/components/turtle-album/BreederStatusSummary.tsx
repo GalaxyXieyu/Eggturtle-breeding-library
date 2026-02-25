@@ -20,7 +20,7 @@ function statusBadge(status: 'normal' | 'need_mating' | 'warning', daysSinceEgg:
       </span>
     );
   }
-  // 0-9 days is normal and should not prompt.
+  // normal should not prompt.
   return null;
 }
 

@@ -252,15 +252,13 @@ const SeriesFeed: React.FC = () => {
 
     const byStatus = status === 'all' ? bySex : bySex.filter((b) => (b.needMatingStatus || 'normal') === status);
 
-    // In status-filter views, sort by daysSinceEgg desc.
+    // In status-filter views (need_mating / warning), keep original ordering.
     if (status !== 'all') {
-      return byStatus
-        .slice()
-        .sort((a, b) => (typeof b.daysSinceEgg === 'number' ? b.daysSinceEgg : -1) - (typeof a.daysSinceEgg === 'number' ? a.daysSinceEgg : -1));
+      return byStatus;
     }
 
-    // In the all view, keep original ordering but pin the most urgent warnings on top.
-    // Only pin warnings to the top; keep the rest in original order.
+    // In the all view, keep original ordering but pin warnings on top.
+    // Within the same status bucket, keep original order (no re-ranking by daysSinceEgg).
     const rank = (s: string) => (s === 'warning' ? 1 : 0);
     const decorated = byStatus.map((b, idx) => ({ b, idx }));
     return decorated
@@ -270,11 +268,6 @@ const SeriesFeed: React.FC = () => {
         const sb = b.b.needMatingStatus || 'normal';
         const sev = rank(sb) - rank(sa);
         if (sev !== 0) return sev;
-
-        // Within same urgency bucket, prefer larger daysSinceEgg.
-        const bd = typeof b.b.daysSinceEgg === 'number' ? b.b.daysSinceEgg : -1;
-        const ad = typeof a.b.daysSinceEgg === 'number' ? a.b.daysSinceEgg : -1;
-        if (bd !== ad) return bd - ad;
 
         // Stable fallback to original list order.
         return a.idx - b.idx;

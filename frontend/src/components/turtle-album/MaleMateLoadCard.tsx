@@ -21,7 +21,7 @@ function statusBadge(status: NeedMatingStatus, daysSinceEgg?: number | null) {
       </span>
     );
   }
-  // normal (0-9 days) should not prompt.
+  // normal should not prompt.
   return null;
 }
 

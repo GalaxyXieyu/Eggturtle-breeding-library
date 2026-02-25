@@ -2,7 +2,6 @@ import type { NeedMatingStatus } from '@/types/turtleAlbum';
 import { parseIsoDate } from '@/utils/dateFormat';
 
 // Keep thresholds consistent with backend _compute_need_mating_status.
-const NEED_MATING_DAYS = 10;
 const WARNING_DAYS = 25;
 
 export function daysSinceDateDay(now: Date, dt: Date) {
@@ -28,8 +27,7 @@ export function computeNeedMatingStatusFromIso(now: Date, lastEggAtIso?: string 
     }
   }
   if (days >= WARNING_DAYS) return { status: 'warning' as NeedMatingStatus, daysSinceEgg: days };
-  if (days >= NEED_MATING_DAYS) return { status: 'need_mating' as NeedMatingStatus, daysSinceEgg: days };
-  return { status: 'normal' as NeedMatingStatus, daysSinceEgg: days };
+  return { status: 'need_mating' as NeedMatingStatus, daysSinceEgg: days };
 }
 
 export function needMatingLabel(status: NeedMatingStatus) {

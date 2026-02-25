@@ -459,13 +459,11 @@ def _canonical_mate_code_candidates(code: str) -> list[str]:
 def _compute_need_mating_status(now: datetime, last_egg_at: Optional[datetime], last_mating_at: Optional[datetime]) -> str:
     """Return one of: normal | need_mating | warning.
 
-    Shared rule across list/detail/mate-load:
+    Business rule (female-centric):
     - If no egg record -> normal
     - If there is a mating record on/after the last egg day -> normal
-    - Else, days_since_last_egg = (now.date - last_egg_at.date):
-      - 0-9 days -> normal (no prompt)
-      - 10-24 days -> need_mating
-      - >=25 days -> warning
+    - Else -> need_mating (from egg day 0)
+      - If days_since_last_egg >= 25 -> warning
 
     Note: egg day counts as day 0.
     """
@@ -480,9 +478,7 @@ def _compute_need_mating_status(now: datetime, last_egg_at: Optional[datetime], 
     days = (now.date() - last_egg_at.date()).days
     if days >= 25:
         return "warning"
-    if days >= 10:
-        return "need_mating"
-    return "normal"
+    return "need_mating"
 
 
 @router.get("/{breeder_id}/mate-load", response_model=ApiResponse)
