@@ -21,8 +21,18 @@ async def list_breeders(
     limit: int = Query(200, ge=1, le=1000),
     db: Session = Depends(get_db),
 ):
-    """Public: list breeders (repurposed Product) with optional series/sex filters."""
+    """Public: list breeders (repurposed Product) with optional series/sex filters.
+
+    Also includes computed fields used by the series+sex list page:
+    - needMatingStatus: normal | need_mating | warning
+    - lastEggAt / lastMatingAt
+    - daysSinceEgg
+
+    These are computed in bulk to avoid frontend N+1 queries.
+    """
+
     from sqlalchemy.orm import joinedload
+
     query = db.query(Product).options(joinedload(Product.images))
 
     # Only turtle-album records: must have series_id + sex populated.
@@ -37,7 +47,7 @@ async def list_breeders(
         query = query.filter(Product.sex == sex)
 
     # Natural sorting by parsed code fields (e.g. 白化-1, 白化-2, ... 白化-10).
-    breeders = (
+    breeders: list[Product] = (
         query.order_by(
             Product.code_prefix.asc(),
             nullslast(Product.code_parent_number.asc()),
@@ -49,8 +59,88 @@ async def list_breeders(
         .limit(limit)
         .all()
     )
+
+    female_ids = [b.id for b in breeders if (b.sex or "").lower() == "female"]
+
+    last_egg_event_map: dict[str, datetime] = {}
+    last_egg_record_map: dict[str, datetime] = {}
+    last_mating_event_map: dict[str, datetime] = {}
+    last_mating_record_map: dict[str, datetime] = {}
+
+    if female_ids:
+        # Prefer breeder_events when present, but keep legacy tables as fallback.
+        for female_id, last_dt in (
+            db.query(BreederEvent.product_id, func.max(BreederEvent.event_date))
+            .filter(BreederEvent.product_id.in_(female_ids))
+            .filter(BreederEvent.event_type == "egg")
+            .group_by(BreederEvent.product_id)
+            .all()
+        ):
+            if female_id and last_dt:
+                last_egg_event_map[female_id] = last_dt
+
+        for female_id, last_dt in (
+            db.query(EggRecord.female_id, func.max(EggRecord.laid_at))
+            .filter(EggRecord.female_id.in_(female_ids))
+            .group_by(EggRecord.female_id)
+            .all()
+        ):
+            if female_id and last_dt:
+                last_egg_record_map[female_id] = last_dt
+
+        for female_id, last_dt in (
+            db.query(BreederEvent.product_id, func.max(BreederEvent.event_date))
+            .filter(BreederEvent.product_id.in_(female_ids))
+            .filter(BreederEvent.event_type == "mating")
+            .group_by(BreederEvent.product_id)
+            .all()
+        ):
+            if female_id and last_dt:
+                last_mating_event_map[female_id] = last_dt
+
+        for female_id, last_dt in (
+            db.query(MatingRecord.female_id, func.max(MatingRecord.mated_at))
+            .filter(MatingRecord.female_id.in_(female_ids))
+            .group_by(MatingRecord.female_id)
+            .all()
+        ):
+            if female_id and last_dt:
+                last_mating_record_map[female_id] = last_dt
+
+    def _pick_latest(a: Optional[datetime], b: Optional[datetime]) -> Optional[datetime]:
+        if a and b:
+            return a if a >= b else b
+        return a or b
+
+    now = datetime.utcnow()
+
+    items: list[dict] = []
+    for b in breeders:
+        data = convert_product_to_response(b)
+
+        if (b.sex or "").lower() == "female":
+            last_egg_at = _pick_latest(last_egg_event_map.get(b.id), last_egg_record_map.get(b.id))
+            last_mating_at = _pick_latest(last_mating_event_map.get(b.id), last_mating_record_map.get(b.id))
+            status = _compute_need_mating_status(now, last_egg_at, last_mating_at)
+            days_since_egg = (now.date() - last_egg_at.date()).days if last_egg_at else None
+        else:
+            last_egg_at = None
+            last_mating_at = None
+            status = "normal"
+            days_since_egg = None
+
+        data.update(
+            {
+                "needMatingStatus": status,
+                "lastEggAt": last_egg_at.isoformat() if last_egg_at else None,
+                "lastMatingAt": last_mating_at.isoformat() if last_mating_at else None,
+                "daysSinceEgg": days_since_egg,
+            }
+        )
+        items.append(data)
+
     return ApiResponse(
-        data=[convert_product_to_response(b) for b in breeders],
+        data=items,
         message="Breeders retrieved successfully",
     )
 
@@ -369,22 +459,30 @@ def _canonical_mate_code_candidates(code: str) -> list[str]:
 def _compute_need_mating_status(now: datetime, last_egg_at: Optional[datetime], last_mating_at: Optional[datetime]) -> str:
     """Return one of: normal | need_mating | warning.
 
-    Rule: after the most recent egg record, if there is no mating record on/after that date:
-    - <10 days -> need_mating
-    - >=10 days -> warning
+    Shared rule across list/detail/mate-load:
+    - If no egg record -> normal
+    - If there is a mating record on/after the last egg day -> normal
+    - Else, days_since_last_egg = (now.date - last_egg_at.date):
+      - 0-9 days -> normal (no prompt)
+      - 10-24 days -> need_mating
+      - >=25 days -> warning
+
+    Note: egg day counts as day 0.
     """
 
     if not last_egg_at:
         return "normal"
 
-    # Any mating after the last egg clears the need.
+    # Any mating on/after the last egg clears the need.
     if last_mating_at and last_mating_at.date() >= last_egg_at.date():
         return "normal"
 
     days = (now.date() - last_egg_at.date()).days
-    if days >= 10:
+    if days >= 25:
         return "warning"
-    return "need_mating"
+    if days >= 10:
+        return "need_mating"
+    return "normal"
 
 
 @router.get("/{breeder_id}/mate-load", response_model=ApiResponse)
@@ -420,8 +518,9 @@ async def get_male_mate_load(
     if not male_code:
         raise HTTPException(status_code=400, detail="Breeder code is required")
 
-    # Latest mating with this male per female.
-    last_mating_with_male_sq = (
+    # Latest mating/egg info per female.
+    # Prefer structured breeder_events when present, but keep legacy tables as fallback.
+    last_mating_with_male_event_sq = (
         db.query(
             BreederEvent.product_id.label("female_id"),
             func.max(BreederEvent.event_date).label("last_mating_with_male_at"),
@@ -432,7 +531,17 @@ async def get_male_mate_load(
         .subquery()
     )
 
-    last_egg_sq = (
+    last_mating_with_male_record_sq = (
+        db.query(
+            MatingRecord.female_id.label("female_id"),
+            func.max(MatingRecord.mated_at).label("last_mating_with_male_at"),
+        )
+        .filter(MatingRecord.male_id == breeder.id)
+        .group_by(MatingRecord.female_id)
+        .subquery()
+    )
+
+    last_egg_event_sq = (
         db.query(
             BreederEvent.product_id.label("female_id"),
             func.max(BreederEvent.event_date).label("last_egg_at"),
@@ -442,7 +551,16 @@ async def get_male_mate_load(
         .subquery()
     )
 
-    last_mating_any_sq = (
+    last_egg_record_sq = (
+        db.query(
+            EggRecord.female_id.label("female_id"),
+            func.max(EggRecord.laid_at).label("last_egg_at"),
+        )
+        .group_by(EggRecord.female_id)
+        .subquery()
+    )
+
+    last_mating_any_event_sq = (
         db.query(
             BreederEvent.product_id.label("female_id"),
             func.max(BreederEvent.event_date).label("last_mating_at"),
@@ -452,9 +570,22 @@ async def get_male_mate_load(
         .subquery()
     )
 
+    last_mating_any_record_sq = (
+        db.query(
+            MatingRecord.female_id.label("female_id"),
+            func.max(MatingRecord.mated_at).label("last_mating_at"),
+        )
+        .group_by(MatingRecord.female_id)
+        .subquery()
+    )
+
     female_ids: set[str] = set()
 
-    for row in db.query(last_mating_with_male_sq.c.female_id).all():
+    for row in db.query(last_mating_with_male_event_sq.c.female_id).all():
+        if row and row[0]:
+            female_ids.add(row[0])
+
+    for row in db.query(last_mating_with_male_record_sq.c.female_id).all():
         if row and row[0]:
             female_ids.add(row[0])
 
@@ -511,6 +642,8 @@ async def get_male_mate_load(
         elif status == "warning":
             warning_count += 1
 
+        days_since_egg = (now.date() - last_egg_at.date()).days if last_egg_at else None
+
         items.append(
             {
                 "femaleId": female.id,
@@ -518,15 +651,18 @@ async def get_male_mate_load(
                 "lastEggAt": last_egg_at.isoformat() if last_egg_at else None,
                 "lastMatingAt": last_mating_at.isoformat() if last_mating_at else None,
                 "lastMatingWithThisMaleAt": last_mating_with_male_at.isoformat() if last_mating_with_male_at else None,
+                "daysSinceEgg": days_since_egg,
                 "status": status,
             }
         )
 
     severity = {"warning": 2, "need_mating": 1, "normal": 0}
+    # Most urgent first: warning -> need_mating -> normal.
+    # Within the same status, larger daysSinceEgg (i.e. older last egg) first.
     items.sort(
         key=lambda it: (
             severity.get(it["status"], 0),
-            it["lastEggAt"] or "",
+            it.get("daysSinceEgg") or -1,
             it["femaleCode"] or "",
         ),
         reverse=True,

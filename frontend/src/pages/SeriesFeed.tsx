@@ -8,7 +8,7 @@ import { createImageUrl } from '@/lib/api';
 import { getBreederImagePath } from '@/utils/breederImage';
 
 import { turtleAlbumService } from '@/services/turtleAlbumService';
-import type { Breeder, Sex } from '@/types/turtleAlbum';
+import type { Breeder, Sex, NeedMatingStatus } from '@/types/turtleAlbum';
 
 const sexLabel = (sex?: Sex | null) => {
   if (sex === 'male') return '公';
@@ -147,6 +147,7 @@ const SeriesIntroCard: React.FC<SeriesIntroCardProps> = ({ seriesId, seriesName,
 const SeriesFeed: React.FC = () => {
   const [seriesId, setSeriesId] = React.useState<string | null>(null);
   const [sex, setSex] = React.useState<Sex | 'all'>('all');
+  const [status, setStatus] = React.useState<NeedMatingStatus | 'all'>('all');
 
   const [isHeroCollapsed, setIsHeroCollapsed] = React.useState(false);
 
@@ -248,8 +249,37 @@ const SeriesFeed: React.FC = () => {
   const filteredBreeders = React.useMemo(() => {
     const list = breedersQ.data || [];
     const bySex = sex === 'all' ? list : list.filter((b) => b.sex === sex);
-    return bySex;
-  }, [breedersQ.data, sex]);
+
+    const byStatus = status === 'all' ? bySex : bySex.filter((b) => (b.needMatingStatus || 'normal') === status);
+
+    // In status-filter views, sort by daysSinceEgg desc.
+    if (status !== 'all') {
+      return byStatus
+        .slice()
+        .sort((a, b) => (typeof b.daysSinceEgg === 'number' ? b.daysSinceEgg : -1) - (typeof a.daysSinceEgg === 'number' ? a.daysSinceEgg : -1));
+    }
+
+    // In the all view, keep original ordering but pin the most urgent warnings on top.
+    const rank = (s: string) => (s === 'warning' ? 2 : s === 'need_mating' ? 1 : 0);
+    const decorated = byStatus.map((b, idx) => ({ b, idx }));
+    return decorated
+      .slice()
+      .sort((a, b) => {
+        const sa = a.b.needMatingStatus || 'normal';
+        const sb = b.b.needMatingStatus || 'normal';
+        const sev = rank(sb) - rank(sa);
+        if (sev !== 0) return sev;
+
+        // Within same urgency bucket, prefer larger daysSinceEgg.
+        const bd = typeof b.b.daysSinceEgg === 'number' ? b.b.daysSinceEgg : -1;
+        const ad = typeof a.b.daysSinceEgg === 'number' ? a.b.daysSinceEgg : -1;
+        if (bd !== ad) return bd - ad;
+
+        // Stable fallback to original list order.
+        return a.idx - b.idx;
+      })
+      .map((x) => x.b);
+  }, [breedersQ.data, sex, status]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-stone-100 via-white to-amber-50/40 text-black">
@@ -335,6 +365,32 @@ const SeriesFeed: React.FC = () => {
               {breedersQ.isLoading ? <div className="ml-auto text-xs text-neutral-500">loading...</div> : null}
             </div>
 
+            <div className="flex items-center gap-2">
+              <div className="text-xs font-medium text-neutral-600">状态</div>
+              <div className="flex gap-2">
+                {(
+                  [
+                    { key: 'all', label: '全部' },
+                    { key: 'need_mating', label: '待配' },
+                    { key: 'warning', label: '⚠️逾期未交配' },
+                  ] as const
+                ).map((t) => (
+                  <button
+                    key={t.key}
+                    type="button"
+                    onClick={() => setStatus(t.key)}
+                    className={`h-8 rounded-full border px-3 text-xs shadow-[0_1px_0_rgba(0,0,0,0.04)] transition lg:h-9 lg:px-4 lg:text-sm ${
+                      status === t.key
+                        ? 'border-[#FFD400] bg-white text-black shadow-[0_6px_20px_rgba(255,212,0,0.22)]'
+                        : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:shadow-sm'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {seriesQ.isError ? (
               <div className="text-sm text-red-600">series: {(seriesQ.error as Error).message}</div>
             ) : null}
@@ -350,6 +406,27 @@ const SeriesFeed: React.FC = () => {
           const Card = ({ b }: { b: (typeof allBreeders)[number] }) => {
             const mainImagePath = getBreederImagePath(b);
 
+            const status = b.needMatingStatus || 'normal';
+            const daysSinceEgg = typeof b.daysSinceEgg === 'number' ? b.daysSinceEgg : null;
+
+            const statusBadge =
+              status === 'need_mating'
+                ? { label: '待配', className: 'bg-[#FFD400]/90 text-black ring-1 ring-black/10' }
+                : status === 'warning'
+                ? { label: '⚠️逾期未交配', className: 'bg-red-600/90 text-white ring-1 ring-black/10' }
+                : null;
+
+            const formatShortDate = (iso?: string | null) => {
+              const v = (iso || '').trim();
+              const m = v.match(/^(\d{4})-(\d{2})-(\d{2})/);
+              if (m) return `${m[2]}.${m[3]}`;
+              return v ? v.slice(0, 10) : '';
+            };
+
+            const lastEgg = formatShortDate(b.lastEggAt);
+            const lastMating = formatShortDate(b.lastMatingAt);
+            const showMeta = (b.sex || '').toLowerCase() === 'female' && (lastEgg || lastMating);
+
             return (
               <Link
                 key={b.id}
@@ -357,12 +434,16 @@ const SeriesFeed: React.FC = () => {
                 className="group w-full overflow-hidden rounded-2xl border border-neutral-200/90 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)] transition active:scale-[0.995] hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-[0_12px_34px_rgba(0,0,0,0.14)]"
               >
                 <div className="relative aspect-[4/5] bg-neutral-100">
-                  <img
-                    src={createImageUrl(mainImagePath)}
-                    alt={b.code}
-                    className="h-full w-full object-cover"
-                  />
+                  <img src={createImageUrl(mainImagePath)} alt={b.code} className="h-full w-full object-cover" />
                   <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/30 to-transparent" />
+
+                  {statusBadge ? (
+                    <div className={`absolute left-2 top-2 rounded-full px-2.5 py-1 text-xs font-medium ${statusBadge.className}`}>
+                      {statusBadge.label}
+                      {daysSinceEgg !== null ? ` ${daysSinceEgg}d` : ''}
+                    </div>
+                  ) : null}
+
                   <div className="absolute right-2 top-2 rounded-full bg-white/90 px-2.5 py-1 text-xs text-black">
                     {sexLabel(b.sex)}
                   </div>
@@ -378,6 +459,17 @@ const SeriesFeed: React.FC = () => {
                       </span>
                     ) : null}
                   </div>
+
+                  {showMeta ? (
+                    <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-neutral-700">
+                      {lastEgg ? (
+                        <span className="rounded-full bg-amber-50 px-2 py-0.5 ring-1 ring-amber-200/60">产蛋 {lastEgg}</span>
+                      ) : null}
+                      {lastMating ? (
+                        <span className="rounded-full bg-emerald-50 px-2 py-0.5 ring-1 ring-emerald-200/60">交配 {lastMating}</span>
+                      ) : null}
+                    </div>
+                  ) : null}
 
                   {b.description ? (
                     <div className="mt-2 rounded-xl bg-neutral-100/80 px-2.5 py-1.5 text-xs leading-relaxed text-neutral-700 sm:text-sm">

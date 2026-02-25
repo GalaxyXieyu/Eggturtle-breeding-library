@@ -6,19 +6,27 @@ import { turtleAlbumService } from '@/services/turtleAlbumService';
 import type { MaleMateLoadItem, NeedMatingStatus } from '@/types/turtleAlbum';
 import { formatMmDd } from '@/utils/dateFormat';
 
-function statusBadge(status: NeedMatingStatus) {
+function statusBadge(status: NeedMatingStatus, daysSinceEgg?: number | null) {
   if (status === 'warning') {
-    return <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700">警告</span>;
+    return (
+      <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700">
+        ⚠️逾期未交配{typeof daysSinceEgg === 'number' ? ` ${daysSinceEgg}d` : ''}
+      </span>
+    );
   }
   if (status === 'need_mating') {
-    return <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">需交配</span>;
+    return (
+      <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">
+        待配{typeof daysSinceEgg === 'number' ? ` ${daysSinceEgg}d` : ''}
+      </span>
+    );
   }
-  return <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">正常</span>;
+  // normal (0-9 days) should not prompt.
+  return null;
 }
 
-function rowSortKey(it: MaleMateLoadItem) {
-  const severity = it.status === 'warning' ? 2 : it.status === 'need_mating' ? 1 : 0;
-  return `${severity}-${it.lastEggAt || ''}-${it.femaleCode}`;
+function severityRank(status: NeedMatingStatus) {
+  return status === 'warning' ? 2 : status === 'need_mating' ? 1 : 0;
 }
 
 type Props = {
@@ -49,7 +57,18 @@ export default function MaleMateLoadCard({ maleBreederId }: Props) {
   }
 
   const data = q.data;
-  const items = (data?.items || []).slice().sort((a, b) => (rowSortKey(b) > rowSortKey(a) ? 1 : -1));
+
+  // Most urgent first; within same status, larger daysSinceEgg (older egg) first.
+  const items = (data?.items || []).slice().sort((a, b) => {
+    const sev = severityRank(b.status) - severityRank(a.status);
+    if (sev !== 0) return sev;
+
+    const bd = typeof b.daysSinceEgg === 'number' ? b.daysSinceEgg : -1;
+    const ad = typeof a.daysSinceEgg === 'number' ? a.daysSinceEgg : -1;
+    if (bd !== ad) return bd - ad;
+
+    return (b.femaleCode || '').localeCompare(a.femaleCode || '');
+  });
 
   return (
     <div className="mt-8 px-1 sm:px-3 lg:px-5 2xl:px-6">
@@ -62,8 +81,8 @@ export default function MaleMateLoadCard({ maleBreederId }: Props) {
 
       <div className="mb-4 flex flex-wrap gap-2">
         <span className="rounded-full bg-neutral-900 px-3 py-1 text-xs font-semibold text-white">关联 {data?.totals?.relatedFemales ?? 0}</span>
-        <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">需交配 {data?.totals?.needMating ?? 0}</span>
-        <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">警告 {data?.totals?.warning ?? 0}</span>
+        <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">待配 {data?.totals?.needMating ?? 0}</span>
+        <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">⚠️逾期未交配 {data?.totals?.warning ?? 0}</span>
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-black/5 bg-white shadow-[0_8px_24px_rgba(0,0,0,0.06)]">
@@ -78,7 +97,7 @@ export default function MaleMateLoadCard({ maleBreederId }: Props) {
                     <Link to={`/breeder/${it.femaleId}`} className="truncate text-sm font-semibold text-neutral-900 hover:underline">
                       {it.femaleCode}
                     </Link>
-                    {statusBadge(it.status)}
+                    {statusBadge(it.status, it.daysSinceEgg)}
                   </div>
 
                   <div className="flex items-center gap-3 text-xs font-medium text-neutral-600">

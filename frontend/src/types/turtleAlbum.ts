@@ -30,6 +30,12 @@ export interface Breeder {
   damImageUrl?: string | null;
   isFeatured?: boolean | null;
 
+  // Computed breeding reminders (bulk-computed by /api/breeders list to avoid N+1)
+  needMatingStatus?: NeedMatingStatus;
+  lastEggAt?: string | null;
+  lastMatingAt?: string | null;
+  daysSinceEgg?: number | null;
+
   images?: Array<{ id?: string; url: string; alt: string; type: string; sortOrder?: number }>;
 
   createdAt?: string;
@@ -101,6 +107,7 @@ export interface MaleMateLoadItem {
   lastEggAt: string | null;
   lastMatingAt: string | null;
   lastMatingWithThisMaleAt: string | null;
+  daysSinceEgg?: number | null;
   status: NeedMatingStatus;
 }
 

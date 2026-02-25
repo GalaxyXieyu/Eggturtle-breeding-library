@@ -4,30 +4,25 @@ import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { turtleAlbumService } from '@/services/turtleAlbumService';
 import type { BreederEventItem, BreederEventType } from '@/types/turtleAlbum';
-import { formatMmDd, formatYear, parseIsoDate } from '@/utils/dateFormat';
+import { formatMmDd, formatYear } from '@/utils/dateFormat';
+import { computeNeedMatingStatusFromIso, needMatingLabel } from '@/utils/needMatingStatus';
 
-function computeNeedMatingStatus(now: Date, lastEggAt: string | null | undefined, lastMatingAt: string | null | undefined) {
-  const egg = parseIsoDate(lastEggAt || null);
-  if (!egg) return 'normal' as const;
-
-  const mating = parseIsoDate(lastMatingAt || null);
-  if (mating && mating.getTime() >= egg.getTime()) return 'normal' as const;
-
-  const msPerDay = 24 * 60 * 60 * 1000;
-  const days = Math.floor((new Date(now.toDateString()).getTime() - new Date(egg.toDateString()).getTime()) / msPerDay);
-
-  if (days >= 10) return 'warning' as const;
-  return 'need_mating' as const;
-}
-
-function statusBadge(status: 'normal' | 'need_mating' | 'warning') {
+function statusBadge(status: 'normal' | 'need_mating' | 'warning', daysSinceEgg: number | null) {
   if (status === 'warning') {
-    return <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700">警告</span>;
+    return (
+      <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700">
+        {needMatingLabel(status)}{daysSinceEgg !== null ? ` ${daysSinceEgg}d` : ''}
+      </span>
+    );
   }
   if (status === 'need_mating') {
-    return <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">需交配</span>;
+    return (
+      <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">
+        {needMatingLabel(status)}{daysSinceEgg !== null ? ` ${daysSinceEgg}d` : ''}
+      </span>
+    );
   }
-  return <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">正常</span>;
+  return null;
 }
 
 function eventLabel(e: BreederEventItem): string {
@@ -159,10 +154,10 @@ export default function BreederEventTimeline({ breederId }: Props) {
     return () => window.cancelAnimationFrame(raf);
   }, [filter, nodeItems.length]);
 
-  const status = React.useMemo(() => {
+  const computedStatus = React.useMemo(() => {
     const lastEgg = lastEggQ.data?.items?.[0]?.eventDate || null;
     const lastMating = lastMatingQ.data?.items?.[0]?.eventDate || null;
-    return computeNeedMatingStatus(new Date(), lastEgg, lastMating);
+    return computeNeedMatingStatusFromIso(new Date(), lastEgg, lastMating);
   }, [lastEggQ.data, lastMatingQ.data]);
 
   const rowRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
@@ -227,7 +222,7 @@ export default function BreederEventTimeline({ breederId }: Props) {
             />
           </svg>
           <h2 className="text-lg font-semibold text-neutral-900">种龟事件</h2>
-          {statusBadge(status)}
+          {statusBadge(computedStatus.status, computedStatus.daysSinceEgg)}
         </div>
         <div className="flex flex-col items-end gap-1 text-xs text-neutral-600 sm:flex-row sm:items-center sm:gap-2">
           <span>最近产蛋 {formatMmDd(lastEggQ.data?.items?.[0]?.eventDate || null)}</span>
