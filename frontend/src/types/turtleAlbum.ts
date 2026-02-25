@@ -104,6 +104,7 @@ export type NeedMatingStatus = 'normal' | 'need_mating' | 'warning';
 export interface MaleMateLoadItem {
   femaleId: string;
   femaleCode: string;
+  femaleMainImageUrl?: string | null;
   lastEggAt: string | null;
   lastMatingAt: string | null;
   lastMatingWithThisMaleAt: string | null;

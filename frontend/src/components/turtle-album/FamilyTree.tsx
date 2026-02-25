@@ -1,7 +1,10 @@
 import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
+
 import { createImageUrl } from '@/lib/api';
-import type { FamilyTree, FamilyTreeNode } from '@/types/turtleAlbum';
+import { turtleAlbumService } from '@/services/turtleAlbumService';
+import type { FamilyTree, FamilyTreeNode, MaleMateLoadItem } from '@/types/turtleAlbum';
 
 interface FamilyTreeProps {
   familyTree: FamilyTree;
@@ -82,6 +85,17 @@ const FamilyTreeComponent: React.FC<FamilyTreeProps> = ({ familyTree, mate }) =>
   const mateId = mate?.id ?? familyTree.currentMate?.id ?? null;
   const mateThumbnailUrl = typeof mate?.thumbnailUrl === 'string' ? mate.thumbnailUrl.trim() : '';
   const showMateNode = current.sex === 'female' && !!mateCode;
+
+  const maleMateLoadQ = useQuery({
+    queryKey: ['turtle-album', 'breeder', current.id, 'mate-load'],
+    queryFn: () => turtleAlbumService.getBreederMateLoad(current.id),
+    enabled: current.sex === 'male' && !!current.id,
+  });
+
+  const maleMates: MaleMateLoadItem[] = maleMateLoadQ.data?.items || [];
+  const mateThumbLimit = 8;
+  const mateThumbItems = maleMates.slice(0, mateThumbLimit);
+  const mateMoreCount = Math.max(0, maleMates.length - mateThumbItems.length);
 
   // Check if there are any great-grandparents
   const hasGreatGrandparents = !!(
@@ -295,6 +309,54 @@ const FamilyTreeComponent: React.FC<FamilyTreeProps> = ({ familyTree, mate }) =>
                     </span>
                   )}
                 </div>
+              ) : null}
+
+              {current.sex === 'male' ? (
+                maleMateLoadQ.isLoading ? (
+                  <div className="mt-2 text-[11px] font-medium text-neutral-400">加载配偶母龟...</div>
+                ) : mateThumbItems.length > 0 ? (
+                  <div className="mt-2 w-64">
+                    <div className="text-center text-[11px] font-medium text-neutral-500">配偶母龟</div>
+                    <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+                      {mateThumbItems.map((it) => {
+                        const imgUrl = (it.femaleMainImageUrl || '').trim();
+                        return (
+                          <Link
+                            key={it.femaleId}
+                            to={`/breeder/${it.femaleId}`}
+                            title={it.femaleCode}
+                            className="group relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm transition hover:border-amber-300 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-1"
+                          >
+                            {imgUrl ? (
+                              <img
+                                src={createImageUrl(imgUrl)}
+                                alt={it.femaleCode}
+                                className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-neutral-100 to-neutral-200">
+                                <svg className="h-6 w-6 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                              </div>
+                            )}
+                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-1 py-0.5">
+                              <div className="truncate text-[10px] font-medium text-white">{it.femaleCode}</div>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                      {mateMoreCount > 0 ? (
+                        <div
+                          title={`还有 ${mateMoreCount} 只`}
+                          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border border-neutral-200 bg-neutral-50 text-xs font-semibold text-neutral-600"
+                        >
+                          +{mateMoreCount}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null
               ) : null}
             </div>
           </div>

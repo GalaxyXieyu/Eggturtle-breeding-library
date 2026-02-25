@@ -497,6 +497,8 @@ async def get_male_mate_load(
     2) Fallback: female products whose mate_code matches this male's code (or with/without trailing '公').
     """
 
+    from sqlalchemy.orm import joinedload
+
     breeder = (
         db.query(Product)
         .filter(Product.id == breeder_id)
@@ -619,6 +621,7 @@ async def get_male_mate_load(
             last_mating_with_male_event_sq.c.last_mating_with_male_at,
             last_mating_with_male_record_sq.c.last_mating_with_male_at,
         )
+        .options(joinedload(Product.images))
         .outerjoin(last_egg_event_sq, last_egg_event_sq.c.female_id == Product.id)
         .outerjoin(last_egg_record_sq, last_egg_record_sq.c.female_id == Product.id)
         .outerjoin(last_mating_any_event_sq, last_mating_any_event_sq.c.female_id == Product.id)
@@ -663,10 +666,20 @@ async def get_male_mate_load(
 
         days_since_egg = (now.date() - last_egg_at.date()).days if last_egg_at else None
 
+        # Main image URL for list rendering (avoid frontend N+1).
+        female_main_image_url = None
+        if getattr(female, "images", None):
+            main_image = next((img for img in female.images if img.type == "main"), None)
+            if main_image:
+                female_main_image_url = main_image.url
+            elif female.images:
+                female_main_image_url = female.images[0].url
+
         items.append(
             {
                 "femaleId": female.id,
                 "femaleCode": female.code,
+                "femaleMainImageUrl": female_main_image_url,
                 "lastEggAt": last_egg_at.isoformat() if last_egg_at else None,
                 "lastMatingAt": last_mating_at.isoformat() if last_mating_at else None,
                 "lastMatingWithThisMaleAt": last_mating_with_male_at.isoformat() if last_mating_with_male_at else None,
