@@ -143,7 +143,15 @@ _RE_DATE = re.compile(
     r"|(?P<md_dot>(?P<m3>\d{1,2})\s*\.\s*(?P<d3>\d{1,2}))"
 )
 
-_RE_EVENT_KW = re.compile(r"(交配|配对|产蛋|下蛋|产卵|下卵|产\s*\d+\s*蛋|下\s*\d+\s*蛋)")
+# Event keywords that indicate a segment is a record (not free description).
+# Keep this fairly permissive; it is only used after a date token is detected.
+_RE_EVENT_KW = re.compile(
+    r"(交配|配对|配"
+    r"|产蛋|下蛋|产卵|下卵"
+    r"|(?:产|下)\s*\d{1,2}\s*(?:个|枚|颗)?\s*受精(?:蛋|卵)?"
+    r"|(?:产|下)\s*\d{1,2}\s*(?:受精)?\s*(?:个|枚|颗)?\s*(?:蛋|卵)"
+    r"|(?:产|下)\s*(?:一窝)?\s*(?:蛋|卵))"
+)
 
 
 def _norm_newlines(s: str) -> str:
