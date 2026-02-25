@@ -24,6 +24,11 @@ class BreederEventCreate(BaseModel):
     old_mate_code: str | None = None
     new_mate_code: str | None = None
 
+    # Optional idempotency hooks for scripted backfills.
+    # If source_type+source_id is provided, the API will skip duplicates.
+    source_type: str | None = None
+    source_id: str | None = None
+
 
 def _parse_event_date(value: str) -> datetime:
     v = (value or "").strip()
@@ -244,6 +249,37 @@ async def admin_create_breeder_event(
     if payload.event_type == "mating" and not male_code:
         male_code = (getattr(female, "mate_code", None) or "").strip() or None
 
+    source_type = (payload.source_type or "manual").strip() or "manual"
+    source_id = (payload.source_id or "").strip() or None
+    if source_type not in {"manual", "description"}:
+        raise HTTPException(status_code=400, detail="Invalid source_type")
+    if source_type == "description" and not source_id:
+        raise HTTPException(status_code=400, detail="source_id is required when source_type=description")
+
+    if source_id:
+        existing = (
+            db.query(BreederEvent)
+            .filter(BreederEvent.source_type == source_type)
+            .filter(BreederEvent.source_id == source_id)
+            .first()
+        )
+        if existing:
+            return ApiResponse(
+                data={
+                    "id": existing.id,
+                    "productId": existing.product_id,
+                    "eventType": existing.event_type,
+                    "eventDate": existing.event_date.isoformat() if existing.event_date else None,
+                    "maleCode": existing.male_code,
+                    "eggCount": existing.egg_count,
+                    "note": existing.note,
+                    "oldMateCode": existing.old_mate_code,
+                    "newMateCode": existing.new_mate_code,
+                    "createdAt": existing.created_at.isoformat() if existing.created_at else None,
+                },
+                message="Breeder event already exists",
+            )
+
     now = datetime.utcnow()
     e = BreederEvent(
         product_id=female.id,
@@ -254,8 +290,8 @@ async def admin_create_breeder_event(
         note=payload.note,
         old_mate_code=payload.old_mate_code,
         new_mate_code=payload.new_mate_code,
-        source_type="manual",
-        source_id=None,
+        source_type=source_type,
+        source_id=source_id,
         created_at=now,
     )
     db.add(e)
