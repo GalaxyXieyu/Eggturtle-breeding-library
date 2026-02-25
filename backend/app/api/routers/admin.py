@@ -57,6 +57,7 @@ async def create_product(
         sire_code=normalize_code_upper(product_data.sire_code),
         dam_code=normalize_code_upper(product_data.dam_code),
         mate_code=normalize_code_upper(product_data.mate_code),
+        exclude_from_breeding=bool(getattr(product_data, "exclude_from_breeding", False)),
         sire_image_url=product_data.sire_image_url,
         dam_image_url=product_data.dam_image_url,
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 import { turtleAlbumService } from '@/services/turtleAlbumService';
 import type { MaleMateLoadItem, NeedMatingStatus } from '@/types/turtleAlbum';
@@ -34,9 +34,14 @@ type Props = {
 };
 
 export default function MaleMateLoadCard({ maleBreederId }: Props) {
+  const location = useLocation();
+  const includeRetired = React.useMemo(() => {
+    return new URLSearchParams(location.search).get('include_retired') === '1';
+  }, [location.search]);
+
   const q = useQuery({
-    queryKey: ['turtle-album', 'breeder', maleBreederId, 'mate-load'],
-    queryFn: () => turtleAlbumService.getBreederMateLoad(maleBreederId),
+    queryKey: ['turtle-album', 'breeder', maleBreederId, 'mate-load', includeRetired ? 'include_retired' : 'default'],
+    queryFn: () => turtleAlbumService.getBreederMateLoad(maleBreederId, { includeRetired }),
     enabled: !!maleBreederId,
   });
 
@@ -97,6 +102,9 @@ export default function MaleMateLoadCard({ maleBreederId }: Props) {
                     <Link to={`/breeder/${it.femaleId}`} className="truncate text-sm font-semibold text-neutral-900 hover:underline">
                       {it.femaleCode}
                     </Link>
+                    {it.excludeFromBreeding ? (
+                      <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-semibold text-neutral-700">已退休</span>
+                    ) : null}
                     {statusBadge(it.status, it.daysSinceEgg)}
                   </div>
 

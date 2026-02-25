@@ -18,6 +18,7 @@ export const productFormSchema = z.object({
   sireCode: z.string().optional().default(""),
   damCode: z.string().optional().default(""),
   mateCode: z.string().optional().default(""),
+  excludeFromBreeding: z.boolean().default(false),
   // Create flow keeps description optional; edit flow can still fill it.
   description: z.string().optional().default(""),
   hasSample: z.boolean().default(false),
@@ -36,6 +37,7 @@ export const productFormDefaultValues: ProductFormValues = {
   sireCode: "",
   damCode: "",
   mateCode: "",
+  excludeFromBreeding: false,
   description: "",
   hasSample: false,
   inStock: true,

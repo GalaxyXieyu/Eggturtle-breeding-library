@@ -43,6 +43,8 @@ class ProductBase(BaseModel):
     sire_code: Optional[str] = None
     dam_code: Optional[str] = None
     mate_code: Optional[str] = None
+    # If true, exclude this breeder from breeding task views/reminders.
+    exclude_from_breeding: bool = False
     sire_image_url: Optional[str] = None
     dam_image_url: Optional[str] = None
 
@@ -81,6 +83,7 @@ class ProductUpdate(BaseModel):
     sire_code: Optional[str] = None
     dam_code: Optional[str] = None
     mate_code: Optional[str] = None
+    exclude_from_breeding: Optional[bool] = None
     sire_image_url: Optional[str] = None
     dam_image_url: Optional[str] = None
 

@@ -168,6 +168,7 @@ def convert_product_to_response(product: Product) -> dict:
         "sireCode": product.sire_code,
         "damCode": product.dam_code,
         "mateCode": getattr(product, "mate_code", None),
+        "excludeFromBreeding": bool(getattr(product, "exclude_from_breeding", False)),
         "sireImageUrl": normalize_local_image_url(product.sire_image_url) if product.sire_image_url else None,
         "damImageUrl": normalize_local_image_url(product.dam_image_url) if product.dam_image_url else None,
 

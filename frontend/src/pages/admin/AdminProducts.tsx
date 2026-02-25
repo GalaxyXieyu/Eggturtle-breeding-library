@@ -324,6 +324,7 @@ const AdminProducts = () => {
         sire_code: values.sireCode?.trim().toUpperCase() || null,
         dam_code: values.damCode?.trim().toUpperCase() || null,
         mate_code: values.mateCode?.trim().toUpperCase() || null,
+        exclude_from_breeding: values.sex === 'female' ? values.excludeFromBreeding : false,
         has_sample: values.hasSample,
         cost_price: 0, // Default value, can be updated later
         price: 0, // Default value, can be updated later
@@ -380,6 +381,7 @@ const AdminProducts = () => {
       sire_code: values.sireCode?.trim().toUpperCase() || null,
       dam_code: values.damCode?.trim().toUpperCase() || null,
       mate_code: values.mateCode?.trim().toUpperCase() || null,
+      exclude_from_breeding: values.sex === 'female' ? values.excludeFromBreeding : false,
       has_sample: values.hasSample,
       in_stock: values.inStock,
       popularity_score: values.popularityScore,

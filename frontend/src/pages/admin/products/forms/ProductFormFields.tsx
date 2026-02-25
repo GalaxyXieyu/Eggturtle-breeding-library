@@ -240,6 +240,24 @@ export function ProductFormFields({ control, initialSeriesId, initialSeriesName 
           )}
         />
 
+        {sex === 'female' ? (
+          <FormField
+            control={control}
+            name="excludeFromBreeding"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <FormLabel className="text-base">已退休/不参与繁殖</FormLabel>
+                  <div className="text-sm text-muted-foreground">勾选后将不会出现在公龟配偶/交配任务列表，也不会触发待配/逾期提醒（历史谱系不受影响）</div>
+                </div>
+                <FormControl>
+                  <Switch checked={field.value} onCheckedChange={field.onChange} />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+        ) : null}
+
         <FormField
           control={control}
           name="description"

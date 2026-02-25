@@ -43,6 +43,7 @@ export function ProductEditForm({ product, onSubmit, onCancel, isSaving, images 
       sireCode: product.sireCode || "",
       damCode: product.damCode || "",
       mateCode: product.mateCode || "",
+      excludeFromBreeding: !!product.excludeFromBreeding,
       description: product.description,
       inStock: product.inStock,
       popularityScore: product.popularityScore,

@@ -118,12 +118,16 @@ async def list_breeders(
     for b in breeders:
         data = convert_product_to_response(b)
 
-        if (b.sex or "").lower() == "female":
+        is_female = (b.sex or "").lower() == "female"
+        is_retired = bool(getattr(b, "exclude_from_breeding", False))
+
+        if is_female and not is_retired:
             last_egg_at = _pick_latest(last_egg_event_map.get(b.id), last_egg_record_map.get(b.id))
             last_mating_at = _pick_latest(last_mating_event_map.get(b.id), last_mating_record_map.get(b.id))
             status = _compute_need_mating_status(now, last_egg_at, last_mating_at)
             days_since_egg = (now.date() - last_egg_at.date()).days if last_egg_at else None
         else:
+            # Non-female breeders (or retired females) should not surface mating reminders.
             last_egg_at = None
             last_mating_at = None
             status = "normal"
@@ -486,6 +490,7 @@ async def get_male_mate_load(
     breeder_id: str,
     limit: int = Query(80, ge=1, le=300),
     include_fallback: bool = Query(True, description="Fallback to products.mate_code when few/no events exist"),
+    include_retired: bool = Query(False, alias="include_retired", description="Include breeders excluded from breeding task views"),
     db: Session = Depends(get_db),
 ):
     """Public: for male breeder detail page.
@@ -590,14 +595,16 @@ async def get_male_mate_load(
     if include_fallback:
         candidates = _canonical_mate_code_candidates(male_code)
         if candidates:
-            fallback_rows = (
+            fallback_q = (
                 db.query(Product.id)
                 .filter(Product.series_id.isnot(None))
                 .filter(Product.sex == "female")
                 .filter(Product.mate_code.in_(candidates))
-                .all()
             )
-            for r in fallback_rows:
+            if not include_retired:
+                fallback_q = fallback_q.filter(Product.exclude_from_breeding.is_(False))
+
+            for r in fallback_q.all():
                 female_ids.add(r[0])
 
     if not female_ids:
@@ -611,7 +618,7 @@ async def get_male_mate_load(
             message="Male mate load retrieved successfully",
         )
 
-    rows = (
+    rows_q = (
         db.query(
             Product,
             last_egg_event_sq.c.last_egg_at,
@@ -631,8 +638,12 @@ async def get_male_mate_load(
         .filter(Product.id.in_(list(female_ids)))
         .filter(Product.series_id.isnot(None))
         .filter(Product.sex == "female")
-        .all()
     )
+
+    if not include_retired:
+        rows_q = rows_q.filter(Product.exclude_from_breeding.is_(False))
+
+    rows = rows_q.all()
 
     now = datetime.utcnow()
 
@@ -697,6 +708,7 @@ async def get_male_mate_load(
                 "lastMatingWithThisMaleAt": last_mating_with_male_at.isoformat() if last_mating_with_male_at else None,
                 "daysSinceEgg": days_since_egg,
                 "status": status,
+                "excludeFromBreeding": bool(getattr(female, "exclude_from_breeding", False)),
             }
         )
 

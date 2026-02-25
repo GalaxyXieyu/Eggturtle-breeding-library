@@ -24,6 +24,7 @@ export interface Breeder {
   sireCode?: string | null;
   damCode?: string | null;
   mateCode?: string | null;
+  excludeFromBreeding?: boolean;
   currentMateCode?: string | null;
   currentMate?: { id: string; code: string } | null;
   sireImageUrl?: string | null;
@@ -111,6 +112,7 @@ export interface MaleMateLoadItem {
   lastMatingWithThisMaleAt: string | null;
   daysSinceEgg?: number | null;
   status: NeedMatingStatus;
+  excludeFromBreeding?: boolean;
 }
 
 export interface MaleMateLoadResponse {

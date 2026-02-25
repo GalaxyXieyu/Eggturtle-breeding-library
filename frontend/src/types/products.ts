@@ -23,6 +23,7 @@ export interface Product {
   sireCode?: string | null;
   damCode?: string | null;
   mateCode?: string | null;
+  excludeFromBreeding?: boolean;
   images: ProductImage[];
   pricing: ProductPricing;
   inStock: boolean;

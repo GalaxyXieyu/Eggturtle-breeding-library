@@ -198,9 +198,13 @@ export const turtleAlbumService = {
     }
   },
 
-  async getBreederMateLoad(id: string): Promise<MaleMateLoadResponse> {
+  async getBreederMateLoad(id: string, params?: { includeRetired?: boolean }): Promise<MaleMateLoadResponse> {
     try {
-      const res = await apiClient.get<ApiResponse<MaleMateLoadResponse>>(ENDPOINTS.BREEDER_MATE_LOAD(id));
+      const res = await apiClient.get<ApiResponse<MaleMateLoadResponse>>(ENDPOINTS.BREEDER_MATE_LOAD(id), {
+        params: {
+          include_retired: params?.includeRetired ? 1 : undefined,
+        },
+      });
       return res.data.data;
     } catch (e) {
       const err = handleApiError(e);

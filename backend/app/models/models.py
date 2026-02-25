@@ -73,6 +73,9 @@ class Product(Base):
     sire_image_url = Column(String)
     dam_image_url = Column(String)
 
+    # If true, exclude from breeding task views/reminders (but keep history/lineage intact).
+    exclude_from_breeding = Column(Boolean, default=False, nullable=False)
+
     # Pricing information
     cost_price = Column(Float, default=0.0)
     # Canonical selling price

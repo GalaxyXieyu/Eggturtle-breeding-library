@@ -1,6 +1,6 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 import { createImageUrl } from '@/lib/api';
 import { turtleAlbumService } from '@/services/turtleAlbumService';
@@ -90,9 +90,14 @@ const FamilyTreeComponent: React.FC<FamilyTreeProps> = ({ familyTree, currentSex
   const mateThumbnailUrl = typeof mate?.thumbnailUrl === 'string' ? mate.thumbnailUrl.trim() : '';
   const showMateNode = sex === 'female' && !!mateCode;
 
+  const location = useLocation();
+  const includeRetired = React.useMemo(() => {
+    return new URLSearchParams(location.search).get('include_retired') === '1';
+  }, [location.search]);
+
   const maleMateLoadQ = useQuery({
-    queryKey: ['turtle-album', 'breeder', current.id, 'mate-load'],
-    queryFn: () => turtleAlbumService.getBreederMateLoad(current.id),
+    queryKey: ['turtle-album', 'breeder', current.id, 'mate-load', includeRetired ? 'include_retired' : 'default'],
+    queryFn: () => turtleAlbumService.getBreederMateLoad(current.id, { includeRetired }),
     enabled: sex === 'male' && !!current.id,
   });
 
