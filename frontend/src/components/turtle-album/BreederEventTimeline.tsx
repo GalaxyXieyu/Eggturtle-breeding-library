@@ -42,6 +42,37 @@ function eventDotClass(type: BreederEventType): string {
   return 'bg-neutral-600';
 }
 
+function formatNoteForDisplay(note: string | null | undefined, e: BreederEventItem): string | null {
+  const n = (note || '').trim();
+  if (!n) return null;
+
+  // Hide/clean technical backfill notes for end users.
+  if (!n.startsWith('backfill:description')) return n;
+
+  const m = n.match(/(?:^|;\s*)raw=(.*)$/);
+  if (!m) return null;
+
+  let raw = (m[1] || '').trim();
+  // Drop leading date token.
+  raw = raw.replace(/^(?:20\d{2}[\.\/-])?\s*\d{1,2}\s*[\.\/-]\s*\d{1,2}\s*/u, '');
+  raw = raw.replace(/^\d{1,2}\s*-\s*\d{1,2}\s*/u, '');
+
+  // Drop leading event word + redundant payload (male code / egg count) since UI already shows it.
+  if (e.eventType === 'mating') {
+    raw = raw.replace(/^(交配|配对|配)\s*/u, '');
+    // Remove common male tokens like XT-D/xt-d公 or single-letter d公.
+    raw = raw.replace(/^(?:[A-Za-z\u4e00-\u9fff]{1,8}-[A-Za-z0-9]{1,8})(?:公)?\s*/u, '');
+    raw = raw.replace(/^[A-Za-z]\s*公\s*/u, '');
+  } else if (e.eventType === 'egg') {
+    raw = raw.replace(/^(?:产蛋|下蛋|产卵|下卵|产|下)\s*(?:\d{1,2}\s*(?:个|枚|颗)?\s*(?:蛋|卵)?)?\s*/u, '');
+  } else if (e.eventType === 'change_mate') {
+    raw = raw.replace(/^换公\s*/u, '');
+  }
+
+  raw = raw.trim();
+  return raw ? raw : null;
+}
+
 type Props = {
   breederId: string;
 };
@@ -228,9 +259,12 @@ export default function BreederEventTimeline({ breederId }: Props) {
                             </div>
                           ) : null}
 
-                          {typeof e.note === 'string' && e.note.trim() ? (
-                            <div className="mt-2 whitespace-pre-wrap text-sm text-neutral-600">{e.note}</div>
-                          ) : null}
+                          {(() => {
+                            const displayNote = formatNoteForDisplay(e.note, e);
+                            return displayNote ? (
+                              <div className="mt-2 whitespace-pre-wrap text-sm text-neutral-600">{displayNote}</div>
+                            ) : null;
+                          })()}
                         </div>
 
                         <div className="shrink-0 text-xs font-medium text-neutral-400">{e.eventDate ? '' : ''}</div>
