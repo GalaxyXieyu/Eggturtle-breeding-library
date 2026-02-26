@@ -1,0 +1,46 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    image: eggturtle:local
+    ports:
+      - "30080:80"
+    environment:
+      # Legacy app defaults to sqlite on /data/app.db
+      DATABASE_URL: "sqlite:////data/app.db"
+      UPLOAD_DIR: "/data/images"
+      # Change these for any non-local use.
+      SECRET_KEY: "dev-only-change-me"
+      ADMIN_USERNAME: "admin"
+      ADMIN_PASSWORD: "admin123"
+    volumes:
+      - ./.data:/data
+    depends_on:
+      - postgres
+      - minio
+
+  # Optional for now (Legacy app can run on sqlite). Kept to match the future SaaS plan.
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "30001:5432"
+    environment:
+      POSTGRES_DB: eggturtle
+      POSTGRES_USER: eggturtle
+      POSTGRES_PASSWORD: eggturtle
+    volumes:
+      - ./.data/pg:/var/lib/postgresql/data
+
+  # MinIO (S3 compatible). Not wired into the Legacy app yet.
+  minio:
+    image: minio/minio:RELEASE.2025-01-20T14-49-07Z
+    command: server /data --console-address ":9001"
+    ports:
+      - "30002:9000" # S3 API
+      - "30003:9001" # Console
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123456
+    volumes:
+      - ./.data/minio:/data

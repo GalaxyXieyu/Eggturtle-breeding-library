@@ -1,0 +1,26 @@
+{
+  "name": "@eggturtle/api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "nest start --watch",
+    "start": "node dist/main.js",
+    "build": "nest build",
+    "lint": "eslint \"src/**/*.ts\""
+  },
+  "dependencies": {
+    "@eggturtle/shared": "workspace:*",
+    "@nestjs/common": "^10.4.15",
+    "@nestjs/core": "^10.4.15",
+    "@nestjs/platform-express": "^10.4.15",
+    "@prisma/client": "^6.16.3",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^10.4.9",
+    "@types/node": "^22.13.10",
+    "prisma": "6.16.3",
+    "ts-node": "^10.9.2"
+  }
+}
