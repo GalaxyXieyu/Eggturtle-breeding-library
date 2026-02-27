@@ -66,3 +66,11 @@ __pycache__/
 *.pyo
 .pytest_cache/
 allure-results/
+
+# Prevent accidental TS build outputs landing in source directories
+packages/shared/src/*.js
+packages/shared/src/*.d.ts
+packages/shared/src/*.js.map
+
+# Legacy test reports (often contain tokens/logs)
+backend/tests/reports/
