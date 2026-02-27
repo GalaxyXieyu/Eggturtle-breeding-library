@@ -1,4 +1,4 @@
-name: Eggturtle CI
+name: CI
 
 on:
   push:
@@ -39,3 +39,6 @@ jobs:
 
       - name: Build admin app (explicit)
         run: pnpm --filter @eggturtle/admin build
+
+      - name: API tests runner gate (dry-run)
+        run: pnpm api-tests:gate
