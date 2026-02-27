@@ -82,6 +82,8 @@ model Product {
   images           ProductImage[]
   featuredProducts FeaturedProduct[]
 
+  // Enables composite foreign keys to enforce tenant isolation.
+  @@unique([id, tenantId], map: "products_id_tenant_id_key")
   @@index([tenantId], map: "products_tenant_id_idx")
   @@map("products")
 }
@@ -93,7 +95,7 @@ model FeaturedProduct {
   sortOrder Int      @default(0) @map("sort_order")
   createdAt DateTime @default(now()) @map("created_at")
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId, tenantId], references: [id, tenantId], onDelete: Cascade)
 
   @@unique([tenantId, productId], map: "featured_products_tenant_id_product_id_key")
   @@index([tenantId], map: "featured_products_tenant_id_idx")

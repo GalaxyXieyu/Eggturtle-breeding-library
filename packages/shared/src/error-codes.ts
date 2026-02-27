@@ -11,7 +11,9 @@ export const ErrorCode = {
   TenantSlugConflict: 'TENANT_SLUG_CONFLICT',
   TenantNotSelected: 'TENANT_NOT_SELECTED',
   ProductNotFound: 'PRODUCT_NOT_FOUND',
-  ProductImageNotFound: 'PRODUCT_IMAGE_NOT_FOUND'
+  ProductImageNotFound: 'PRODUCT_IMAGE_NOT_FOUND',
+  FeaturedProductNotFound: 'FEATURED_PRODUCT_NOT_FOUND',
+  FeaturedProductConflict: 'FEATURED_PRODUCT_CONFLICT'
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];

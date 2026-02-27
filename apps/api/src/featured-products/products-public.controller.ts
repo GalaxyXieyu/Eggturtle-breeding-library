@@ -67,8 +67,13 @@ export class ProductsPublicController {
       return null;
     }
 
-    const context = await this.authService.getAuthContextFromAccessToken(token);
-    return context?.tenantId ?? null;
+    try {
+      const context = await this.authService.getAuthContextFromAccessToken(token);
+      return context?.tenantId ?? null;
+    } catch {
+      // Treat invalid/malformed tokens as anonymous for this public endpoint.
+      return null;
+    }
   }
 
   private extractBearerToken(rawAuthorization?: string): string | null {

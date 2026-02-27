@@ -79,7 +79,10 @@ export class FeaturedProductsService {
       return this.toFeaturedProductItem(item);
     } catch (error) {
       if (this.isDuplicateFeaturedError(error)) {
-        throw new ConflictException('Product is already featured in this tenant.');
+        throw new ConflictException({
+          message: 'Product is already featured in this tenant.',
+          errorCode: ErrorCode.FeaturedProductConflict
+        });
       }
 
       throw error;
@@ -98,7 +101,10 @@ export class FeaturedProductsService {
     });
 
     if (!target) {
-      throw new NotFoundException('Featured product not found.');
+      throw new NotFoundException({
+        message: 'Featured product not found.',
+        errorCode: ErrorCode.FeaturedProductNotFound
+      });
     }
 
     await this.prisma.$transaction(async (tx) => {
@@ -330,7 +336,18 @@ export class FeaturedProductsService {
     }
 
     const target = Array.isArray(error.meta?.target) ? error.meta.target : [];
-    return target.includes('tenant_id') && target.includes('product_id');
+
+    // Prisma reports P2002 targets as model field names (e.g. tenantId/productId).
+    const normalized = new Set(target.map((value) => String(value)));
+
+    const candidates: Array<[string, string]> = [
+      ['tenantId', 'productId'],
+      ['tenant_id', 'product_id']
+    ];
+
+    return candidates.some(([tenantField, productField]) =>
+      normalized.has(tenantField) && normalized.has(productField)
+    );
   }
 
   private toFeaturedProductItem(item: FeaturedWithProduct): FeaturedProductItem {

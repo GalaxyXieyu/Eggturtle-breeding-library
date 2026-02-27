@@ -11,8 +11,14 @@ import {
   reorderFeaturedProductsResponseSchema,
   type FeaturedProductItem
 } from '@eggturtle/shared/featured';
+import { switchTenantRequestSchema, switchTenantResponseSchema } from '@eggturtle/shared';
 
-import { ApiError, apiRequest, getAccessToken } from '../../../../lib/api-client';
+import {
+  ApiError,
+  apiRequest,
+  getAccessToken,
+  setAccessToken
+} from '../../../../lib/api-client';
 
 export default function FeaturedProductsPage() {
   const router = useRouter();
@@ -41,13 +47,37 @@ export default function FeaturedProductsPage() {
   }, []);
 
   useEffect(() => {
-    if (!getAccessToken()) {
+    const token = getAccessToken();
+    if (!token) {
       router.replace('/login');
       return;
     }
 
-    void loadItems();
-  }, [loadItems, router]);
+    if (!tenantSlug) {
+      setError('Missing tenantSlug in route.');
+      setLoading(false);
+      return;
+    }
+
+    void (async () => {
+      try {
+        const response = await apiRequest('/auth/switch-tenant', {
+          method: 'POST',
+          body: { slug: tenantSlug },
+          requestSchema: switchTenantRequestSchema,
+          responseSchema: switchTenantResponseSchema
+        });
+
+        setAccessToken(response.accessToken);
+      } catch (requestError) {
+        setError(formatError(requestError));
+        setLoading(false);
+        return;
+      }
+
+      await loadItems();
+    })();
+  }, [loadItems, router, tenantSlug]);
 
   async function handleAdd(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
