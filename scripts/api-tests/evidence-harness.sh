@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 OUT_ROOT="${OUT_ROOT:-$ROOT_DIR/out/t26-api-full-run}"
 API_BASE="${API_BASE:-http://localhost:30011}"
-ONLY_MODULES="${ONLY_MODULES:-auth,products,images,featured,shares,admin}"
+ONLY_MODULES="${ONLY_MODULES:-auth,products,series,breeders,images,featured,shares,admin}"
 NODE_ENV="${NODE_ENV:-development}"
 AUTH_DEV_CODE_ENABLED="${AUTH_DEV_CODE_ENABLED:-true}"
 AUTO_START_API="${AUTO_START_API:-0}"

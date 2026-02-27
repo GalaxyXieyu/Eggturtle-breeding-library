@@ -12,6 +12,8 @@ export const ErrorCode = {
   TenantNotSelected: 'TENANT_NOT_SELECTED',
   ProductNotFound: 'PRODUCT_NOT_FOUND',
   ProductImageNotFound: 'PRODUCT_IMAGE_NOT_FOUND',
+  SeriesNotFound: 'SERIES_NOT_FOUND',
+  BreederNotFound: 'BREEDER_NOT_FOUND',
   FeaturedProductNotFound: 'FEATURED_PRODUCT_NOT_FOUND',
   FeaturedProductConflict: 'FEATURED_PRODUCT_CONFLICT',
   ShareNotFound: 'SHARE_NOT_FOUND',

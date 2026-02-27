@@ -1,7 +1,7 @@
 # API Interface Test Scenarios
 
 Status: active  
-Updated: 2026-02-27
+Updated: 2026-02-28
 
 This document defines categorized API interface scenarios for `scripts/api-tests/` TypeScript scripts.
 
@@ -17,6 +17,8 @@ The scripts are organized by module, not by one monolithic smoke script:
 
 - `auth.ts`
 - `products.ts`
+- `series.ts`
+- `breeders.ts`
 - `images.ts`
 - `featured.ts`
 - `shares.ts`
@@ -71,7 +73,53 @@ Runner entry: `scripts/api-tests/run.ts`
 - `GET /products?page=1&pageSize=20` -> `200`
 - created product should appear in list payload
 
-### 3.3 Product Images (`images`)
+### 3.3 Series (`series`)
+
+1. List series envelope
+
+- `GET /series?page=1&pageSize=10` -> `200`
+- response must include `items`, `total`, `page`, `pageSize`, `totalPages`
+
+2. Invalid pagination guard
+
+- `GET /series?page=0&pageSize=10` -> `400 INVALID_REQUEST_PAYLOAD`
+
+3. Not-found guard
+
+- `GET /series/:id` (unknown id) -> `404 SERIES_NOT_FOUND`
+
+4. Optional positive + isolation checks (when tenant has series data)
+
+- `GET /series/:id` -> `200`
+- `GET /series/:id` from another tenant token -> `404 SERIES_NOT_FOUND`
+
+### 3.4 Breeders (`breeders`)
+
+1. List breeders envelope
+
+- `GET /breeders?page=1&pageSize=10` -> `200`
+- response must include `items`, `total`, `page`, `pageSize`, `totalPages`
+
+2. Invalid parameter guards
+
+- `GET /breeders?page=0&pageSize=10` -> `400 INVALID_REQUEST_PAYLOAD`
+- `GET /breeders/by-code/%20%20` -> `400 INVALID_REQUEST_PAYLOAD`
+
+3. Not-found guards
+
+- `GET /breeders/:id` (unknown id) -> `404 BREEDER_NOT_FOUND`
+- `GET /breeders/:id/events` (unknown id) -> `404 BREEDER_NOT_FOUND`
+- `GET /breeders/:id/family-tree` (unknown id) -> `404 BREEDER_NOT_FOUND`
+
+4. Optional positive + isolation checks (when tenant has breeder data)
+
+- `GET /breeders/:id` -> `200`
+- `GET /breeders/by-code/:code` -> `200`
+- `GET /breeders/:id/events` -> `200` and timeline sorted by `eventDate desc`
+- `GET /breeders/:id/family-tree` -> `200` with `self/sire/dam/mate/children/links/limitations`
+- `GET /breeders/:id` from another tenant token -> `404 BREEDER_NOT_FOUND`
+
+### 3.5 Product Images (`images`)
 
 1. Upload image
 
@@ -91,7 +139,7 @@ Runner entry: `scripts/api-tests/run.ts`
 
 - `DELETE /products/:pid/images/:iid` -> `200`
 
-### 3.4 Featured Products (`featured`)
+### 3.6 Featured Products (`featured`)
 
 1. Create fixture products (2)
 
@@ -109,7 +157,7 @@ Runner entry: `scripts/api-tests/run.ts`
 - `PUT /featured-products/reorder` -> `200`
 - `DELETE /featured-products/:id` -> `200`
 
-### 3.5 Shares (`shares`)
+### 3.7 Shares (`shares`)
 
 1. Create share
 
@@ -127,7 +175,7 @@ Runner entry: `scripts/api-tests/run.ts`
 - `GET /shares/:sid/public?...` -> `200`
 - `shareId` and `product.id` should match created fixture
 
-### 3.6 Admin Access (`admin`)
+### 3.8 Admin Access (`admin`)
 
 1. Tenant role denial
 
@@ -139,7 +187,7 @@ Runner entry: `scripts/api-tests/run.ts`
 - when `--require-super-admin-pass` is set: must be `200`
 - otherwise non-200 is warning (environment-dependent)
 
-### 3.7 Account Matrix (`account-matrix`)
+### 3.9 Account Matrix (`account-matrix`)
 
 This module is the authoritative automated check for role matrix acceptance.
 
@@ -165,13 +213,16 @@ Expected denial/error-code checks:
 - `VIEWER -> POST /featured-products` -> `403 FORBIDDEN`
 - `VIEWER -> POST /shares` -> `403 FORBIDDEN`
 - `tenant role -> GET /admin/tenants` -> `403 FORBIDDEN`
+- `tenant token -> GET /series?page=0&pageSize=10` -> `400 INVALID_REQUEST_PAYLOAD`
+- `tenant token -> GET /breeders/by-code/%20%20` -> `400 INVALID_REQUEST_PAYLOAD`
+- `tenant token -> GET /breeders/:id` (unknown id) -> `404 BREEDER_NOT_FOUND`
 
 ## 5. Suggested Execution Sets
 
 1. Fast tenant module sweep
 
 ```bash
-pnpm api-tests -- --confirm-writes --only auth,products,images,featured,shares
+pnpm api-tests -- --confirm-writes --only auth,products,series,breeders,images,featured,shares
 ```
 
 2. Admin access checks

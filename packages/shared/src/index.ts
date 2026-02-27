@@ -71,6 +71,37 @@ export type {
   ReorderProductImagesRequest
 } from './product';
 export {
+  getSeriesResponseSchema,
+  listSeriesQuerySchema,
+  listSeriesResponseSchema,
+  seriesCodeSchema,
+  seriesNameSchema,
+  seriesSchema,
+  seriesSummarySchema
+} from './series';
+export type { ListSeriesQuery, Series, SeriesSummary } from './series';
+export {
+  breederCodeSchema,
+  breederEventSchema,
+  breederFamilyTreeLinkSchema,
+  breederFamilyTreeNodeSchema,
+  breederFamilyTreeSchema,
+  breederIdParamSchema,
+  breederSchema,
+  getBreederFamilyTreeResponseSchema,
+  getBreederResponseSchema,
+  listBreederEventsResponseSchema,
+  listBreedersQuerySchema,
+  listBreedersResponseSchema
+} from './breeder';
+export type {
+  Breeder,
+  BreederEvent,
+  BreederFamilyTree,
+  BreederFamilyTreeLink,
+  ListBreedersQuery
+} from './breeder';
+export {
   createFeaturedProductRequestSchema,
   createFeaturedProductResponseSchema,
   deleteFeaturedProductResponseSchema,
