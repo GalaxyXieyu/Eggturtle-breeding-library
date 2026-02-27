@@ -2,20 +2,19 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { authUserSchema, requestCodeRequestSchema, requestCodeResponseSchema, verifyCodeRequestSchema } from '@eggturtle/shared/auth';
+import {
+  meResponseSchema,
+  requestCodeRequestSchema,
+  requestCodeResponseSchema,
+  verifyCodeRequestSchema
+} from '@eggturtle/shared';
 
-type VerifyCodeRouteResponse = {
-  ok: true;
-  user: unknown;
-};
-
-type SessionRouteResponse = {
-  authenticated: true;
-  user: unknown;
-};
+import { ApiError, apiRequest } from '../../lib/api-client';
 
 export default function LoginPage() {
   const router = useRouter();
+  const [redirectTo, setRedirectTo] = useState('/dashboard');
+
   const [email, setEmail] = useState('');
   const [requestedEmail, setRequestedEmail] = useState<string | null>(null);
   const [code, setCode] = useState('');
@@ -25,22 +24,26 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const candidate = new URLSearchParams(window.location.search).get('redirect');
+    if (candidate && candidate.startsWith('/dashboard')) {
+      setRedirectTo(candidate);
+    }
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function checkSession() {
       try {
-        const response = await requestJson('/api/auth/session', {
-          method: 'GET'
+        await apiRequest('/api/auth/session', {
+          responseSchema: meResponseSchema
         });
 
-        const parsed = parseSessionResponse(response);
-
-        if (!cancelled && parsed.authenticated) {
-          router.replace('/dashboard');
-          return;
+        if (!cancelled) {
+          router.replace(redirectTo);
         }
       } catch {
-        // Ignore 401 and keep the user on login page.
+        // No active session; keep the user on login page.
       } finally {
         if (!cancelled) {
           setCheckingSession(false);
@@ -53,7 +56,7 @@ export default function LoginPage() {
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [redirectTo, router]);
 
   async function handleRequestCode(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -62,14 +65,15 @@ export default function LoginPage() {
 
     try {
       const payload = requestCodeRequestSchema.parse({ email });
-      const response = await requestJson('/api/auth/request-code', {
+      const response = await apiRequest('/api/auth/request-code', {
         method: 'POST',
-        body: payload
+        body: payload,
+        requestSchema: requestCodeRequestSchema,
+        responseSchema: requestCodeResponseSchema
       });
-      const parsed = requestCodeResponseSchema.parse(response);
 
       setRequestedEmail(payload.email);
-      setDevCode(parsed.devCode ?? null);
+      setDevCode(response.devCode ?? null);
       setCode('');
     } catch (requestError) {
       setError(formatError(requestError));
@@ -93,14 +97,14 @@ export default function LoginPage() {
         code
       });
 
-      const response = await requestJson('/api/auth/verify-code', {
+      await apiRequest('/api/auth/verify-code', {
         method: 'POST',
-        body: payload
+        body: payload,
+        requestSchema: verifyCodeRequestSchema,
+        responseSchema: meResponseSchema
       });
-      const parsed = parseVerifyResponse(response);
 
-      authUserSchema.parse(parsed.user);
-      router.replace('/dashboard');
+      router.replace(redirectTo);
     } catch (requestError) {
       setError(formatError(requestError));
     } finally {
@@ -113,7 +117,7 @@ export default function LoginPage() {
       <main className="login-wrap">
         <div className="card stack">
           <h1>Super Admin Sign In</h1>
-          <p className="muted">Checking session...</p>
+          <p className="muted">Checking active session...</p>
         </div>
       </main>
     );
@@ -188,78 +192,11 @@ export default function LoginPage() {
   );
 }
 
-function parseVerifyResponse(value: unknown): VerifyCodeRouteResponse {
-  if (!value || typeof value !== 'object') {
-    throw new Error('Invalid verify response payload.');
-  }
-
-  if (!('ok' in value) || value.ok !== true || !('user' in value)) {
-    throw new Error('Invalid verify response payload.');
-  }
-
-  return value as VerifyCodeRouteResponse;
-}
-
-function parseSessionResponse(value: unknown): SessionRouteResponse {
-  if (!value || typeof value !== 'object') {
-    throw new Error('Invalid session response payload.');
-  }
-
-  if (!('authenticated' in value) || value.authenticated !== true || !('user' in value)) {
-    throw new Error('Invalid session response payload.');
-  }
-
-  return value as SessionRouteResponse;
-}
-
-async function requestJson(path: string, options: { method: 'GET' | 'POST'; body?: unknown }) {
-  const response = await fetch(path, {
-    method: options.method,
-    headers: options.body ? { 'Content-Type': 'application/json' } : undefined,
-    body: options.body ? JSON.stringify(options.body) : undefined,
-    cache: 'no-store'
-  });
-
-  const payload = await parseJsonBody(response);
-
-  if (!response.ok) {
-    throw new Error(pickErrorMessage(payload, `Request failed with status ${response.status}`));
-  }
-
-  return payload;
-}
-
-async function parseJsonBody(response: Response) {
-  const text = await response.text();
-
-  if (!text) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(text) as unknown;
-  } catch {
-    return { message: text };
-  }
-}
-
-function pickErrorMessage(payload: unknown, fallback: string) {
-  if (!payload || typeof payload !== 'object') {
-    return fallback;
-  }
-
-  if ('message' in payload && typeof payload.message === 'string') {
-    return payload.message;
-  }
-
-  if ('error' in payload && typeof payload.error === 'string') {
-    return payload.error;
-  }
-
-  return fallback;
-}
-
 function formatError(error: unknown) {
+  if (error instanceof ApiError) {
+    return error.message;
+  }
+
   if (error instanceof Error) {
     return error.message;
   }

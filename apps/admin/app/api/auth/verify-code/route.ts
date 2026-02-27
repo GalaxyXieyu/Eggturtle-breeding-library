@@ -1,19 +1,19 @@
 import { NextResponse } from 'next/server';
 import { verifyCodeRequestSchema, verifyCodeResponseSchema } from '@eggturtle/shared/auth';
 
+import { isSuperAdminEmailAllowlisted } from '../../../../lib/admin-auth';
 import {
-  ADMIN_ACCESS_COOKIE_NAME,
-  clearAdminSessionCookieOptions,
-  getAdminSessionCookieOptions,
-  getApiBaseUrl,
-  validateAdminAccessToken
-} from '../../../../lib/admin-auth';
+  applySessionCookie,
+  clearSessionCookie,
+  getAdminApiBaseUrl,
+  resolveSessionFromToken
+} from '../../../../lib/server-session';
 
 export async function POST(request: Request) {
   try {
     const payload = verifyCodeRequestSchema.parse(await request.json());
 
-    const upstreamResponse = await fetch(`${getApiBaseUrl()}/auth/verify-code`, {
+    const upstreamResponse = await fetch(`${getAdminApiBaseUrl()}/auth/verify-code`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -36,26 +36,21 @@ export async function POST(request: Request) {
     }
 
     const { accessToken } = verifyCodeResponseSchema.parse(body);
-    const validationResult = await validateAdminAccessToken(accessToken);
+    const session = await resolveSessionFromToken(accessToken);
 
-    if (!validationResult.ok) {
+    if (!session || !isSuperAdminEmailAllowlisted(session.user.email)) {
       return withClearedSessionCookie(
         NextResponse.json(
           {
-            message: validationResult.message
+            message: 'Admin access denied.'
           },
-          { status: validationResult.status }
+          { status: 403 }
         )
       );
     }
 
-    const response = NextResponse.json({
-      ok: true,
-      user: validationResult.user
-    });
-
-    response.cookies.set(ADMIN_ACCESS_COOKIE_NAME, accessToken, getAdminSessionCookieOptions());
-
+    const response = NextResponse.json(session);
+    applySessionCookie(response, accessToken);
     return response;
   } catch {
     return withClearedSessionCookie(
@@ -70,7 +65,7 @@ export async function POST(request: Request) {
 }
 
 function withClearedSessionCookie(response: NextResponse) {
-  response.cookies.set(ADMIN_ACCESS_COOKIE_NAME, '', clearAdminSessionCookieOptions());
+  clearSessionCookie(response);
   return response;
 }
 

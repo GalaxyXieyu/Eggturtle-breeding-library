@@ -1,19 +1,43 @@
 'use client';
 
-import Link from 'next/link';
-import { useMemo } from 'react';
-import { usePathname } from 'next/navigation';
+import { useMemo, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 
 type DashboardTopbarProps = {
   collapsed: boolean;
+  currentUserEmail: string;
   onToggleSidebar: () => void;
 };
 
-export function DashboardTopbar({ collapsed, onToggleSidebar }: DashboardTopbarProps) {
+export function DashboardTopbar({
+  collapsed,
+  currentUserEmail,
+  onToggleSidebar
+}: DashboardTopbarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [signingOut, setSigningOut] = useState(false);
 
   const breadcrumbs = useMemo(() => buildBreadcrumbs(pathname), [pathname]);
   const currentPageLabel = breadcrumbs[breadcrumbs.length - 1] ?? 'Overview';
+
+  async function handleSignOut() {
+    if (signingOut) {
+      return;
+    }
+
+    setSigningOut(true);
+    try {
+      await fetch('/api/auth/session', {
+        method: 'DELETE',
+        cache: 'no-store'
+      });
+    } finally {
+      router.replace('/login');
+      router.refresh();
+      setSigningOut(false);
+    }
+  }
 
   return (
     <header className="dashboard-topbar">
@@ -37,9 +61,12 @@ export function DashboardTopbar({ collapsed, onToggleSidebar }: DashboardTopbarP
         </div>
       </div>
 
-      <Link className="topbar-meta" href="/logout">
-        Sign out
-      </Link>
+      <div className="topbar-actions">
+        <p className="topbar-meta">Signed in as {currentUserEmail}</p>
+        <button className="secondary" type="button" onClick={handleSignOut} disabled={signingOut}>
+          {signingOut ? 'Signing out...' : 'Sign out'}
+        </button>
+      </div>
     </header>
   );
 }

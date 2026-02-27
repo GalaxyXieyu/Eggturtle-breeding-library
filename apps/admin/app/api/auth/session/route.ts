@@ -1,45 +1,32 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
+import { isSuperAdminEmailAllowlisted } from '../../../../lib/admin-auth';
 import {
-  ADMIN_ACCESS_COOKIE_NAME,
-  clearAdminSessionCookieOptions,
-  validateAdminAccessToken
-} from '../../../../lib/admin-auth';
+  clearSessionCookie,
+  getSessionToken,
+  resolveSessionFromToken
+} from '../../../../lib/server-session';
 
-export async function GET(request: NextRequest) {
-  const token = request.cookies.get(ADMIN_ACCESS_COOKIE_NAME)?.value;
+export async function GET() {
+  const token = getSessionToken();
 
   if (!token) {
-    return clearCookie(
-      NextResponse.json(
-        {
-          message: 'Missing admin session.'
-        },
-        { status: 401 }
-      )
-    );
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  const validationResult = await validateAdminAccessToken(token);
+  const session = await resolveSessionFromToken(token);
 
-  if (!validationResult.ok) {
-    return clearCookie(
-      NextResponse.json(
-        {
-          message: validationResult.message
-        },
-        { status: validationResult.status }
-      )
-    );
+  if (!session || !isSuperAdminEmailAllowlisted(session.user.email)) {
+    const response = NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    clearSessionCookie(response);
+    return response;
   }
 
-  return NextResponse.json({
-    authenticated: true,
-    user: validationResult.user
-  });
+  return NextResponse.json(session);
 }
 
-function clearCookie(response: NextResponse) {
-  response.cookies.set(ADMIN_ACCESS_COOKIE_NAME, '', clearAdminSessionCookieOptions());
+export async function DELETE() {
+  const response = NextResponse.json({ ok: true });
+  clearSessionCookie(response);
   return response;
 }

@@ -183,9 +183,15 @@ export type {
 } from './ai';
 export {
   SuperAdminAuditAction,
+  adminTenantMemberSchema,
+  adminTenantSchema,
   adminUserSchema,
   createAdminTenantRequestSchema,
   createAdminTenantResponseSchema,
+  getAdminTenantResponseSchema,
+  listAdminTenantMembersQuerySchema,
+  listAdminTenantMembersResponseSchema,
+  listAdminTenantsQuerySchema,
   listAdminTenantsResponseSchema,
   listAdminUsersResponseSchema,
   listSuperAdminAuditLogsQuerySchema,
@@ -196,9 +202,15 @@ export {
   upsertTenantMemberResponseSchema
 } from './admin';
 export type {
+  AdminTenant,
+  AdminTenantMember,
   AdminUser,
   CreateAdminTenantRequest,
   CreateAdminTenantResponse,
+  GetAdminTenantResponse,
+  ListAdminTenantMembersQuery,
+  ListAdminTenantMembersResponse,
+  ListAdminTenantsQuery,
   ListAdminTenantsResponse,
   ListAdminUsersResponse,
   ListSuperAdminAuditLogsQuery,

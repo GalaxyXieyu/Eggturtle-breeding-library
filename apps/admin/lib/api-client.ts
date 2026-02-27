@@ -1,4 +1,3 @@
-const DEFAULT_API_BASE_URL = 'http://localhost:30011';
 const LOGIN_PATH = '/login';
 const AUTH_PROXY_PREFIX = '/api/proxy';
 
@@ -14,14 +13,6 @@ type ApiRequestOptions<RequestPayload, ResponsePayload> = {
   requestSchema?: SchemaParser<RequestPayload>;
   responseSchema: SchemaParser<ResponsePayload>;
 };
-
-function canUseWindow() {
-  return typeof window !== 'undefined';
-}
-
-export function getApiBaseUrl() {
-  return process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE_URL;
-}
 
 export class ApiError extends Error {
   status: number;
@@ -41,7 +32,7 @@ export class ApiUnauthorizedError extends ApiError {
 }
 
 function redirectToLogin() {
-  if (!canUseWindow()) {
+  if (typeof window === 'undefined') {
     return;
   }
 
@@ -88,14 +79,18 @@ function normalizePath(path: string) {
   return `/${path}`;
 }
 
-function resolveRequestUrl(path: string, shouldUseAuth: boolean) {
+function resolveRequestPath(path: string, shouldUseAuth: boolean) {
   const normalizedPath = normalizePath(path);
 
-  if (shouldUseAuth && canUseWindow()) {
+  if (normalizedPath.startsWith('/api/')) {
+    return normalizedPath;
+  }
+
+  if (shouldUseAuth && normalizedPath.startsWith('/admin/')) {
     return `${AUTH_PROXY_PREFIX}${normalizedPath}`;
   }
 
-  return `${getApiBaseUrl()}${normalizedPath}`;
+  return normalizedPath;
 }
 
 export async function apiRequest<RequestPayload = never, ResponsePayload = unknown>(
@@ -112,7 +107,7 @@ export async function apiRequest<RequestPayload = never, ResponsePayload = unkno
     headers.set('Content-Type', 'application/json');
   }
 
-  const response = await fetch(resolveRequestUrl(path, shouldUseAuth), {
+  const response = await fetch(resolveRequestPath(path, shouldUseAuth), {
     method: options.method ?? 'GET',
     headers,
     body: typeof parsedBody === 'undefined' ? undefined : JSON.stringify(parsedBody),

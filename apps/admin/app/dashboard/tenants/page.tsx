@@ -1,38 +1,38 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
-import {
-  createAdminTenantRequestSchema,
-  createAdminTenantResponseSchema,
-  listAdminTenantsResponseSchema,
-  type Tenant
-} from '@eggturtle/shared';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { listAdminTenantsResponseSchema, type AdminTenant } from '@eggturtle/shared';
 
 import { ApiError, apiRequest } from '../../../lib/api-client';
 
 type PageState = {
   loading: boolean;
   error: string | null;
-  actionMessage: string | null;
 };
 
 export default function DashboardTenantsPage() {
   const [status, setStatus] = useState<PageState>({
     loading: true,
-    error: null,
-    actionMessage: null
+    error: null
   });
-  const [tenants, setTenants] = useState<Tenant[]>([]);
-  const [newTenantSlug, setNewTenantSlug] = useState('');
-  const [newTenantName, setNewTenantName] = useState('');
-  const [createLoading, setCreateLoading] = useState(false);
+  const [tenants, setTenants] = useState<AdminTenant[]>([]);
+  const [searchInput, setSearchInput] = useState('');
+  const [appliedSearch, setAppliedSearch] = useState('');
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
+      setStatus({ loading: true, error: null });
+
       try {
-        const response = await apiRequest('/admin/tenants', {
+        const query = new URLSearchParams();
+        if (appliedSearch.trim()) {
+          query.set('search', appliedSearch.trim());
+        }
+
+        const response = await apiRequest(`/admin/tenants${query.size ? `?${query.toString()}` : ''}`, {
           responseSchema: listAdminTenantsResponseSchema
         });
 
@@ -41,10 +41,11 @@ export default function DashboardTenantsPage() {
         }
 
         setTenants(response.tenants);
-        setStatus({ loading: false, error: null, actionMessage: null });
+        setStatus({ loading: false, error: null });
       } catch (error) {
         if (!cancelled) {
-          setStatus({ loading: false, error: formatError(error), actionMessage: null });
+          setStatus({ loading: false, error: formatError(error) });
+          setTenants([]);
         }
       }
     }
@@ -54,104 +55,111 @@ export default function DashboardTenantsPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [appliedSearch]);
 
-  async function handleCreateTenant(event: FormEvent<HTMLFormElement>) {
+  const totalMembers = useMemo(
+    () => tenants.reduce((sum, tenant) => sum + tenant.memberCount, 0),
+    [tenants]
+  );
+
+  function handleSearchSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setCreateLoading(true);
-    setStatus((previous) => ({ ...previous, error: null, actionMessage: null }));
-
-    try {
-      const payload = createAdminTenantRequestSchema.parse({
-        slug: newTenantSlug,
-        name: newTenantName
-      });
-
-      const response = await apiRequest('/admin/tenants', {
-        method: 'POST',
-        body: payload,
-        requestSchema: createAdminTenantRequestSchema,
-        responseSchema: createAdminTenantResponseSchema
-      });
-
-      setTenants((previous) => [response.tenant, ...previous]);
-      setNewTenantSlug('');
-      setNewTenantName('');
-      setStatus((previous) => ({
-        ...previous,
-        actionMessage: `Tenant ${response.tenant.slug} created.`
-      }));
-    } catch (error) {
-      setStatus((previous) => ({ ...previous, error: formatError(error) }));
-    } finally {
-      setCreateLoading(false);
-    }
+    setAppliedSearch(searchInput.trim());
   }
 
   return (
     <section className="page">
       <header className="page-header">
         <h2>Tenants</h2>
-        <p>List and create tenants from the super-admin API.</p>
+        <p>Read-only tenant directory with quick search by slug or name.</p>
       </header>
 
-      <div className="grid">
+      <div className="grid metrics-grid">
         <article className="card stack">
-          <h3>Tenant list</h3>
-          {tenants.length === 0 ? <p className="muted">No tenants found.</p> : null}
-          {tenants.length > 0 ? (
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Slug</th>
-                  <th>Tenant ID</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tenants.map((tenant) => (
-                  <tr key={tenant.id}>
-                    <td>{tenant.name}</td>
-                    <td className="mono">{tenant.slug}</td>
-                    <td className="mono">{tenant.id}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : null}
+          <h3>Total tenants</h3>
+          <p>
+            <span className="badge">{tenants.length}</span>
+          </p>
         </article>
-
-        <form className="card stack" onSubmit={handleCreateTenant}>
-          <h3>Create tenant</h3>
-          <div className="form-grid">
-            <label htmlFor="new-tenant-slug">Slug</label>
-            <input
-              id="new-tenant-slug"
-              value={newTenantSlug}
-              placeholder="tenant-slug"
-              onChange={(event) => setNewTenantSlug(event.target.value)}
-              required
-            />
-            <label htmlFor="new-tenant-name">Name</label>
-            <input
-              id="new-tenant-name"
-              value={newTenantName}
-              placeholder="Tenant Name"
-              onChange={(event) => setNewTenantName(event.target.value)}
-              required
-            />
-          </div>
-          <button type="submit" disabled={createLoading}>
-            {createLoading ? 'Creating...' : 'Create tenant'}
-          </button>
-        </form>
+        <article className="card stack">
+          <h3>Total memberships</h3>
+          <p>
+            <span className="badge">{totalMembers}</span>
+          </p>
+        </article>
       </div>
 
-      {status.loading ? <p className="muted">Loading tenants...</p> : null}
+      <form className="card stack" onSubmit={handleSearchSubmit}>
+        <h3>Search</h3>
+        <div className="inline-actions">
+          <input
+            type="search"
+            value={searchInput}
+            placeholder="Search by tenant slug or name"
+            onChange={(event) => setSearchInput(event.target.value)}
+          />
+          <button type="submit">Apply</button>
+          <button
+            className="secondary"
+            type="button"
+            onClick={() => {
+              setSearchInput('');
+              setAppliedSearch('');
+            }}
+          >
+            Reset
+          </button>
+        </div>
+      </form>
+
+      <article className="card stack">
+        <h3>Tenant list</h3>
+        {status.loading ? <p className="muted">Loading tenants...</p> : null}
+        {!status.loading && tenants.length === 0 ? (
+          <p className="muted">No tenants found for the current search.</p>
+        ) : null}
+        {tenants.length > 0 ? (
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Slug</th>
+                <th>Members</th>
+                <th>Created</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {tenants.map((tenant) => (
+                <tr key={tenant.id}>
+                  <td>{tenant.name}</td>
+                  <td className="mono">{tenant.slug}</td>
+                  <td>{tenant.memberCount}</td>
+                  <td>{formatDate(tenant.createdAt)}</td>
+                  <td>
+                    <Link className="nav-link" href={`/dashboard/tenants/${tenant.id}`}>
+                      View details
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : null}
+      </article>
+
       {status.error ? <p className="error">{status.error}</p> : null}
-      {status.actionMessage ? <p className="success">{status.actionMessage}</p> : null}
     </section>
   );
+}
+
+function formatDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleString();
 }
 
 function formatError(error: unknown) {
