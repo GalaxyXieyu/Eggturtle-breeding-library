@@ -5,7 +5,9 @@
   "scripts": {
     "lint": "pnpm -r lint",
     "build": "pnpm -r build",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "api-tests": "pnpm --filter @eggturtle/api exec ts-node --project tsconfig.json ../../scripts/api-tests/run.ts",
+    "api-tests:matrix": "pnpm api-tests -- --only account-matrix"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^7.18.0",

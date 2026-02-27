@@ -30,22 +30,22 @@
 
 ### 3.1 租户业务接口
 
-| 资源 | 接口 | 最小角色 | OWNER | ADMIN | EDITOR | VIEWER |
-|---|---|---|---|---|---|---|
-| products 读 | `GET /products` | `VIEWER` | ✅ | ✅ | ✅ | ✅ |
-| products 写 | `POST /products` | `EDITOR` | ✅ | ✅ | ✅ | ❌ |
-| images 读 | `GET /products/:pid/images/:iid/content` | `VIEWER` | ✅ | ✅ | ✅ | ✅ |
-| images 写 | `POST /products/:id/images` / `DELETE /products/:pid/images/:iid` / `PUT /products/:pid/images/:iid/main` / `PUT /products/:pid/images/reorder` | `EDITOR` | ✅ | ✅ | ✅ | ❌ |
-| featured-products 读 | `GET /featured-products` | `VIEWER` | ✅ | ✅ | ✅ | ✅ |
-| featured-products 写 | `POST /featured-products` / `DELETE /featured-products/:id` / `PUT /featured-products/reorder` | `EDITOR` | ✅ | ✅ | ✅ | ❌ |
-| shares 写 | `POST /shares` | `EDITOR` | ✅ | ✅ | ✅ | ❌ |
-| shares 公开读 | `GET /s/:shareToken` / `GET /shares/:shareId/public?...` | Public | ✅ | ✅ | ✅ | ✅ |
+| 资源                 | 接口                                                                                                                                            | 最小角色 | OWNER | ADMIN | EDITOR | VIEWER |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ----- | ----- | ------ | ------ |
+| products 读          | `GET /products`                                                                                                                                 | `VIEWER` | ✅    | ✅    | ✅     | ✅     |
+| products 写          | `POST /products`                                                                                                                                | `EDITOR` | ✅    | ✅    | ✅     | ❌     |
+| images 读            | `GET /products/:pid/images/:iid/content`                                                                                                        | `VIEWER` | ✅    | ✅    | ✅     | ✅     |
+| images 写            | `POST /products/:id/images` / `DELETE /products/:pid/images/:iid` / `PUT /products/:pid/images/:iid/main` / `PUT /products/:pid/images/reorder` | `EDITOR` | ✅    | ✅    | ✅     | ❌     |
+| featured-products 读 | `GET /featured-products`                                                                                                                        | `VIEWER` | ✅    | ✅    | ✅     | ✅     |
+| featured-products 写 | `POST /featured-products` / `DELETE /featured-products/:id` / `PUT /featured-products/reorder`                                                  | `EDITOR` | ✅    | ✅    | ✅     | ❌     |
+| shares 写            | `POST /shares`                                                                                                                                  | `EDITOR` | ✅    | ✅    | ✅     | ❌     |
+| shares 公开读        | `GET /s/:shareToken` / `GET /shares/:shareId/public?...`                                                                                        | Public   | ✅    | ✅    | ✅     | ✅     |
 
 ### 3.2 后台接口（super-admin）
 
-| 资源 | 接口 | 普通租户角色（OWNER/ADMIN/EDITOR/VIEWER） | super-admin |
-|---|---|---|---|
-| admin 读写 | `/admin/*` | ❌（403） | ✅（200/201，受具体接口语义影响） |
+| 资源       | 接口       | 普通租户角色（OWNER/ADMIN/EDITOR/VIEWER） | super-admin                       |
+| ---------- | ---------- | ----------------------------------------- | --------------------------------- |
+| admin 读写 | `/admin/*` | ❌（403）                                 | ✅（200/201，受具体接口语义影响） |
 
 ## 4. 状态码与 errorCode 验收口径
 
@@ -76,33 +76,39 @@
 以同一租户下 4 个账号（OWNER/ADMIN/EDITOR/VIEWER）执行：
 
 1. products
+
 - 四角色 `GET /products` 均为 `200`
 - OWNER/ADMIN/EDITOR 执行 `POST /products` 为 `201`
 - VIEWER 执行 `POST /products` 为 `403 FORBIDDEN`
 
 2. featured-products
+
 - 四角色 `GET /featured-products` 均为 `200`
 - OWNER/ADMIN/EDITOR 执行 `POST /featured-products` 为 `201`
 - VIEWER 执行 `POST /featured-products` 为 `403 FORBIDDEN`
 
 3. shares
+
 - OWNER/ADMIN/EDITOR 执行 `POST /shares` 为 `201`
 - VIEWER 执行 `POST /shares` 为 `403 FORBIDDEN`
 - 任意匿名访问 `GET /s/:shareToken` 为 `302`
 - 使用签名参数访问 `GET /shares/:shareId/public?...` 为 `200`
 
 4. images access endpoint
+
 - 先由可写角色上传图片（`POST /products/:id/images` → `201`）
 - 四角色访问 `GET /products/:pid/images/:iid/content` 为 `200`（local）或 `302`（remote storage）
 
 5. admin endpoints
+
 - OWNER/ADMIN/EDITOR/VIEWER 访问 `GET /admin/tenants` 均为 `403 FORBIDDEN`
 - super-admin 访问 `GET /admin/tenants` 为 `200`
 
 ## 6. 本地自动化验证脚本
 
-脚本：`scripts/smoke/account_matrix_smoke.sh`
+脚本入口：`scripts/api-tests/run.ts`（模块：`account-matrix`）
 
+- 模块实现：`scripts/api-tests/account-matrix.ts`
 - 默认安全：仅输出执行计划，不发起请求。
 - 需要显式 `--confirm-writes` 才会执行（包含写操作）。
 - 默认拒绝非 localhost API，远端需 `--allow-remote`。
@@ -111,7 +117,8 @@
 参考命令：
 
 ```bash
-scripts/smoke/account_matrix_smoke.sh \
+pnpm api-tests -- \
+  --only account-matrix \
   --confirm-writes \
   --owner-email owner@example.com \
   --admin-email admin@example.com \
@@ -120,10 +127,11 @@ scripts/smoke/account_matrix_smoke.sh \
   --tenant-id <existing-tenant-id>
 ```
 
-或（自动建租户+授权）：
+或（自动建租户 + 授权）：
 
 ```bash
-scripts/smoke/account_matrix_smoke.sh \
+pnpm api-tests -- \
+  --only account-matrix \
   --confirm-writes \
   --provision \
   --super-admin-email super@example.com \

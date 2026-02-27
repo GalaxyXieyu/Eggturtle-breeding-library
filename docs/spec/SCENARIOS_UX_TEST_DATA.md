@@ -203,5 +203,5 @@ After migration and seed:
 3. `scripts/seed/import_turtle_album.ts` dry-run works by default
 4. `scripts/seed/import_turtle_album.ts --confirm` creates/updates tenant data
 5. `scripts/seed/bootstrap_admin.ts --confirm` creates editor/viewer memberships
-6. `scripts/smoke/api_smoke.sh --confirm` passes auth, tenant switch, products, featured, and share checks
+6. `pnpm api-tests -- --confirm-writes --only auth,products,featured,shares` passes auth, tenant switch, products, featured, and share checks
 7. `pnpm -r lint && pnpm -r build` passes
