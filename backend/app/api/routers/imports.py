@@ -23,8 +23,9 @@ async def get_import_template(
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={"Content-Disposition": "attachment; filename=product_import_template.xlsx"}
         )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate template: {str(e)}")
+    except Exception:
+        logger.exception("Failed to generate import template")
+        raise HTTPException(status_code=500, detail="Failed to generate template")
 
 @router.post("", response_model=ApiResponse)
 async def batch_import_products(
@@ -59,6 +60,6 @@ async def batch_import_products(
             
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Batch import error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Internal server error during import: {str(e)}")
+    except Exception:
+        logger.exception("Batch import failed")
+        raise HTTPException(status_code=500, detail="Internal server error during import")

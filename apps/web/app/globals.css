@@ -14,7 +14,21 @@ body {
 main {
   max-width: 720px;
   margin: 0 auto;
-  padding: 48px 20px;
+  padding: 40px 20px;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  margin-bottom: 10px;
+}
+
+main > p {
+  margin-bottom: 16px;
 }
 
 .card {
@@ -22,4 +36,57 @@ main {
   background: #ffffff;
   border-radius: 12px;
   padding: 20px;
+  margin-bottom: 16px;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.between {
+  justify-content: space-between;
+}
+
+label {
+  font-size: 14px;
+  color: #334155;
+}
+
+input {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+button {
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 14px;
+  background: #0f172a;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.list {
+  list-style: none;
+  padding: 0;
+}
+
+.error {
+  color: #b91c1c;
 }

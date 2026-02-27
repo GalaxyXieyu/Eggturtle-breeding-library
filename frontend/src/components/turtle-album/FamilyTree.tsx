@@ -83,7 +83,8 @@ const FamilyTreeComponent: React.FC<FamilyTreeProps> = ({ familyTree, currentSex
   const { current, ancestors, offspring, siblings } = familyTree;
 
   // Tree endpoint may omit sex; prefer the detail endpoint sex if provided.
-  const sex = (currentSex ?? (current.sex as any) ?? null) as 'male' | 'female' | null;
+  const currentSexFromTree = current.sex === 'male' || current.sex === 'female' ? current.sex : null;
+  const sex = currentSex ?? currentSexFromTree;
 
   const mateCode = (mate?.code ?? familyTree.currentMate?.code ?? '').trim();
   const mateId = mate?.id ?? familyTree.currentMate?.id ?? null;

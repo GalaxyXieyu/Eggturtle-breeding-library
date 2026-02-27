@@ -1,0 +1,122 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TenantMemberRole {
+  OWNER
+  ADMIN
+  EDITOR
+  VIEWER
+  MEMBER
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique @db.VarChar(255)
+  name          String?        @db.VarChar(120)
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  tenantMembers TenantMember[]
+  auditLogs     AuditLog[]     @relation("AuditLogActor")
+
+  @@map("users")
+}
+
+model AuthCode {
+  id         String    @id @default(cuid())
+  email      String    @db.VarChar(255)
+  codeHash   String    @map("code_hash") @db.VarChar(128)
+  salt       String    @db.VarChar(64)
+  expiresAt  DateTime  @map("expires_at")
+  consumedAt DateTime? @map("consumed_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@index([email], map: "auth_codes_email_idx")
+  @@index([email, createdAt], map: "auth_codes_email_created_at_idx")
+  @@map("auth_codes")
+}
+
+model Tenant {
+  id        String         @id @default(cuid())
+  slug      String         @unique @db.VarChar(80)
+  name      String         @db.VarChar(120)
+  createdAt DateTime       @default(now()) @map("created_at")
+  updatedAt DateTime       @updatedAt @map("updated_at")
+  members   TenantMember[]
+  products  Product[]
+  auditLogs AuditLog[]
+
+  @@map("tenants")
+}
+
+model TenantMember {
+  id        String           @id @default(cuid())
+  tenantId  String           @map("tenant_id")
+  userId    String           @map("user_id")
+  role      TenantMemberRole @default(MEMBER)
+  createdAt DateTime         @default(now()) @map("created_at")
+  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId], map: "tenant_members_tenant_id_user_id_key")
+  @@index([tenantId], map: "tenant_members_tenant_id_idx")
+  @@index([userId], map: "tenant_members_user_id_idx")
+  @@map("tenant_members")
+}
+
+model Product {
+  id          String         @id @default(cuid())
+  tenantId    String         @map("tenant_id")
+  code        String?        @db.VarChar(120)
+  name        String?        @db.VarChar(120)
+  description String?
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  images      ProductImage[]
+
+  @@index([tenantId], map: "products_tenant_id_idx")
+  @@map("products")
+}
+
+model ProductImage {
+  id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id")
+  productId   String   @map("product_id")
+  key         String   @db.VarChar(500)
+  url         String   @db.VarChar(1000)
+  contentType String?  @map("content_type") @db.VarChar(255)
+  sortOrder   Int      @default(0) @map("sort_order")
+  isMain      Boolean  @default(false) @map("is_main")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId], map: "product_images_tenant_id_idx")
+  @@index([productId], map: "product_images_product_id_idx")
+  @@index([productId, sortOrder], map: "product_images_product_id_sort_order_idx")
+  @@map("product_images")
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id")
+  actorUserId String   @map("actor_user_id")
+  action      String   @db.VarChar(120)
+  resourceType String  @map("resource_type") @db.VarChar(120)
+  resourceId  String?  @map("resource_id") @db.VarChar(120)
+  metadata    Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actorUser   User     @relation("AuditLogActor", fields: [actorUserId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId], map: "audit_logs_tenant_id_idx")
+  @@index([tenantId, createdAt], map: "audit_logs_tenant_id_created_at_idx")
+  @@index([actorUserId], map: "audit_logs_actor_user_id_idx")
+  @@map("audit_logs")
+}

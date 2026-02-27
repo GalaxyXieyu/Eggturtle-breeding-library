@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Form, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -9,6 +10,7 @@ from app.core.security import get_current_active_user, User
 from app.core.file_utils import delete_file, save_carousel_image
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 @router.get("", response_model=ApiResponse)
 async def get_carousels(db: Session = Depends(get_db)):
@@ -52,8 +54,9 @@ async def create_carousel(
     # Save uploaded image with carousel-specific optimization
     try:
         image_url = await save_carousel_image(image)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to save image: {str(e)}")
+    except Exception:
+        logger.exception("Failed to save carousel image during create")
+        raise HTTPException(status_code=400, detail="Failed to save image")
 
     carousel = Carousel(
         title=title,
@@ -117,8 +120,9 @@ async def update_carousel(
         try:
             new_image_url = await save_carousel_image(image)
             setattr(carousel, 'image_url', new_image_url)
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Failed to save image: {str(e)}")
+        except Exception:
+            logger.exception("Failed to save carousel image during update", extra={"carousel_id": carousel_id})
+            raise HTTPException(status_code=400, detail="Failed to save image")
 
     db.commit()
     db.refresh(carousel)

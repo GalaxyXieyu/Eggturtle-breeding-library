@@ -7,8 +7,8 @@ import { Lock, LogIn, User } from "lucide-react";
 import { useAuth, useRedirectIfAuthenticated } from "@/hooks/useAuth";
 
 const AdminLogin = () => {
-  const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("admin123");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const { toast } = useToast();
 
   // Use the auth hook

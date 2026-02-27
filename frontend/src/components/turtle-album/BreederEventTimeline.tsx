@@ -56,7 +56,7 @@ function formatNoteForDisplay(note: string | null | undefined, e: BreederEventIt
 
   let raw = (m[1] || '').trim();
   // Drop leading date token.
-  raw = raw.replace(/^(?:20\d{2}[\.\/-])?\s*\d{1,2}\s*[\.\/-]\s*\d{1,2}\s*/u, '');
+  raw = raw.replace(/^(?:20\d{2}[./-])?\s*\d{1,2}\s*[./-]\s*\d{1,2}\s*/u, '');
   raw = raw.replace(/^\d{1,2}\s*-\s*\d{1,2}\s*/u, '');
 
   // Drop leading event word + redundant payload (male code / egg count) since UI already shows it.

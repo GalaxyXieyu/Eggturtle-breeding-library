@@ -74,3 +74,7 @@ packages/shared/src/*.js.map
 
 # Legacy test reports (often contain tokens/logs)
 backend/tests/reports/
+
+# Local/generated artifacts from review/verification runs
+out/
+docs/evidence/

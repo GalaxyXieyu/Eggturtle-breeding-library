@@ -1,4 +1,5 @@
 from datetime import datetime
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
@@ -16,6 +17,7 @@ from app.services.code_normalize import normalize_code_upper
 from app.services.code_sort_fields import parse_code_sort_fields
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 def _sync_primary_series_relation(db: Session, product: Product) -> None:
@@ -235,8 +237,9 @@ async def upload_product_images(
     # Save and optimize uploaded files
     try:
         saved_images_info = await save_product_images_optimized(images, product.id)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        logger.exception("Failed to save product images", extra={"product_id": product_id})
+        raise HTTPException(status_code=400, detail="Failed to save product images")
 
     # Get current max sort_order for this product
     max_sort_order = db.query(func.max(ProductImage.sort_order)).filter(

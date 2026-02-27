@@ -128,6 +128,13 @@ cd /Volumes/DATABASE/code/Eggturtle-breeding-library
 # 安装 workspace 依赖
 pnpm -r install
 
+# API 使用本地 Postgres（docker compose 对应 30001）
+cp apps/api/.env.example apps/api/.env
+
+# 执行 Prisma 迁移 + 初始化种子数据
+pnpm --filter @eggturtle/api prisma:migrate
+pnpm --filter @eggturtle/api prisma:seed
+
 # 代码检查与构建
 pnpm -r lint
 pnpm -r build
@@ -142,10 +149,32 @@ pnpm --filter @eggturtle/web dev
 默认端口：
 - New Web：`http://localhost:30010`
 - New API：`http://localhost:30011/health`
+- New API DB 健康检查：`http://localhost:30011/health/db`
 
 可选环境变量：
-- `apps/api/.env.example`（`DATABASE_URL=postgres://eggturtle:eggturtle@localhost:30001/eggturtle`）
+- `apps/api/.env.example`（默认 `DATABASE_URL=postgres://eggturtle:eggturtle@localhost:30001/eggturtle`）
 - `NEXT_PUBLIC_API_BASE_URL`（web 访问 API 的基地址，默认 `http://localhost:30011`）
+
+### Auth v0（邮箱验证码）最小验证
+
+```bash
+# 1) 迁移（等价于 pnpm --filter @eggturtle/api prisma:migrate）
+pnpm -C apps/api prisma:migrate
+
+# 2) 请求验证码（development 环境会在响应 devCode + 控制台日志输出验证码）
+curl -s http://localhost:30011/auth/request-code \
+  -H 'content-type: application/json' \
+  -d '{"email":"demo@eggturtle.local"}'
+
+# 3) 校验验证码并换取 accessToken
+curl -s http://localhost:30011/auth/verify-code \
+  -H 'content-type: application/json' \
+  -d '{"email":"demo@eggturtle.local","code":"<6-digit-code>"}'
+
+# 4) 调用 /me
+curl -s http://localhost:30011/me \
+  -H 'authorization: Bearer <accessToken>'
+```
 
 ## 关键约定
 

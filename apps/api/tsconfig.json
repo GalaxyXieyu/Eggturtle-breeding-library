@@ -9,6 +9,12 @@
     "allowSyntheticDefaultImports": true,
     "incremental": true,
     "outDir": "./dist",
+
+    // Override the workspace-wide TS path mapping so building this package
+    // doesn't pull `packages/shared/src` into the program and change rootDir.
+    // We rely on the workspace package entrypoints (`dist/*.d.ts`) instead.
+    "paths": {},
+
     "types": ["node"]
   },
   "include": ["src/**/*.ts"],

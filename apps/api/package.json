@@ -5,8 +5,12 @@
   "scripts": {
     "dev": "nest start --watch",
     "start": "node dist/main.js",
-    "build": "nest build",
-    "lint": "eslint \"src/**/*.ts\""
+    "build": "pnpm prisma:generate && tsc -p tsconfig.build.json",
+    "lint": "eslint \"src/**/*.ts\"",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy",
+    "prisma:seed": "prisma db seed"
   },
   "dependencies": {
     "@eggturtle/shared": "workspace:*",
@@ -14,8 +18,12 @@
     "@nestjs/core": "^10.4.15",
     "@nestjs/platform-express": "^10.4.15",
     "@prisma/client": "^6.16.3",
+    "dotenv": "^17.3.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.4.9",

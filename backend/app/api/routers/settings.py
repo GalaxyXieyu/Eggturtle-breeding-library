@@ -81,8 +81,8 @@ async def update_settings(
             qr_code_files = await save_multiple_files([qr_code_file], "qr_codes")
             if qr_code_files:
                 settings.customer_service_qr_code = qr_code_files[0]["url"]
-        except Exception as e:
-            logger.error(f"Error uploading QR code: {str(e)}")
+        except Exception:
+            logger.exception("Failed to upload QR code")
             raise HTTPException(status_code=400, detail="QR code upload failed")
 
     db.commit()

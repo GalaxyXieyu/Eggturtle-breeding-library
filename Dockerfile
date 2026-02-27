@@ -1,19 +1,23 @@
-# 阶段1: 构建前端
+# 阶段1: 构建前端（pnpm + workspace lockfile）
 FROM node:20-alpine AS frontend-builder
 
-WORKDIR /app/frontend
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
 
-# 复制前端依赖文件
-COPY frontend/package*.json ./
+RUN corepack enable
 
-# 安装依赖
-RUN npm ci
+WORKDIR /app
 
-# 复制前端源码
-COPY frontend/ ./
+# 先复制 lockfile 与前端 package.json，保证依赖安装可缓存
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY frontend/package.json ./frontend/package.json
 
-# 构建前端（生产模式）
-RUN npm run build
+# 仅安装 legacy frontend 依赖，且强制使用锁文件
+RUN pnpm install --filter ./frontend... --frozen-lockfile
+
+# 复制前端源码并构建生产产物
+COPY frontend/ ./frontend/
+RUN pnpm --dir frontend run build
 
 # 阶段2: 构建最终镜像
 FROM python:3.11-slim
@@ -47,9 +51,9 @@ ENV PORT=80
 ENV DEBUG=False
 ENV DATABASE_URL=sqlite:////data/app.db
 ENV UPLOAD_DIR=/data/images
-ENV SECRET_KEY=change-this-in-production
+ENV SECRET_KEY=__SET_IN_DEPLOYMENT_ENV__
 ENV ADMIN_USERNAME=admin
-ENV ADMIN_PASSWORD=admin123
+ENV ADMIN_PASSWORD=__SET_IN_DEPLOYMENT_ENV__
 
 # 暴露端口
 EXPOSE 80
