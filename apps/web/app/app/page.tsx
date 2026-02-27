@@ -2,50 +2,46 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { meResponseSchema, type MeResponse } from '@eggturtle/shared/auth';
 
-import { ApiError, apiRequest, clearAccessToken, getAccessToken } from '../../lib/api-client';
+import { ApiError, getAccessToken } from '../../lib/api-client';
+import { resolveCurrentTenantSlug } from '../../lib/tenant-session';
 
 type PageState = {
   error: string | null;
   loading: boolean;
-  me: MeResponse | null;
 };
 
-export default function AppPage() {
+export default function AppEntryPage() {
   const router = useRouter();
   const [state, setState] = useState<PageState>({
     loading: true,
-    me: null,
     error: null
   });
 
   useEffect(() => {
-    const token = getAccessToken();
-    if (!token) {
+    if (!getAccessToken()) {
       router.replace('/login');
       return;
     }
 
     let isCancelled = false;
 
-    async function loadMe() {
+    async function resolveRoute() {
       try {
-        const me = await apiRequest('/me', {
-          responseSchema: meResponseSchema
-        });
+        const tenantSlug = await resolveCurrentTenantSlug();
+        const nextPath = tenantSlug ? `/app/${tenantSlug}` : '/tenant-select';
 
         if (!isCancelled) {
-          setState({ loading: false, me, error: null });
+          router.replace(nextPath);
         }
       } catch (error) {
         if (!isCancelled) {
-          setState({ loading: false, me: null, error: formatError(error) });
+          setState({ loading: false, error: formatError(error) });
         }
       }
     }
 
-    void loadMe();
+    void resolveRoute();
 
     return () => {
       isCancelled = true;
@@ -54,46 +50,20 @@ export default function AppPage() {
 
   return (
     <main>
-      <h1>Eggturtle Web v0</h1>
-      <p>Signed-in user and current tenant context.</p>
+      <h1>Loading workspace</h1>
+      {state.loading ? <p>Resolving tenant context...</p> : null}
+      {state.error ? <p className="error">{state.error}</p> : null}
 
-      <section className="card stack">
-        {state.loading ? <p>Loading /me ...</p> : null}
-
-        {state.me ? (
-          <>
-            <p>
-              <strong>User ID:</strong> {state.me.user.id}
-            </p>
-            <p>
-              <strong>Email:</strong> {state.me.user.email}
-            </p>
-            <p>
-              <strong>Name:</strong> {state.me.user.name ?? '(empty)'}
-            </p>
-            <p>
-              <strong>tenantId:</strong> {state.me.tenantId ?? '(none)'}
-            </p>
-          </>
-        ) : null}
-
-        {state.error ? <p className="error">{state.error}</p> : null}
-
+      {!state.loading && state.error ? (
         <div className="row">
-          <button type="button" onClick={() => router.push('/app/tenants')}>
-            Manage tenants
+          <button type="button" onClick={() => router.push('/tenant-select')}>
+            Open tenant selector
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              clearAccessToken();
-              router.replace('/login');
-            }}
-          >
-            Log out
+          <button type="button" onClick={() => router.push('/login')}>
+            Back to login
           </button>
         </div>
-      </section>
+      ) : null}
     </main>
   );
 }

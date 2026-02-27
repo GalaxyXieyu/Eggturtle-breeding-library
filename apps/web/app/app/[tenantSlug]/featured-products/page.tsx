@@ -11,14 +11,8 @@ import {
   reorderFeaturedProductsResponseSchema,
   type FeaturedProductItem
 } from '@eggturtle/shared/featured';
-import { switchTenantRequestSchema, switchTenantResponseSchema } from '@eggturtle/shared';
-
-import {
-  ApiError,
-  apiRequest,
-  getAccessToken,
-  setAccessToken
-} from '../../../../lib/api-client';
+import { ApiError, apiRequest, getAccessToken } from '../../../../lib/api-client';
+import { switchTenantBySlug } from '../../../../lib/tenant-session';
 
 export default function FeaturedProductsPage() {
   const router = useRouter();
@@ -61,14 +55,7 @@ export default function FeaturedProductsPage() {
 
     void (async () => {
       try {
-        const response = await apiRequest('/auth/switch-tenant', {
-          method: 'POST',
-          body: { slug: tenantSlug },
-          requestSchema: switchTenantRequestSchema,
-          responseSchema: switchTenantResponseSchema
-        });
-
-        setAccessToken(response.accessToken);
+        await switchTenantBySlug(tenantSlug);
       } catch (requestError) {
         setError(formatError(requestError));
         setLoading(false);
@@ -232,8 +219,8 @@ export default function FeaturedProductsPage() {
       </section>
 
       <div className="row">
-        <button type="button" onClick={() => router.push('/app')}>
-          Back to /app
+        <button type="button" onClick={() => router.push(`/app/${tenantSlug}`)}>
+          Back to dashboard
         </button>
       </div>
 
