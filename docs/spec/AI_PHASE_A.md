@@ -59,9 +59,12 @@ Phase A quota/billing details are defined in:
 - `docs/spec/AI_QUOTA_BILLING.md`
 
 Launch baseline:
-- Enforced unit: `analysis_request` (1 request = 1 unit)
-- Free tier: small daily quota (exact number configured per tenant policy)
-- Over quota: block request and return quota error code
+- Enforced unit: `image_count` (charged by uploaded image count)
+- Quota scope: per-tenant
+- Quota period: monthly reset
+- Free trial baseline: 10 images / month / tenant (roughly 10 turtles)
+- Input size guardrail: each image <= `10 MB`
+- Over quota: return paywall-ready error payload so web can open recharge modal
 
 API placeholder contracts are defined in:
 - `packages/shared/src/ai.ts`

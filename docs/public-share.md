@@ -65,7 +65,7 @@ Expected: `HTTP/1.1 302 Found` with `Location: http://localhost:30010/public/sha
 1. Apply DB migration:
 
 ```bash
-pnpm --filter @eggturtle/api prisma:migrate
+pnpm --filter @eggturtle/api prisma:deploy
 ```
 
 2. Set env vars in `apps/api/.env`:
