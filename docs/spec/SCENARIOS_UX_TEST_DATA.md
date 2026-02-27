@@ -101,7 +101,8 @@ Data requirements:
 - each tested product has 1+ images
 - `sort_order` preserved from source where possible
 - one image marked main (`type == main` in source) when available
-- after mirror migration, `ProductImage.key` should be managed key `${tenantId}/products/${productId}/...`
+- after placeholder seeding, every `ProductImage.key` should be managed key `${tenantId}/products/${productId}/...`
+- for deterministic smoke data, each product maps to one of 5 local placeholder binaries by product code round-robin
 
 Assertions:
 - first displayed image matches `isMain=true`
@@ -110,9 +111,9 @@ Assertions:
 - legacy unmanaged keys still fall back to `url` redirect
 
 Edge cases:
-- source image with empty URL -> skipped and logged
-- multiple source images marked `main` -> importer resolves to one deterministic main image
-- unknown image type -> still imported, main fallback uses first image
+- script dry-run does not mutate DB or object storage
+- script `--confirm` can be re-run safely and keeps one image row per product
+- keys remain unique per image row to avoid cross-row delete coupling
 
 ## S5 - Featured products UX
 
@@ -202,8 +203,8 @@ After migration and seed:
 2. `scripts/migrate/turtle_album_export.py --confirm` outputs JSON without secrets
 3. `scripts/seed/import_turtle_album.ts` dry-run works by default
 4. `scripts/seed/import_turtle_album.ts --confirm` creates/updates tenant data
-5. `scripts/migrate/mirror_external_images_to_storage.ts` dry-run works by default
-6. `scripts/migrate/mirror_external_images_to_storage.ts --confirm` mirrors eligible images, rewrites `product_images.key/contentType/url`, and writes a report JSON under `out/`
+5. `scripts/migrate/seed_placeholder_images_to_storage.ts` dry-run works by default
+6. `scripts/migrate/seed_placeholder_images_to_storage.ts --confirm` uploads deterministic placeholder binaries to storage, enforces one `ProductImage` row per product, and rewrites `product_images.key/contentType/url` with per-row unique managed keys
 7. `scripts/seed/bootstrap_admin.ts --confirm` creates editor/viewer memberships
 8. `pnpm api-tests -- --confirm-writes --only auth,products,featured,shares` passes auth, tenant switch, products, featured, and share checks
 9. `pnpm -r lint && pnpm -r build` passes
