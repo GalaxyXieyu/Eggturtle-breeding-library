@@ -408,8 +408,17 @@ export class ProductsService {
     }
 
     if (!this.isManagedStorageKey(tenantId, image.key)) {
+      const redirectUrl = (image.url ?? '').trim();
+      // Avoid open redirects or accidental exposure of internal URLs.
+      if (!redirectUrl.startsWith('http://') && !redirectUrl.startsWith('https://')) {
+        throw new NotFoundException({
+          message: 'Product image not found.',
+          errorCode: ErrorCode.ProductImageNotFound
+        });
+      }
+
       return {
-        redirectUrl: image.url,
+        redirectUrl,
         contentType: image.contentType
       };
     }

@@ -7,7 +7,6 @@ import {
 import {
   DeleteObjectCommand,
   GetObjectCommand,
-  NoSuchKey,
   PutObjectCommand,
   S3Client
 } from '@aws-sdk/client-s3';
@@ -78,7 +77,7 @@ export class S3StorageProvider implements StorageProvider {
         contentType: response.ContentType?.trim() || null
       };
     } catch (error) {
-      if (error instanceof NoSuchKey) {
+      if (this.isMissingObjectError(error)) {
         throw new NotFoundException('Stored object was not found.');
       }
 
@@ -170,6 +169,28 @@ export class S3StorageProvider implements StorageProvider {
     }
 
     return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase());
+  }
+
+  private isMissingObjectError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') {
+      return false;
+    }
+
+    // AWS SDK v3 error shapes vary by runtime, bundling, and S3-compatible servers (MinIO).
+    // Prefer checking error name/code + HTTP status code over `instanceof`.
+    const maybeError = error as {
+      name?: string;
+      code?: string;
+      Code?: string;
+      $metadata?: { httpStatusCode?: number };
+    };
+
+    if (maybeError.$metadata?.httpStatusCode === 404) {
+      return true;
+    }
+
+    const tag = String(maybeError.name || maybeError.code || maybeError.Code || '');
+    return tag === 'NoSuchKey' || tag === 'NotFound';
   }
 
   private parseSignedUrlTtl(rawValue: string | undefined): number {

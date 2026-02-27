@@ -21,7 +21,7 @@ export class LocalDiskStorageProvider implements StorageProvider {
 
   async putObject(input: PutObjectInput): Promise<PutObjectResult> {
     const key = this.normalizeKey(input.key);
-    const targetPath = path.join(this.uploadRoot, key);
+    const targetPath = this.buildTargetPath(key);
 
     await fs.mkdir(path.dirname(targetPath), { recursive: true });
     await fs.writeFile(targetPath, input.body);
@@ -35,7 +35,7 @@ export class LocalDiskStorageProvider implements StorageProvider {
 
   async getObject(key: string): Promise<GetObjectResult> {
     const normalizedKey = this.normalizeKey(key);
-    const targetPath = path.join(this.uploadRoot, normalizedKey);
+    const targetPath = this.buildTargetPath(normalizedKey);
 
     try {
       const body = await fs.readFile(targetPath);
@@ -62,7 +62,7 @@ export class LocalDiskStorageProvider implements StorageProvider {
 
   async deleteObject(key: string): Promise<void> {
     const normalizedKey = this.normalizeKey(key);
-    const targetPath = path.join(this.uploadRoot, normalizedKey);
+    const targetPath = this.buildTargetPath(normalizedKey);
 
     try {
       await fs.unlink(targetPath);
@@ -72,6 +72,15 @@ export class LocalDiskStorageProvider implements StorageProvider {
         throw error;
       }
     }
+  }
+
+  private buildTargetPath(normalizedKey: string): string {
+    const targetPath = path.resolve(this.uploadRoot, normalizedKey);
+    if (!targetPath.startsWith(`${this.uploadRoot}${path.sep}`)) {
+      throw new BadRequestException('Storage key is outside upload root.');
+    }
+
+    return targetPath;
   }
 
   private normalizeKey(rawKey: string): string {
