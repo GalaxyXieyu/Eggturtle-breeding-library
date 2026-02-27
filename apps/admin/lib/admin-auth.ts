@@ -49,6 +49,10 @@ function getSuperAdminAllowlist() {
   );
 }
 
+export function isSuperAdminEmailAllowlisted(email: string) {
+  return getSuperAdminAllowlist().has(email.trim().toLowerCase());
+}
+
 export function getAdminSessionCookieOptions() {
   return {
     httpOnly: true,
@@ -73,7 +77,7 @@ export async function validateAdminAccessToken(token: string): Promise<AuthValid
     return {
       ok: false,
       status: 500,
-      message: 'ADMIN_SUPER_EMAIL_ALLOWLIST allowlist is not configured.'
+      message: 'Admin authentication is currently unavailable.'
     };
   }
 
@@ -90,7 +94,7 @@ export async function validateAdminAccessToken(token: string): Promise<AuthValid
       return {
         ok: false,
         status: response.status,
-        message: response.status === 401 ? 'Invalid access token.' : 'Failed to validate access token.'
+        message: response.status === 401 ? 'Invalid admin session.' : 'Unable to validate admin session.'
       };
     }
 
@@ -101,7 +105,7 @@ export async function validateAdminAccessToken(token: string): Promise<AuthValid
       return {
         ok: false,
         status: 403,
-        message: 'Email is not in admin allowlist.'
+        message: 'Admin access denied.'
       };
     }
 
@@ -110,10 +114,12 @@ export async function validateAdminAccessToken(token: string): Promise<AuthValid
       user: payload.user
     };
   } catch (error) {
+    console.error('[admin-auth] Failed to validate admin access token.', error);
+
     return {
       ok: false,
       status: 503,
-      message: error instanceof Error ? error.message : 'Unable to reach auth service.'
+      message: 'Unable to validate admin session.'
     };
   }
 }

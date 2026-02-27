@@ -3,7 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   ADMIN_ACCESS_COOKIE_NAME,
   clearAdminSessionCookieOptions,
-  getApiBaseUrl
+  getApiBaseUrl,
+  validateAdminAccessToken
 } from '../../../../lib/admin-auth';
 
 type RouteContext = {
@@ -36,16 +37,38 @@ async function handleProxyRequest(request: NextRequest, context: RouteContext) {
   const token = request.cookies.get(ADMIN_ACCESS_COOKIE_NAME)?.value;
 
   if (!token) {
-    const response = NextResponse.json(
-      {
-        message: 'Missing admin session.'
-      },
-      { status: 401 }
+    return clearCookie(
+      NextResponse.json(
+        {
+          message: 'Missing admin session.'
+        },
+        { status: 401 }
+      )
     );
+  }
 
-    response.cookies.set(ADMIN_ACCESS_COOKIE_NAME, '', clearAdminSessionCookieOptions());
+  const validationResult = await validateAdminAccessToken(token);
 
-    return response;
+  if (!validationResult.ok) {
+    return clearCookie(
+      NextResponse.json(
+        {
+          message: validationResult.status === 403 ? 'Admin access denied.' : 'Invalid admin session.'
+        },
+        { status: validationResult.status === 403 ? 403 : 401 }
+      )
+    );
+  }
+
+  const [firstSegment] = context.params.path;
+
+  if (firstSegment !== 'admin') {
+    return NextResponse.json(
+      {
+        message: 'Not found.'
+      },
+      { status: 404 }
+    );
   }
 
   const upstreamPath = context.params.path.join('/');
@@ -83,6 +106,11 @@ async function handleProxyRequest(request: NextRequest, context: RouteContext) {
     response.cookies.set(ADMIN_ACCESS_COOKIE_NAME, '', clearAdminSessionCookieOptions());
   }
 
+  return response;
+}
+
+function clearCookie(response: NextResponse) {
+  response.cookies.set(ADMIN_ACCESS_COOKIE_NAME, '', clearAdminSessionCookieOptions());
   return response;
 }
 

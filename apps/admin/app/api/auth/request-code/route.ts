@@ -1,11 +1,20 @@
 import { NextResponse } from 'next/server';
 import { requestCodeRequestSchema, requestCodeResponseSchema } from '@eggturtle/shared/auth';
 
-import { getApiBaseUrl } from '../../../../lib/admin-auth';
+import { getApiBaseUrl, isSuperAdminEmailAllowlisted } from '../../../../lib/admin-auth';
 
 export async function POST(request: Request) {
   try {
     const payload = requestCodeRequestSchema.parse(await request.json());
+
+    if (!isSuperAdminEmailAllowlisted(payload.email)) {
+      return NextResponse.json(
+        {
+          message: 'Unable to process sign-in request.'
+        },
+        { status: 403 }
+      );
+    }
 
     const upstreamResponse = await fetch(`${getApiBaseUrl()}/auth/request-code`, {
       method: 'POST',
@@ -28,10 +37,10 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(requestCodeResponseSchema.parse(body));
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       {
-        message: error instanceof Error ? error.message : 'Invalid request payload.'
+        message: 'Invalid request payload.'
       },
       { status: 400 }
     );

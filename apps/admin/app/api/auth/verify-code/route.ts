@@ -35,7 +35,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { accessToken, user } = verifyCodeResponseSchema.parse(body);
+    const { accessToken } = verifyCodeResponseSchema.parse(body);
     const validationResult = await validateAdminAccessToken(accessToken);
 
     if (!validationResult.ok) {
@@ -51,17 +51,17 @@ export async function POST(request: Request) {
 
     const response = NextResponse.json({
       ok: true,
-      user
+      user: validationResult.user
     });
 
     response.cookies.set(ADMIN_ACCESS_COOKIE_NAME, accessToken, getAdminSessionCookieOptions());
 
     return response;
-  } catch (error) {
+  } catch {
     return withClearedSessionCookie(
       NextResponse.json(
         {
-          message: error instanceof Error ? error.message : 'Invalid request payload.'
+          message: 'Invalid request payload.'
         },
         { status: 400 }
       )
