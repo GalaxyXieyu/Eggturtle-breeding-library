@@ -9,7 +9,7 @@ export const tenantSlugSchema = z
   .regex(/^[a-z0-9][a-z0-9-]*[a-z0-9]$/, 'Slug must contain lowercase letters, numbers, and hyphens.');
 
 export const tenantNameSchema = z.string().trim().min(1).max(120);
-export const tenantRoleSchema = z.enum(['OWNER', 'ADMIN', 'EDITOR', 'VIEWER', 'MEMBER']);
+export const tenantRoleSchema = z.enum(['OWNER', 'ADMIN', 'EDITOR', 'VIEWER']);
 export const effectiveTenantRoleSchema = z.enum(['OWNER', 'ADMIN', 'EDITOR', 'VIEWER']);
 
 export const tenantSchema = z.object({
@@ -59,7 +59,7 @@ export const currentTenantResponseSchema = z.object({
 });
 
 export function normalizeTenantRole(role: TenantRole): EffectiveTenantRole {
-  return role === 'MEMBER' ? 'EDITOR' : role;
+  return role;
 }
 
 export type CreateTenantRequest = z.infer<typeof createTenantRequestSchema>;

@@ -30,6 +30,7 @@ import { FeaturedProductsService } from './featured-products.service';
 
 @Controller('featured-products')
 @UseGuards(AuthGuard, RbacGuard)
+@RequireTenantRole('VIEWER')
 export class FeaturedProductsController {
   constructor(private readonly featuredProductsService: FeaturedProductsService) {}
 

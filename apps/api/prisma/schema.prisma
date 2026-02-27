@@ -12,7 +12,6 @@ enum TenantMemberRole {
   ADMIN
   EDITOR
   VIEWER
-  MEMBER
 }
 
 model User {
@@ -59,7 +58,7 @@ model TenantMember {
   id        String           @id @default(cuid())
   tenantId  String           @map("tenant_id")
   userId    String           @map("user_id")
-  role      TenantMemberRole @default(MEMBER)
+  role      TenantMemberRole @default(VIEWER)
   createdAt DateTime         @default(now()) @map("created_at")
   tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)

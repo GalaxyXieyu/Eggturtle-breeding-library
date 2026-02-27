@@ -44,6 +44,7 @@ type UploadedBinaryFile = {
 
 @Controller('products')
 @UseGuards(AuthGuard, RbacGuard)
+@RequireTenantRole('VIEWER')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
