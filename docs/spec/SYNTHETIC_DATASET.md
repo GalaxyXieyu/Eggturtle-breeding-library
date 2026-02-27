@@ -2,66 +2,140 @@
 
 ## Purpose
 
-Provide a deterministic synthetic + edge-case dataset for UX and regression validation without touching production data by default.
+This dataset seeds deterministic, UX-focused synthetic/abnormal records for local and CI validation.
 
-This seed covers:
-- long, empty, and null product descriptions
-- products with no image and multiple images
-- near-collision product codes (still unique per tenant)
-- featured product entries
-- public share records
-- cross-tenant isolation (same product code in two tenants)
+Primary goals:
+- Cover description edge cases (very long text and empty string)
+- Cover image edge cases (no image and multiple images)
+- Validate tenant-scoped uniqueness behavior
+- Generate featured product and public share records
+- Verify cross-tenant isolation with readback checks
 
-## Script
+## Seed Script
 
-- Path: `scripts/seed/synthetic_dataset.ts`
-- Default mode: dry-run (no writes)
-- Write mode: requires `--confirm`
-- Production guard: refuses to run on risky/prod-like `DATABASE_URL` unless `--i-know-what-im-doing` is explicitly provided
+Path:
+- `scripts/seed/synthetic_dataset.ts`
 
-## Default Seed Topology
+Safety defaults:
+- Dry-run by default (no writes)
+- Requires `--confirm` for writes
+- Refuses to run when `DATABASE_URL` looks like production
+- Production override requires explicit `--i-know-what-im-doing`
 
-- Primary tenant: `ux-sandbox`
-- Peer tenant: `turtle-album`
-- Shared cross-tenant code: `UX-CROSS-TENANT-0001`
-- Owner account (for memberships/shares): `owner@uxsandbox.local`
+Determinism/idempotency:
+- Stable tenant slugs and product codes
+- Product upsert key: `(tenantId, code)`
+- Featured upsert key: `(tenantId, productId)`
+- Public share upsert key: `(tenantId, productId)`
+- Share tokens are deterministic from `tenantSlug + code`
+- Synthetic image keys are deterministic: `synthetic/<normalized-code>/<index>`
 
-Primary tenant receives multiple fixtures including:
-- `UX-LONG-DESC-0001`
-- `UX-EMPTY-DESC-0001`
-- `UX-NULL-DESC-0001`
-- `UX-NO-IMAGE-0001`
-- `UX-MULTI-IMAGE-0001`
-- `UX-CODE-NEAR-1000A`
-- `UX-CODE-NEAR-1000a`
-- `UX-CODE-NEAR-1000-A`
-- `UX-CROSS-TENANT-0001`
+## Default Tenants
 
-Peer tenant receives:
-- `UX-CROSS-TENANT-0001`
+Primary synthetic tenant:
+- slug: `ux-sandbox`
+- name: `UX Sandbox`
 
-## Usage
+Mirror tenant for isolation checks:
+- slug: `ux-sandbox-shadow`
+- name: `UX Sandbox Shadow`
+
+Owner user (created/upserted for both tenants):
+- `synthetic.owner@ux-sandbox.local`
+
+## Dataset Contents
+
+Primary tenant (`ux-sandbox`) products:
+- `SYN-LONG-DESC-001`
+  - long description payload
+  - 1 image
+  - featured
+- `SYN-EMPTY-DESC-001`
+  - empty description (`""`)
+  - 1 image
+  - public share
+- `SYN-NO-IMAGE-001`
+  - no image rows
+- `SYN-MULTI-IMAGE-001`
+  - multiple images (deterministic order, first image main)
+  - featured
+  - public share
+- `SYN-COMMON-001`
+  - same code also seeded in mirror tenant (allowed)
+  - 1 image
+  - public share
+- `SYN-COLLIDE-001`
+  - canonical near-collision code
+
+Planned near-collision variants (expected skip):
+- `syn collide 001`
+- `SYN_COLLIDE_001`
+
+Mirror tenant (`ux-sandbox-shadow`) products:
+- `SYN-COMMON-001`
+  - same code as primary tenant by design
+
+## Near-Collision Policy
+
+The script normalizes code with:
+- lowercase
+- non-alphanumeric characters removed
+
+Example:
+- `SYN-COLLIDE-001`
+- `syn collide 001`
+- `SYN_COLLIDE_001`
+
+All normalize to the same key and are treated as near-collisions.
+
+Behavior:
+- Planned near-collision variants are skipped
+- If existing tenant data already has conflicting normalized codes, candidate records are skipped and logged
+
+## Cross-Tenant Isolation Readback Checks
+
+After `--confirm`, the script verifies:
+- `SYN-COMMON-001` exists once in primary tenant
+- `SYN-COMMON-001` exists once in mirror tenant
+- `featured_products.tenant_id` always matches related `products.tenant_id`
+- `public_shares.tenant_id` always matches related `products.tenant_id`
+
+If any isolation check fails, script exits with error.
+
+## Commands
+
+Dry-run (recommended first):
 
 ```bash
-# 1) Dry-run (safe default)
 ts-node scripts/seed/synthetic_dataset.ts
-
-# 2) Apply writes
-DATABASE_URL=postgres://... ts-node scripts/seed/synthetic_dataset.ts --confirm
-
-# 3) Custom tenant names/slugs
-DATABASE_URL=postgres://... ts-node scripts/seed/synthetic_dataset.ts \
-  --tenant-slug ux-sandbox \
-  --tenant-name "UX Sandbox" \
-  --peer-tenant-slug turtle-album \
-  --peer-tenant-name "Turtle Album" \
-  --owner-email owner@uxsandbox.local \
-  --confirm
 ```
 
-## Safety + Idempotency Notes
+Write synthetic dataset:
 
-- Script is deterministic: product codes, image keys, and share token generation are stable.
-- Script uses tenant-scoped upserts and synthetic image key prefixes (`external/synthetic/...`).
-- Re-running updates in place instead of creating uncontrolled duplicates.
-- No secrets are embedded in script or docs.
+```bash
+ts-node scripts/seed/synthetic_dataset.ts --confirm
+```
+
+Write + clean duplicate/stale synthetic image keys:
+
+```bash
+ts-node scripts/seed/synthetic_dataset.ts --confirm --dedupe
+```
+
+Override defaults:
+
+```bash
+ts-node scripts/seed/synthetic_dataset.ts \
+  --confirm \
+  --tenant-slug ux-sandbox \
+  --tenant-name "UX Sandbox" \
+  --mirror-tenant-slug ux-sandbox-shadow \
+  --mirror-tenant-name "UX Sandbox Shadow" \
+  --owner-email synthetic.owner@ux-sandbox.local
+```
+
+Production override (dangerous, explicit opt-in only):
+
+```bash
+ts-node scripts/seed/synthetic_dataset.ts --confirm --i-know-what-im-doing
+```
