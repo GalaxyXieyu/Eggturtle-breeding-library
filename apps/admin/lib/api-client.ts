@@ -1,6 +1,6 @@
-const TOKEN_STORAGE_KEY = 'eggturtle.admin.accessToken';
 const DEFAULT_API_BASE_URL = 'http://localhost:30011';
 const LOGIN_PATH = '/login';
+const AUTH_PROXY_PREFIX = '/api/proxy';
 
 type SchemaParser<T> = {
   parse: (value: unknown) => T;
@@ -15,36 +15,12 @@ type ApiRequestOptions<RequestPayload, ResponsePayload> = {
   responseSchema: SchemaParser<ResponsePayload>;
 };
 
-function canUseStorage() {
+function canUseWindow() {
   return typeof window !== 'undefined';
 }
 
 export function getApiBaseUrl() {
   return process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE_URL;
-}
-
-export function getAccessToken() {
-  if (!canUseStorage()) {
-    return null;
-  }
-
-  return window.localStorage.getItem(TOKEN_STORAGE_KEY);
-}
-
-export function setAccessToken(token: string) {
-  if (!canUseStorage()) {
-    return;
-  }
-
-  window.localStorage.setItem(TOKEN_STORAGE_KEY, token);
-}
-
-export function clearAccessToken() {
-  if (!canUseStorage()) {
-    return;
-  }
-
-  window.localStorage.removeItem(TOKEN_STORAGE_KEY);
 }
 
 export class ApiError extends Error {
@@ -65,7 +41,7 @@ export class ApiUnauthorizedError extends ApiError {
 }
 
 function redirectToLogin() {
-  if (!canUseStorage()) {
+  if (!canUseWindow()) {
     return;
   }
 
@@ -104,6 +80,24 @@ function pickErrorMessage(payload: unknown, fallback: string) {
   return fallback;
 }
 
+function normalizePath(path: string) {
+  if (path.startsWith('/')) {
+    return path;
+  }
+
+  return `/${path}`;
+}
+
+function resolveRequestUrl(path: string, shouldUseAuth: boolean) {
+  const normalizedPath = normalizePath(path);
+
+  if (shouldUseAuth && canUseWindow()) {
+    return `${AUTH_PROXY_PREFIX}${normalizedPath}`;
+  }
+
+  return `${getApiBaseUrl()}${normalizedPath}`;
+}
+
 export async function apiRequest<RequestPayload = never, ResponsePayload = unknown>(
   path: string,
   options: ApiRequestOptions<RequestPayload, ResponsePayload>
@@ -118,14 +112,7 @@ export async function apiRequest<RequestPayload = never, ResponsePayload = unkno
     headers.set('Content-Type', 'application/json');
   }
 
-  if (shouldUseAuth && !headers.has('Authorization')) {
-    const token = getAccessToken();
-    if (token) {
-      headers.set('Authorization', `Bearer ${token}`);
-    }
-  }
-
-  const response = await fetch(`${getApiBaseUrl()}${path}`, {
+  const response = await fetch(resolveRequestUrl(path, shouldUseAuth), {
     method: options.method ?? 'GET',
     headers,
     body: typeof parsedBody === 'undefined' ? undefined : JSON.stringify(parsedBody),
@@ -135,7 +122,6 @@ export async function apiRequest<RequestPayload = never, ResponsePayload = unkno
   const payload = await parseJsonBody(response);
 
   if (response.status === 401) {
-    clearAccessToken();
     redirectToLogin();
     throw new ApiUnauthorizedError();
   }

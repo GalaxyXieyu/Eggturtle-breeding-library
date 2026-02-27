@@ -44,7 +44,7 @@ export function DashboardSidebar({ collapsed }: DashboardSidebarProps) {
 
       <div className="sidebar-footer">
         <p className={`sidebar-hint${webSuperAdminEnabled ? ' enabled' : ''}`}>
-          Auth guard is pending T29 wiring.
+          Dashboard routes are server-guarded.
         </p>
       </div>
     </aside>

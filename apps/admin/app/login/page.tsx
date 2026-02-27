@@ -2,14 +2,17 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  requestCodeRequestSchema,
-  requestCodeResponseSchema,
-  verifyCodeRequestSchema,
-  verifyCodeResponseSchema
-} from '@eggturtle/shared/auth';
+import { authUserSchema, requestCodeRequestSchema, requestCodeResponseSchema, verifyCodeRequestSchema } from '@eggturtle/shared/auth';
 
-import { ApiError, apiRequest, getAccessToken, setAccessToken } from '../../lib/api-client';
+type VerifyCodeRouteResponse = {
+  ok: true;
+  user: unknown;
+};
+
+type SessionRouteResponse = {
+  authenticated: true;
+  user: unknown;
+};
 
 export default function LoginPage() {
   const router = useRouter();
@@ -18,12 +21,38 @@ export default function LoginPage() {
   const [code, setCode] = useState('');
   const [devCode, setDevCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (getAccessToken()) {
-      router.replace('/dashboard');
+    let cancelled = false;
+
+    async function checkSession() {
+      try {
+        const response = await requestJson('/api/auth/session', {
+          method: 'GET'
+        });
+
+        const parsed = parseSessionResponse(response);
+
+        if (!cancelled && parsed.authenticated) {
+          router.replace('/dashboard');
+          return;
+        }
+      } catch {
+        // Ignore 401 and keep the user on login page.
+      } finally {
+        if (!cancelled) {
+          setCheckingSession(false);
+        }
+      }
     }
+
+    void checkSession();
+
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   async function handleRequestCode(event: FormEvent<HTMLFormElement>) {
@@ -33,16 +62,14 @@ export default function LoginPage() {
 
     try {
       const payload = requestCodeRequestSchema.parse({ email });
-      const response = await apiRequest('/auth/request-code', {
+      const response = await requestJson('/api/auth/request-code', {
         method: 'POST',
-        auth: false,
-        body: payload,
-        requestSchema: requestCodeRequestSchema,
-        responseSchema: requestCodeResponseSchema
+        body: payload
       });
+      const parsed = requestCodeResponseSchema.parse(response);
 
       setRequestedEmail(payload.email);
-      setDevCode(response.devCode ?? null);
+      setDevCode(parsed.devCode ?? null);
       setCode('');
     } catch (requestError) {
       setError(formatError(requestError));
@@ -66,21 +93,30 @@ export default function LoginPage() {
         code
       });
 
-      const response = await apiRequest('/auth/verify-code', {
+      const response = await requestJson('/api/auth/verify-code', {
         method: 'POST',
-        auth: false,
-        body: payload,
-        requestSchema: verifyCodeRequestSchema,
-        responseSchema: verifyCodeResponseSchema
+        body: payload
       });
+      const parsed = parseVerifyResponse(response);
 
-      setAccessToken(response.accessToken);
+      authUserSchema.parse(parsed.user);
       router.replace('/dashboard');
     } catch (requestError) {
       setError(formatError(requestError));
     } finally {
       setLoading(false);
     }
+  }
+
+  if (checkingSession) {
+    return (
+      <main className="login-wrap">
+        <div className="card stack">
+          <h1>Super Admin Sign In</h1>
+          <p className="muted">Checking session...</p>
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -152,11 +188,78 @@ export default function LoginPage() {
   );
 }
 
-function formatError(error: unknown) {
-  if (error instanceof ApiError) {
-    return error.message;
+function parseVerifyResponse(value: unknown): VerifyCodeRouteResponse {
+  if (!value || typeof value !== 'object') {
+    throw new Error('Invalid verify response payload.');
   }
 
+  if (!('ok' in value) || value.ok !== true || !('user' in value)) {
+    throw new Error('Invalid verify response payload.');
+  }
+
+  return value as VerifyCodeRouteResponse;
+}
+
+function parseSessionResponse(value: unknown): SessionRouteResponse {
+  if (!value || typeof value !== 'object') {
+    throw new Error('Invalid session response payload.');
+  }
+
+  if (!('authenticated' in value) || value.authenticated !== true || !('user' in value)) {
+    throw new Error('Invalid session response payload.');
+  }
+
+  return value as SessionRouteResponse;
+}
+
+async function requestJson(path: string, options: { method: 'GET' | 'POST'; body?: unknown }) {
+  const response = await fetch(path, {
+    method: options.method,
+    headers: options.body ? { 'Content-Type': 'application/json' } : undefined,
+    body: options.body ? JSON.stringify(options.body) : undefined,
+    cache: 'no-store'
+  });
+
+  const payload = await parseJsonBody(response);
+
+  if (!response.ok) {
+    throw new Error(pickErrorMessage(payload, `Request failed with status ${response.status}`));
+  }
+
+  return payload;
+}
+
+async function parseJsonBody(response: Response) {
+  const text = await response.text();
+
+  if (!text) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return { message: text };
+  }
+}
+
+function pickErrorMessage(payload: unknown, fallback: string) {
+  if (!payload || typeof payload !== 'object') {
+    return fallback;
+  }
+
+  if ('message' in payload && typeof payload.message === 'string') {
+    return payload.message;
+  }
+
+  if ('error' in payload && typeof payload.error === 'string') {
+    return payload.error;
+  }
+
+  return fallback;
+}
+
+function formatError(error: unknown) {
   if (error instanceof Error) {
     return error.message;
   }
