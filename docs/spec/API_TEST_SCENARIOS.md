@@ -31,6 +31,8 @@ Runner entry: `scripts/api-tests/run.ts`
 - Write scenarios require explicit `--confirm-writes`
 - Non-local API is blocked unless `--allow-remote` is passed
 - Output is concise by default; `--json` emits JSONL events for troubleshooting
+- Auth base token cache is stored at `.data/api-tests/token-cache.json` (1h TTL)
+- `--clear-token-cache` clears local cache before execution
 
 ## 3. Scenario Catalog
 
@@ -195,4 +197,6 @@ pnpm api-tests -- \
 
 - Default output: concise event lines suitable for local runs
 - `--json`: structured JSONL events (`ts`, `level`, `event`, metadata)
+- Runner continues module execution after single-module failure and emits `runner.failed` summary
+- Error payload rendering redacts token-like fields to avoid credential leakage in logs
 - Recommended for CI artifact collection and flaky-case replay

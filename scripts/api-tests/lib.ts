@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
 import { inspect } from 'node:util';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -19,6 +21,7 @@ export interface CliOptions {
   allowRemote: boolean;
   confirmWrites: boolean;
   json: boolean;
+  clearTokenCache: boolean;
   only?: string;
   tenantId?: string;
   tenantSlug?: string;
@@ -90,8 +93,22 @@ export interface TenantSession {
   tenantName: string;
 }
 
+interface TokenCacheEntry {
+  token: string;
+  cachedAt: string;
+  apiBase: string;
+}
+
+interface TokenCachePayload {
+  version: 1;
+  updatedAt: string;
+  entries: Record<string, TokenCacheEntry>;
+}
+
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1']);
 const DEFAULT_API_BASE = 'http://localhost:30011';
+const TOKEN_CACHE_PATH = resolve(__dirname, '../../.data/api-tests/token-cache.json');
+const TOKEN_CACHE_TTL_MS = 60 * 60 * 1000;
 
 export function parseCliArgs(argv: string[]): CliOptions {
   const options: CliOptions = {
@@ -99,6 +116,7 @@ export function parseCliArgs(argv: string[]): CliOptions {
     allowRemote: false,
     confirmWrites: false,
     json: false,
+    clearTokenCache: false,
     provision: false,
     requireSuperAdminPass: false,
     help: false,
@@ -133,6 +151,9 @@ export function parseCliArgs(argv: string[]): CliOptions {
         break;
       case '--json':
         options.json = true;
+        break;
+      case '--clear-token-cache':
+        options.clearTokenCache = true;
         break;
       case '--tenant-id': {
         const [value, next] = readValue(arg, i);
@@ -221,6 +242,7 @@ export function printUsage(): void {
     '  --allow-remote              Allow non-local API base URL',
     '  --confirm-writes            Execute write scenarios (safe mode is dry-run)',
     '  --json                      Emit JSONL logs',
+    '  --clear-token-cache         Delete local auth token cache before run',
     '  --only <list>               Comma-separated modules: auth,products,images,featured,shares,admin,account-matrix',
     '  --tenant-id <id>            Existing tenant ID for tenant-scoped modules',
     '  --tenant-slug <slug>        Tenant slug when auto-creating tenant',
@@ -351,14 +373,26 @@ export async function requestApi<TBody = unknown>(
     body = JSON.stringify(options.json);
   }
 
-  const response = await fetch(url, {
-    method: options.method,
-    headers,
-    body,
-    redirect: options.redirect ?? 'follow',
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: options.method,
+      headers,
+      body,
+      redirect: options.redirect ?? 'follow',
+    });
+  } catch (error) {
+    throw new ApiTestError(
+      `HTTP ${options.method} ${url} request failed: ${formatError(error)}. Check API availability and --api-base.`,
+    );
+  }
 
-  const text = await response.text();
+  let text = '';
+  try {
+    text = await response.text();
+  } catch (error) {
+    throw new ApiTestError(`HTTP ${options.method} ${url} read body failed: ${formatError(error)}`);
+  }
   const contentType = response.headers.get('content-type') ?? '';
 
   let parsedBody: unknown = text;
@@ -533,6 +567,19 @@ export function parseShareRedirect(location: string): {
   };
 }
 
+export async function clearTokenCache(): Promise<{ path: string; removed: boolean }> {
+  const path = TOKEN_CACHE_PATH;
+
+  try {
+    await readFile(path, 'utf8');
+  } catch {
+    return { path, removed: false };
+  }
+
+  await rm(path, { force: true });
+  return { path, removed: true };
+}
+
 export async function requestCode(ctx: TestContext, email: string): Promise<{ devCode: string }> {
   const response = await ctx.request({
     method: 'POST',
@@ -581,9 +628,67 @@ export async function loginWithDevCode(
   ctx: TestContext,
   email: string,
 ): Promise<{ token: string; user: Record<string, unknown> }> {
-  const { devCode } = await requestCode(ctx, email);
-  const { accessToken, user } = await verifyCode(ctx, email, devCode);
-  return { token: accessToken, user };
+  const normalizedEmail = normalizeEmail(email);
+  const memoryCacheKey = `auth.base-token:${normalizedEmail}`;
+  const memoryHit = ctx.state.get(memoryCacheKey);
+
+  if (memoryHit) {
+    return memoryHit as { token: string; user: Record<string, unknown> };
+  }
+
+  const cache = await readTokenCachePayload();
+  const cachedEntry = cache.entries[normalizedEmail];
+  if (cachedEntry && isTokenCacheEntryFresh(cachedEntry, ctx.options.apiBase)) {
+    const meResponse = await ctx.request({
+      method: 'GET',
+      path: '/me',
+      token: cachedEntry.token,
+    });
+
+    if (meResponse.status === 200) {
+      const meBody = asObject(meResponse.body, 'me response');
+      const meUser = readObject(meBody, 'user', 'me.user');
+      readString(meUser, 'id', 'me.user.id');
+      readString(meUser, 'email', 'me.user.email');
+
+      const cachedResult = { token: cachedEntry.token, user: meUser };
+      ctx.state.set(memoryCacheKey, cachedResult);
+      ctx.log.info('auth.token-cache.hit', { email: normalizedEmail });
+      return cachedResult;
+    }
+
+    delete cache.entries[normalizedEmail];
+    try {
+      await writeTokenCachePayload(cache);
+    } catch {
+      ctx.log.warn('auth.token-cache.write-failed', { email: normalizedEmail });
+    }
+
+    ctx.log.warn('auth.token-cache.invalid', {
+      email: normalizedEmail,
+      status: meResponse.status,
+    });
+  }
+
+  const { devCode } = await requestCode(ctx, normalizedEmail);
+  const { accessToken, user } = await verifyCode(ctx, normalizedEmail, devCode);
+
+  cache.entries[normalizedEmail] = {
+    token: accessToken,
+    apiBase: normalizeApiBase(ctx.options.apiBase),
+    cachedAt: new Date().toISOString(),
+  };
+
+  try {
+    await writeTokenCachePayload(cache);
+  } catch {
+    ctx.log.warn('auth.token-cache.write-failed', { email: normalizedEmail });
+  }
+
+  const result = { token: accessToken, user };
+  ctx.state.set(memoryCacheKey, result);
+  ctx.log.info('auth.token-cache.store', { email: normalizedEmail });
+  return result;
 }
 
 export async function switchTenant(
@@ -638,13 +743,14 @@ export async function ensureTenantSession(
   input: { email?: string; tenantId?: string; tenantSlug?: string; tenantName?: string } = {},
 ): Promise<TenantSession> {
   const email = input.email ?? ctx.options.email ?? defaultEmail('api-user');
-  const cacheKey = `tenant-session:${email}:${input.tenantId ?? 'new'}`;
+  const normalizedEmail = normalizeEmail(email);
+  const cacheKey = `tenant-session:${normalizedEmail}:${input.tenantId ?? 'new'}`;
   const cached = ctx.state.get(cacheKey);
   if (cached) {
     return cached as TenantSession;
   }
 
-  const { token: baseToken } = await loginWithDevCode(ctx, email);
+  const { token: baseToken } = await loginWithDevCode(ctx, normalizedEmail);
 
   let tenantId = input.tenantId ?? ctx.options.tenantId;
   let tenantSlug = input.tenantSlug ?? ctx.options.tenantSlug ?? uniqueSuffix('api-tenant');
@@ -663,7 +769,7 @@ export async function ensureTenantSession(
   const switched = await switchTenant(ctx, baseToken, { tenantId });
 
   const session: TenantSession = {
-    email,
+    email: normalizedEmail,
     baseToken,
     token: switched.token,
     tenantId,
@@ -675,8 +781,76 @@ export async function ensureTenantSession(
   return session;
 }
 
+async function readTokenCachePayload(): Promise<TokenCachePayload> {
+  const path = TOKEN_CACHE_PATH;
+
+  try {
+    const raw = await readFile(path, 'utf8');
+    const parsed = JSON.parse(raw) as Partial<TokenCachePayload>;
+
+    if (parsed.version !== 1 || !parsed.entries || typeof parsed.entries !== 'object') {
+      return emptyTokenCachePayload();
+    }
+
+    return {
+      version: 1,
+      updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : new Date().toISOString(),
+      entries: parsed.entries as Record<string, TokenCacheEntry>,
+    };
+  } catch {
+    return emptyTokenCachePayload();
+  }
+}
+
+async function writeTokenCachePayload(payload: TokenCachePayload): Promise<void> {
+  const path = TOKEN_CACHE_PATH;
+
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(
+    path,
+    JSON.stringify(
+      {
+        ...payload,
+        updatedAt: new Date().toISOString(),
+      },
+      null,
+      2,
+    ),
+    'utf8',
+  );
+}
+
+function emptyTokenCachePayload(): TokenCachePayload {
+  return {
+    version: 1,
+    updatedAt: new Date().toISOString(),
+    entries: {},
+  };
+}
+
+function isTokenCacheEntryFresh(entry: TokenCacheEntry, apiBase: string): boolean {
+  const cachedAtMs = Date.parse(entry.cachedAt);
+  if (Number.isNaN(cachedAtMs) || Date.now() - cachedAtMs > TOKEN_CACHE_TTL_MS) {
+    return false;
+  }
+
+  return entry.apiBase === normalizeApiBase(apiBase);
+}
+
+function normalizeApiBase(apiBase: string): string {
+  try {
+    return new URL(apiBase).toString();
+  } catch {
+    return apiBase.trim();
+  }
+}
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
 export function shortBody(value: unknown): string {
-  return inspect(value, {
+  return inspect(redactSensitiveValue(value), {
     depth: 4,
     compact: true,
     breakLength: 120,
@@ -687,10 +861,18 @@ export function shortBody(value: unknown): string {
 
 export function formatError(error: unknown): string {
   if (error instanceof Error) {
-    return error.message;
+    const messages: string[] = [error.message];
+    let currentCause = (error as Error & { cause?: unknown }).cause;
+
+    while (currentCause instanceof Error) {
+      messages.push(currentCause.message);
+      currentCause = (currentCause as Error & { cause?: unknown }).cause;
+    }
+
+    return redactSensitiveString(messages.filter((entry) => entry.length > 0).join(' <- '));
   }
 
-  return String(error);
+  return redactSensitiveString(String(error));
 }
 
 export class ApiTestError extends Error {
@@ -741,9 +923,48 @@ function buildUrl(
   return url.toString();
 }
 
+function redactSensitiveValue(value: unknown): unknown {
+  if (typeof value === 'string') {
+    return redactSensitiveString(value);
+  }
+
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((entry) => redactSensitiveValue(entry));
+  }
+
+  const next: Record<string, unknown> = {};
+  for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+    if (isSensitiveKey(key)) {
+      next[key] = '[REDACTED]';
+      continue;
+    }
+
+    next[key] = redactSensitiveValue(entry);
+  }
+
+  return next;
+}
+
+function isSensitiveKey(key: string): boolean {
+  return /(token|authorization|password|secret|cookie|session|devCode)/i.test(key);
+}
+
+function redactSensitiveString(input: string): string {
+  let output = input;
+
+  output = output.replace(/Bearer\s+[A-Za-z0-9\-_.+/=]+/gi, 'Bearer [REDACTED]');
+  output = output.replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, '[REDACTED_JWT]');
+
+  return output;
+}
+
 function formatValue(value: unknown): string {
   if (typeof value === 'string') {
-    return JSON.stringify(value);
+    return JSON.stringify(redactSensitiveString(value));
   }
 
   if (typeof value === 'number' || typeof value === 'boolean' || value === null) {
