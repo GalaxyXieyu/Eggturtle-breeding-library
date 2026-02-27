@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Inject,
   Injectable,
   NotFoundException
@@ -12,6 +13,7 @@ import type {
   ProductImage,
   ReorderProductImagesRequest
 } from '@eggturtle/shared';
+import { Prisma } from '@prisma/client';
 import type { Product as PrismaProduct, ProductImage as PrismaProductImage } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import * as path from 'node:path';
@@ -40,28 +42,36 @@ export class ProductsService {
     actorUserId: string,
     payload: CreateProductRequest
   ): Promise<Product> {
-    const product = await this.prisma.product.create({
-      data: {
+    try {
+      const product = await this.prisma.product.create({
+        data: {
+          tenantId,
+          code: payload.code,
+          name: payload.name ?? null,
+          description: payload.description ?? null
+        }
+      });
+
+      await this.auditLogsService.createLog({
         tenantId,
-        code: payload.code ?? null,
-        name: payload.name ?? null,
-        description: payload.description ?? null
-      }
-    });
+        actorUserId,
+        action: AuditAction.ProductCreate,
+        resourceType: 'product',
+        resourceId: product.id,
+        metadata: {
+          code: product.code,
+          name: product.name
+        }
+      });
 
-    await this.auditLogsService.createLog({
-      tenantId,
-      actorUserId,
-      action: AuditAction.ProductCreate,
-      resourceType: 'product',
-      resourceId: product.id,
-      metadata: {
-        code: product.code,
-        name: product.name
+      return this.toProduct(product);
+    } catch (error) {
+      if (this.isProductCodeConflict(error)) {
+        throw new ConflictException('Product code already exists in this tenant.');
       }
-    });
 
-    return this.toProduct(product);
+      throw error;
+    }
   }
 
   async listProducts(tenantId: string, query: ListProductsQuery) {
@@ -411,6 +421,19 @@ export class ProductsService {
     };
 
     return extensionMap[mimeType] ?? '';
+  }
+
+  private isProductCodeConflict(error: unknown): boolean {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
+      return false;
+    }
+
+    if (error.code !== 'P2002') {
+      return false;
+    }
+
+    const target = Array.isArray(error.meta?.target) ? error.meta.target : [];
+    return target.includes('tenant_id') && target.includes('code');
   }
 
   private toProduct(product: PrismaProduct): Product {

@@ -73,7 +73,7 @@ model TenantMember {
 model Product {
   id               String            @id @default(cuid())
   tenantId         String            @map("tenant_id")
-  code             String?           @db.VarChar(120)
+  code             String            @db.VarChar(120)
   name             String?           @db.VarChar(120)
   description      String?
   createdAt        DateTime          @default(now()) @map("created_at")
@@ -84,6 +84,7 @@ model Product {
 
   // Enables composite foreign keys to enforce tenant isolation.
   @@unique([id, tenantId], map: "products_id_tenant_id_key")
+  @@unique([tenantId, code], map: "products_tenant_id_code_key")
   @@index([tenantId], map: "products_tenant_id_idx")
   @@map("products")
 }

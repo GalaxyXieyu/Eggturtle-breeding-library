@@ -2,14 +2,14 @@ import { z } from 'zod';
 
 const nullableText = z.string().trim().max(5000).nullable().optional();
 
-export const productCodeSchema = z.string().trim().min(1).max(120).nullable().optional();
+export const productCodeSchema = z.string().trim().min(1).max(120);
 export const productNameSchema = z.string().trim().min(1).max(120).nullable().optional();
 export const productDescriptionSchema = nullableText;
 
 export const productSchema = z.object({
   id: z.string().min(1),
   tenantId: z.string().min(1),
-  code: z.string().nullable(),
+  code: productCodeSchema,
   name: z.string().nullable(),
   description: z.string().nullable()
 });
