@@ -22,6 +22,7 @@ model User {
   updatedAt     DateTime       @updatedAt @map("updated_at")
   tenantMembers TenantMember[]
   auditLogs     AuditLog[]     @relation("AuditLogActor")
+  createdShares PublicShare[]  @relation("PublicShareCreator")
 
   @@map("users")
 }
@@ -49,6 +50,7 @@ model Tenant {
   members          TenantMember[]
   products         Product[]
   featuredProducts FeaturedProduct[]
+  shares           PublicShare[]
   auditLogs        AuditLog[]
 
   @@map("tenants")
@@ -80,6 +82,7 @@ model Product {
   tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   images           ProductImage[]
   featuredProducts FeaturedProduct[]
+  shares           PublicShare[]
 
   // Enables composite foreign keys to enforce tenant isolation.
   @@unique([id, tenantId], map: "products_id_tenant_id_key")
@@ -122,17 +125,37 @@ model ProductImage {
   @@map("product_images")
 }
 
+model PublicShare {
+  id              String   @id @default(cuid())
+  tenantId        String   @map("tenant_id")
+  productId       String   @map("product_id")
+  shareToken      String   @unique @map("share_token") @db.VarChar(120)
+  createdByUserId String   @map("created_by_user_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  tenant        Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product       Product @relation(fields: [productId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  createdByUser User    @relation("PublicShareCreator", fields: [createdByUserId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, productId], map: "public_shares_tenant_id_product_id_key")
+  @@index([tenantId], map: "public_shares_tenant_id_idx")
+  @@index([productId], map: "public_shares_product_id_idx")
+  @@index([createdByUserId], map: "public_shares_created_by_user_id_idx")
+  @@map("public_shares")
+}
+
 model AuditLog {
-  id          String   @id @default(cuid())
-  tenantId    String   @map("tenant_id")
-  actorUserId String   @map("actor_user_id")
-  action      String   @db.VarChar(120)
-  resourceType String  @map("resource_type") @db.VarChar(120)
-  resourceId  String?  @map("resource_id") @db.VarChar(120)
-  metadata    Json?
-  createdAt   DateTime @default(now()) @map("created_at")
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  actorUser   User     @relation("AuditLogActor", fields: [actorUserId], references: [id], onDelete: Cascade)
+  id           String   @id @default(cuid())
+  tenantId     String   @map("tenant_id")
+  actorUserId  String   @map("actor_user_id")
+  action       String   @db.VarChar(120)
+  resourceType String   @map("resource_type") @db.VarChar(120)
+  resourceId   String?  @map("resource_id") @db.VarChar(120)
+  metadata     Json?
+  createdAt    DateTime @default(now()) @map("created_at")
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actorUser    User     @relation("AuditLogActor", fields: [actorUserId], references: [id], onDelete: Cascade)
 
   @@index([tenantId], map: "audit_logs_tenant_id_idx")
   @@index([tenantId, createdAt], map: "audit_logs_tenant_id_created_at_idx")

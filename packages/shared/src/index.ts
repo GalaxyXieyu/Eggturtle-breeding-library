@@ -108,3 +108,20 @@ export type {
   StoragePutObjectRequest,
   StoragePutObjectResponse
 } from './storage';
+export {
+  createShareRequestSchema,
+  createShareResponseSchema,
+  publicShareQuerySchema,
+  publicShareResponseSchema,
+  publicShareProductSchema,
+  publicShareTenantSchema,
+  shareResourceTypeSchema,
+  shareSchema
+} from './share';
+export type {
+  CreateShareRequest,
+  PublicShareQuery,
+  PublicShareResponse,
+  Share,
+  ShareResourceType
+} from './share';

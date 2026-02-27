@@ -6,10 +6,19 @@ import { FeaturedProductsModule } from './featured-products/featured-products.mo
 import { HealthController } from './health.controller';
 import { PrismaModule } from './prisma.module';
 import { ProductsModule } from './products/products.module';
+import { SharesModule } from './shares/shares.module';
 import { TenantsModule } from './tenants/tenants.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, TenantsModule, ProductsModule, FeaturedProductsModule, AuditLogsModule],
+  imports: [
+    PrismaModule,
+    AuthModule,
+    TenantsModule,
+    ProductsModule,
+    FeaturedProductsModule,
+    AuditLogsModule,
+    SharesModule
+  ],
   controllers: [HealthController]
 })
 export class AppModule {}

@@ -13,7 +13,10 @@ export const ErrorCode = {
   ProductNotFound: 'PRODUCT_NOT_FOUND',
   ProductImageNotFound: 'PRODUCT_IMAGE_NOT_FOUND',
   FeaturedProductNotFound: 'FEATURED_PRODUCT_NOT_FOUND',
-  FeaturedProductConflict: 'FEATURED_PRODUCT_CONFLICT'
+  FeaturedProductConflict: 'FEATURED_PRODUCT_CONFLICT',
+  ShareNotFound: 'SHARE_NOT_FOUND',
+  ShareSignatureInvalid: 'SHARE_SIGNATURE_INVALID',
+  ShareSignatureExpired: 'SHARE_SIGNATURE_EXPIRED'
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
