@@ -17,77 +17,79 @@ function loadPrismaRuntime() {
 const { PrismaClient, TenantMemberRole } = loadPrismaRuntime();
 
 type CliArgs = {
-  tenantSlug: string;
-  tenantName: string;
-  peerTenantSlug: string;
-  peerTenantName: string;
-  ownerEmail: string;
   confirm: boolean;
   forceProd: boolean;
+  dedupe: boolean;
+  ownerEmail: string;
+  tenantSlug: string;
+  tenantName: string;
+  mirrorTenantSlug: string;
+  mirrorTenantName: string;
 };
 
-type SyntheticImageInput = {
-  slot: string;
-  width: number;
-  height: number;
-  text: string;
-  contentType: string;
+type ProductImagePlan = {
+  url: string;
+  contentType: string | null;
 };
 
-type SyntheticProductInput = {
+type ProductPlan = {
   code: string;
   name: string;
   description: string | null;
-  images: SyntheticImageInput[];
-  featuredSortOrder?: number;
+  images: ProductImagePlan[];
+  feature?: boolean;
   share?: boolean;
 };
 
-type SeedCounters = {
-  tenantsCreated: number;
-  tenantsUpdated: number;
-  membershipsCreated: number;
-  membershipsUpdated: number;
+type SkipReason =
+  | 'planned-near-collision'
+  | 'existing-near-collision'
+  | 'existing-exact-code-and-collision';
+
+type PlanSkip = {
+  code: string;
+  reason: SkipReason;
+  detail: string;
+};
+
+type ApplyStats = {
   productsCreated: number;
   productsUpdated: number;
+  productsSkipped: number;
   imagesCreated: number;
   imagesUpdated: number;
   imagesDeleted: number;
+  imagesDeduped: number;
   featuredCreated: number;
   featuredUpdated: number;
   sharesCreated: number;
-  sharesReused: number;
-  crossTenantIsolationValidated: boolean;
+  sharesUpdated: number;
+};
+
+type DatasetApplyResult = {
+  tenantId: string;
+  productIdsByCode: Map<string, string>;
+  skips: PlanSkip[];
+  stats: ApplyStats;
 };
 
 const DEFAULT_TENANT_SLUG = 'ux-sandbox';
 const DEFAULT_TENANT_NAME = 'UX Sandbox';
-const DEFAULT_PEER_TENANT_SLUG = 'turtle-album';
-const DEFAULT_PEER_TENANT_NAME = 'Turtle Album';
-const DEFAULT_OWNER_EMAIL = 'owner@uxsandbox.local';
-const CROSS_TENANT_CODE = 'UX-CROSS-TENANT-0001';
+const DEFAULT_MIRROR_TENANT_SLUG = 'ux-sandbox-shadow';
+const DEFAULT_MIRROR_TENANT_NAME = 'UX Sandbox Shadow';
+const DEFAULT_OWNER_EMAIL = 'synthetic.owner@ux-sandbox.local';
 
-const LONG_DESCRIPTION = [
-  'Synthetic long description fixture for UX regression.',
-  'This paragraph intentionally contains enough narrative text to verify truncation, wrapping, and card preview behaviors across list and detail views.',
-  'The dataset is deterministic, idempotent, and safe to run repeatedly when combined with tenant scoped upserts.',
-  'Use this record to validate markdown rendering fallback, copy controls, and share payload serialization in edge layouts.',
-  'Lorem ipsum turtle album breeding scenario text repeated for stable volume coverage.',
-  'Lorem ipsum turtle album breeding scenario text repeated for stable volume coverage.',
-  'Lorem ipsum turtle album breeding scenario text repeated for stable volume coverage.',
-  'Lorem ipsum turtle album breeding scenario text repeated for stable volume coverage.',
-  'Lorem ipsum turtle album breeding scenario text repeated for stable volume coverage.',
-  'Lorem ipsum turtle album breeding scenario text repeated for stable volume coverage.'
-].join(' ');
+const SHARED_CODE = 'SYN-COMMON-001';
 
 function parseArgs(argv: string[]): CliArgs {
-  let tenantSlug = DEFAULT_TENANT_SLUG;
-  let tenantName = DEFAULT_TENANT_NAME;
-  let peerTenantSlug = DEFAULT_PEER_TENANT_SLUG;
-  let peerTenantName = DEFAULT_PEER_TENANT_NAME;
-  let ownerEmail = DEFAULT_OWNER_EMAIL;
   let confirm = false;
   let forceProd = false;
+  let dedupe = false;
+  let ownerEmail = DEFAULT_OWNER_EMAIL;
+  let tenantSlug = DEFAULT_TENANT_SLUG;
+  let tenantName = DEFAULT_TENANT_NAME;
+  let mirrorTenantSlug = DEFAULT_MIRROR_TENANT_SLUG;
+  let mirrorTenantName = DEFAULT_MIRROR_TENANT_NAME;
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -99,6 +101,17 @@ function parseArgs(argv: string[]): CliArgs {
 
     if (arg === '--i-know-what-im-doing') {
       forceProd = true;
+      continue;
+    }
+
+    if (arg === '--dedupe') {
+      dedupe = true;
+      continue;
+    }
+
+    if (arg === '--owner-email') {
+      ownerEmail = requireValue(argv, index, arg);
+      index += 1;
       continue;
     }
 
@@ -114,20 +127,14 @@ function parseArgs(argv: string[]): CliArgs {
       continue;
     }
 
-    if (arg === '--peer-tenant-slug') {
-      peerTenantSlug = requireValue(argv, index, arg);
+    if (arg === '--mirror-tenant-slug') {
+      mirrorTenantSlug = requireValue(argv, index, arg);
       index += 1;
       continue;
     }
 
-    if (arg === '--peer-tenant-name') {
-      peerTenantName = requireValue(argv, index, arg);
-      index += 1;
-      continue;
-    }
-
-    if (arg === '--owner-email') {
-      ownerEmail = requireValue(argv, index, arg);
+    if (arg === '--mirror-tenant-name') {
+      mirrorTenantName = requireValue(argv, index, arg);
       index += 1;
       continue;
     }
@@ -139,6 +146,10 @@ function parseArgs(argv: string[]): CliArgs {
     throw new Error(`Unknown argument: ${arg}`);
   }
 
+  if (!ownerEmail.includes('@')) {
+    throw new Error('--owner-email must be a valid email.');
+  }
+
   if (!tenantSlug.trim()) {
     throw new Error('--tenant-slug cannot be empty.');
   }
@@ -147,26 +158,23 @@ function parseArgs(argv: string[]): CliArgs {
     throw new Error('--tenant-name cannot be empty.');
   }
 
-  if (!peerTenantSlug.trim()) {
-    throw new Error('--peer-tenant-slug cannot be empty.');
+  if (!mirrorTenantSlug.trim()) {
+    throw new Error('--mirror-tenant-slug cannot be empty.');
   }
 
-  if (!peerTenantName.trim()) {
-    throw new Error('--peer-tenant-name cannot be empty.');
-  }
-
-  if (!ownerEmail.includes('@')) {
-    throw new Error('--owner-email must be a valid email.');
+  if (!mirrorTenantName.trim()) {
+    throw new Error('--mirror-tenant-name cannot be empty.');
   }
 
   return {
+    confirm,
+    forceProd,
+    dedupe,
+    ownerEmail: ownerEmail.trim().toLowerCase(),
     tenantSlug: tenantSlug.trim(),
     tenantName: tenantName.trim(),
-    peerTenantSlug: peerTenantSlug.trim(),
-    peerTenantName: peerTenantName.trim(),
-    ownerEmail: ownerEmail.trim().toLowerCase(),
-    confirm,
-    forceProd
+    mirrorTenantSlug: mirrorTenantSlug.trim(),
+    mirrorTenantName: mirrorTenantName.trim()
   };
 }
 
@@ -183,11 +191,12 @@ function printHelpAndExit(code: number): never {
     'Usage: ts-node scripts/seed/synthetic_dataset.ts [options]',
     '',
     'Options:',
-    `  --tenant-slug <slug>        Primary tenant slug (default: ${DEFAULT_TENANT_SLUG})`,
-    `  --tenant-name <name>        Primary tenant name (default: ${DEFAULT_TENANT_NAME})`,
-    `  --peer-tenant-slug <slug>   Peer tenant slug for isolation checks (default: ${DEFAULT_PEER_TENANT_SLUG})`,
-    `  --peer-tenant-name <name>   Peer tenant name for isolation checks (default: ${DEFAULT_PEER_TENANT_NAME})`,
-    `  --owner-email <email>       Owner account email (default: ${DEFAULT_OWNER_EMAIL})`,
+    `  --tenant-slug <slug>        Primary synthetic tenant slug (default: ${DEFAULT_TENANT_SLUG})`,
+    `  --tenant-name <name>        Primary synthetic tenant name (default: ${DEFAULT_TENANT_NAME})`,
+    `  --mirror-tenant-slug <slug> Mirror tenant slug for isolation checks (default: ${DEFAULT_MIRROR_TENANT_SLUG})`,
+    `  --mirror-tenant-name <name> Mirror tenant name (default: ${DEFAULT_MIRROR_TENANT_NAME})`,
+    `  --owner-email <email>       Owner account used for memberships and shares (default: ${DEFAULT_OWNER_EMAIL})`,
+    '  --dedupe                    Clean duplicate synthetic images by key and remove stale synthetic keys',
     '  --confirm                   Execute write operations (default is dry-run)',
     '  --i-know-what-im-doing      Override prod URL safety check',
     '  -h, --help                  Show help'
@@ -241,164 +250,120 @@ function looksLikeProductionDatabaseUrl(databaseUrl: string): boolean {
   return prodKeywordHit && !isLocalHost;
 }
 
-function sanitizeCodeForPath(code: string): string {
-  return code
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+/, '')
-    .replace(/-+$/, '');
+function buildLongDescription(): string {
+  return [
+    'This synthetic record intentionally carries a very long description to exercise overflow and truncation behavior.',
+    'The content includes repeated-but-meaningful segments so list cards, detail panels, share views, and audit logs can be inspected consistently.',
+    'Line 01: Texture notes include warm amber shell, subtle radial marbling, and high-contrast edge veins.',
+    'Line 02: Hatch metadata includes a mixed lineage sample, uncertain incubation humidity logs, and timeline placeholders for UI badges.',
+    'Line 03: Feeding notes mention intermittent appetite and staged supplements, useful for filters that scan long text chunks.',
+    'Line 04: QA expects this text to stay deterministic so snapshots remain stable when rerunning synthetic seeding.',
+    'Line 05: A second paragraph repeats intent with varied wording to increase payload size without introducing randomness.',
+    'Line 06: The final sentence confirms this data is test-only and should never appear in customer-facing production datasets.'
+  ].join(' ');
 }
 
-function buildExternalImageUrl(input: SyntheticImageInput): string {
-  const text = encodeURIComponent(input.text);
-  return `https://placehold.co/${input.width}x${input.height}/1f2937/f9fafb.png?text=${text}`;
-}
-
-function buildSyntheticImageKey(tenantSlug: string, productCode: string, slot: string): string {
-  const safeCode = sanitizeCodeForPath(productCode);
-  const safeSlot = sanitizeCodeForPath(slot);
-  return `external/synthetic/${tenantSlug}/${safeCode}/${safeSlot}.png`;
-}
-
-function buildShareToken(tenantSlug: string, productCode: string): string {
-  const value = `${tenantSlug}:${productCode}`;
-  const digest = createHash('sha1').update(value).digest('hex');
-  return `syn_${digest.slice(0, 32)}`;
-}
-
-function buildPrimaryDataset(): SyntheticProductInput[] {
+function primaryProductCandidates(): ProductPlan[] {
   return [
     {
-      code: 'UX-LONG-DESC-0001',
-      name: 'Synthetic Long Description',
-      description: LONG_DESCRIPTION,
+      code: 'SYN-LONG-DESC-001',
+      name: 'Long Description Turtle',
+      description: buildLongDescription(),
       images: [
         {
-          slot: 'main',
-          width: 1200,
-          height: 900,
-          text: 'UX LONG DESC',
-          contentType: 'image/png'
+          url: 'https://picsum.photos/seed/syn-long-desc-001/1200/800',
+          contentType: 'image/jpeg'
         }
       ],
-      featuredSortOrder: 10,
-      share: true
+      feature: true
     },
     {
-      code: 'UX-EMPTY-DESC-0001',
-      name: 'Synthetic Empty Description',
+      code: 'SYN-EMPTY-DESC-001',
+      name: 'Empty Description Turtle',
       description: '',
       images: [
         {
-          slot: 'main',
-          width: 1200,
-          height: 900,
-          text: 'UX EMPTY DESC',
-          contentType: 'image/png'
+          url: 'https://picsum.photos/seed/syn-empty-desc-001/1200/800',
+          contentType: 'image/jpeg'
+        }
+      ],
+      share: true
+    },
+    {
+      code: 'SYN-NO-IMAGE-001',
+      name: 'No Image Turtle',
+      description: 'Synthetic product with no image rows to validate optional image handling.',
+      images: []
+    },
+    {
+      code: 'SYN-MULTI-IMAGE-001',
+      name: 'Multi Image Turtle',
+      description: 'Synthetic product with multiple images and deterministic ordering.',
+      images: [
+        {
+          url: 'https://picsum.photos/seed/syn-multi-image-001-main/1200/800',
+          contentType: 'image/jpeg'
+        },
+        {
+          url: 'https://picsum.photos/seed/syn-multi-image-001-alt-a/1200/800',
+          contentType: 'image/jpeg'
+        },
+        {
+          url: 'https://picsum.photos/seed/syn-multi-image-001-alt-b/1200/800',
+          contentType: 'image/jpeg'
+        }
+      ],
+      feature: true,
+      share: true
+    },
+    {
+      code: SHARED_CODE,
+      name: 'Cross Tenant Common Code',
+      description: 'This code intentionally exists in two tenants to validate tenant-scoped uniqueness.',
+      images: [
+        {
+          url: 'https://picsum.photos/seed/syn-common-001/1200/800',
+          contentType: 'image/jpeg'
+        }
+      ],
+      share: true
+    },
+    {
+      code: 'SYN-COLLIDE-001',
+      name: 'Near Collision Canonical',
+      description: 'Canonical code kept when near-collision variants are detected.',
+      images: [
+        {
+          url: 'https://picsum.photos/seed/syn-collide-001/1200/800',
+          contentType: 'image/jpeg'
         }
       ]
     },
     {
-      code: 'UX-NULL-DESC-0001',
-      name: 'Synthetic Null Description',
-      description: null,
-      images: [
-        {
-          slot: 'main',
-          width: 1200,
-          height: 900,
-          text: 'UX NULL DESC',
-          contentType: 'image/png'
-        }
-      ]
-    },
-    {
-      code: 'UX-NO-IMAGE-0001',
-      name: 'Synthetic No Image',
-      description: 'Deliberately has no image rows for empty-state and fallback coverage.',
+      code: 'syn collide 001',
+      name: 'Near Collision Variant A',
+      description: 'This record should be skipped because it collides with SYN-COLLIDE-001 after normalization.',
       images: []
     },
     {
-      code: 'UX-MULTI-IMAGE-0001',
-      name: 'Synthetic Multiple Images',
-      description: 'Contains multiple images for reorder and gallery behavior.',
-      images: [
-        {
-          slot: 'main',
-          width: 1200,
-          height: 900,
-          text: 'UX MULTI MAIN',
-          contentType: 'image/png'
-        },
-        {
-          slot: 'detail-1',
-          width: 1200,
-          height: 900,
-          text: 'UX MULTI DETAIL 1',
-          contentType: 'image/png'
-        },
-        {
-          slot: 'detail-2',
-          width: 1200,
-          height: 900,
-          text: 'UX MULTI DETAIL 2',
-          contentType: 'image/png'
-        }
-      ],
-      featuredSortOrder: 20,
-      share: true
-    },
-    {
-      code: 'UX-CODE-NEAR-1000A',
-      name: 'Synthetic Near Collision A',
-      description: 'Near-collision product code variant A.',
+      code: 'SYN_COLLIDE_001',
+      name: 'Near Collision Variant B',
+      description: 'This record should be skipped because it collides with SYN-COLLIDE-001 after normalization.',
       images: []
-    },
-    {
-      code: 'UX-CODE-NEAR-1000a',
-      name: 'Synthetic Near Collision lowercase a',
-      description: 'Near-collision product code variant lowercase a.',
-      images: []
-    },
-    {
-      code: 'UX-CODE-NEAR-1000-A',
-      name: 'Synthetic Near Collision with hyphen',
-      description: 'Near-collision product code variant with extra hyphen.',
-      images: []
-    },
-    {
-      code: CROSS_TENANT_CODE,
-      name: 'Synthetic Cross Tenant Shared Code',
-      description: 'Same code also seeded in peer tenant to validate tenant isolation behavior.',
-      images: [
-        {
-          slot: 'main',
-          width: 1200,
-          height: 900,
-          text: 'UX CROSS TENANT',
-          contentType: 'image/png'
-        }
-      ],
-      featuredSortOrder: 30,
-      share: true
     }
   ];
 }
 
-function buildPeerDataset(): SyntheticProductInput[] {
+function mirrorTenantProducts(): ProductPlan[] {
   return [
     {
-      code: CROSS_TENANT_CODE,
-      name: 'Synthetic Cross Tenant Peer Variant',
-      description: 'Peer tenant record sharing the same code to confirm isolation.',
+      code: SHARED_CODE,
+      name: 'Cross Tenant Common Code (Mirror)',
+      description: 'Same code as primary tenant by design. Should be allowed due to tenant scope.',
       images: [
         {
-          slot: 'main',
-          width: 1200,
-          height: 900,
-          text: 'UX PEER TENANT',
-          contentType: 'image/png'
+          url: 'https://picsum.photos/seed/syn-common-001-mirror/1200/800',
+          contentType: 'image/jpeg'
         }
       ],
       share: true
@@ -406,259 +371,201 @@ function buildPeerDataset(): SyntheticProductInput[] {
   ];
 }
 
-function printPlan(args: CliArgs, databaseUrl: string): void {
-  const primaryDataset = buildPrimaryDataset();
-  const peerDataset = buildPeerDataset();
-  const featuredCount = primaryDataset.filter((item) => typeof item.featuredSortOrder === 'number').length;
-  const sharedCount = primaryDataset.filter((item) => item.share).length;
-
-  console.info('Synthetic dataset plan:');
-  console.info(`- mode: ${args.confirm ? 'WRITE' : 'DRY-RUN (default)'}`);
-  console.info(`- database: ${databaseUrl}`);
-  console.info(`- owner email: ${args.ownerEmail}`);
-  console.info(`- primary tenant: ${args.tenantSlug} (${args.tenantName})`);
-  console.info(`- peer tenant: ${args.peerTenantSlug} (${args.peerTenantName})`);
-  console.info(`- primary products: ${primaryDataset.length}`);
-  console.info(`- peer products: ${peerDataset.length}`);
-  console.info(`- featured entries in primary tenant: ${featuredCount}`);
-  console.info(`- public shares in primary tenant: ${sharedCount}`);
-  console.info(`- cross-tenant isolation code: ${CROSS_TENANT_CODE}`);
+function normalizeCodeForCollision(code: string): string {
+  return code.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
-async function runDryRun(prisma: PrismaClient, args: CliArgs): Promise<void> {
-  const primaryDataset = buildPrimaryDataset();
-  const peerDataset = buildPeerDataset();
+function normalizeCodeForKey(code: string): string {
+  return code.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
 
-  const primaryTenant = await prisma.tenant.findUnique({
-    where: { slug: args.tenantSlug },
-    select: { id: true }
-  });
-  const peerTenant = await prisma.tenant.findUnique({
-    where: { slug: args.peerTenantSlug },
-    select: { id: true }
-  });
+function resolvePlanNearCollisions(candidates: ProductPlan[]): {
+  accepted: ProductPlan[];
+  skipped: PlanSkip[];
+} {
+  const accepted: ProductPlan[] = [];
+  const skipped: PlanSkip[] = [];
+  const seen = new Map<string, string>();
 
-  const owner = await prisma.user.findUnique({
-    where: { email: args.ownerEmail },
-    select: { id: true }
-  });
+  for (const candidate of candidates) {
+    const normalized = normalizeCodeForCollision(candidate.code);
+    const canonical = seen.get(normalized);
 
-  const existingPrimaryCodes =
-    primaryTenant === null
-      ? new Set<string>()
-      : new Set(
-          (
-            await prisma.product.findMany({
-              where: {
-                tenantId: primaryTenant.id,
-                code: { in: primaryDataset.map((item) => item.code) }
-              },
-              select: { code: true }
-            })
-          ).map((item) => item.code)
-        );
+    if (canonical && canonical !== candidate.code) {
+      skipped.push({
+        code: candidate.code,
+        reason: 'planned-near-collision',
+        detail: `Normalized collision with planned code ${canonical}.`
+      });
+      continue;
+    }
 
-  const existingPeerCodes =
-    peerTenant === null
-      ? new Set<string>()
-      : new Set(
-          (
-            await prisma.product.findMany({
-              where: {
-                tenantId: peerTenant.id,
-                code: { in: peerDataset.map((item) => item.code) }
-              },
-              select: { code: true }
-            })
-          ).map((item) => item.code)
-        );
-
-  const primaryCreateCount = primaryDataset.filter((item) => !existingPrimaryCodes.has(item.code)).length;
-  const primaryUpdateCount = primaryDataset.length - primaryCreateCount;
-  const peerCreateCount = peerDataset.filter((item) => !existingPeerCodes.has(item.code)).length;
-  const peerUpdateCount = peerDataset.length - peerCreateCount;
-
-  let crossTenantAlreadyVisible = false;
-  if (primaryTenant && peerTenant) {
-    const rows = await prisma.product.findMany({
-      where: {
-        code: CROSS_TENANT_CODE,
-        tenantId: { in: [primaryTenant.id, peerTenant.id] }
-      },
-      select: { tenantId: true }
-    });
-    crossTenantAlreadyVisible = new Set(rows.map((row) => row.tenantId)).size === 2;
+    seen.set(normalized, candidate.code);
+    accepted.push(candidate);
   }
 
-  console.info('Dry-run summary:');
-  console.info(`- owner exists: ${owner ? 'yes' : 'no'}`);
-  console.info(`- primary tenant exists: ${primaryTenant ? 'yes' : 'no'}`);
-  console.info(`- peer tenant exists: ${peerTenant ? 'yes' : 'no'}`);
-  console.info(`- primary products likely create/update: ${primaryCreateCount}/${primaryUpdateCount}`);
-  console.info(`- peer products likely create/update: ${peerCreateCount}/${peerUpdateCount}`);
-  console.info(`- cross-tenant code already present in both tenants: ${crossTenantAlreadyVisible ? 'yes' : 'no'}`);
-  console.info('No data changed. Re-run with --confirm to write.');
+  return { accepted, skipped };
+}
+
+function stableShareToken(tenantSlug: string, code: string): string {
+  const digest = createHash('sha1').update(`${tenantSlug}:${code}`).digest('hex').slice(0, 32);
+  return `shr_syn_${digest}`;
+}
+
+function imageKeyFor(code: string, index: number): string {
+  return `synthetic/${normalizeCodeForKey(code)}/${String(index).padStart(2, '0')}`;
+}
+
+function emptyApplyStats(): ApplyStats {
+  return {
+    productsCreated: 0,
+    productsUpdated: 0,
+    productsSkipped: 0,
+    imagesCreated: 0,
+    imagesUpdated: 0,
+    imagesDeleted: 0,
+    imagesDeduped: 0,
+    featuredCreated: 0,
+    featuredUpdated: 0,
+    sharesCreated: 0,
+    sharesUpdated: 0
+  };
 }
 
 async function ensureTenantWithOwner(
-  tx: any,
-  slug: string,
-  name: string,
-  ownerUserId: string,
-  counters: SeedCounters
-): Promise<{ id: string; slug: string; name: string }> {
-  const existingTenant = await tx.tenant.findUnique({
-    where: { slug },
-    select: { id: true }
-  });
-
-  const tenant = await tx.tenant.upsert({
-    where: { slug },
-    update: { name },
+  tx: InstanceType<typeof PrismaClient>,
+  args: CliArgs,
+  tenantSlug: string,
+  tenantName: string
+): Promise<{ tenantId: string; userId: string }> {
+  const owner = await tx.user.upsert({
+    where: { email: args.ownerEmail },
+    update: { name: 'Synthetic Dataset Owner' },
     create: {
-      slug,
-      name
+      email: args.ownerEmail,
+      name: 'Synthetic Dataset Owner'
     }
   });
 
-  if (existingTenant) {
-    counters.tenantsUpdated += 1;
-  } else {
-    counters.tenantsCreated += 1;
-  }
-
-  const existingMembership = await tx.tenantMember.findUnique({
-    where: {
-      tenantId_userId: {
-        tenantId: tenant.id,
-        userId: ownerUserId
-      }
-    },
-    select: { id: true }
+  const tenant = await tx.tenant.upsert({
+    where: { slug: tenantSlug },
+    update: { name: tenantName },
+    create: {
+      slug: tenantSlug,
+      name: tenantName
+    }
   });
 
   await tx.tenantMember.upsert({
     where: {
       tenantId_userId: {
         tenantId: tenant.id,
-        userId: ownerUserId
+        userId: owner.id
       }
     },
-    update: { role: TenantMemberRole.OWNER },
+    update: {
+      role: TenantMemberRole.OWNER
+    },
     create: {
       tenantId: tenant.id,
-      userId: ownerUserId,
+      userId: owner.id,
       role: TenantMemberRole.OWNER
     }
   });
 
-  if (existingMembership) {
-    counters.membershipsUpdated += 1;
-  } else {
-    counters.membershipsCreated += 1;
-  }
-
-  return tenant;
+  return {
+    tenantId: tenant.id,
+    userId: owner.id
+  };
 }
 
-async function upsertProductRows(
-  tx: any,
-  tenantId: string,
-  products: SyntheticProductInput[],
-  counters: SeedCounters
-): Promise<Map<string, { id: string; code: string }>> {
-  const productMap = new Map<string, { id: string; code: string }>();
-
-  for (const product of products) {
-    const existing = await tx.product.findUnique({
-      where: {
-        tenantId_code: {
-          tenantId,
-          code: product.code
-        }
-      },
-      select: { id: true }
-    });
-
-    const upserted = await tx.product.upsert({
-      where: {
-        tenantId_code: {
-          tenantId,
-          code: product.code
-        }
-      },
-      update: {
-        name: product.name,
-        description: product.description
-      },
-      create: {
-        tenantId,
-        code: product.code,
-        name: product.name,
-        description: product.description
-      },
-      select: { id: true, code: true }
-    });
-
-    if (existing) {
-      counters.productsUpdated += 1;
-    } else {
-      counters.productsCreated += 1;
-    }
-
-    productMap.set(product.code, upserted);
+function buildExistingCollisionMap(codes: string[]): Map<string, Set<string>> {
+  const map = new Map<string, Set<string>>();
+  for (const code of codes) {
+    const normalized = normalizeCodeForCollision(code);
+    const set = map.get(normalized) ?? new Set<string>();
+    set.add(code);
+    map.set(normalized, set);
   }
-
-  return productMap;
+  return map;
 }
 
-async function syncProductImages(
-  tx: any,
-  tenantSlug: string,
+function hasCollision(existingSet: Set<string> | undefined, candidateCode: string): boolean {
+  if (!existingSet || existingSet.size === 0) {
+    return false;
+  }
+
+  if (existingSet.has(candidateCode)) {
+    return existingSet.size > 1;
+  }
+
+  return true;
+}
+
+async function upsertSyntheticImages(
+  tx: InstanceType<typeof PrismaClient>,
   tenantId: string,
   productId: string,
-  productCode: string,
-  images: SyntheticImageInput[],
-  counters: SeedCounters
+  code: string,
+  imagePlans: ProductImagePlan[],
+  dedupe: boolean,
+  stats: ApplyStats
 ): Promise<void> {
-  const desired = images.map((image, index) => ({
-    key: buildSyntheticImageKey(tenantSlug, productCode, image.slot),
-    url: buildExternalImageUrl(image),
-    contentType: image.contentType,
-    sortOrder: index,
-    isMain: index === 0
-  }));
-
+  const keyPrefix = `synthetic/${normalizeCodeForKey(code)}/`;
   const existingSyntheticImages = await tx.productImage.findMany({
     where: {
       tenantId,
       productId,
       key: {
-        startsWith: 'external/synthetic/'
+        startsWith: keyPrefix
       }
     },
-    select: {
-      id: true,
-      key: true
-    }
+    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }]
   });
 
-  const existingByKey = new Map(existingSyntheticImages.map((image) => [image.key, image]));
+  const existingByKey = new Map<string, Array<(typeof existingSyntheticImages)[number]>>();
+  for (const image of existingSyntheticImages) {
+    const list = existingByKey.get(image.key) ?? [];
+    list.push(image);
+    existingByKey.set(image.key, list);
+  }
 
-  for (const image of desired) {
-    const existing = existingByKey.get(image.key);
+  const expectedKeys: string[] = [];
 
-    if (existing) {
+  for (let index = 0; index < imagePlans.length; index += 1) {
+    const plan = imagePlans[index];
+    const key = imageKeyFor(code, index + 1);
+    expectedKeys.push(key);
+
+    const matches = existingByKey.get(key) ?? [];
+
+    if (matches.length > 0) {
+      const target = matches[0];
       await tx.productImage.update({
-        where: { id: existing.id },
+        where: {
+          id: target.id
+        },
         data: {
-          url: image.url,
-          contentType: image.contentType,
-          sortOrder: image.sortOrder,
-          isMain: image.isMain
+          key,
+          url: plan.url,
+          contentType: plan.contentType,
+          sortOrder: index,
+          isMain: false
         }
       });
-      counters.imagesUpdated += 1;
+      stats.imagesUpdated += 1;
+
+      if (dedupe && matches.length > 1) {
+        const duplicateIds = matches.slice(1).map((item) => item.id);
+        await tx.productImage.deleteMany({
+          where: {
+            id: {
+              in: duplicateIds
+            }
+          }
+        });
+        stats.imagesDeduped += duplicateIds.length;
+      }
       continue;
     }
 
@@ -666,265 +573,364 @@ async function syncProductImages(
       data: {
         tenantId,
         productId,
-        key: image.key,
-        url: image.url,
-        contentType: image.contentType,
-        sortOrder: image.sortOrder,
-        isMain: image.isMain
+        key,
+        url: plan.url,
+        contentType: plan.contentType,
+        sortOrder: index,
+        isMain: false
       }
     });
-    counters.imagesCreated += 1;
+    stats.imagesCreated += 1;
   }
 
-  const desiredKeys = new Set(desired.map((image) => image.key));
-  const staleIds = existingSyntheticImages
-    .filter((image) => !desiredKeys.has(image.key))
-    .map((image) => image.id);
-
-  if (staleIds.length > 0) {
-    const result = await tx.productImage.deleteMany({
+  if (imagePlans.length > 0) {
+    await tx.productImage.updateMany({
       where: {
-        id: { in: staleIds }
+        tenantId,
+        productId,
+        key: {
+          in: expectedKeys
+        }
+      },
+      data: {
+        isMain: false
       }
     });
-    counters.imagesDeleted += result.count;
+
+    await tx.productImage.updateMany({
+      where: {
+        tenantId,
+        productId,
+        key: imageKeyFor(code, 1)
+      },
+      data: {
+        isMain: true
+      }
+    });
+  }
+
+  if (!dedupe) {
+    return;
+  }
+
+  const staleIds = existingSyntheticImages
+    .filter((item) => !expectedKeys.includes(item.key))
+    .map((item) => item.id);
+
+  if (staleIds.length > 0) {
+    await tx.productImage.deleteMany({
+      where: {
+        id: {
+          in: staleIds
+        }
+      }
+    });
+    stats.imagesDeleted += staleIds.length;
   }
 }
 
-async function syncFeaturedEntries(
-  tx: any,
+async function applyTenantDataset(
+  tx: InstanceType<typeof PrismaClient>,
   tenantId: string,
-  dataset: SyntheticProductInput[],
-  productMap: Map<string, { id: string; code: string }>,
-  counters: SeedCounters
-): Promise<void> {
-  for (const product of dataset) {
-    if (typeof product.featuredSortOrder !== 'number') {
+  tenantSlug: string,
+  ownerUserId: string,
+  productPlans: ProductPlan[],
+  dedupe: boolean
+): Promise<DatasetApplyResult> {
+  const stats = emptyApplyStats();
+  const skips: PlanSkip[] = [];
+  const productIdsByCode = new Map<string, string>();
+
+  const existingProducts = await tx.product.findMany({
+    where: {
+      tenantId
+    },
+    select: {
+      id: true,
+      code: true
+    }
+  });
+
+  const existingByCollision = buildExistingCollisionMap(existingProducts.map((item) => item.code));
+
+  const featuredCodesInOrder = productPlans.filter((item) => item.feature).map((item) => item.code);
+  const featuredSortOrder = new Map<string, number>();
+  for (let index = 0; index < featuredCodesInOrder.length; index += 1) {
+    featuredSortOrder.set(featuredCodesInOrder[index], index);
+  }
+
+  for (const plan of productPlans) {
+    const normalized = normalizeCodeForCollision(plan.code);
+    const existingSet = existingByCollision.get(normalized);
+
+    if (hasCollision(existingSet, plan.code)) {
+      const exactMatchExists = Boolean(existingSet && existingSet.has(plan.code));
+      skips.push({
+        code: plan.code,
+        reason: exactMatchExists ? 'existing-exact-code-and-collision' : 'existing-near-collision',
+        detail: `Existing codes with normalized key ${normalized}: ${Array.from(existingSet ?? []).join(', ')}`
+      });
+      stats.productsSkipped += 1;
       continue;
     }
 
-    const seededProduct = productMap.get(product.code);
-    if (!seededProduct) {
-      continue;
-    }
-
-    const existing = await tx.featuredProduct.findUnique({
+    const existing = await tx.product.findUnique({
       where: {
-        tenantId_productId: {
+        tenantId_code: {
           tenantId,
-          productId: seededProduct.id
+          code: plan.code
         }
       },
-      select: { id: true }
+      select: {
+        id: true
+      }
     });
 
-    await tx.featuredProduct.upsert({
+    const product = await tx.product.upsert({
       where: {
-        tenantId_productId: {
+        tenantId_code: {
           tenantId,
-          productId: seededProduct.id
+          code: plan.code
         }
       },
       update: {
-        sortOrder: product.featuredSortOrder
+        name: plan.name,
+        description: plan.description
       },
       create: {
         tenantId,
-        productId: seededProduct.id,
-        sortOrder: product.featuredSortOrder
+        code: plan.code,
+        name: plan.name,
+        description: plan.description
       }
     });
 
     if (existing) {
-      counters.featuredUpdated += 1;
+      stats.productsUpdated += 1;
     } else {
-      counters.featuredCreated += 1;
-    }
-  }
-}
-
-async function syncPublicShares(
-  tx: any,
-  tenantSlug: string,
-  tenantId: string,
-  ownerUserId: string,
-  dataset: SyntheticProductInput[],
-  productMap: Map<string, { id: string; code: string }>,
-  counters: SeedCounters
-): Promise<void> {
-  for (const product of dataset) {
-    if (!product.share) {
-      continue;
+      stats.productsCreated += 1;
+      const set = existingByCollision.get(normalized) ?? new Set<string>();
+      set.add(plan.code);
+      existingByCollision.set(normalized, set);
     }
 
-    const seededProduct = productMap.get(product.code);
-    if (!seededProduct) {
-      continue;
-    }
+    productIdsByCode.set(plan.code, product.id);
 
-    const existing = await tx.publicShare.findUnique({
-      where: {
-        tenantId_productId: {
-          tenantId,
-          productId: seededProduct.id
+    await upsertSyntheticImages(tx, tenantId, product.id, plan.code, plan.images, dedupe, stats);
+
+    if (plan.feature) {
+      const sortOrder = featuredSortOrder.get(plan.code) ?? 0;
+      const existingFeatured = await tx.featuredProduct.findUnique({
+        where: {
+          tenantId_productId: {
+            tenantId,
+            productId: product.id
+          }
+        },
+        select: {
+          id: true
         }
-      },
-      select: { id: true }
-    });
+      });
 
-    if (existing) {
-      counters.sharesReused += 1;
-      continue;
+      await tx.featuredProduct.upsert({
+        where: {
+          tenantId_productId: {
+            tenantId,
+            productId: product.id
+          }
+        },
+        update: {
+          sortOrder
+        },
+        create: {
+          tenantId,
+          productId: product.id,
+          sortOrder
+        }
+      });
+
+      if (existingFeatured) {
+        stats.featuredUpdated += 1;
+      } else {
+        stats.featuredCreated += 1;
+      }
     }
 
-    await tx.publicShare.create({
-      data: {
-        tenantId,
-        productId: seededProduct.id,
-        createdByUserId: ownerUserId,
-        shareToken: buildShareToken(tenantSlug, product.code)
+    if (plan.share) {
+      const shareToken = stableShareToken(tenantSlug, plan.code);
+      const existingShare = await tx.publicShare.findUnique({
+        where: {
+          tenantId_productId: {
+            tenantId,
+            productId: product.id
+          }
+        },
+        select: {
+          id: true
+        }
+      });
+
+      await tx.publicShare.upsert({
+        where: {
+          tenantId_productId: {
+            tenantId,
+            productId: product.id
+          }
+        },
+        update: {
+          shareToken,
+          createdByUserId: ownerUserId
+        },
+        create: {
+          tenantId,
+          productId: product.id,
+          shareToken,
+          createdByUserId: ownerUserId
+        }
+      });
+
+      if (existingShare) {
+        stats.sharesUpdated += 1;
+      } else {
+        stats.sharesCreated += 1;
       }
-    });
-    counters.sharesCreated += 1;
+    }
+  }
+
+  return {
+    tenantId,
+    productIdsByCode,
+    skips,
+    stats
+  };
+}
+
+async function runIsolationChecks(
+  prisma: InstanceType<typeof PrismaClient>,
+  primaryTenantId: string,
+  mirrorTenantId: string
+): Promise<{
+  primarySharedCodeCount: number;
+  mirrorSharedCodeCount: number;
+  primaryFeaturedCount: number;
+  mirrorFeaturedCount: number;
+  primaryShareCount: number;
+  mirrorShareCount: number;
+  featuredTenantMismatchCount: number;
+  shareTenantMismatchCount: number;
+}> {
+  const [
+    primarySharedCodeCount,
+    mirrorSharedCodeCount,
+    primaryFeaturedCount,
+    mirrorFeaturedCount,
+    primaryShareCount,
+    mirrorShareCount,
+    featuredTenantMismatchRaw,
+    shareTenantMismatchRaw
+  ] = await Promise.all([
+    prisma.product.count({
+      where: {
+        tenantId: primaryTenantId,
+        code: SHARED_CODE
+      }
+    }),
+    prisma.product.count({
+      where: {
+        tenantId: mirrorTenantId,
+        code: SHARED_CODE
+      }
+    }),
+    prisma.featuredProduct.count({
+      where: {
+        tenantId: primaryTenantId
+      }
+    }),
+    prisma.featuredProduct.count({
+      where: {
+        tenantId: mirrorTenantId
+      }
+    }),
+    prisma.publicShare.count({
+      where: {
+        tenantId: primaryTenantId
+      }
+    }),
+    prisma.publicShare.count({
+      where: {
+        tenantId: mirrorTenantId
+      }
+    }),
+    prisma.$queryRaw<Array<{ count: bigint | number }>>`
+      SELECT COUNT(*)::bigint AS count
+      FROM featured_products fp
+      INNER JOIN products p ON p.id = fp.product_id
+      WHERE fp.tenant_id <> p.tenant_id
+    `,
+    prisma.$queryRaw<Array<{ count: bigint | number }>>`
+      SELECT COUNT(*)::bigint AS count
+      FROM public_shares ps
+      INNER JOIN products p ON p.id = ps.product_id
+      WHERE ps.tenant_id <> p.tenant_id
+    `
+  ]);
+
+  return {
+    primarySharedCodeCount,
+    mirrorSharedCodeCount,
+    primaryFeaturedCount,
+    mirrorFeaturedCount,
+    primaryShareCount,
+    mirrorShareCount,
+    featuredTenantMismatchCount: Number(featuredTenantMismatchRaw[0]?.count ?? 0),
+    shareTenantMismatchCount: Number(shareTenantMismatchRaw[0]?.count ?? 0)
+  };
+}
+
+function printPlan(args: CliArgs, databaseUrl: string, plannedPrimary: ProductPlan[], plannedMirror: ProductPlan[]) {
+  console.info('Synthetic dataset seed plan:');
+  console.info(`- mode: ${args.confirm ? 'WRITE' : 'DRY-RUN (default)'}`);
+  console.info(`- database: ${databaseUrl}`);
+  console.info(`- owner email: ${args.ownerEmail}`);
+  console.info(`- primary tenant: ${args.tenantSlug} (${args.tenantName})`);
+  console.info(`- mirror tenant: ${args.mirrorTenantSlug} (${args.mirrorTenantName})`);
+  console.info(`- dedupe synthetic images: ${args.dedupe ? 'enabled' : 'disabled'}`);
+  console.info(`- planned primary products: ${plannedPrimary.length}`);
+  console.info(`- planned mirror products: ${plannedMirror.length}`);
+  console.info(`- shared code across tenants: ${SHARED_CODE}`);
+}
+
+function printSkips(title: string, skips: PlanSkip[]): void {
+  if (skips.length === 0) {
+    console.info(`${title}: none`);
+    return;
+  }
+
+  console.info(`${title}: ${skips.length}`);
+  for (const skip of skips) {
+    console.info(`  - ${skip.code} [${skip.reason}] ${skip.detail}`);
   }
 }
 
-async function runWrite(prisma: PrismaClient, args: CliArgs): Promise<void> {
-  const primaryDataset = buildPrimaryDataset();
-  const peerDataset = buildPeerDataset();
-
-  const counters: SeedCounters = {
-    tenantsCreated: 0,
-    tenantsUpdated: 0,
-    membershipsCreated: 0,
-    membershipsUpdated: 0,
-    productsCreated: 0,
-    productsUpdated: 0,
-    imagesCreated: 0,
-    imagesUpdated: 0,
-    imagesDeleted: 0,
-    featuredCreated: 0,
-    featuredUpdated: 0,
-    sharesCreated: 0,
-    sharesReused: 0,
-    crossTenantIsolationValidated: false
-  };
-
-  await prisma.$transaction(async (tx) => {
-    const owner = await tx.user.upsert({
-      where: { email: args.ownerEmail },
-      update: { name: 'UX Sandbox Owner' },
-      create: {
-        email: args.ownerEmail,
-        name: 'UX Sandbox Owner'
-      }
-    });
-
-    const primaryTenant = await ensureTenantWithOwner(
-      tx,
-      args.tenantSlug,
-      args.tenantName,
-      owner.id,
-      counters
-    );
-    const peerTenant = await ensureTenantWithOwner(
-      tx,
-      args.peerTenantSlug,
-      args.peerTenantName,
-      owner.id,
-      counters
-    );
-
-    const primaryProducts = await upsertProductRows(tx, primaryTenant.id, primaryDataset, counters);
-    const peerProducts = await upsertProductRows(tx, peerTenant.id, peerDataset, counters);
-
-    for (const product of primaryDataset) {
-      const seededProduct = primaryProducts.get(product.code);
-      if (!seededProduct) {
-        continue;
-      }
-
-      await syncProductImages(
-        tx,
-        args.tenantSlug,
-        primaryTenant.id,
-        seededProduct.id,
-        product.code,
-        product.images,
-        counters
-      );
-    }
-
-    for (const product of peerDataset) {
-      const seededProduct = peerProducts.get(product.code);
-      if (!seededProduct) {
-        continue;
-      }
-
-      await syncProductImages(
-        tx,
-        args.peerTenantSlug,
-        peerTenant.id,
-        seededProduct.id,
-        product.code,
-        product.images,
-        counters
-      );
-    }
-
-    await syncFeaturedEntries(tx, primaryTenant.id, primaryDataset, primaryProducts, counters);
-    await syncPublicShares(
-      tx,
-      args.tenantSlug,
-      primaryTenant.id,
-      owner.id,
-      primaryDataset,
-      primaryProducts,
-      counters
-    );
-    await syncPublicShares(
-      tx,
-      args.peerTenantSlug,
-      peerTenant.id,
-      owner.id,
-      peerDataset,
-      peerProducts,
-      counters
-    );
-
-    const isolationRows = await tx.product.findMany({
-      where: {
-        code: CROSS_TENANT_CODE,
-        tenantId: { in: [primaryTenant.id, peerTenant.id] }
-      },
-      select: {
-        tenantId: true
-      }
-    });
-
-    counters.crossTenantIsolationValidated = new Set(isolationRows.map((item) => item.tenantId)).size === 2;
-  });
-
-  console.info('Synthetic dataset seed complete');
-  console.info(`- primary tenant: ${args.tenantSlug}`);
-  console.info(`- peer tenant: ${args.peerTenantSlug}`);
-  console.info(`- tenants created/updated: ${counters.tenantsCreated}/${counters.tenantsUpdated}`);
-  console.info(
-    `- owner memberships created/updated: ${counters.membershipsCreated}/${counters.membershipsUpdated}`
-  );
-  console.info(`- products created/updated: ${counters.productsCreated}/${counters.productsUpdated}`);
-  console.info(`- images created/updated/deleted: ${counters.imagesCreated}/${counters.imagesUpdated}/${counters.imagesDeleted}`);
-  console.info(`- featured entries created/updated: ${counters.featuredCreated}/${counters.featuredUpdated}`);
-  console.info(`- public shares created/reused: ${counters.sharesCreated}/${counters.sharesReused}`);
-  console.info(
-    `- cross-tenant isolation (${CROSS_TENANT_CODE}) validated: ${counters.crossTenantIsolationValidated ? 'yes' : 'no'}`
-  );
+function printStats(label: string, stats: ApplyStats): void {
+  console.info(`${label}:`);
+  console.info(`  - products created: ${stats.productsCreated}`);
+  console.info(`  - products updated: ${stats.productsUpdated}`);
+  console.info(`  - products skipped: ${stats.productsSkipped}`);
+  console.info(`  - images created: ${stats.imagesCreated}`);
+  console.info(`  - images updated: ${stats.imagesUpdated}`);
+  console.info(`  - images deleted: ${stats.imagesDeleted}`);
+  console.info(`  - images deduped: ${stats.imagesDeduped}`);
+  console.info(`  - featured created: ${stats.featuredCreated}`);
+  console.info(`  - featured updated: ${stats.featuredUpdated}`);
+  console.info(`  - shares created: ${stats.sharesCreated}`);
+  console.info(`  - shares updated: ${stats.sharesUpdated}`);
 }
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
-
   const databaseUrl = process.env.DATABASE_URL;
+
   if (!databaseUrl) {
     throw new Error('DATABASE_URL is required.');
   }
@@ -935,17 +941,109 @@ async function main(): Promise<void> {
     );
   }
 
-  printPlan(args, databaseUrl);
+  const primaryResolution = resolvePlanNearCollisions(primaryProductCandidates());
+  const mirrorResolution = resolvePlanNearCollisions(mirrorTenantProducts());
+
+  printPlan(args, databaseUrl, primaryResolution.accepted, mirrorResolution.accepted);
+  printSkips('Planned near-collision skips (pre-write)', primaryResolution.skipped);
 
   const prisma = new PrismaClient();
 
   try {
     if (!args.confirm) {
-      await runDryRun(prisma, args);
+      const existingPrimaryTenant = await prisma.tenant.findUnique({
+        where: { slug: args.tenantSlug },
+        select: { id: true }
+      });
+
+      const existingMirrorTenant = await prisma.tenant.findUnique({
+        where: { slug: args.mirrorTenantSlug },
+        select: { id: true }
+      });
+
+      const existingOwner = await prisma.user.findUnique({
+        where: { email: args.ownerEmail },
+        select: { id: true }
+      });
+
+      console.info('Dry-run summary:');
+      console.info(`- owner user exists: ${existingOwner ? 'yes' : 'no'}`);
+      console.info(`- primary tenant exists: ${existingPrimaryTenant ? 'yes' : 'no'}`);
+      console.info(`- mirror tenant exists: ${existingMirrorTenant ? 'yes' : 'no'}`);
+      console.info('- no rows written (default dry-run behavior).');
+      console.info('Re-run with --confirm to write synthetic dataset.');
       return;
     }
 
-    await runWrite(prisma, args);
+    const writeResult = await prisma.$transaction(async (tx) => {
+      const primaryOwner = await ensureTenantWithOwner(tx, args, args.tenantSlug, args.tenantName);
+      const mirrorOwner = await ensureTenantWithOwner(
+        tx,
+        args,
+        args.mirrorTenantSlug,
+        args.mirrorTenantName
+      );
+
+      const primaryApply = await applyTenantDataset(
+        tx,
+        primaryOwner.tenantId,
+        args.tenantSlug,
+        primaryOwner.userId,
+        primaryResolution.accepted,
+        args.dedupe
+      );
+
+      const mirrorApply = await applyTenantDataset(
+        tx,
+        mirrorOwner.tenantId,
+        args.mirrorTenantSlug,
+        mirrorOwner.userId,
+        mirrorResolution.accepted,
+        args.dedupe
+      );
+
+      return {
+        primaryTenantId: primaryOwner.tenantId,
+        mirrorTenantId: mirrorOwner.tenantId,
+        primaryApply,
+        mirrorApply
+      };
+    });
+
+    printStats('Primary tenant write stats', writeResult.primaryApply.stats);
+    printStats('Mirror tenant write stats', writeResult.mirrorApply.stats);
+    printSkips('Write-time collision skips (primary tenant)', writeResult.primaryApply.skips);
+    printSkips('Write-time collision skips (mirror tenant)', writeResult.mirrorApply.skips);
+
+    const checks = await runIsolationChecks(
+      prisma,
+      writeResult.primaryTenantId,
+      writeResult.mirrorTenantId
+    );
+
+    console.info('Cross-tenant isolation checks:');
+    console.info(`- ${SHARED_CODE} in primary tenant: ${checks.primarySharedCodeCount}`);
+    console.info(`- ${SHARED_CODE} in mirror tenant: ${checks.mirrorSharedCodeCount}`);
+    console.info(`- featured count (primary): ${checks.primaryFeaturedCount}`);
+    console.info(`- featured count (mirror): ${checks.mirrorFeaturedCount}`);
+    console.info(`- public share count (primary): ${checks.primaryShareCount}`);
+    console.info(`- public share count (mirror): ${checks.mirrorShareCount}`);
+    console.info(
+      `- tenant mismatch rows (featured_products -> products): ${checks.featuredTenantMismatchCount}`
+    );
+    console.info(`- tenant mismatch rows (public_shares -> products): ${checks.shareTenantMismatchCount}`);
+
+    if (checks.primarySharedCodeCount !== 1 || checks.mirrorSharedCodeCount !== 1) {
+      throw new Error(
+        `Isolation check failed for ${SHARED_CODE}: primary=${checks.primarySharedCodeCount}, mirror=${checks.mirrorSharedCodeCount}`
+      );
+    }
+
+    if (checks.featuredTenantMismatchCount !== 0 || checks.shareTenantMismatchCount !== 0) {
+      throw new Error('Isolation check failed: found cross-tenant foreign key mismatches.');
+    }
+
+    console.info('Synthetic dataset seed complete.');
   } finally {
     await prisma.$disconnect();
   }
