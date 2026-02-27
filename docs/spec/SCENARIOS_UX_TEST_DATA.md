@@ -101,12 +101,13 @@ Data requirements:
 - each tested product has 1+ images
 - `sort_order` preserved from source where possible
 - one image marked main (`type == main` in source) when available
-- `ProductImage.key` derived as `external/<sha1(url)>`
+- after mirror migration, `ProductImage.key` should be managed key `${tenantId}/products/${productId}/...`
 
 Assertions:
 - first displayed image matches `isMain=true`
 - image order follows `sortOrder` ascending
-- external URLs are used directly (no download/proxy required for migration)
+- `GET /products/:pid/images/:iid/content` streams bytes for managed keys (no redirect to MinIO)
+- legacy unmanaged keys still fall back to `url` redirect
 
 Edge cases:
 - source image with empty URL -> skipped and logged
@@ -190,7 +191,6 @@ Production safety guard:
 
 ## Non-goals for this phase
 
-- no image binary migration or download
 - no password migration from legacy users
 - no direct migration of legacy auth credentials
 
@@ -202,6 +202,8 @@ After migration and seed:
 2. `scripts/migrate/turtle_album_export.py --confirm` outputs JSON without secrets
 3. `scripts/seed/import_turtle_album.ts` dry-run works by default
 4. `scripts/seed/import_turtle_album.ts --confirm` creates/updates tenant data
-5. `scripts/seed/bootstrap_admin.ts --confirm` creates editor/viewer memberships
-6. `pnpm api-tests -- --confirm-writes --only auth,products,featured,shares` passes auth, tenant switch, products, featured, and share checks
-7. `pnpm -r lint && pnpm -r build` passes
+5. `scripts/migrate/mirror_external_images_to_storage.ts` dry-run works by default
+6. `scripts/migrate/mirror_external_images_to_storage.ts --confirm` mirrors eligible images, rewrites `product_images.key/contentType/url`, and writes a report JSON under `out/`
+7. `scripts/seed/bootstrap_admin.ts --confirm` creates editor/viewer memberships
+8. `pnpm api-tests -- --confirm-writes --only auth,products,featured,shares` passes auth, tenant switch, products, featured, and share checks
+9. `pnpm -r lint && pnpm -r build` passes

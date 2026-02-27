@@ -1,8 +1,13 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
-import type { PutObjectInput, PutObjectResult, StorageProvider } from './storage.provider';
+import type {
+  GetObjectResult,
+  PutObjectInput,
+  PutObjectResult,
+  StorageProvider
+} from './storage.provider';
 
 @Injectable()
 export class LocalDiskStorageProvider implements StorageProvider {
@@ -26,6 +31,26 @@ export class LocalDiskStorageProvider implements StorageProvider {
       url: await this.getSignedUrl(key),
       contentType: input.contentType?.trim() || null
     };
+  }
+
+  async getObject(key: string): Promise<GetObjectResult> {
+    const normalizedKey = this.normalizeKey(key);
+    const targetPath = path.join(this.uploadRoot, normalizedKey);
+
+    try {
+      const body = await fs.readFile(targetPath);
+      return {
+        body,
+        contentType: null
+      };
+    } catch (error) {
+      const nodeError = error as NodeJS.ErrnoException;
+      if (nodeError.code === 'ENOENT') {
+        throw new NotFoundException('Stored object was not found.');
+      }
+
+      throw error;
+    }
   }
 
   async getSignedUrl(key: string): Promise<string> {

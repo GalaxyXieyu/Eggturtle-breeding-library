@@ -16,7 +16,6 @@ import type {
 import { Prisma } from '@prisma/client';
 import type { Product as PrismaProduct, ProductImage as PrismaProductImage } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
-import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
@@ -408,15 +407,6 @@ export class ProductsService {
       });
     }
 
-    const storageProvider = (process.env.STORAGE_PROVIDER ?? 'local').toLowerCase();
-    if (storageProvider !== 'local') {
-      const signedUrl = await this.storageProvider.getSignedUrl(image.key);
-      return {
-        redirectUrl: signedUrl,
-        contentType: image.contentType
-      };
-    }
-
     if (!this.isManagedStorageKey(tenantId, image.key)) {
       return {
         redirectUrl: image.url,
@@ -424,22 +414,14 @@ export class ProductsService {
       };
     }
 
-    const uploadRoot = path.resolve(process.cwd(), process.env.UPLOAD_DIR ?? '.data/uploads');
-    const targetPath = path.resolve(uploadRoot, image.key);
-
-    if (!targetPath.startsWith(`${uploadRoot}${path.sep}`)) {
-      throw new BadRequestException('Storage key is outside upload root.');
-    }
-
     try {
-      const content = await fs.readFile(targetPath);
+      const storedObject = await this.storageProvider.getObject(image.key);
       return {
-        content,
-        contentType: image.contentType
+        content: storedObject.body,
+        contentType: image.contentType ?? storedObject.contentType
       };
     } catch (error) {
-      const nodeError = error as NodeJS.ErrnoException;
-      if (nodeError.code === 'ENOENT') {
+      if (error instanceof NotFoundException) {
         throw new NotFoundException({
           message: 'Stored image binary was not found.',
           errorCode: ErrorCode.ProductImageNotFound
