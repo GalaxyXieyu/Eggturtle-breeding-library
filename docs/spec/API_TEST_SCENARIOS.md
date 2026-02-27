@@ -11,7 +11,7 @@ These scenarios align with:
 
 - `docs/spec/ACCOUNT_MATRIX_PERMISSIONS.md`
 - role-based acceptance baseline (`OWNER / ADMIN / EDITOR / VIEWER` + `super-admin`)
-- internal interface matrix spreadsheet (`API_INTERFACE_TEST_MATRIX.xlsx`) used for planning/coverage reviews
+- acceptance matrix (`docs/spec/API_ACCEPTANCE_MATRIX.md`) used for module-level status/code coverage reviews
 
 The scripts are organized by module, not by one monolithic smoke script:
 
