@@ -4,6 +4,11 @@ Status: Spec only (do not implement yet)
 Owner: Team
 Updated: 2026-02-27
 
+Related specs:
+- `docs/spec/SAAS_SPEC.md`
+- `docs/spec/AI_SYSTEM_DESIGN.md`
+- `docs/spec/AI_QUOTA_BILLING.md`
+
 ## Goal
 
 Provide a low-risk, high-perceived-value feature:
@@ -48,15 +53,18 @@ The response must include the following sections (in Chinese):
 - Avoid recommending medication or invasive treatment.
 - Avoid collecting unnecessary sensitive personal data.
 
-## Quota / Monetization (TBD)
+## Quota / Monetization (Phase A Baseline)
 
-We will launch with a minimal quota model.
+Phase A quota/billing details are defined in:
+- `docs/spec/AI_QUOTA_BILLING.md`
 
-Decisions needed:
-- Free tier: either "daily N" or "new user total N".
-- Over quota: either block + upsell, or pay-per-use.
+Launch baseline:
+- Enforced unit: `analysis_request` (1 request = 1 unit)
+- Free tier: small daily quota (exact number configured per tenant policy)
+- Over quota: block request and return quota error code
 
-Current default (temporary): TBD.
+API placeholder contracts are defined in:
+- `packages/shared/src/ai.ts`
 
 ## Sharing / Growth Hook (Later)
 

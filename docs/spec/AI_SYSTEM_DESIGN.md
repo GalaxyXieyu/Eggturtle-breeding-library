@@ -3,6 +3,11 @@
 Status: Design/spec only (Phase A implementation can be staged)
 Updated: 2026-02-27
 
+Related specs:
+- `docs/spec/SAAS_SPEC.md`
+- `docs/spec/AI_PHASE_A.md`
+- `docs/spec/AI_QUOTA_BILLING.md`
+
 ## Scope
 
 Phase A (Advice-only turtle photo analysis):
@@ -76,21 +81,23 @@ Keep secrets in env, not DB.
 
 ## API Contracts (@eggturtle/shared)
 
-Add in `packages/shared/src/ai.ts`:
+Defined in `packages/shared/src/ai.ts` (placeholder contracts):
 - `turtleAnalysisRequestSchema`
-  - `images: [{ key: string }]` OR accept multipart upload and return `imageKeys`
+  - `images: [{ key: string, contentType?: string }]`
   - `species?`, `ageRange?`, `weightGrams?`, `environment?`, `question?`
 - `turtleAnalysisResponseSchema`
-  - `observations: string[]`
-  - `riskNotes: string[]`
-  - `careChecklist: string[]`
-  - `followUp: string[]`
-  - `disclaimer: string`
+  - `analysisId`
+  - `result` (`observations`, `riskNotes`, `careChecklist`, `followUp`, `disclaimer`)
+  - `quota` (`unit`, `limit`, `used`, `remaining`, `window`, `resetAt`)
+  - `modelId`
+- `aiQuotaStatusResponseSchema`
+  - `tenantId`, `userId`, `items[]`, `checkedAt`
 
 Error codes (extend `ErrorCode`):
-- `AI_QUOTA_EXCEEDED`
 - `AI_FEATURE_DISABLED`
 - `AI_MODEL_NOT_CONFIGURED`
+- `AI_RATE_LIMITED`
+- `AI_QUOTA_EXCEEDED`
 - `AI_PROVIDER_ERROR`
 
 ## Model Configuration (How Admin Chooses Models)
@@ -136,8 +143,8 @@ Never log:
 
 ## Implementation Plan (Suggested)
 
-1) Land specs only (`docs/spec/AI_PHASE_A.md`, this doc)
-2) Add DB tables + shared schema
+1) Land specs only (`docs/spec/AI_PHASE_A.md`, `docs/spec/AI_QUOTA_BILLING.md`, this doc)
+2) Add DB tables + shared schema (`packages/shared/src/ai.ts` already provides placeholder contracts)
 3) Implement API with stub provider returning deterministic placeholder text (for UI wiring)
 4) Integrate real provider + usage counters + cost estimation
 5) Add tenant settings UI

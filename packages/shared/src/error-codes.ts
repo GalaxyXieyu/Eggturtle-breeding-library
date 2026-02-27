@@ -16,7 +16,12 @@ export const ErrorCode = {
   FeaturedProductConflict: 'FEATURED_PRODUCT_CONFLICT',
   ShareNotFound: 'SHARE_NOT_FOUND',
   ShareSignatureInvalid: 'SHARE_SIGNATURE_INVALID',
-  ShareSignatureExpired: 'SHARE_SIGNATURE_EXPIRED'
+  ShareSignatureExpired: 'SHARE_SIGNATURE_EXPIRED',
+  AiFeatureDisabled: 'AI_FEATURE_DISABLED',
+  AiModelNotConfigured: 'AI_MODEL_NOT_CONFIGURED',
+  AiRateLimited: 'AI_RATE_LIMITED',
+  AiQuotaExceeded: 'AI_QUOTA_EXCEEDED',
+  AiProviderError: 'AI_PROVIDER_ERROR'
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];

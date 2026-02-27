@@ -125,3 +125,21 @@ export type {
   Share,
   ShareResourceType
 } from './share';
+export {
+  aiQuotaStatusResponseSchema,
+  aiQuotaSummarySchema,
+  aiQuotaUnitSchema,
+  aiQuotaWindowSchema,
+  turtleAnalysisEnvironmentSchema,
+  turtleAnalysisImageInputSchema,
+  turtleAnalysisRequestSchema,
+  turtleAnalysisResponseSchema,
+  turtleAnalysisResultSchema
+} from './ai';
+export type {
+  AiQuotaStatusResponse,
+  AiQuotaSummary,
+  AiQuotaUnit,
+  TurtleAnalysisRequest,
+  TurtleAnalysisResponse
+} from './ai';
