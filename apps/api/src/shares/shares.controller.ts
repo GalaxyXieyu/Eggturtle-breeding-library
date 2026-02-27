@@ -40,7 +40,7 @@ export class SharesController {
 
   @Post('shares')
   @UseGuards(AuthGuard, RbacGuard)
-  @RequireTenantRole('VIEWER')
+  @RequireTenantRole('EDITOR')
   async createShare(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
     const tenantId = this.requireTenantId(request.tenantId);
     const actorUserId = this.requireUserId(request.user?.id);
