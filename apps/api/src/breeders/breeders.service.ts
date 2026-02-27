@@ -4,6 +4,7 @@ import type {
   Breeder,
   BreederEvent,
   BreederFamilyTree,
+  BreederFamilyTreeLink,
   ListBreedersQuery,
   SeriesSummary
 } from '@eggturtle/shared';
@@ -30,7 +31,7 @@ export class BreedersService {
         include: {
           series: true
         },
-        orderBy: [{ createdAt: 'desc' }],
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip,
         take: query.pageSize
       }),
@@ -47,11 +48,12 @@ export class BreedersService {
   }
 
   async getBreederByCode(tenantId: string, code: string): Promise<Breeder> {
+    const normalizedCode = code.trim();
     const breeder = await this.prisma.breeder.findFirst({
       where: {
         tenantId,
         code: {
-          equals: code,
+          equals: normalizedCode,
           mode: 'insensitive'
         }
       },
@@ -99,7 +101,7 @@ export class BreedersService {
         tenantId,
         breederId
       },
-      orderBy: [{ eventDate: 'desc' }, { createdAt: 'desc' }]
+      orderBy: [{ eventDate: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }]
     });
 
     return events.map((event) => this.toBreederEvent(event));
@@ -127,9 +129,22 @@ export class BreedersService {
       this.prisma.breeder.findMany({
         where: {
           tenantId,
-          OR: [{ sireCode: breeder.code }, { damCode: breeder.code }]
+          OR: [
+            {
+              sireCode: {
+                equals: breeder.code,
+                mode: 'insensitive'
+              }
+            },
+            {
+              damCode: {
+                equals: breeder.code,
+                mode: 'insensitive'
+              }
+            }
+          ]
         },
-        orderBy: [{ createdAt: 'desc' }],
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         take: 100
       })
     ]);
@@ -140,8 +155,13 @@ export class BreedersService {
       dam: this.toFamilyTreeNodeOrNull(dam),
       mate: this.toFamilyTreeNodeOrNull(mate),
       children: children.map((child) => this.toFamilyTreeNode(child)),
+      links: {
+        sire: this.toFamilyTreeLink(breeder.sireCode, sire),
+        dam: this.toFamilyTreeLink(breeder.damCode, dam),
+        mate: this.toFamilyTreeLink(breeder.mateCode, mate)
+      },
       limitations:
-        'Milestone 1 stub: returns only self, immediate sire/dam/mate, and direct children. Extended ancestors and siblings are not included yet.'
+        'Milestone 1 limitation: returns only self, immediate sire/dam/mate, and direct children. Extended ancestors, siblings, and descendant depth traversal are not included yet.'
     };
   }
 
@@ -216,7 +236,8 @@ export class BreedersService {
     tenantId: string,
     code: string | null | undefined
   ): Promise<PrismaBreeder | null> {
-    if (!code) {
+    const normalizedCode = code?.trim();
+    if (!normalizedCode) {
       return null;
     }
 
@@ -224,7 +245,7 @@ export class BreedersService {
       where: {
         tenantId,
         code: {
-          equals: code,
+          equals: normalizedCode,
           mode: 'insensitive'
         }
       }
@@ -280,6 +301,21 @@ export class BreedersService {
       code: breeder.code,
       name: breeder.name,
       sex: breeder.sex
+    };
+  }
+
+  private toFamilyTreeLink(
+    code: string | null | undefined,
+    breeder: PrismaBreeder | null
+  ): BreederFamilyTreeLink | null {
+    const normalizedCode = code?.trim();
+    if (!normalizedCode) {
+      return null;
+    }
+
+    return {
+      code: normalizedCode,
+      breeder: this.toFamilyTreeNodeOrNull(breeder)
     };
   }
 

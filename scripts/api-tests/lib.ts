@@ -8,6 +8,8 @@ export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 export type ModuleName =
   | 'auth'
   | 'products'
+  | 'series'
+  | 'breeders'
   | 'images'
   | 'featured'
   | 'shares'
@@ -243,7 +245,7 @@ export function printUsage(): void {
     '  --confirm-writes            Execute write scenarios (safe mode is dry-run)',
     '  --json                      Emit JSONL logs',
     '  --clear-token-cache         Delete local auth token cache before run',
-    '  --only <list>               Comma-separated modules: auth,products,images,featured,shares,admin,account-matrix',
+    '  --only <list>               Comma-separated modules: auth,products,series,breeders,images,featured,shares,admin,account-matrix',
     '  --tenant-id <id>            Existing tenant ID for tenant-scoped modules',
     '  --tenant-slug <slug>        Tenant slug when auto-creating tenant',
     '  --tenant-name <name>        Tenant name when auto-creating tenant',
@@ -335,6 +337,8 @@ export function parseOnlyModules(value: string | undefined): ModuleName[] | null
   const known = new Set<ModuleName>([
     'auth',
     'products',
+    'series',
+    'breeders',
     'images',
     'featured',
     'shares',

@@ -1,6 +1,7 @@
 import { accountMatrixModule } from './account-matrix';
 import { adminModule } from './admin';
 import { authModule } from './auth';
+import { breedersModule } from './breeders';
 import { featuredModule } from './featured';
 import { imagesModule } from './images';
 import {
@@ -16,11 +17,14 @@ import {
   printUsage,
 } from './lib';
 import { productsModule } from './products';
+import { seriesModule } from './series';
 import { sharesModule } from './shares';
 
 const allModules: TestModule[] = [
   authModule,
   productsModule,
+  seriesModule,
+  breedersModule,
   imagesModule,
   featuredModule,
   sharesModule,
@@ -31,6 +35,8 @@ const allModules: TestModule[] = [
 const defaultModuleOrder: TestModule[] = [
   authModule,
   productsModule,
+  seriesModule,
+  breedersModule,
   imagesModule,
   featuredModule,
   sharesModule,

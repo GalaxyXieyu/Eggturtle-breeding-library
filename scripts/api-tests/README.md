@@ -4,7 +4,7 @@
 
 ## Goals
 
-- Split scenarios by module (`auth`, `products`, `images`, `featured`, `shares`, `admin`, `account-matrix`)
+- Split scenarios by module (`auth`, `products`, `series`, `breeders`, `images`, `featured`, `shares`, `admin`, `account-matrix`)
 - Keep logs concise by default, with optional JSONL output for debugging (`--json`)
 - Safe by default: no write requests are sent unless `--confirm-writes` is provided
 
@@ -14,7 +14,7 @@
 # Dry-run plan only (no network requests)
 pnpm api-tests
 
-# Run default modules (auth/products/images/featured/shares/admin)
+# Run default modules (auth/products/series/breeders/images/featured/shares/admin)
 pnpm api-tests -- --confirm-writes
 
 # Run selected modules only
@@ -32,7 +32,7 @@ pnpm api-tests -- --api-base https://staging.example.com --allow-remote --confir
 
 ## Full Run Evidence Harness
 
-Use the harness to run the full module suite with real requests and save reproducible artifacts under `out/t26-api-full-run/<timestamp>/`.
+Use the harness to run the full module suite with real requests and save reproducible artifacts under `out/t26-api-full-run/<timestamp>/` (or a custom `OUT_ROOT`).
 
 ```bash
 NODE_ENV=development AUTH_DEV_CODE_ENABLED=true \
