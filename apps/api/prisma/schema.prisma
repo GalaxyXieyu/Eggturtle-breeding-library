@@ -50,6 +50,9 @@ model Tenant {
   updatedAt           DateTime             @updatedAt @map("updated_at")
   members             TenantMember[]
   products            Product[]
+  series              Series[]
+  breeders            Breeder[]
+  breederEvents       BreederEvent[]
   featuredProducts    FeaturedProduct[]
   shares              PublicShare[]
   auditLogs           AuditLog[]
@@ -91,6 +94,71 @@ model Product {
   @@unique([tenantId, code], map: "products_tenant_id_code_key")
   @@index([tenantId], map: "products_tenant_id_idx")
   @@map("products")
+}
+
+model Series {
+  id          String    @id @default(cuid())
+  tenantId    String    @map("tenant_id")
+  code        String    @db.VarChar(120)
+  name        String    @db.VarChar(120)
+  description String?
+  sortOrder   Int       @default(0) @map("sort_order")
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  breeders    Breeder[]
+
+  // Enables composite foreign keys to enforce tenant isolation.
+  @@unique([id, tenantId], map: "series_id_tenant_id_key")
+  @@unique([tenantId, code], map: "series_tenant_id_code_key")
+  @@index([tenantId], map: "series_tenant_id_idx")
+  @@index([tenantId, sortOrder], map: "series_tenant_id_sort_order_idx")
+  @@map("series")
+}
+
+model Breeder {
+  id          String         @id @default(cuid())
+  tenantId    String         @map("tenant_id")
+  seriesId    String         @map("series_id")
+  code        String         @db.VarChar(120)
+  name        String?        @db.VarChar(120)
+  sex         String?        @db.VarChar(20)
+  description String?
+  sireCode    String?        @map("sire_code") @db.VarChar(120)
+  damCode     String?        @map("dam_code") @db.VarChar(120)
+  mateCode    String?        @map("mate_code") @db.VarChar(120)
+  isActive    Boolean        @default(true) @map("is_active")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  series      Series         @relation(fields: [seriesId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  events      BreederEvent[]
+
+  // Enables composite foreign keys to enforce tenant isolation.
+  @@unique([id, tenantId], map: "breeders_id_tenant_id_key")
+  @@unique([tenantId, code], map: "breeders_tenant_id_code_key")
+  @@index([tenantId], map: "breeders_tenant_id_idx")
+  @@index([tenantId, seriesId], map: "breeders_tenant_id_series_id_idx")
+  @@map("breeders")
+}
+
+model BreederEvent {
+  id        String   @id @default(cuid())
+  tenantId  String   @map("tenant_id")
+  breederId String   @map("breeder_id")
+  eventType String   @map("event_type") @db.VarChar(40)
+  eventDate DateTime @map("event_date")
+  note      String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  breeder   Breeder  @relation(fields: [breederId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@index([tenantId], map: "breeder_events_tenant_id_idx")
+  @@index([tenantId, breederId], map: "breeder_events_tenant_id_breeder_id_idx")
+  @@index([tenantId, breederId, eventDate], map: "breeder_events_tenant_id_breeder_id_event_date_idx")
+  @@map("breeder_events")
 }
 
 model FeaturedProduct {
