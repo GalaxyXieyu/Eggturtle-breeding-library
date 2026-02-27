@@ -1,0 +1,23 @@
+{
+  "name": "@eggturtle/admin",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 30020",
+    "build": "next build",
+    "start": "next start -p 30020",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@eggturtle/shared": "workspace:*",
+    "next": "^14.2.25",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "eslint-config-next": "^14.2.25"
+  }
+}

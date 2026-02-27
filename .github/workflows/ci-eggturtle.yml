@@ -31,5 +31,11 @@ jobs:
       - name: Lint
         run: pnpm -r lint
 
+      - name: Lint admin app (explicit)
+        run: pnpm --filter @eggturtle/admin lint
+
       - name: Build
         run: pnpm -r build
+
+      - name: Build admin app (explicit)
+        run: pnpm --filter @eggturtle/admin build

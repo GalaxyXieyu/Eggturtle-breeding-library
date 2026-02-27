@@ -10,17 +10,23 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   if (process.env.NODE_ENV === 'development') {
-    const webDevOrigin = process.env.WEB_DEV_ORIGIN ?? 'http://localhost:30010';
+    const devOrigins = (process.env.WEB_DEV_ORIGIN ?? 'http://localhost:30010,http://localhost:30020')
+      .split(',')
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
+
     app.enableCors({
-      origin: webDevOrigin
+      origin: devOrigins.length === 1 ? devOrigins[0] : devOrigins
     });
   }
 
-  const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR ?? '.data/uploads');
-  const uploadPublicBaseUrl = process.env.UPLOAD_PUBLIC_BASE_URL ?? '/uploads';
-  app.useStaticAssets(uploadDir, {
-    prefix: uploadPublicBaseUrl
-  });
+  if (process.env.UPLOAD_PUBLIC_ENABLED === 'true') {
+    const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR ?? '.data/uploads');
+    const uploadPublicBaseUrl = process.env.UPLOAD_PUBLIC_BASE_URL ?? '/uploads';
+    app.useStaticAssets(uploadDir, {
+      prefix: uploadPublicBaseUrl
+    });
+  }
 
   await app.listen(process.env.PORT ? Number(process.env.PORT) : 30011);
 }

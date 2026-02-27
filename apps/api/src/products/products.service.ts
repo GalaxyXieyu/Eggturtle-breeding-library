@@ -16,6 +16,7 @@ import type {
 import { Prisma } from '@prisma/client';
 import type { Product as PrismaProduct, ProductImage as PrismaProductImage } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
+import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
@@ -28,6 +29,16 @@ export type UploadedBinaryFile = {
   mimetype: string;
   buffer: Buffer;
 };
+
+export type ProductImageContentResult =
+  | {
+      content: Buffer;
+      contentType: string | null;
+    }
+  | {
+      redirectUrl: string;
+      contentType: string | null;
+    };
 
 @Injectable()
 export class ProductsService {
@@ -375,6 +386,70 @@ export class ProductsService {
     return images.map((image) => this.toProductImage(image));
   }
 
+  async getProductImageContent(
+    tenantId: string,
+    productId: string,
+    imageId: string
+  ): Promise<ProductImageContentResult> {
+    await this.findProductOrThrow(tenantId, productId);
+
+    const image = await this.prisma.productImage.findFirst({
+      where: {
+        id: imageId,
+        tenantId,
+        productId
+      }
+    });
+
+    if (!image) {
+      throw new NotFoundException({
+        message: 'Product image not found.',
+        errorCode: ErrorCode.ProductImageNotFound
+      });
+    }
+
+    const storageProvider = (process.env.STORAGE_PROVIDER ?? 'local').toLowerCase();
+    if (storageProvider !== 'local') {
+      const signedUrl = await this.storageProvider.getSignedUrl(image.key);
+      return {
+        redirectUrl: signedUrl,
+        contentType: image.contentType
+      };
+    }
+
+    if (!this.isManagedStorageKey(tenantId, image.key)) {
+      return {
+        redirectUrl: image.url,
+        contentType: image.contentType
+      };
+    }
+
+    const uploadRoot = path.resolve(process.cwd(), process.env.UPLOAD_DIR ?? '.data/uploads');
+    const targetPath = path.resolve(uploadRoot, image.key);
+
+    if (!targetPath.startsWith(`${uploadRoot}${path.sep}`)) {
+      throw new BadRequestException('Storage key is outside upload root.');
+    }
+
+    try {
+      const content = await fs.readFile(targetPath);
+      return {
+        content,
+        contentType: image.contentType
+      };
+    } catch (error) {
+      const nodeError = error as NodeJS.ErrnoException;
+      if (nodeError.code === 'ENOENT') {
+        throw new NotFoundException({
+          message: 'Stored image binary was not found.',
+          errorCode: ErrorCode.ProductImageNotFound
+        });
+      }
+
+      throw error;
+    }
+  }
+
   private async findProductOrThrow(tenantId: string, productId: string) {
     const product = await this.prisma.product.findFirst({
       where: {
@@ -452,10 +527,19 @@ export class ProductsService {
       tenantId: image.tenantId,
       productId: image.productId,
       key: image.key,
-      url: image.url,
+      url: this.buildImageAccessPath(image.productId, image.id),
       contentType: image.contentType,
       sortOrder: image.sortOrder,
       isMain: image.isMain
     };
+  }
+
+  private isManagedStorageKey(tenantId: string, key: string): boolean {
+    const normalizedKey = key.replace(/\\/g, '/').replace(/^\/+/, '');
+    return normalizedKey.startsWith(`${tenantId}/`);
+  }
+
+  private buildImageAccessPath(productId: string, imageId: string): string {
+    return `/products/${productId}/images/${imageId}/content`;
   }
 }

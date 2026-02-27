@@ -9,6 +9,8 @@ import {
   Put,
   Query,
   Req,
+  Res,
+  StreamableFile,
   UnauthorizedException,
   UploadedFile,
   UseGuards,
@@ -40,6 +42,11 @@ type UploadedBinaryFile = {
   originalname: string;
   mimetype: string;
   buffer: Buffer;
+};
+
+type PassthroughResponse = {
+  setHeader: (name: string, value: string) => void;
+  redirect: (url: string) => void;
 };
 
 @Controller('products')
@@ -92,6 +99,30 @@ export class ProductsController {
     const image = await this.productsService.uploadProductImage(tenantId, actorUserId, productId, file);
 
     return uploadProductImageResponseSchema.parse({ image });
+  }
+
+  @Get(':pid/images/:iid/content')
+  async getImageContent(
+    @Req() request: AuthenticatedRequest,
+    @Param('pid') productId: string,
+    @Param('iid') imageId: string,
+    @Res({ passthrough: true }) response: PassthroughResponse
+  ) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const imageContent = await this.productsService.getProductImageContent(tenantId, productId, imageId);
+
+    response.setHeader('Cache-Control', 'private, no-store');
+
+    if ('redirectUrl' in imageContent) {
+      response.redirect(imageContent.redirectUrl);
+      return;
+    }
+
+    if (imageContent.contentType) {
+      response.setHeader('Content-Type', imageContent.contentType);
+    }
+
+    return new StreamableFile(imageContent.content);
   }
 
   @Delete(':pid/images/:iid')
