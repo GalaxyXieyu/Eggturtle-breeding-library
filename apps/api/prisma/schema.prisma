@@ -42,14 +42,15 @@ model AuthCode {
 }
 
 model Tenant {
-  id        String         @id @default(cuid())
-  slug      String         @unique @db.VarChar(80)
-  name      String         @db.VarChar(120)
-  createdAt DateTime       @default(now()) @map("created_at")
-  updatedAt DateTime       @updatedAt @map("updated_at")
-  members   TenantMember[]
-  products  Product[]
-  auditLogs AuditLog[]
+  id               String            @id @default(cuid())
+  slug             String            @unique @db.VarChar(80)
+  name             String            @db.VarChar(120)
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+  members          TenantMember[]
+  products         Product[]
+  featuredProducts FeaturedProduct[]
+  auditLogs        AuditLog[]
 
   @@map("tenants")
 }
@@ -70,18 +71,34 @@ model TenantMember {
 }
 
 model Product {
-  id          String         @id @default(cuid())
-  tenantId    String         @map("tenant_id")
-  code        String?        @db.VarChar(120)
-  name        String?        @db.VarChar(120)
-  description String?
-  createdAt   DateTime       @default(now()) @map("created_at")
-  updatedAt   DateTime       @updatedAt @map("updated_at")
-  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  images      ProductImage[]
+  id               String            @id @default(cuid())
+  tenantId         String            @map("tenant_id")
+  code             String?           @db.VarChar(120)
+  name             String?           @db.VarChar(120)
+  description      String?
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  images           ProductImage[]
+  featuredProducts FeaturedProduct[]
 
   @@index([tenantId], map: "products_tenant_id_idx")
   @@map("products")
+}
+
+model FeaturedProduct {
+  id        String   @id @default(cuid())
+  tenantId  String   @map("tenant_id")
+  productId String   @map("product_id")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, productId], map: "featured_products_tenant_id_product_id_key")
+  @@index([tenantId], map: "featured_products_tenant_id_idx")
+  @@index([tenantId, sortOrder], map: "featured_products_tenant_id_sort_order_idx")
+  @@map("featured_products")
 }
 
 model ProductImage {

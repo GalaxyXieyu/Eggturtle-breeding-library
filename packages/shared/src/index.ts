@@ -71,6 +71,23 @@ export type {
   ReorderProductImagesRequest
 } from './product';
 export {
+  createFeaturedProductRequestSchema,
+  createFeaturedProductResponseSchema,
+  deleteFeaturedProductResponseSchema,
+  featuredProductItemSchema,
+  listFeaturedProductsResponseSchema,
+  listPublicFeaturedProductsQuerySchema,
+  listPublicFeaturedProductsResponseSchema,
+  reorderFeaturedProductsRequestSchema,
+  reorderFeaturedProductsResponseSchema
+} from './featured';
+export type {
+  CreateFeaturedProductRequest,
+  FeaturedProductItem,
+  ListPublicFeaturedProductsQuery,
+  ReorderFeaturedProductsRequest
+} from './featured';
+export {
   AuditAction,
   auditActionSchema,
   auditLogSchema,
