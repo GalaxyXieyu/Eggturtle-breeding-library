@@ -33,10 +33,21 @@ It captures decisions already reflected in code and points to deeper sub-specs.
 - DB enforces `@@unique([tenantId, code])`.
 - See: `packages/shared/src/product.ts`, `apps/api/prisma/schema.prisma`.
 
+6) Super-admin backoffice is a **separate guarded surface** under `/admin`.
+- Disabled by default. It is only active when **both** conditions are met:
+  - `SUPER_ADMIN_ENABLED=true`
+  - requester email is in `SUPER_ADMIN_EMAILS` (comma-separated allowlist)
+- Every `/admin` endpoint still requires regular auth (email-code login + bearer token).
+- Tenant RBAC remains unchanged for `/tenants`, `/products`, `/featured-products`, `/shares`.
+- Super-admin actions write dedicated audit records with `actorUserId` and `targetTenantId` when applicable.
+- See: `apps/api/src/admin/*`, `apps/api/src/auth/super-admin.guard.ts`.
+
 ## 3. Route Conventions
 
 - API (NestJS): direct resource paths (for example `/products`, `/featured-products`, `/tenants`, `/audit-logs`).
+- Super-admin API: `/admin/...` (cross-tenant operations only, guarded by env + allowlist).
 - Web app (authenticated): `/app/[tenantSlug]/...`.
+- Super-admin web entry: `/admin` (separate from `/app`).
 - Public pages:
   - Share redirect entry: `/s/<shareToken>` (API)
   - Public render page: `/public/share?...` (Web)

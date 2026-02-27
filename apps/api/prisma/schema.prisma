@@ -15,14 +15,15 @@ enum TenantMemberRole {
 }
 
 model User {
-  id            String         @id @default(cuid())
-  email         String         @unique @db.VarChar(255)
-  name          String?        @db.VarChar(120)
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @updatedAt @map("updated_at")
-  tenantMembers TenantMember[]
-  auditLogs     AuditLog[]     @relation("AuditLogActor")
-  createdShares PublicShare[]  @relation("PublicShareCreator")
+  id                  String               @id @default(cuid())
+  email               String               @unique @db.VarChar(255)
+  name                String?              @db.VarChar(120)
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+  tenantMembers       TenantMember[]
+  auditLogs           AuditLog[]           @relation("AuditLogActor")
+  createdShares       PublicShare[]        @relation("PublicShareCreator")
+  superAdminAuditLogs SuperAdminAuditLog[] @relation("SuperAdminAuditLogActor")
 
   @@map("users")
 }
@@ -42,16 +43,17 @@ model AuthCode {
 }
 
 model Tenant {
-  id               String            @id @default(cuid())
-  slug             String            @unique @db.VarChar(80)
-  name             String            @db.VarChar(120)
-  createdAt        DateTime          @default(now()) @map("created_at")
-  updatedAt        DateTime          @updatedAt @map("updated_at")
-  members          TenantMember[]
-  products         Product[]
-  featuredProducts FeaturedProduct[]
-  shares           PublicShare[]
-  auditLogs        AuditLog[]
+  id                  String               @id @default(cuid())
+  slug                String               @unique @db.VarChar(80)
+  name                String               @db.VarChar(120)
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+  members             TenantMember[]
+  products            Product[]
+  featuredProducts    FeaturedProduct[]
+  shares              PublicShare[]
+  auditLogs           AuditLog[]
+  superAdminAuditLogs SuperAdminAuditLog[] @relation("SuperAdminAuditLogTenant")
 
   @@map("tenants")
 }
@@ -161,4 +163,20 @@ model AuditLog {
   @@index([tenantId, createdAt], map: "audit_logs_tenant_id_created_at_idx")
   @@index([actorUserId], map: "audit_logs_actor_user_id_idx")
   @@map("audit_logs")
+}
+
+model SuperAdminAuditLog {
+  id             String   @id @default(cuid())
+  actorUserId    String   @map("actor_user_id")
+  targetTenantId String?  @map("target_tenant_id")
+  action         String   @db.VarChar(120)
+  metadata       Json?
+  createdAt      DateTime @default(now()) @map("created_at")
+  actorUser      User     @relation("SuperAdminAuditLogActor", fields: [actorUserId], references: [id], onDelete: Cascade)
+  targetTenant   Tenant?  @relation("SuperAdminAuditLogTenant", fields: [targetTenantId], references: [id], onDelete: SetNull)
+
+  @@index([actorUserId], map: "super_admin_audit_logs_actor_user_id_idx")
+  @@index([targetTenantId], map: "super_admin_audit_logs_target_tenant_id_idx")
+  @@index([createdAt], map: "super_admin_audit_logs_created_at_idx")
+  @@map("super_admin_audit_logs")
 }

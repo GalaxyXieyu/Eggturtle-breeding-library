@@ -61,11 +61,13 @@ label {
   color: #334155;
 }
 
-input {
+input,
+select {
   border: 1px solid #cbd5e1;
   border-radius: 8px;
   padding: 10px 12px;
   font-size: 14px;
+  background: #ffffff;
 }
 
 button {
@@ -89,4 +91,33 @@ button:disabled {
 
 .error {
   color: #b91c1c;
+}
+
+.super-admin-banner {
+  display: inline-block;
+  margin-bottom: 10px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #7c2d12;
+  color: #ffedd5;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.env-warning {
+  margin-top: 6px;
+  margin-bottom: 18px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #fca5a5;
+  background: #fef2f2;
+  color: #7f1d1d;
+}
+
+.env-warning.ok {
+  border-color: #fbbf24;
+  background: #fffbeb;
+  color: #78350f;
 }

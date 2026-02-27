@@ -150,3 +150,30 @@ export type {
   TurtleAnalysisRequest,
   TurtleAnalysisResponse
 } from './ai';
+export {
+  SuperAdminAuditAction,
+  adminUserSchema,
+  createAdminTenantRequestSchema,
+  createAdminTenantResponseSchema,
+  listAdminTenantsResponseSchema,
+  listAdminUsersResponseSchema,
+  listSuperAdminAuditLogsQuerySchema,
+  listSuperAdminAuditLogsResponseSchema,
+  superAdminAuditActionSchema,
+  superAdminAuditLogSchema,
+  upsertTenantMemberRequestSchema,
+  upsertTenantMemberResponseSchema
+} from './admin';
+export type {
+  AdminUser,
+  CreateAdminTenantRequest,
+  CreateAdminTenantResponse,
+  ListAdminTenantsResponse,
+  ListAdminUsersResponse,
+  ListSuperAdminAuditLogsQuery,
+  ListSuperAdminAuditLogsResponse,
+  SuperAdminAuditActionType,
+  SuperAdminAuditLog,
+  UpsertTenantMemberRequest,
+  UpsertTenantMemberResponse
+} from './admin';

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 
+import { AdminModule } from './admin/admin.module';
 import { AuditLogsModule } from './audit-logs/audit-logs.module';
 import { AuthModule } from './auth/auth.module';
 import { FeaturedProductsModule } from './featured-products/featured-products.module';
@@ -17,7 +18,8 @@ import { TenantsModule } from './tenants/tenants.module';
     ProductsModule,
     FeaturedProductsModule,
     AuditLogsModule,
-    SharesModule
+    SharesModule,
+    AdminModule
   ],
   controllers: [HealthController]
 })
