@@ -30,6 +30,22 @@ pnpm api-tests -- --confirm-writes --json
 pnpm api-tests -- --api-base https://staging.example.com --allow-remote --confirm-writes
 ```
 
+## Full Run Evidence Harness
+
+Use the harness to run the full module suite with real requests and save reproducible artifacts under `out/t26-api-full-run/<timestamp>/`.
+
+```bash
+NODE_ENV=development AUTH_DEV_CODE_ENABLED=true \
+  scripts/api-tests/evidence-harness.sh
+```
+
+Behavior:
+
+- checks `NODE_ENV` and `AUTH_DEV_CODE_ENABLED`
+- validates API connectivity via `GET /health`
+- optional API auto-start with `AUTO_START_API=1`
+- writes `command.sh`, `events.jsonl`, `summary.json`, and `summary.md`
+
 ## Account Matrix (OWNER/ADMIN/EDITOR/VIEWER)
 
 `account-matrix` replaces the previous bash matrix smoke flow.
