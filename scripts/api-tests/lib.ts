@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { chmod, mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
 import { inspect } from 'node:util';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -31,6 +33,9 @@ export interface CliOptions {
   superAdminEmail?: string;
   provision: boolean;
   requireSuperAdminPass: boolean;
+  tokenCache: boolean;
+  tokenCachePath: string;
+  clearTokenCache: boolean;
   help: boolean;
 }
 
@@ -92,6 +97,31 @@ export interface TenantSession {
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1']);
 const DEFAULT_API_BASE = 'http://localhost:30011';
+const DEFAULT_TOKEN_CACHE_PATH = '.data/api-tests/token-cache.json';
+const TOKEN_CACHE_STATE_KEY = '__token-cache-store';
+
+type TokenCacheEntry = {
+  apiBase: string;
+  email: string;
+  tenantId: string;
+  tenantSlug?: string;
+  tenantName?: string;
+  baseToken: string;
+  tenantToken: string;
+  updatedAt: string;
+};
+
+type TokenCacheFile = {
+  version: 1;
+  entries: Record<string, TokenCacheEntry>;
+};
+
+type TokenCacheStore = {
+  enabled: boolean;
+  cachePath: string;
+  loaded: boolean;
+  entries: Map<string, TokenCacheEntry>;
+};
 
 export function parseCliArgs(argv: string[]): CliOptions {
   const options: CliOptions = {
@@ -101,8 +131,13 @@ export function parseCliArgs(argv: string[]): CliOptions {
     json: false,
     provision: false,
     requireSuperAdminPass: false,
+    tokenCache: true,
+    tokenCachePath: DEFAULT_TOKEN_CACHE_PATH,
+    clearTokenCache: false,
     help: false,
   };
+
+  let tokenCacheOverride: boolean | undefined;
 
   const readValue = (flag: string, index: number): [string, number] => {
     const value = argv[index + 1];
@@ -133,6 +168,21 @@ export function parseCliArgs(argv: string[]): CliOptions {
         break;
       case '--json':
         options.json = true;
+        break;
+      case '--token-cache':
+        tokenCacheOverride = true;
+        break;
+      case '--no-token-cache':
+        tokenCacheOverride = false;
+        break;
+      case '--token-cache-path': {
+        const [value, next] = readValue(arg, i);
+        options.tokenCachePath = value;
+        i = next;
+        break;
+      }
+      case '--clear-token-cache':
+        options.clearTokenCache = true;
         break;
       case '--tenant-id': {
         const [value, next] = readValue(arg, i);
@@ -209,6 +259,8 @@ export function parseCliArgs(argv: string[]): CliOptions {
     }
   }
 
+  options.tokenCache = tokenCacheOverride ?? isLocalApiBase(options.apiBase);
+
   return options;
 }
 
@@ -221,6 +273,10 @@ export function printUsage(): void {
     '  --allow-remote              Allow non-local API base URL',
     '  --confirm-writes            Execute write scenarios (safe mode is dry-run)',
     '  --json                      Emit JSONL logs',
+    '  --token-cache               Enable persisted token cache (default for local --api-base)',
+    '  --no-token-cache            Disable persisted token cache',
+    '  --token-cache-path <path>   Cache file path (default: .data/api-tests/token-cache.json)',
+    '  --clear-token-cache         Delete cache file and exit',
     '  --only <list>               Comma-separated modules: auth,products,images,featured,shares,admin,account-matrix',
     '  --tenant-id <id>            Existing tenant ID for tenant-scoped modules',
     '  --tenant-slug <slug>        Tenant slug when auto-creating tenant',
@@ -277,6 +333,7 @@ export function createContext(options: CliOptions): TestContext {
 
   const log = createLogger(options.json);
   const state = new Map<string, unknown>();
+  state.set(TOKEN_CACHE_STATE_KEY, createTokenCacheStore(options));
 
   return {
     options,
@@ -294,6 +351,20 @@ export function createContext(options: CliOptions): TestContext {
       }
     },
   };
+}
+
+export async function clearTokenCache(options: CliOptions): Promise<boolean> {
+  const cachePath = resolveTokenCachePath(options.tokenCachePath);
+  try {
+    await unlink(cachePath);
+    return true;
+  } catch (error) {
+    if (isFsError(error) && error.code === 'ENOENT') {
+      return false;
+    }
+
+    throw error;
+  }
 }
 
 export function parseOnlyModules(value: string | undefined): ModuleName[] | null {
@@ -638,17 +709,35 @@ export async function ensureTenantSession(
   input: { email?: string; tenantId?: string; tenantSlug?: string; tenantName?: string } = {},
 ): Promise<TenantSession> {
   const email = input.email ?? ctx.options.email ?? defaultEmail('api-user');
-  const cacheKey = `tenant-session:${email}:${input.tenantId ?? 'new'}`;
-  const cached = ctx.state.get(cacheKey);
+  let tenantId = input.tenantId ?? ctx.options.tenantId;
+  const runtimeCacheKey = `tenant-session:${normalizeApiBase(ctx.options.apiBase)}:${email}:${tenantId ?? 'new'}`;
+  const cached = ctx.state.get(runtimeCacheKey);
   if (cached) {
     return cached as TenantSession;
   }
 
-  const { token: baseToken } = await loginWithDevCode(ctx, email);
-
-  let tenantId = input.tenantId ?? ctx.options.tenantId;
   let tenantSlug = input.tenantSlug ?? ctx.options.tenantSlug ?? uniqueSuffix('api-tenant');
   let tenantName = input.tenantName ?? ctx.options.tenantName ?? `API Tenant ${Date.now()}`;
+
+  const cachedTokens = tenantId ? await readTokenCacheEntry(ctx, email, tenantId) : null;
+  let baseToken =
+    cachedTokens && isTokenFresh(cachedTokens.baseToken) ? cachedTokens.baseToken : undefined;
+  let tenantToken =
+    cachedTokens && isTokenFresh(cachedTokens.tenantToken) ? cachedTokens.tenantToken : undefined;
+
+  if (cachedTokens?.tenantSlug) {
+    tenantSlug = cachedTokens.tenantSlug;
+  }
+
+  if (cachedTokens?.tenantName) {
+    tenantName = cachedTokens.tenantName;
+  }
+
+  if (!baseToken) {
+    const login = await loginWithDevCode(ctx, email);
+    baseToken = login.token;
+    tenantToken = undefined;
+  }
 
   if (!tenantId) {
     const created = await createTenant(ctx, baseToken, {
@@ -660,18 +749,38 @@ export async function ensureTenantSession(
     tenantName = created.tenantName;
   }
 
-  const switched = await switchTenant(ctx, baseToken, { tenantId });
+  if (!tenantToken) {
+    try {
+      const switched = await switchTenant(ctx, baseToken, { tenantId });
+      tenantToken = switched.token;
+    } catch {
+      const login = await loginWithDevCode(ctx, email);
+      baseToken = login.token;
+      const switched = await switchTenant(ctx, baseToken, { tenantId });
+      tenantToken = switched.token;
+    }
+  }
 
   const session: TenantSession = {
     email,
     baseToken,
-    token: switched.token,
+    token: tenantToken,
     tenantId,
     tenantSlug,
     tenantName,
   };
 
-  ctx.state.set(cacheKey, session);
+  ctx.state.set(runtimeCacheKey, session);
+  await writeTokenCacheEntry(ctx, {
+    apiBase: normalizeApiBase(ctx.options.apiBase),
+    email,
+    tenantId,
+    tenantSlug,
+    tenantName,
+    baseToken,
+    tenantToken,
+  });
+
   return session;
 }
 
@@ -698,6 +807,209 @@ export class ApiTestError extends Error {
     super(message);
     this.name = 'ApiTestError';
   }
+}
+
+function createTokenCacheStore(options: CliOptions): TokenCacheStore {
+  return {
+    enabled: options.tokenCache,
+    cachePath: resolveTokenCachePath(options.tokenCachePath),
+    loaded: false,
+    entries: new Map<string, TokenCacheEntry>(),
+  };
+}
+
+function resolveTokenCachePath(cachePath: string): string {
+  return resolve(cachePath);
+}
+
+function normalizeApiBase(apiBase: string): string {
+  const parsed = new URL(apiBase);
+  const pathname = parsed.pathname.replace(/\/+$/, '');
+  return `${parsed.origin}${pathname}`;
+}
+
+function isLocalApiBase(apiBase: string): boolean {
+  try {
+    const parsed = new URL(apiBase);
+    return LOCAL_HOSTS.has(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+
+function tokenCacheKey(apiBase: string, email: string, tenantId: string): string {
+  return `${apiBase}|${email}|${tenantId}`;
+}
+
+function getTokenCacheStore(ctx: TestContext): TokenCacheStore {
+  const cached = ctx.state.get(TOKEN_CACHE_STATE_KEY);
+  if (!cached) {
+    throw new ApiTestError('token cache store not initialized');
+  }
+
+  return cached as TokenCacheStore;
+}
+
+async function loadTokenCacheStore(store: TokenCacheStore): Promise<void> {
+  if (store.loaded || !store.enabled) {
+    return;
+  }
+
+  store.loaded = true;
+
+  let content: string;
+  try {
+    content = await readFile(store.cachePath, 'utf8');
+  } catch (error) {
+    if (isFsError(error) && error.code === 'ENOENT') {
+      return;
+    }
+
+    throw error;
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content);
+  } catch {
+    return;
+  }
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return;
+  }
+
+  const payload = parsed as { entries?: unknown };
+  if (!payload.entries || typeof payload.entries !== 'object' || Array.isArray(payload.entries)) {
+    return;
+  }
+
+  for (const [key, value] of Object.entries(payload.entries)) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      continue;
+    }
+
+    const entry = value as Record<string, unknown>;
+    if (
+      typeof entry.apiBase !== 'string' ||
+      typeof entry.email !== 'string' ||
+      typeof entry.tenantId !== 'string' ||
+      typeof entry.baseToken !== 'string' ||
+      typeof entry.tenantToken !== 'string' ||
+      typeof entry.updatedAt !== 'string'
+    ) {
+      continue;
+    }
+
+    store.entries.set(key, {
+      apiBase: entry.apiBase,
+      email: entry.email,
+      tenantId: entry.tenantId,
+      tenantSlug: typeof entry.tenantSlug === 'string' ? entry.tenantSlug : undefined,
+      tenantName: typeof entry.tenantName === 'string' ? entry.tenantName : undefined,
+      baseToken: entry.baseToken,
+      tenantToken: entry.tenantToken,
+      updatedAt: entry.updatedAt,
+    });
+  }
+}
+
+async function readTokenCacheEntry(
+  ctx: TestContext,
+  email: string,
+  tenantId: string,
+): Promise<TokenCacheEntry | null> {
+  const store = getTokenCacheStore(ctx);
+  if (!store.enabled) {
+    return null;
+  }
+
+  await loadTokenCacheStore(store);
+
+  const cacheKey = tokenCacheKey(normalizeApiBase(ctx.options.apiBase), email, tenantId);
+  return store.entries.get(cacheKey) ?? null;
+}
+
+async function writeTokenCacheEntry(
+  ctx: TestContext,
+  input: {
+    apiBase: string;
+    email: string;
+    tenantId: string;
+    tenantSlug?: string;
+    tenantName?: string;
+    baseToken: string;
+    tenantToken: string;
+  },
+): Promise<void> {
+  const store = getTokenCacheStore(ctx);
+  if (!store.enabled) {
+    return;
+  }
+
+  await loadTokenCacheStore(store);
+
+  const cacheKey = tokenCacheKey(input.apiBase, input.email, input.tenantId);
+  store.entries.set(cacheKey, {
+    ...input,
+    updatedAt: new Date().toISOString(),
+  });
+
+  const filePayload: TokenCacheFile = {
+    version: 1,
+    entries: Object.fromEntries(store.entries.entries()),
+  };
+
+  await mkdir(dirname(store.cachePath), { recursive: true, mode: 0o700 });
+  await writeFile(store.cachePath, `${JSON.stringify(filePayload, null, 2)}\n`, {
+    encoding: 'utf8',
+    mode: 0o600,
+  });
+  await chmod(store.cachePath, 0o600);
+}
+
+function isTokenFresh(token: string): boolean {
+  const expiryMs = readJwtExpiryMs(token);
+  if (expiryMs === null) {
+    return true;
+  }
+
+  return expiryMs > Date.now() + 30_000;
+}
+
+function readJwtExpiryMs(token: string): number | null {
+  const parts = token.split('.');
+  if (parts.length < 2) {
+    return null;
+  }
+
+  const payload = decodeJwtSection(parts[1]);
+  if (!payload || typeof payload.exp !== 'number' || !Number.isFinite(payload.exp)) {
+    return null;
+  }
+
+  return payload.exp * 1_000;
+}
+
+function decodeJwtSection(section: string): Record<string, unknown> | null {
+  const normalized = section.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+
+  try {
+    const decoded = Buffer.from(padded, 'base64').toString('utf8');
+    const parsed = JSON.parse(decoded);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return null;
+    }
+
+    return parsed as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function isFsError(error: unknown): error is NodeJS.ErrnoException {
+  return !!error && typeof error === 'object' && 'code' in error;
 }
 
 function assertApiBaseSafety(apiBase: string, allowRemote: boolean): void {

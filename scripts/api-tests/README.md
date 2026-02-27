@@ -25,6 +25,9 @@ pnpm api-tests -- --confirm-writes --json
 
 # Allow non-local API base explicitly
 pnpm api-tests -- --api-base https://staging.example.com --allow-remote --confirm-writes
+
+# Clear persisted token cache and exit
+pnpm api-tests -- --clear-token-cache
 ```
 
 ## Account Matrix (OWNER/ADMIN/EDITOR/VIEWER)
@@ -60,6 +63,10 @@ pnpm api-tests -- \
 - `--allow-remote`: allow non-local API URL
 - `--confirm-writes`: execute write scenarios
 - `--json`: emit JSONL logs
+- `--token-cache` / `--no-token-cache`: enable/disable persisted auth token cache
+  - default: enabled for local `--api-base`, disabled for remote API bases unless `--token-cache` is passed
+- `--token-cache-path <path>`: override cache file path (default: `.data/api-tests/token-cache.json`)
+- `--clear-token-cache`: delete the cache file and exit with code 0
 - `--only <list>`: comma-separated module names
 - `--tenant-id <id>`: use existing tenant for tenant-scoped modules
 - `--tenant-slug <slug>` / `--tenant-name <name>`: tenant metadata when auto-creating tenant
@@ -72,5 +79,8 @@ pnpm api-tests -- \
 ## Runtime Notes
 
 - Requires dev code auth flow (`AUTH_DEV_CODE_ENABLED=true`) for login automation.
+- Tenant sessions are cached by `apiBase + email + tenantId` in `.data/api-tests/token-cache.json`.
+  - cache stores both base auth token and switched tenant token
+  - JWT `exp` is used to refresh only what is expired (switch token first, then full login)
 - Uses Node 22 global `fetch` and `FormData`.
 - Designed for low-noise logs by default; use `--json` for full event trails.

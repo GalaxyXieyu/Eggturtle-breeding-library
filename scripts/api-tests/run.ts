@@ -7,6 +7,7 @@ import {
   ApiTestError,
   ModuleResult,
   TestModule,
+  clearTokenCache,
   createContext,
   createLogger,
   formatError,
@@ -40,6 +41,16 @@ async function main(): Promise<void> {
   const options = parseCliArgs(process.argv.slice(2));
   if (options.help) {
     printUsage();
+    return;
+  }
+
+  if (options.clearTokenCache) {
+    const removed = await clearTokenCache(options);
+    const log = createLogger(options.json);
+    log.info('runner.token-cache-cleared', {
+      path: options.tokenCachePath,
+      removed,
+    });
     return;
   }
 
