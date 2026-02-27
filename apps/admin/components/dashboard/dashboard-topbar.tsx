@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 
@@ -36,7 +37,9 @@ export function DashboardTopbar({ collapsed, onToggleSidebar }: DashboardTopbarP
         </div>
       </div>
 
-      <p className="topbar-meta">Session check placeholder (T29)</p>
+      <Link className="topbar-meta" href="/logout">
+        Sign out
+      </Link>
     </header>
   );
 }
