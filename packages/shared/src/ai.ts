@@ -1,35 +1,43 @@
 import { z } from 'zod';
 
+import { ErrorCode } from './error-codes';
 import { storageObjectKeySchema } from './storage';
 
-export const aiQuotaUnitSchema = z.enum([
-  'analysis_request',
-  'input_image',
-  'input_token',
-  'output_token'
-]);
+const TEN_MB_BYTES = 10 * 1024 * 1024;
+const THIRTY_MB_BYTES = 30 * 1024 * 1024;
 
-export const aiQuotaWindowSchema = z.enum(['daily', 'monthly', 'lifetime']);
+export const aiQuotaScopeSchema = z.enum(['tenant']);
+export const aiQuotaPeriodSchema = z.enum(['monthly']);
+
+export const aiQuotaUnitSchema = z.enum(['image_count']);
+
+export const aiInputLimitSchema = z.object({
+  maxImages: z.literal(3),
+  maxSingleImageBytes: z.literal(TEN_MB_BYTES),
+  // Allow up to 3 images at 10MB each.
+  maxTotalInputBytes: z.literal(THIRTY_MB_BYTES)
+});
 
 export const aiQuotaSummarySchema = z.object({
+  scope: aiQuotaScopeSchema,
+  period: aiQuotaPeriodSchema,
   unit: aiQuotaUnitSchema,
   limit: z.number().int().positive().nullable(),
   used: z.number().int().nonnegative(),
   remaining: z.number().int().nonnegative().nullable(),
-  window: aiQuotaWindowSchema,
   resetAt: z.string().datetime().nullable()
 });
 
 export const aiQuotaStatusResponseSchema = z.object({
   tenantId: z.string().min(1),
-  userId: z.string().min(1),
   items: z.array(aiQuotaSummarySchema),
   checkedAt: z.string().datetime()
 });
 
 export const turtleAnalysisImageInputSchema = z.object({
   key: storageObjectKeySchema,
-  contentType: z.string().trim().min(1).max(255).optional()
+  contentType: z.string().trim().min(1).max(255).optional(),
+  sizeBytes: z.number().int().positive().max(TEN_MB_BYTES).optional()
 });
 
 export const turtleAnalysisEnvironmentSchema = z.object({
@@ -59,12 +67,51 @@ export const turtleAnalysisResultSchema = z.object({
 export const turtleAnalysisResponseSchema = z.object({
   analysisId: z.string().min(1),
   result: turtleAnalysisResultSchema,
+  quotaConsumed: z.number().int().positive(),
   quota: aiQuotaSummarySchema,
-  modelId: z.string().min(1)
+  modelId: z.string().min(1),
+  limits: aiInputLimitSchema
 });
 
-export type AiQuotaUnit = z.infer<typeof aiQuotaUnitSchema>;
+export const aiPurchasePackSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  imageCredits: z.number().int().positive(),
+  priceCents: z.number().int().positive(),
+  currency: z.string().trim().length(3)
+});
+
+export const aiQuotaExceededErrorDataSchema = z.object({
+  remaining: z.number().int().nonnegative(),
+  resetAt: z.string().datetime().nullable(),
+  purchase: z.object({
+    packs: z.array(aiPurchasePackSchema)
+  })
+});
+
+export const aiQuotaExceededErrorResponseSchema = z.object({
+  message: z.string().min(1),
+  errorCode: z.literal(ErrorCode.QuotaExceeded),
+  statusCode: z.union([z.literal(402), z.literal(429)]),
+  data: aiQuotaExceededErrorDataSchema
+});
+
+export const aiInputTooLargeErrorResponseSchema = z.object({
+  message: z.string().min(1),
+  errorCode: z.literal(ErrorCode.InvalidRequestPayload),
+  statusCode: z.literal(413),
+  data: z.object({
+    maxSingleImageBytes: z.literal(TEN_MB_BYTES),
+    actualSingleImageBytes: z.number().int().positive().optional(),
+    maxTotalInputBytes: z.literal(THIRTY_MB_BYTES),
+    actualTotalInputBytes: z.number().int().positive().optional(),
+    reason: z.enum(['single_image', 'total']).optional()
+  })
+});
+
 export type AiQuotaSummary = z.infer<typeof aiQuotaSummarySchema>;
 export type AiQuotaStatusResponse = z.infer<typeof aiQuotaStatusResponseSchema>;
 export type TurtleAnalysisRequest = z.infer<typeof turtleAnalysisRequestSchema>;
 export type TurtleAnalysisResponse = z.infer<typeof turtleAnalysisResponseSchema>;
+export type AiQuotaExceededErrorResponse = z.infer<typeof aiQuotaExceededErrorResponseSchema>;
+export type AiInputTooLargeErrorResponse = z.infer<typeof aiInputTooLargeErrorResponseSchema>;

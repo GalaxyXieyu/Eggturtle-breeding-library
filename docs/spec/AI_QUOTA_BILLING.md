@@ -18,7 +18,8 @@ Core quota rules:
 
 Input size guardrail:
 - Each uploaded image must be <= `10 MB`.
-- Requests with any image exceeding `10 MB` are rejected before provider call.
+- Recommended max total input size per request: <= `30 MB` (up to 3 images at 10MB each).
+- Requests exceeding limits are rejected before provider call.
 
 Monetization behavior:
 - Base plan provides monthly image credits.

@@ -20,7 +20,7 @@ export const ErrorCode = {
   AiFeatureDisabled: 'AI_FEATURE_DISABLED',
   AiModelNotConfigured: 'AI_MODEL_NOT_CONFIGURED',
   AiRateLimited: 'AI_RATE_LIMITED',
-  AiQuotaExceeded: 'AI_QUOTA_EXCEEDED',
+  QuotaExceeded: 'QUOTA_EXCEEDED',
   AiProviderError: 'AI_PROVIDER_ERROR'
 } as const;
 

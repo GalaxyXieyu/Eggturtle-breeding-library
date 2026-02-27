@@ -21,7 +21,7 @@ Also define: how to configure models in backend (admin/tenant settings), quota/u
 
 - Public sharing links are viewable by anyone with the link.
 - AI outputs are advice-only, not medical diagnosis.
-- Free users have limited attempts (quota); paid can get more.
+- Quota is measured by image count, scoped per-tenant, reset monthly.
 
 ## Architecture Overview
 
@@ -42,9 +42,9 @@ Also define: how to configure models in backend (admin/tenant settings), quota/u
   - Server-level model catalog: non-secret definitions
   - Tenant-level policy: which model is enabled/selected, feature toggles
 
-- `ai-quota/` (free trial / rate limiting)
-  - Per-user counters with reset window (daily or lifetime trial)
-  - Hard limits (max images, max size, max requests/min)
+- `ai-quota/` (tenant credits / rate limiting)
+  - Per-tenant counters with monthly reset
+  - Hard limits (max images, max single image size 10 MB, max total input size 30 MB, max requests/min)
 
 - `ai-usage/` (billing/analytics)
   - Stores usage events with token counts + estimated cost
@@ -62,8 +62,9 @@ Keep secrets in env, not DB.
   - `tenantId` (unique)
   - `enabled` (bool)
   - `defaultModelId` (string)
-  - `freeQuotaDaily` (int) OR `freeTrialTotal` (int)
-  - `payPerUseEnabled` (bool) (optional)
+  - `monthlyImageCreditLimit` (int)
+  - `extraImageCredits` (int, add-on packs)
+  - `resetDayOfMonth` (int, usually 1)
 
 - `AiUsageEvent`
   - `tenantId`, `actorUserId`
@@ -75,29 +76,35 @@ Keep secrets in env, not DB.
   - `createdAt`
 
 - `AiQuotaCounter`
-  - `tenantId`, `actorUserId`
-  - `windowStart` (date)
-  - `usedCount`
+  - `tenantId`
+  - `periodStart` (month start datetime)
+  - `usedImageCount`
+  - `remainingImageCredits`
 
 ## API Contracts (@eggturtle/shared)
 
 Defined in `packages/shared/src/ai.ts` (placeholder contracts):
 - `turtleAnalysisRequestSchema`
-  - `images: [{ key: string, contentType?: string }]`
+  - `images: [{ key: string, contentType?: string, sizeBytes?: number }]`
   - `species?`, `ageRange?`, `weightGrams?`, `environment?`, `question?`
 - `turtleAnalysisResponseSchema`
   - `analysisId`
   - `result` (`observations`, `riskNotes`, `careChecklist`, `followUp`, `disclaimer`)
-  - `quota` (`unit`, `limit`, `used`, `remaining`, `window`, `resetAt`)
+  - `quotaConsumed` (image count consumed in this request)
+  - `quota` (`scope`, `period`, `unit`, `limit`, `used`, `remaining`, `resetAt`)
   - `modelId`
+  - `limits` (`maxImages`, `maxTotalInputBytes`)
 - `aiQuotaStatusResponseSchema`
-  - `tenantId`, `userId`, `items[]`, `checkedAt`
+  - `tenantId`, `items[]`, `checkedAt`
+- Error payload placeholders
+  - `aiQuotaExceededErrorResponseSchema`
+  - `aiInputTooLargeErrorResponseSchema`
 
 Error codes (extend `ErrorCode`):
 - `AI_FEATURE_DISABLED`
 - `AI_MODEL_NOT_CONFIGURED`
 - `AI_RATE_LIMITED`
-- `AI_QUOTA_EXCEEDED`
+- `QUOTA_EXCEEDED`
 - `AI_PROVIDER_ERROR`
 
 ## Model Configuration (How Admin Chooses Models)
@@ -120,10 +127,11 @@ Error codes (extend `ErrorCode`):
 ## Quota / Billing Behavior
 
 - Enforce quota before provider call.
+- Quota unit for Phase A is image count (`image_count`).
+- Quota scope is tenant-level and resets monthly.
+- Enforce model input size limit before provider call (max single image bytes = 10 MB; recommended max total input bytes = 30 MB).
+- On quota exhaustion, return paywall-ready error payload so web can open recharge modal with add-on packs.
 - Record usage event after provider returns.
-- For Phase A launch:
-  - Free users: small daily quota (e.g. 3/day) OR new-user trial total (e.g. 10 total)
-  - Over quota: block + upsell (or pay-per-use later)
 
 ## Sharing & Growth Hook (Later)
 

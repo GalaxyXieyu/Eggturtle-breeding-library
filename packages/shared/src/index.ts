@@ -126,10 +126,16 @@ export type {
   ShareResourceType
 } from './share';
 export {
+  aiInputLimitSchema,
+  aiInputTooLargeErrorResponseSchema,
+  aiPurchasePackSchema,
+  aiQuotaExceededErrorDataSchema,
+  aiQuotaExceededErrorResponseSchema,
+  aiQuotaPeriodSchema,
+  aiQuotaScopeSchema,
   aiQuotaStatusResponseSchema,
   aiQuotaSummarySchema,
   aiQuotaUnitSchema,
-  aiQuotaWindowSchema,
   turtleAnalysisEnvironmentSchema,
   turtleAnalysisImageInputSchema,
   turtleAnalysisRequestSchema,
@@ -137,9 +143,10 @@ export {
   turtleAnalysisResultSchema
 } from './ai';
 export type {
+  AiInputTooLargeErrorResponse,
+  AiQuotaExceededErrorResponse,
   AiQuotaStatusResponse,
   AiQuotaSummary,
-  AiQuotaUnit,
   TurtleAnalysisRequest,
   TurtleAnalysisResponse
 } from './ai';
