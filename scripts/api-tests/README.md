@@ -20,6 +20,9 @@ pnpm api-tests -- --confirm-writes
 # Run selected modules only
 pnpm api-tests -- --confirm-writes --only auth,products,shares
 
+# Clear local token cache before execution
+pnpm api-tests -- --confirm-writes --clear-token-cache
+
 # JSONL logs for CI or machine parsing
 pnpm api-tests -- --confirm-writes --json
 
@@ -60,6 +63,7 @@ pnpm api-tests -- \
 - `--allow-remote`: allow non-local API URL
 - `--confirm-writes`: execute write scenarios
 - `--json`: emit JSONL logs
+- `--clear-token-cache`: clear `.data/api-tests/token-cache.json` before the run
 - `--only <list>`: comma-separated module names
 - `--tenant-id <id>`: use existing tenant for tenant-scoped modules
 - `--tenant-slug <slug>` / `--tenant-name <name>`: tenant metadata when auto-creating tenant
@@ -72,5 +76,8 @@ pnpm api-tests -- \
 ## Runtime Notes
 
 - Requires dev code auth flow (`AUTH_DEV_CODE_ENABLED=true`) for login automation.
+- Login base tokens are cached in `.data/api-tests/token-cache.json` for 1 hour to reduce repeated auth churn.
+- `--clear-token-cache` removes the cache file before module execution.
+- Runner executes all selected modules and prints a consolidated failure summary at the end.
 - Uses Node 22 global `fetch` and `FormData`.
 - Designed for low-noise logs by default; use `--json` for full event trails.
