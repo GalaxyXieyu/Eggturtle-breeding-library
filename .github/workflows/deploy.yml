@@ -6,11 +6,11 @@ on:
   workflow_dispatch:
 
 env:
-  IMAGE_NAME: ${{ vars.IMAGE_NAME || 'turtle_album' }}
+  IMAGE_NAME: ${{ vars.IMAGE_NAME || 'eggturtles' }}
   K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE || 'ns-lmgpb9nc' }}
-  K8S_WORKLOAD_NAME: ${{ vars.K8S_WORKLOAD_NAME || 'turtles-album' }}
+  K8S_WORKLOAD_NAME: ${{ vars.K8S_WORKLOAD_NAME || 'eggturtles' }}
   K8S_WORKLOAD_KIND: ${{ vars.K8S_WORKLOAD_KIND || 'auto' }}
-  K8S_CONTAINER_NAME: ${{ vars.K8S_CONTAINER_NAME || '' }}
+  K8S_CONTAINER_NAME: ${{ vars.K8S_CONTAINER_NAME || 'eggturtles' }}
   REQUIRE_DATA_PVC: ${{ vars.REQUIRE_DATA_PVC || 'true' }}
 
 jobs:
@@ -52,6 +52,7 @@ jobs:
           cd backend
 
           # Run server in background and capture logs for debugging.
+          ADMIN_USERNAME=admin ADMIN_PASSWORD=admin123 \
           ../.venv-backend/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 > ../uvicorn.log 2>&1 &
           UVICORN_PID=$!
           echo "uvicorn pid=$UVICORN_PID"
