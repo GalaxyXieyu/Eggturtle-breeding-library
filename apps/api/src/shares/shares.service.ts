@@ -2,6 +2,7 @@ import {
   BadRequestException,
   HttpException,
   HttpStatus,
+  Inject,
   Injectable,
   NotFoundException,
   UnauthorizedException
@@ -12,6 +13,8 @@ import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { PrismaService } from '../prisma.service';
+import { STORAGE_PROVIDER_TOKEN } from '../storage/storage.constants';
+import type { StorageProvider } from '../storage/storage.provider';
 import { TenantSubscriptionsService } from '../subscriptions/tenant-subscriptions.service';
 
 type PublicShareQueryInput = {
@@ -40,7 +43,8 @@ export class SharesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditLogsService: AuditLogsService,
-    private readonly tenantSubscriptionsService: TenantSubscriptionsService
+    private readonly tenantSubscriptionsService: TenantSubscriptionsService,
+    @Inject(STORAGE_PROVIDER_TOKEN) private readonly storageProvider: StorageProvider
   ) {}
 
   async createShare(tenantId: string, actorUserId: string, payload: CreateShareRequest) {
@@ -187,6 +191,24 @@ export class SharesService {
       });
     }
 
+    const images = await Promise.all(
+      share.product.images.map(async (image) => ({
+        id: image.id,
+        tenantId: image.tenantId,
+        productId: image.productId,
+        key: image.key,
+        url: await this.resolvePublicImageUrl({
+          tenantId: share.tenantId,
+          key: image.key,
+          fallbackUrl: image.url,
+          expiresAt
+        }),
+        contentType: image.contentType,
+        sortOrder: image.sortOrder,
+        isMain: image.isMain
+      }))
+    );
+
     await this.writeShareAccessAuditLog(share, expiresAt, 'data', meta);
 
     return {
@@ -203,19 +225,24 @@ export class SharesService {
         code: share.product.code,
         name: share.product.name,
         description: share.product.description,
-        images: share.product.images.map((image) => ({
-          id: image.id,
-          tenantId: image.tenantId,
-          productId: image.productId,
-          key: image.key,
-          url: image.url,
-          contentType: image.contentType,
-          sortOrder: image.sortOrder,
-          isMain: image.isMain
-        }))
+        images
       },
       expiresAt: expiresAt.toISOString()
     };
+  }
+
+  private async resolvePublicImageUrl(input: {
+    tenantId: string;
+    key: string;
+    fallbackUrl: string;
+    expiresAt: Date;
+  }): Promise<string> {
+    if (!this.isManagedStorageKey(input.tenantId, input.key)) {
+      return input.fallbackUrl;
+    }
+
+    const ttlSeconds = Math.max(1, Math.ceil((input.expiresAt.getTime() - Date.now()) / 1000));
+    return this.storageProvider.getSignedUrl(input.key, ttlSeconds);
   }
 
   private async getOrCreateProductShare(tenantId: string, productId: string, actorUserId: string) {
@@ -476,6 +503,11 @@ export class SharesService {
         shareToken: share.shareToken ?? null
       }
     });
+  }
+
+  private isManagedStorageKey(tenantId: string, key: string): boolean {
+    const normalizedKey = key.replace(/\\/g, '/').replace(/^\/+/, '');
+    return normalizedKey.startsWith(`${tenantId}/`);
   }
 
   private isProductShareUniqueConflict(error: unknown): boolean {

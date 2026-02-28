@@ -5,6 +5,7 @@
 ## Goals
 
 - Split scenarios by module (`auth`, `products`, `series`, `breeders`, `images`, `featured`, `shares`, `admin`, `subscription`, `account-matrix`)
+- `images`/`shares` modules include tenant-scoping regressions; `account-matrix` covers role-based permission checks
 - Keep logs concise by default, with optional JSONL output for debugging (`--json`)
 - Safe by default: no write requests are sent unless `--confirm-writes` is provided
 

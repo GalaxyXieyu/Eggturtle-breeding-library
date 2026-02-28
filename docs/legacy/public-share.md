@@ -17,6 +17,7 @@
     - `${WEB_PUBLIC_BASE_URL}/public/share?sid=<shareId>&tenantId=<tenantId>&resourceType=product&resourceId=<productId>&exp=<unixSeconds>&sig=<hmac>`
 - `GET /shares/:shareId/public?tenantId=...&resourceType=product&resourceId=...&exp=...&sig=...` (public)
   - Verifies HMAC signature + expiry and returns public share data for rendering.
+  - For managed storage keys (tenant-prefixed object keys), image URLs are returned as short-lived signed URLs so PG + MinIO deployments can render images without exposing buckets publicly.
 
 ## Curl Flow
 
