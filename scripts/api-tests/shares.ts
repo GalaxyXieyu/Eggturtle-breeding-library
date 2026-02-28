@@ -3,7 +3,11 @@ import {
   ModuleResult,
   TestContext,
   TestModule,
+  assertErrorCode,
+  asArray,
   asObject,
+  createTinyPngFile,
+  defaultEmail,
   ensureTenantSession,
   parseShareRedirect,
   readObject,
@@ -13,7 +17,7 @@ import {
 
 export const sharesModule: TestModule = {
   name: 'shares',
-  description: 'Share creation, redirect signature, and public payload checks',
+  description: 'Share creation, redirect signature, public fetch, and tenant scoping checks',
   requiresWrites: true,
   run,
 };
@@ -48,6 +52,17 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
   const productId = readString(product, 'id');
   checks += 1;
 
+  const uploadImageResponse = await ctx.request({
+    method: 'POST',
+    path: `/products/${productId}/images`,
+    token: session.token,
+    formData: createTinyPngFile(),
+  });
+  if (uploadImageResponse.status !== 201) {
+    throw new ApiTestError(`upload image expected 201, got ${uploadImageResponse.status}`);
+  }
+  checks += 1;
+
   const createShareResponse = await ctx.request({
     method: 'POST',
     path: '/shares',
@@ -80,6 +95,10 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
     throw new ApiTestError('share redirect missing location header');
   }
 
+  if (!location.includes('/public/share')) {
+    throw new ApiTestError(`share redirect target mismatch, expected /public/share, got: ${location}`);
+  }
+
   const signed = parseShareRedirect(location);
   checks += 1;
 
@@ -107,6 +126,59 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
   if (readString(publicProduct, 'id', 'shares.public.product.id') !== productId) {
     throw new ApiTestError('public share payload mismatch: product.id');
   }
+
+  const images = asArray(publicProduct.images, 'shares.public.product.images').map((entry) =>
+    asObject(entry, 'shares.public.product.images.item'),
+  );
+
+  if (images.length < 1) {
+    throw new ApiTestError('public share payload should contain uploaded images');
+  }
+
+  const firstImageUrl = readString(images[0], 'url', 'shares.public.product.images[0].url');
+  if (firstImageUrl.startsWith('s3://')) {
+    throw new ApiTestError('public share image URL should be browser-accessible, got s3:// URL');
+  }
+  checks += 1;
+
+  const tamperedPublicResponse = await ctx.request({
+    method: 'GET',
+    path: `/shares/${signed.sid}/public`,
+    query: {
+      tenantId: signed.tenantId,
+      resourceType: signed.resourceType,
+      resourceId: signed.resourceId,
+      exp: signed.exp,
+      sig: `${signed.sig}x`,
+    },
+  });
+  if (tamperedPublicResponse.status !== 401) {
+    throw new ApiTestError(
+      `tampered public share signature expected 401, got ${tamperedPublicResponse.status}`,
+    );
+  }
+  assertErrorCode(tamperedPublicResponse, 'SHARE_SIGNATURE_INVALID');
+  checks += 1;
+
+  const foreignSession = await ensureTenantSession(ctx, {
+    email: defaultEmail('shares-foreign-tenant'),
+  });
+
+  const foreignCreateShareResponse = await ctx.request({
+    method: 'POST',
+    path: '/shares',
+    token: foreignSession.token,
+    json: {
+      resourceType: 'product',
+      resourceId: productId,
+    },
+  });
+  if (foreignCreateShareResponse.status !== 404) {
+    throw new ApiTestError(
+      `cross-tenant create share expected 404, got ${foreignCreateShareResponse.status}`,
+    );
+  }
+  assertErrorCode(foreignCreateShareResponse, 'PRODUCT_NOT_FOUND');
   checks += 1;
 
   ctx.log.ok('shares.done', {

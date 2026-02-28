@@ -260,24 +260,105 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
     method: 'POST',
     path: `/products/${ownerProductId}/images`,
     token: roleTokens.OWNER,
-    formData: createTinyPngFile(),
+    formData: createTinyPngFile('file', 'matrix-a.png'),
   });
   assertStatus(uploadedImage, 201, 'owner.images.upload');
   const imageBody = asObject(uploadedImage.body);
   const image = readObject(imageBody, 'image', 'owner.images.upload.image');
-  const imageId = readString(image, 'id', 'owner.images.upload.image.id');
+  const firstImageId = readString(image, 'id', 'owner.images.upload.image.id');
+  checks += 1;
+
+  const secondUploadedImage = await ctx.request({
+    method: 'POST',
+    path: `/products/${ownerProductId}/images`,
+    token: roleTokens.OWNER,
+    formData: createTinyPngFile('file', 'matrix-b.png'),
+  });
+  assertStatus(secondUploadedImage, 201, 'owner.images.upload.second');
+  const secondImageBody = asObject(secondUploadedImage.body);
+  const secondImage = readObject(secondImageBody, 'image', 'owner.images.upload.second.image');
+  const secondImageId = readString(secondImage, 'id', 'owner.images.upload.second.image.id');
+  checks += 1;
+
+  const viewerUploadImageDenied = await ctx.request({
+    method: 'POST',
+    path: `/products/${ownerProductId}/images`,
+    token: roleTokens.VIEWER,
+    formData: createTinyPngFile('file', 'matrix-viewer.png'),
+  });
+  assertStatus(viewerUploadImageDenied, 403, 'viewer.images.upload');
+  assertErrorCode(viewerUploadImageDenied, 'FORBIDDEN');
+  checks += 1;
+
+  const adminSetMainImage = await ctx.request({
+    method: 'PUT',
+    path: `/products/${ownerProductId}/images/${secondImageId}/main`,
+    token: roleTokens.ADMIN,
+  });
+  assertStatus(adminSetMainImage, 200, 'admin.images.set-main');
+  checks += 1;
+
+  const viewerSetMainDenied = await ctx.request({
+    method: 'PUT',
+    path: `/products/${ownerProductId}/images/${firstImageId}/main`,
+    token: roleTokens.VIEWER,
+  });
+  assertStatus(viewerSetMainDenied, 403, 'viewer.images.set-main');
+  assertErrorCode(viewerSetMainDenied, 'FORBIDDEN');
+  checks += 1;
+
+  const editorReorderImages = await ctx.request({
+    method: 'PUT',
+    path: `/products/${ownerProductId}/images/reorder`,
+    token: roleTokens.EDITOR,
+    json: {
+      imageIds: [secondImageId, firstImageId],
+    },
+  });
+  assertStatus(editorReorderImages, 200, 'editor.images.reorder');
+  checks += 1;
+
+  const viewerReorderDenied = await ctx.request({
+    method: 'PUT',
+    path: `/products/${ownerProductId}/images/reorder`,
+    token: roleTokens.VIEWER,
+    json: {
+      imageIds: [firstImageId, secondImageId],
+    },
+  });
+  assertStatus(viewerReorderDenied, 403, 'viewer.images.reorder');
+  assertErrorCode(viewerReorderDenied, 'FORBIDDEN');
+  checks += 1;
+
+  const viewerDeleteImageDenied = await ctx.request({
+    method: 'DELETE',
+    path: `/products/${ownerProductId}/images/${firstImageId}`,
+    token: roleTokens.VIEWER,
+  });
+  assertStatus(viewerDeleteImageDenied, 403, 'viewer.images.delete');
+  assertErrorCode(viewerDeleteImageDenied, 'FORBIDDEN');
+  checks += 1;
+
+  const editorDeleteImage = await ctx.request({
+    method: 'DELETE',
+    path: `/products/${ownerProductId}/images/${secondImageId}`,
+    token: roleTokens.EDITOR,
+  });
+  assertStatus(editorDeleteImage, 200, 'editor.images.delete');
   checks += 1;
 
   for (const [role, token] of Object.entries(roleTokens) as Array<[RoleLabel, string]>) {
     const imageContent = await ctx.request({
       method: 'GET',
-      path: `/products/${ownerProductId}/images/${imageId}/content`,
+      path: `/products/${ownerProductId}/images/${firstImageId}/content`,
       token,
       redirect: 'manual',
     });
     assertStatus(imageContent, [200, 302], `${role}.images.content`);
     checks += 1;
   }
+
+  const imageId = firstImageId;
 
   for (const [role, token] of Object.entries(roleTokens) as Array<[RoleLabel, string]>) {
     const adminDenied = await ctx.request({ method: 'GET', path: '/admin/tenants', token });
