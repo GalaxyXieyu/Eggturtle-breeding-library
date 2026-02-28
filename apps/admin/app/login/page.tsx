@@ -1,7 +1,6 @@
 'use client';
 
 import { FormEvent, useEffect, useState } from 'react';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
   meResponseSchema,
@@ -169,17 +168,20 @@ export default function LoginPage() {
   return (
     <main className="login-page">
       <section className="login-layout">
-        <section className="card stack login-card" aria-live={checkingSession ? 'polite' : undefined}>
-          <header className="stack login-card-head">
+        <div className="login-spacer" aria-hidden="true" />
+
+        <section className="stack login-right">
+          <header className="stack login-brand">
             <h1 className="login-product-title">{productTitle}</h1>
             <p className="login-product-subtitle">{productSubtitle}</p>
           </header>
 
-          {checkingSession ? <p className="muted login-session-hint">正在检查会话状态...</p> : null}
+          <section className="card stack login-card" aria-live={checkingSession ? 'polite' : undefined}>
+            {checkingSession ? <p className="muted login-session-hint">正在检查会话状态...</p> : null}
 
-          {!checkingSession ? (
-            <>
-              <div className="login-mode-toggle" role="tablist" aria-label="登录模式">
+            {!checkingSession ? (
+              <>
+                <div className="login-mode-toggle" role="tablist" aria-label="登录模式">
                 <button
                   type="button"
                   role="tab"
@@ -298,13 +300,10 @@ export default function LoginPage() {
                   </div>
                 </form>
               ) : null}
-            </>
-          ) : null}
+              </>
+            ) : null}
+          </section>
         </section>
-
-        <aside className="login-hero" aria-hidden="true">
-          <Image className="login-hero-image" src="/login-hero.svg" alt="" width={1080} height={820} priority />
-        </aside>
       </section>
     </main>
   );

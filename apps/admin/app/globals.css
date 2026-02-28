@@ -733,6 +733,10 @@ button.secondary:hover:not(:disabled) {
   justify-content: center;
   padding: 32px 14px;
   position: relative;
+  background: #f5f5f4;
+  background-image: url('/login-bg.webp');
+  background-size: cover;
+  background-position: center;
 }
 
 .login-page::before {
@@ -740,17 +744,33 @@ button.secondary:hover:not(:disabled) {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(circle at 16% 20%, rgba(255, 212, 0, 0.13) 0%, rgba(255, 212, 0, 0) 48%), radial-gradient(circle at 85% 16%, rgba(255, 212, 0, 0.1) 0%, rgba(255, 212, 0, 0) 42%);
+  background: linear-gradient(125deg, rgba(255, 255, 255, 0.76) 0%, rgba(255, 255, 255, 0.9) 52%, rgba(255, 255, 255, 0.74) 100%),
+    radial-gradient(circle at 16% 20%, rgba(255, 212, 0, 0.13) 0%, rgba(255, 212, 0, 0) 48%),
+    radial-gradient(circle at 85% 16%, rgba(255, 212, 0, 0.1) 0%, rgba(255, 212, 0, 0) 42%);
 }
 
 .login-layout {
   width: min(1120px, 100%);
   display: grid;
-  grid-template-columns: minmax(0, 470px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 520px);
   gap: 24px;
   align-items: center;
   position: relative;
   z-index: 1;
+}
+
+.login-spacer {
+  min-height: 520px;
+}
+
+.login-right {
+  display: grid;
+  gap: 18px;
+}
+
+.login-brand {
+  gap: 6px;
+  padding: 0 4px;
 }
 
 .login-card {
@@ -991,6 +1011,10 @@ button.secondary:hover:not(:disabled) {
   .login-layout {
     grid-template-columns: 1fr;
     width: min(100%, 560px);
+  }
+
+  .login-spacer {
+    display: none;
   }
 
   .login-card {
