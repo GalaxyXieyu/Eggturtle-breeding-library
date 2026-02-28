@@ -7,6 +7,7 @@ export const ErrorCode = {
   Unauthorized: 'UNAUTHORIZED',
   Forbidden: 'FORBIDDEN',
   TenantNotFound: 'TENANT_NOT_FOUND',
+  TenantMemberNotFound: 'TENANT_MEMBER_NOT_FOUND',
   NotTenantMember: 'NOT_TENANT_MEMBER',
   TenantSlugConflict: 'TENANT_SLUG_CONFLICT',
   TenantNotSelected: 'TENANT_NOT_SELECTED',
