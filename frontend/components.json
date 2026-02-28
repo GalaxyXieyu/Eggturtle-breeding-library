@@ -10,6 +10,10 @@
     "cssVariables": true,
     "prefix": ""
   },
+  "registries": {
+    "@shadcn": "https://ui.shadcn.com/r",
+    "@aceternity": "https://ui.aceternity.com/registry"
+  },
   "aliases": {
     "components": "@/components",
     "utils": "@/lib/utils",

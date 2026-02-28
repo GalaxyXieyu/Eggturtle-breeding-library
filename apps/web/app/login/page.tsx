@@ -20,6 +20,10 @@ type LoginCopy = {
   title: string;
   subtitle: string;
   heroEyebrow: string;
+  formTitle: string;
+  showcaseItemAuth: string;
+  showcaseItemTenant: string;
+  showcaseItemWorkflow: string;
   localeLabel: string;
   modeLabel: string;
   localeZh: string;
@@ -31,7 +35,6 @@ type LoginCopy = {
   passwordLabel: string;
   passwordPlaceholder: string;
   passwordLogin: string;
-  passwordIntro: string;
   requestCode: string;
   sending: string;
   codeSentTo: string;
@@ -44,14 +47,17 @@ type LoginCopy = {
   setPasswordLabel: string;
   setPasswordPlaceholder: string;
   setPasswordHint: string;
-  formIntro: string;
 };
 
 const COPY: Record<Locale, LoginCopy> = {
   zh: {
-    title: '登录 Eggturtle 控制台',
-    subtitle: '支持账号密码登录；首次注册或找回可使用邮箱验证码。',
+    title: 'Eggturtle 控制台',
+    subtitle: '统一管理种龟档案、配种记录与租户协作。',
     heroEyebrow: '租户端工作台',
+    formTitle: '登录控制台',
+    showcaseItemAuth: '统一登录与会话管理',
+    showcaseItemTenant: '多租户隔离与成员权限控制',
+    showcaseItemWorkflow: '验证码 + 密码双模式',
     localeLabel: '语言',
     modeLabel: '登录模式',
     localeZh: '中文',
@@ -63,7 +69,6 @@ const COPY: Record<Locale, LoginCopy> = {
     passwordLabel: '密码',
     passwordPlaceholder: '请输入登录密码',
     passwordLogin: '账号密码登录',
-    passwordIntro: '已注册账号可直接使用邮箱 + 密码登录。',
     requestCode: '获取验证码',
     sending: '发送中...',
     codeSentTo: '验证码已发送至',
@@ -75,13 +80,16 @@ const COPY: Record<Locale, LoginCopy> = {
     changeEmail: '更换邮箱',
     setPasswordLabel: '设置登录密码（可选）',
     setPasswordPlaceholder: '至少 8 位，后续可直接密码登录',
-    setPasswordHint: '填写后将同步设置该账号的登录密码。',
-    formIntro: '输入邮箱后系统会向该账号发送一次性验证码。'
+    setPasswordHint: '填写后将同步设置该账号的登录密码。'
   },
   en: {
-    title: 'Sign in to Eggturtle Console',
-    subtitle: 'Use email + password by default. Email code is available for sign-up or recovery.',
+    title: 'Eggturtle Console',
+    subtitle: 'Manage turtle records, pairing timelines, and tenant collaboration in one place.',
     heroEyebrow: 'Tenant Workspace',
+    formTitle: 'Sign In',
+    showcaseItemAuth: 'Unified login and session handling',
+    showcaseItemTenant: 'Tenant isolation with role-based control',
+    showcaseItemWorkflow: 'Password + one-time code modes',
     localeLabel: 'Language',
     modeLabel: 'Login mode',
     localeZh: 'Chinese',
@@ -93,7 +101,6 @@ const COPY: Record<Locale, LoginCopy> = {
     passwordLabel: 'Password',
     passwordPlaceholder: 'Enter your password',
     passwordLogin: 'Sign in with password',
-    passwordIntro: 'Registered users can sign in with email and password.',
     requestCode: 'Request code',
     sending: 'Sending...',
     codeSentTo: 'Code sent to',
@@ -105,8 +112,7 @@ const COPY: Record<Locale, LoginCopy> = {
     changeEmail: 'Change email',
     setPasswordLabel: 'Set password (optional)',
     setPasswordPlaceholder: 'At least 8 chars for future password login',
-    setPasswordHint: 'If provided, this will set your account password.',
-    formIntro: 'Enter your email and we will send a one-time verification code.'
+    setPasswordHint: 'If provided, this will set your account password.'
   }
 };
 
@@ -236,29 +242,43 @@ export default function LoginPage() {
 
   return (
     <main className="auth-shell auth-shell-login">
+      <section className="login-toolbar">
+        <div className="locale-toggle" role="group" aria-label={copy.localeLabel}>
+          <button
+            type="button"
+            className={locale === 'zh' ? 'locale-btn active' : 'locale-btn'}
+            onClick={() => setLocale('zh')}
+          >
+            {copy.localeZh}
+          </button>
+          <button
+            type="button"
+            className={locale === 'en' ? 'locale-btn active' : 'locale-btn'}
+            onClick={() => setLocale('en')}
+          >
+            {copy.localeEn}
+          </button>
+        </div>
+      </section>
+
       <section className="login-layout">
-        <section className="card login-card">
-          <div className="login-card-head stack">
+        <section className="login-showcase">
+          <div className="login-showcase-glow" aria-hidden />
+          <div className="login-brand-copy">
             <p className="login-kicker">{copy.heroEyebrow}</p>
             <h1>{copy.title}</h1>
             <p className="muted">{copy.subtitle}</p>
           </div>
-          <div className="locale-toggle" role="group" aria-label={copy.localeLabel}>
-            <span>{copy.localeLabel}</span>
-            <button
-              type="button"
-              className={locale === 'zh' ? 'locale-btn active' : 'locale-btn'}
-              onClick={() => setLocale('zh')}
-            >
-              {copy.localeZh}
-            </button>
-            <button
-              type="button"
-              className={locale === 'en' ? 'locale-btn active' : 'locale-btn'}
-              onClick={() => setLocale('en')}
-            >
-              {copy.localeEn}
-            </button>
+          <div className="login-showcase-chips">
+            <span>{copy.showcaseItemAuth}</span>
+            <span>{copy.showcaseItemTenant}</span>
+            <span>{copy.showcaseItemWorkflow}</span>
+          </div>
+        </section>
+
+        <section className="login-card">
+          <div className="login-card-head">
+            <h2>{copy.formTitle}</h2>
           </div>
           <div className="login-form-stack">
             <div className="login-mode-toggle" role="tablist" aria-label={copy.modeLabel}>
@@ -280,8 +300,6 @@ export default function LoginPage() {
 
             {mode === 'password' ? (
               <form className="stack login-panel" onSubmit={handlePasswordLogin}>
-                <h2>{copy.passwordLogin}</h2>
-                <p className="muted">{copy.passwordIntro}</p>
                 <label htmlFor="password-email">{copy.emailLabel}</label>
                 <input
                   id="password-email"
@@ -306,8 +324,6 @@ export default function LoginPage() {
               </form>
             ) : !requestedEmail ? (
               <form className="stack login-panel" onSubmit={handleRequestCode}>
-                <h2>{copy.requestCode}</h2>
-                <p className="muted">{copy.formIntro}</p>
                 <label htmlFor="email">{copy.emailLabel}</label>
                 <input
                   id="email"
