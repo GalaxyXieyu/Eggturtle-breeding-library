@@ -174,66 +174,66 @@ body, p, span, div { font-family: 'Inter', sans-serif; }
 ### 按钮 (Buttons)
 
 #### 胶囊筛选按钮
-```
-常态:  border-neutral-200 bg-white text-neutral-700
-选中:  border-[#FFD400] bg-white text-black + glow shadow
-尺寸:  h-8 px-3 text-xs (移动端) / lg:h-9 lg:px-4 lg:text-sm (桌面)
-圆角:  rounded-full
-```
+| 维度 | 规范 |
+|------|------|
+| 常态 | `border-neutral-200 bg-white text-neutral-700` |
+| 选中 | `border-[#FFD400] bg-white text-black` + glow shadow |
+| 尺寸 | 移动端 `h-8 px-3 text-xs`；桌面端 `lg:h-9 lg:px-4 lg:text-sm` |
+| 圆角 | `rounded-full` |
 
 #### 主操作按钮
-```
-背景:  amber 渐变 (from-amber-400 to-yellow-500)
-文字:  neutral-900
-阴影:  0 4px 12px rgba(251,191,36,0.4)
-圆角:  rounded-full
-```
+| 维度 | 规范 |
+|------|------|
+| 背景 | amber 渐变 `from-amber-400 to-yellow-500` |
+| 文字 | `neutral-900` |
+| 阴影 | `0 4px 12px rgba(251,191,36,0.4)` |
+| 圆角 | `rounded-full` |
 
 ### 卡片 (Cards)
 
 #### 标准卡片
-```
-背景:     bg-white
-边框:     border-neutral-200/90
-圆角:     rounded-2xl
-阴影:     0 4px 20px rgba(0,0,0,0.06)
-悬停:     -translate-y-0.5 + 边框加深 + 阴影增强
-```
+| 维度 | 规范 |
+|------|------|
+| 背景 | `bg-white` |
+| 边框 | `border-neutral-200/90` |
+| 圆角 | `rounded-2xl` |
+| 阴影 | `0 4px 20px rgba(0,0,0,0.06)` |
+| 悬停 | `-translate-y-0.5` + 边框加深 + 阴影增强 |
 
 #### 大卡片/主容器
-```
-背景:     bg-white / bg-white/90 (带模糊)
-圆角:     rounded-3xl
-阴影:     0 12px 34px rgba(0,0,0,0.14)
-```
+| 维度 | 规范 |
+|------|------|
+| 背景 | `bg-white` 或 `bg-white/90`（带模糊） |
+| 圆角 | `rounded-3xl` |
+| 阴影 | `0 12px 34px rgba(0,0,0,0.14)` |
 
 ### 标签 (Badges)
 
 #### 状态标签
-```
-圆角:     rounded-full
-边框:     ring-1 (细边框)
-文字:     小号字 (11px / 12px)
-字重:     font-semibold
-```
+| 维度 | 规范 |
+|------|------|
+| 圆角 | `rounded-full` |
+| 边框 | `ring-1`（细边框） |
+| 文字 | 小号字（11px / 12px） |
+| 字重 | `font-semibold` |
 
 #### 价格标签
-```
-背景:     bg-neutral-900
-文字:     text-[#FFD400]
-边框:     ring-1 ring-white/10
-圆角:     rounded-full
-```
+| 维度 | 规范 |
+|------|------|
+| 背景 | `bg-neutral-900` |
+| 文字 | `text-[#FFD400]` |
+| 边框 | `ring-1 ring-white/10` |
+| 圆角 | `rounded-full` |
 
 ### 筛选栏 (Filter Bar)
 
-```
-定位:     sticky top-[calc(env(safe-area-inset-top)+10px)]
-背景:     bg-white/95 backdrop-blur-md
-边框:     border-black/5
-阴影:     0 4px 20px rgba(0,0,0,0.06)
-圆角:     sm:rounded-2xl
-```
+| 维度 | 规范 |
+|------|------|
+| 定位 | `sticky top-[calc(env(safe-area-inset-top)+10px)]` |
+| 背景 | `bg-white/95 backdrop-blur-md` |
+| 边框 | `border-black/5` |
+| 阴影 | `0 4px 20px rgba(0,0,0,0.06)` |
+| 圆角 | `sm:rounded-2xl` |
 
 ---
 
@@ -241,27 +241,24 @@ body, p, span, div { font-family: 'Inter', sans-serif; }
 
 ### 瀑布流网格 (Masonry Grid)
 
-```
-移动端:   grid-cols-2 gap-3
-平板:     grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4
-大屏:     grid-cols-[repeat(auto-fill,minmax(240px,1fr))]
-```
+| 端侧 | 规范 |
+|------|------|
+| 移动端 | `grid-cols-2 gap-3` |
+| 平板 | `grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4` |
+| 大屏 | `grid-cols-[repeat(auto-fill,minmax(240px,1fr))]` |
 
 ### 详情页布局 (Detail Layout)
 
-```
-移动端:   单列 stack
-桌面端:   lg:grid-cols-[minmax(340px,420px)_1fr] gap-4
-          左列固定宽度, 右列自适应
-```
+| 端侧 | 规范 |
+|------|------|
+| 移动端 | 单列 stack |
+| 桌面端 | `lg:grid-cols-[minmax(340px,420px)_1fr] gap-4`；左列固定宽度，右列自适应 |
 
 ### 横向滚动 (Horizontal Scroll)
 
 用于时间线、家族树等：
-```
-overflow-x-auto overflow-y-hidden
-inline-flex gap-8 px-4 py-6
-```
+- 容器滚动：`overflow-x-auto overflow-y-hidden`
+- 内容排布：`inline-flex gap-8 px-4 py-6`
 
 ---
 
@@ -283,30 +280,16 @@ inline-flex gap-8 px-4 py-6
 ### 常用动效
 
 #### 卡片悬停
-```css
-.product-card:hover {
-  transform: translateY(-5px);
-  transition: all 0.3s ease;
-}
-```
+- 触发条件：`:hover`
+- 位移：`translateY(-5px)`
+- 过渡：`all 0.3s ease`
 
 #### 渐显动画
-```css
-.reveal {
-  opacity: 0;
-  transform: translateY(30px);
-  transition: opacity 0.8s ease-out, transform 0.8s ease-out;
-}
-.reveal.visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-```
+- 初始状态（`.reveal`）：`opacity: 0`，`transform: translateY(30px)`，`transition: opacity 0.8s ease-out, transform 0.8s ease-out`
+- 可见状态（`.reveal.visible`）：`opacity: 1`，`transform: translateY(0)`
 
 #### 折叠动画
-```
-transition-[max-height,opacity,transform] duration-300/500 ease-out
-```
+- 推荐组合：`transition-[max-height,opacity,transform] duration-300/500 ease-out`
 
 ---
 
@@ -315,24 +298,18 @@ transition-[max-height,opacity,transform] duration-300/500 ease-out
 ### 背景模糊 (Backdrop Blur)
 
 用于悬浮元素、吸顶筛选栏：
-```
-bg-white/95 backdrop-blur-md
-```
+- `bg-white/95 backdrop-blur-md`
 
 ### 渐变遮罩 (Gradient Overlay)
 
 用于图片上的文字层：
-```
-from-black/35 via-black/25 to-black/40 (Hero)
-from-black/70 via-black/60 to-black/50 (介绍卡)
-```
+- Hero：`from-black/35 via-black/25 to-black/40`
+- 介绍卡：`from-black/70 via-black/60 to-black/50`
 
 ### 装饰性光晕
 
 用于重点区域的背景装饰：
-```
-absolute -top-20 -right-20 w-64 h-64 bg-[#FFD400]/20 rounded-full blur-3xl
-```
+- `absolute -top-20 -right-20 w-64 h-64 bg-[#FFD400]/20 rounded-full blur-3xl`
 
 ---
 
@@ -396,31 +373,15 @@ absolute -top-20 -right-20 w-64 h-64 bg-[#FFD400]/20 rounded-full blur-3xl
 
 #### 中英文混排规范
 
-```
-中文大字体粗体 + 英文小字点缀
+中文大字体粗体 + 英文小字点缀，推荐按以下层级组织：
 
-示例结构:
-┌─────────────────────────────────┐
-│   繁育数据                      │  <-- 中文大粗体
-│   BREEDING DATA                 │  <-- 英文小字，浅色，宽字间距
-│                                 │
-│   1,247                         │  <-- 超大数字 (Mega)
-│   Total Eggs                    │  <-- 英文小字在下
-└─────────────────────────────────┘
-```
-
-实现代码:
-```html
-<div>
-  <h2 class="text-4xl md:text-6xl font-bold text-neutral-900">繁育数据</h2>
-  <p class="text-sm tracking-[0.3em] text-neutral-500 uppercase mt-1">BREEDING DATA</p>
-
-  <div class="mt-8">
-    <span class="text-6xl md:text-8xl lg:text-[120px] font-black text-[#FFD400]">1,247</span>
-    <p class="text-sm text-neutral-600 tracking-wider mt-2">Total Eggs</p>
-  </div>
-</div>
-```
+| 层级 | 文案示例 | 样式要点 |
+|------|----------|----------|
+| 中文主标题 | 繁育数据 | `text-4xl md:text-6xl font-bold text-neutral-900` |
+| 英文副标题 | BREEDING DATA | `text-sm tracking-[0.3em] text-neutral-500 uppercase mt-1` |
+| 数值容器 | - | `mt-8` |
+| 核心大数字 | 1,247 | `text-6xl md:text-8xl lg:text-[120px] font-black text-[#FFD400]` |
+| 英文说明 | Total Eggs | `text-sm text-neutral-600 tracking-wider mt-2` |
 
 英文装饰文字要点:
 - 全部大写 (`uppercase`)
@@ -451,91 +412,54 @@ absolute -top-20 -right-20 w-64 h-64 bg-[#FFD400]/20 rounded-full blur-3xl
 | **Big** | `2x2` | 1:1 | Hero 卡、主数据展示 |
 | **Wide** | `3-4 x 1` | 全宽 | 页头、大图表 |
 
-#### 基础布局代码
+#### 基础布局规范（无代码版）
 
-```html
-<div class="min-h-screen bg-gradient-to-br from-stone-100 via-white to-amber-50/40 p-4 md:p-6 lg:p-8">
-  <div class="max-w-7xl mx-auto">
+**页面与网格容器**：
+- 页面外层：`min-h-screen bg-gradient-to-br from-stone-100 via-white to-amber-50/40 p-4 md:p-6 lg:p-8`
+- 内容容器：`max-w-7xl mx-auto`
+- Bento Grid：`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 lg:gap-6`
 
-    <!-- Bento Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 lg:gap-6">
+**Big Card (2x2) - Hero 数据**：
+- Grid 跨度：`col-span-1 md:col-span-2 lg:col-span-2 row-span-1 md:row-span-2`
+- 卡片基础：`bg-white rounded-3xl border border-neutral-200 p-6 md:p-8 overflow-hidden relative`
+- 装饰光晕：`absolute -top-20 -right-20 w-64 h-64 bg-[#FFD400]/20 rounded-full blur-3xl`
+- 内容层：`relative z-10`
+- 主标题：文案 `2026 繁育报告`，样式 `text-3xl md:text-4xl lg:text-5xl font-bold text-neutral-900`
+- 英文副标题：文案 `BREEDING REPORT 2026`，样式 `text-sm tracking-[0.3em] text-neutral-500 uppercase mt-2`
+- 核心数字区容器：`mt-10 md:mt-16`
+- 核心数字：文案 `1,247`，样式 `text-7xl md:text-8xl lg:text-[120px] font-black text-neutral-900 leading-none`
+- 核心说明：文案 `总产蛋数 Total Eggs`，样式 `text-lg text-neutral-600 mt-4`
+- 次级指标容器：`flex gap-8 mt-12`
+- 指标 1：`847`（`text-3xl font-bold text-[#FFD400]`）+ `Hatched`（`text-xs text-neutral-500 mt-1`）
+- 指标 2：`68%`（`text-3xl font-bold text-neutral-900`）+ `Rate`（`text-xs text-neutral-500 mt-1`）
 
-      <!-- Big Card (2x2) - Hero 数据 -->
-      <div class="col-span-1 md:col-span-2 lg:col-span-2 row-span-1 md:row-span-2
-                  bg-white rounded-3xl border border-neutral-200 p-6 md:p-8
-                  overflow-hidden relative">
-        <!-- 装饰光晕 -->
-        <div class="absolute -top-20 -right-20 w-64 h-64 bg-[#FFD400]/20 rounded-full blur-3xl"></div>
+**Small Card (1x1) - 数据统计**：
+- 卡片基础：`col-span-1 bg-white rounded-3xl border border-neutral-200 p-6 flex flex-col justify-between`
+- 图标容器：`w-12 h-12 rounded-2xl bg-[#FFD400]/10 flex items-center justify-center`
+- 图标：`fas fa-egg text-[#FFD400] text-xl`
+- 数值区容器：`mt-6`
+- 主数字：`342`，样式 `text-4xl md:text-5xl font-bold text-neutral-900`
+- 增长文案：`+12% vs last month`，其中 `+12%` 使用 `font-bold text-[#FFD400]`；整体行样式 `text-sm text-neutral-600 mt-1`
+- 底部标签：`CURRENT STOCK`，样式 `text-[10px] text-neutral-400 uppercase tracking-wider mt-6`
 
-        <div class="relative z-10">
-          <h2 class="text-3xl md:text-4xl lg:text-5xl font-bold text-neutral-900">2026 繁育报告</h2>
-          <p class="text-sm tracking-[0.3em] text-neutral-500 uppercase mt-2">BREEDING REPORT 2026</p>
+**Horizontal Card (2x1) - 趋势图**：
+- 卡片基础：`col-span-1 md:col-span-2 bg-white rounded-3xl border border-neutral-200 p-6 md:p-8`
+- 标题区布局：`flex items-start justify-between mb-6`
+- 左侧标题：`产蛋趋势`（`text-xl font-bold text-neutral-900`）
+- 左侧英文：`EGG TREND`（`text-xs text-neutral-500 uppercase tracking-wider mt-1`）
+- 右侧趋势值：`+24%`（`text-sm text-[#FFD400] font-medium`）
+- 柱状区容器：`h-32 flex items-end gap-2`
+- X 轴标签容器：`flex justify-between mt-3 text-xs text-neutral-500`，标签顺序 `Jan Feb Mar Apr May Jun Jul`
 
-          <div class="mt-10 md:mt-16">
-            <div class="text-7xl md:text-8xl lg:text-[120px] font-black text-neutral-900 leading-none">
-              1,247
-            </div>
-            <p class="text-lg text-neutral-600 mt-4">总产蛋数 Total Eggs</p>
-          </div>
-
-          <div class="flex gap-8 mt-12">
-            <div>
-              <div class="text-3xl font-bold text-[#FFD400]">847</div>
-              <div class="text-xs text-neutral-500 mt-1">Hatched</div>
-            </div>
-            <div>
-              <div class="text-3xl font-bold text-neutral-900">68%</div>
-              <div class="text-xs text-neutral-500 mt-1">Rate</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Small Card (1x1) - 数据统计 -->
-      <div class="col-span-1 bg-white rounded-3xl border border-neutral-200 p-6
-                  flex flex-col justify-between">
-        <div class="w-12 h-12 rounded-2xl bg-[#FFD400]/10 flex items-center justify-center">
-          <i class="fas fa-egg text-[#FFD400] text-xl"></i>
-        </div>
-        <div class="mt-6">
-          <div class="text-4xl md:text-5xl font-bold text-neutral-900">342</div>
-          <p class="text-sm text-neutral-600 mt-1">
-            <span class="font-bold text-[#FFD400]">+12%</span> vs last month
-          </p>
-        </div>
-        <p class="text-[10px] text-neutral-400 uppercase tracking-wider mt-6">CURRENT STOCK</p>
-      </div>
-
-      <!-- Horizontal Card (2x1) - 趋势图 -->
-      <div class="col-span-1 md:col-span-2 bg-white rounded-3xl border border-neutral-200 p-6 md:p-8">
-        <div class="flex items-start justify-between mb-6">
-          <div>
-            <h3 class="text-xl font-bold text-neutral-900">产蛋趋势</h3>
-            <p class="text-xs text-neutral-500 uppercase tracking-wider mt-1">EGG TREND</p>
-          </div>
-          <span class="text-sm text-[#FFD400] font-medium">+24%</span>
-        </div>
-
-        <!-- 勾线图表 -->
-        <div class="h-32 flex items-end gap-2">
-          <div class="flex-1 bg-[#FFD400]/20 rounded-t-lg" style="height: 40%"></div>
-          <div class="flex-1 bg-[#FFD400]/30 rounded-t-lg" style="height: 55%"></div>
-          <div class="flex-1 bg-[#FFD400]/40 rounded-t-lg" style="height: 45%"></div>
-          <div class="flex-1 bg-[#FFD400]/60 rounded-t-lg" style="height: 70%"></div>
-          <div class="flex-1 bg-[#FFD400]/70 rounded-t-lg" style="height: 65%"></div>
-          <div class="flex-1 bg-[#FFD400]/80 rounded-t-lg" style="height: 80%"></div>
-          <div class="flex-1 bg-[#FFD400] rounded-t-lg" style="height: 95%"></div>
-        </div>
-
-        <div class="flex justify-between mt-3 text-xs text-neutral-500">
-          <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</div>
-```
+| 柱序号 | 背景色 | 高度 |
+|--------|--------|------|
+| 1 | `bg-[#FFD400]/20 rounded-t-lg` | `40%` |
+| 2 | `bg-[#FFD400]/30 rounded-t-lg` | `55%` |
+| 3 | `bg-[#FFD400]/40 rounded-t-lg` | `45%` |
+| 4 | `bg-[#FFD400]/60 rounded-t-lg` | `70%` |
+| 5 | `bg-[#FFD400]/70 rounded-t-lg` | `65%` |
+| 6 | `bg-[#FFD400]/80 rounded-t-lg` | `80%` |
+| 7 | `bg-[#FFD400] rounded-t-lg` | `95%` |
 
 ---
 
@@ -545,58 +469,36 @@ absolute -top-20 -right-20 w-64 h-64 bg-[#FFD400]/20 rounded-full blur-3xl
 
 只使用线条和简单几何形状，不做复杂填充：
 
-**条形图 (纯 CSS)**:
-```html
-<div class="space-y-3">
-  <div class="flex items-center gap-3">
-    <span class="text-sm text-neutral-600 w-12">Q1</span>
-    <div class="flex-1 h-2 bg-neutral-100 rounded-full overflow-hidden">
-      <div class="h-full bg-[#FFD400] rounded-full" style="width: 65%"></div>
-    </div>
-    <span class="text-sm text-neutral-900 font-mono w-12">65%</span>
-  </div>
-  <div class="flex items-center gap-3">
-    <span class="text-sm text-neutral-600 w-12">Q2</span>
-    <div class="flex-1 h-2 bg-neutral-100 rounded-full overflow-hidden">
-      <div class="h-full bg-[#FFD400]/80 rounded-full" style="width: 82%"></div>
-    </div>
-    <span class="text-sm text-neutral-900 font-mono w-12">82%</span>
-  </div>
-</div>
-```
+**条形图 (纯 CSS)**：
+- 整体容器：`space-y-3`
+- 每行布局：`flex items-center gap-3`
+- 左侧标签：`text-sm text-neutral-600 w-12`
+- 进度槽：`flex-1 h-2 bg-neutral-100 rounded-full overflow-hidden`
+- 右侧数值：`text-sm text-neutral-900 font-mono w-12`
 
-**圆环图 (SVG)**:
-```html
-<div class="relative w-32 h-32">
-  <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-    <!-- 背景圆环 -->
-    <circle cx="50" cy="50" r="40" stroke="#F3F4F6" stroke-width="8" fill="none"/>
-    <!-- 进度圆环 (亮黄 60%) -->
-    <circle cx="50" cy="50" r="40" stroke="#FFD400" stroke-width="8" fill="none"
-            stroke-dasharray="251.2" stroke-dashoffset="100.5"
-            stroke-linecap="round"/>
-  </svg>
-  <div class="absolute inset-0 flex items-center justify-center">
-    <span class="text-2xl font-bold text-neutral-900">60%</span>
-  </div>
-</div>
-```
+| 项目 | 进度条样式 | 宽度 | 右侧数值 |
+|------|------------|------|----------|
+| Q1 | `h-full bg-[#FFD400] rounded-full` | `65%` | `65%` |
+| Q2 | `h-full bg-[#FFD400]/80 rounded-full` | `82%` | `82%` |
 
-**时间线 (勾线)**:
-```html
-<div class="relative pl-8 border-l border-neutral-200 space-y-8">
-  <div class="relative">
-    <div class="absolute -left-[41px] w-3 h-3 bg-[#FFD400] rounded-full"></div>
-    <p class="text-sm text-neutral-500 uppercase tracking-wider">Jan 2026</p>
-    <p class="text-lg text-neutral-900 font-medium mt-1">First Egg Laid</p>
-  </div>
-  <div class="relative">
-    <div class="absolute -left-[41px] w-3 h-3 bg-neutral-300 rounded-full"></div>
-    <p class="text-sm text-neutral-500 uppercase tracking-wider">Feb 2026</p>
-    <p class="text-lg text-neutral-900 font-medium mt-1">Hatching Season</p>
-  </div>
-</div>
-```
+**圆环图 (SVG)**：
+- 外层容器：`relative w-32 h-32`
+- SVG：`w-full h-full transform -rotate-90`，`viewBox="0 0 100 100"`
+- 背景圆环：`cx=50 cy=50 r=40 stroke=#F3F4F6 stroke-width=8 fill=none`
+- 进度圆环：`cx=50 cy=50 r=40 stroke=#FFD400 stroke-width=8 fill=none stroke-dasharray=251.2 stroke-dashoffset=100.5 stroke-linecap=round`
+- 中心文字层：`absolute inset-0 flex items-center justify-center`
+- 百分比文案：`60%`，样式 `text-2xl font-bold text-neutral-900`
+
+**时间线 (勾线)**：
+- 主容器：`relative pl-8 border-l border-neutral-200 space-y-8`
+- 节点结构：每个节点 `relative`，节点点位 `absolute -left-[41px] w-3 h-3 rounded-full`
+- 时间样式：`text-sm text-neutral-500 uppercase tracking-wider`
+- 事件样式：`text-lg text-neutral-900 font-medium mt-1`
+
+| 节点 | 节点颜色 | 时间 | 事件 |
+|------|----------|------|------|
+| 1 | `bg-[#FFD400]` | `Jan 2026` | `First Egg Laid` |
+| 2 | `bg-neutral-300` | `Feb 2026` | `Hatching Season` |
 
 #### 图标系统
 
@@ -625,229 +527,102 @@ absolute -top-20 -right-20 w-64 h-64 bg-[#FFD400]/20 rounded-full blur-3xl
 - **Framer Motion** - 复杂动效通过 CDN 引入
 - **GSAP** - 可选，用于高级时间线控制
 
-CDN 引入:
-```html
-<!-- TailwindCSS -->
-<script src="https://cdn.tailwindcss.com"></script>
+CDN 引入清单：
 
-<!-- Font Awesome -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-<!-- Framer Motion (可选) -->
-<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/framer-motion/dist/framer-motion.umd.js"></script>
-
-<!-- GSAP (可选) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
-```
+| 组件 | URL | 备注 |
+|------|-----|------|
+| TailwindCSS | `https://cdn.tailwindcss.com` | 必选 |
+| Font Awesome | `https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css` | 必选 |
+| React (UMD) | `https://unpkg.com/react@18/umd/react.production.min.js` | Framer Motion 前置依赖 |
+| ReactDOM (UMD) | `https://unpkg.com/react-dom@18/umd/react-dom.production.min.js` | Framer Motion 前置依赖 |
+| Framer Motion (UMD) | `https://unpkg.com/framer-motion/dist/framer-motion.umd.js` | 可选 |
+| GSAP | `https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js` | 可选 |
+| GSAP ScrollTrigger | `https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js` | 可选 |
 
 #### 滚动触发动画 (Scroll Reveal)
 
-```javascript
-const observer = new IntersectionObserver((entries) => {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      entry.target.classList.add('visible');
-    }
-  });
-}, {
-  threshold: 0.1,
-  rootMargin: '0px 0px -50px 0px'
-});
-
-document.querySelectorAll('.reveal').forEach(el => {
-  el.style.opacity = '0';
-  el.style.transform = 'translateY(30px)';
-  el.style.transition = 'opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), ' +
-                         'transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)';
-  observer.observe(el);
-});
-
-// CSS 类
-.reveal.visible {
-  opacity: 1 !important;
-  transform: translateY(0) !important;
-}
-```
+实现参数（保持一致）：
+- 观察器：`IntersectionObserver`
+- 触发阈值：`threshold: 0.1`
+- 根边距：`rootMargin: '0px 0px -50px 0px'`
+- 监听对象：`document.querySelectorAll('.reveal')`
+- 初始态：`opacity: 0`、`transform: translateY(30px)`
+- 初始过渡：`opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1)` + `transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)`
+- 可见态：进入视口后加 `visible` 类；`.reveal.visible` 需达到 `opacity: 1` 和 `transform: translateY(0)`（可使用 `!important`）
 
 #### Stagger 依次出现
 
-```html
-<div class="space-y-4">
-  <div class="reveal" style="transition-delay: 0s">Item 1</div>
-  <div class="reveal" style="transition-delay: 0.1s">Item 2</div>
-  <div class="reveal" style="transition-delay: 0.2s">Item 3</div>
-</div>
-```
+- 容器：`space-y-4`
+- 子项统一使用 `.reveal`
+- 建议延迟：第 1 项 `0s`，第 2 项 `0.1s`，第 3 项 `0.2s`（按 0.1s 递增）
 
 #### 数字滚动动画 (Apple 风格)
 
-```javascript
-function animateNumber(element, target, duration = 2000) {
-  const start = 0;
-  const startTime = performance.now();
-
-  function update(currentTime) {
-    const elapsed = currentTime - startTime;
-    const progress = Math.min(elapsed / duration, 1);
-    const easeOutQuart = 1 - Math.pow(1 - progress, 4);
-    const current = Math.floor(start + (target - start) * easeOutQuart);
-    element.textContent = current.toLocaleString();
-
-    if (progress < 1) {
-      requestAnimationFrame(update);
-    }
-  }
-  requestAnimationFrame(update);
-}
-
-// 使用
-window.addEventListener('load', () => {
-  document.querySelectorAll('[data-animate-number]').forEach(el => {
-    const target = parseInt(el.dataset.animateNumber);
-    setTimeout(() => animateNumber(el, target), 500);
-  });
-});
-```
+实现参数（保持一致）：
+- 函数签名：`animateNumber(element, target, duration = 2000)`
+- 起始值：`start = 0`
+- 时间起点：`startTime = performance.now()`
+- 进度：`progress = Math.min(elapsed / duration, 1)`
+- 缓动：`easeOutQuart = 1 - Math.pow(1 - progress, 4)`
+- 当前值：`current = Math.floor(start + (target - start) * easeOutQuart)`
+- 文本输出：`element.textContent = current.toLocaleString()`
+- 帧循环：`progress < 1` 时持续 `requestAnimationFrame(update)`
+- 触发时机：`window.load`
+- 目标选择器：`[data-animate-number]`
+- 目标值读取：`parseInt(el.dataset.animateNumber)`
+- 启动延迟：`setTimeout(..., 500)`
 
 #### 卡片悬停动效
 
-```css
-.bento-card {
-  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275),
-              box-shadow 0.4s ease,
-              border-color 0.4s ease;
-}
-
-.bento-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 20px 40px rgba(255, 212, 0, 0.12);
-  border-color: rgba(255, 212, 0, 0.3);
-}
-```
+- 基础过渡：`transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)` + `box-shadow 0.4s ease` + `border-color 0.4s ease`
+- 悬停状态：`translateY(-8px)`，阴影 `0 20px 40px rgba(255, 212, 0, 0.12)`，边框 `rgba(255, 212, 0, 0.3)`
 
 #### 视差滚动 (Parallax)
 
-```javascript
-window.addEventListener('scroll', () => {
-  const scrolled = window.pageYOffset;
-  document.querySelectorAll('.parallax').forEach(el => {
-    const speed = el.dataset.speed || 0.5;
-    el.style.transform = `translateY(${scrolled * speed}px)`;
-  });
-});
-```
+- 监听：`window.addEventListener('scroll', ...)`
+- 滚动基准：`scrolled = window.pageYOffset`
+- 作用对象：`.parallax`
+- 速度参数：`speed = el.dataset.speed || 0.5`
+- 位移公式：`translateY(scrolled * speed)`
 
 ---
 
 ## 完整起始模板
 
-```html
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TurtleAlbum - Dashboard</title>
+最小起始模板请按以下清单配置（参数与上文保持一致）：
 
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+**文档结构**：
+- `<!DOCTYPE html>`，`<html lang="zh-CN">`
+- `meta charset="UTF-8"`，`meta name="viewport" content="width=device-width, initial-scale=1.0"`
+- `title` 建议 `TurtleAlbum - Dashboard`
 
-  <style>
-    * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif; }
-    h1, h2, h3, h4, h5, h6 { font-family: 'Playfair Display', serif; }
+**依赖引入**：
+- Tailwind：`https://cdn.tailwindcss.com`
+- Font Awesome：`https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css`
+- Google Fonts：`Inter(300-900)` + `Playfair Display(400-700)`
 
-    ::-webkit-scrollbar { width: 8px; }
-    ::-webkit-scrollbar-track { background: #F3F4F6; }
-    ::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 4px; }
+**基础样式**：
+- 全局字体：`* { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif; }`
+- 标题字体：`h1~h6 { font-family: 'Playfair Display', serif; }`
+- 滚动条：宽 `8px`，轨道 `#F3F4F6`，滑块 `#D1D5DB`，圆角 `4px`
+- Reveal 初始态：`opacity: 0` + `translateY(30px)` + `0.8s cubic-bezier(0.16, 1, 0.3, 1)`
+- Reveal 可见态：`opacity: 1` + `translateY(0)`
+- Bento Card 悬停：位移 `-8px`，阴影 `0 20px 40px rgba(255, 212, 0, 0.12)`，边框 `rgba(255, 212, 0, 0.3)`，过渡参数同上文
 
-    .reveal {
-      opacity: 0;
-      transform: translateY(30px);
-      transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
-                  transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .reveal.visible { opacity: 1; transform: translateY(0); }
+**Body 与主结构**：
+- Body 类名：`bg-gradient-to-br from-stone-100 via-white to-amber-50/40 text-neutral-900 min-h-screen`
+- 页面内边距容器：`p-4 md:p-6 lg:p-8`
+- 主内容容器：`max-w-7xl mx-auto`
+- Header：`mb-8 md:mb-12 reveal`
+- Header 英文标签：`text-xs tracking-[0.4em] text-neutral-500 uppercase mb-3`
+- Header 主标题：`text-4xl md:text-6xl lg:text-7xl font-black text-neutral-900`（示例文案：`繁育数据中心`）
+- Grid 容器：`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 lg:gap-6`
 
-    .bento-card {
-      transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275),
-                  box-shadow 0.4s ease,
-                  border-color 0.4s ease;
-    }
-    .bento-card:hover {
-      transform: translateY(-8px);
-      box-shadow: 0 20px 40px rgba(255, 212, 0, 0.12);
-      border-color: rgba(255, 212, 0, 0.3);
-    }
-  </style>
-</head>
-<body class="bg-gradient-to-br from-stone-100 via-white to-amber-50/40 text-neutral-900 min-h-screen">
-
-  <div class="p-4 md:p-6 lg:p-8">
-    <div class="max-w-7xl mx-auto">
-
-      <!-- 页面标题 -->
-      <header class="mb-8 md:mb-12 reveal">
-        <p class="text-xs tracking-[0.4em] text-neutral-500 uppercase mb-3">Dashboard</p>
-        <h1 class="text-4xl md:text-6xl lg:text-7xl font-black text-neutral-900">
-          繁育数据中心
-        </h1>
-      </header>
-
-      <!-- Bento Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 lg:gap-6">
-
-        <!-- 插入你的 Bento 卡片... -->
-
-      </div>
-
-    </div>
-  </div>
-
-  <script>
-    // 滚动触发动画
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
-        }
-      });
-    }, {
-      threshold: 0.1,
-      rootMargin: '0px 0px -50px 0px'
-    });
-
-    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-
-    // 数字滚动动画
-    function animateNumber(element, target, duration = 2000) {
-      const start = 0;
-      const startTime = performance.now();
-      function update(currentTime) {
-        const elapsed = currentTime - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        const easeOutQuart = 1 - Math.pow(1 - progress, 4);
-        const current = Math.floor(start + (target - start) * easeOutQuart);
-        element.textContent = current.toLocaleString();
-        if (progress < 1) requestAnimationFrame(update);
-      }
-      requestAnimationFrame(update);
-    }
-
-    window.addEventListener('load', () => {
-      document.querySelectorAll('[data-animate-number]').forEach(el => {
-        const target = parseInt(el.dataset.animateNumber);
-        setTimeout(() => animateNumber(el, target), 500);
-      });
-    });
-  </script>
-
-</body>
-</html>
-```
+**脚本逻辑**：
+- 注册 `IntersectionObserver`，参数 `threshold: 0.1`、`rootMargin: '0px 0px -50px 0px'`
+- 对 `.reveal` 全量 `observe`
+- 提供 `animateNumber(element, target, duration=2000)`（`easeOutQuart` 算法）
+- `window.load` 后遍历 `[data-animate-number]`，`parseInt` 读取目标值，延迟 `500ms` 启动动画
 
 ---
 
