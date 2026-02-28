@@ -390,9 +390,28 @@
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 16px;
+  gap: 14px;
   margin-top: 6px;
   flex-wrap: wrap;
+}
+
+.login-secondary-cta {
+  min-height: 34px;
+  border-radius: 999px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 250, 235, 0.92);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.login-secondary-cta:hover {
+  border-color: rgba(255, 212, 0, 0.58);
+  background: rgba(255, 212, 0, 0.14);
 }
 
 .login-text-link {
