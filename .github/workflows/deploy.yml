@@ -11,85 +11,43 @@ env:
   K8S_WORKLOAD_NAME: ${{ vars.K8S_WORKLOAD_NAME || 'eggturtles' }}
   K8S_WORKLOAD_KIND: ${{ vars.K8S_WORKLOAD_KIND || 'auto' }}
   K8S_CONTAINER_NAME: ${{ vars.K8S_CONTAINER_NAME || 'eggturtles' }}
-  REQUIRE_DATA_PVC: ${{ vars.REQUIRE_DATA_PVC || 'true' }}
+
+  # This repo deploys on Postgres + MinIO (stateless). PVC guard is only for sqlite(/data/app.db) legacy.
+  REQUIRE_DATA_PVC: ${{ vars.REQUIRE_DATA_PVC || 'false' }}
+
+  # Run schema migrations before rolling out new image. Uses the same env as the workload (no secrets in Actions).
+  RUN_DB_MIGRATIONS: ${{ vars.RUN_DB_MIGRATIONS || 'true' }}
+  DB_MIGRATION_COMMAND: ${{ vars.DB_MIGRATION_COMMAND || 'pnpm --filter @eggturtle/api prisma:deploy' }}
 
 jobs:
-  test:
+  verify:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Checkout api-auto-test framework
-        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
         with:
-          repository: GalaxyXieyu/Api-Test-MCP
-          path: api-auto-test
-          # 为空会导致 actions/checkout 报错；优先用仓库 Secret（支持私有仓库），否则回退到默认 GITHUB_TOKEN
-          token: ${{ secrets.GH_TOKEN || github.token }}
+          node-version: '22'
+          cache: 'pnpm'
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+      - name: Enable corepack
+        run: corepack enable
 
-      - name: Install backend dependencies (isolated venv)
-        run: |
-          python -m venv .venv-backend
-          .venv-backend/bin/python -m pip install --upgrade pip
-          .venv-backend/bin/pip install -r backend/requirements.txt
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
 
-      - name: Install test framework (isolated venv)
-        run: |
-          python -m venv .venv-tests
-          .venv-tests/bin/python -m pip install --upgrade pip
-          .venv-tests/bin/pip install pytest allure-pytest pyyaml requests httpx
-          .venv-tests/bin/pip install -e ./api-auto-test
+      - name: Lint
+        run: pnpm -r lint
 
-      - name: Start API server
-        run: |
-          cd backend
-
-          # Run server in background and capture logs for debugging.
-          ADMIN_USERNAME=admin ADMIN_PASSWORD=admin123 \
-          ../.venv-backend/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 > ../uvicorn.log 2>&1 &
-          UVICORN_PID=$!
-          echo "uvicorn pid=$UVICORN_PID"
-
-          # Startup can include Alembic migrations; poll /health instead of fixed sleep.
-          for i in $(seq 1 60); do
-            if curl -fsS http://localhost:8000/health >/dev/null; then
-              echo "API is healthy"
-              exit 0
-            fi
-            if ! kill -0 "$UVICORN_PID" 2>/dev/null; then
-              echo "::error::uvicorn exited early"
-              break
-            fi
-            sleep 1
-          done
-
-          echo "::error::API did not become healthy in time"
-          echo "Last 200 lines of uvicorn.log:"
-          tail -n 200 ../uvicorn.log || true
-          exit 1
-
-      - name: Run API tests
-        run: |
-          cd backend
-          ../.venv-tests/bin/python -m pytest tests/scripts/ -v --tb=short || exit 1
-
-      - name: Upload test results
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results
-          path: backend/tests/scripts/
+      - name: Build
+        run: pnpm -r build
 
   build-and-push:
     runs-on: ubuntu-latest
-    needs: test
+    needs: verify
 
     steps:
       - name: Checkout code
@@ -108,6 +66,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
+          file: Dockerfile.node
           platforms: linux/amd64
           push: true
           tags: |
@@ -117,24 +76,39 @@ jobs:
           cache-to: type=gha,mode=max
           outputs: type=docker
 
-      # 自动部署到 Sealos
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+
+    steps:
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'latest'
+
       - name: Deploy to Sealos
+        env:
+          KUBE_CONFIG_CONTENT: ${{ secrets.KUBE_CONFIG }}
         run: |
+          set -euo pipefail
+
           mkdir -p ~/.kube
           # 兼容两种 Secret 存法：
           # 1) 直接存 kubeconfig YAML（推荐）
           # 2) 存 base64 后的 kubeconfig（需确保是未换行的单行 base64）
-          KUBE_CONFIG_CONTENT='${{ secrets.KUBE_CONFIG }}'
           if printf '%s' "$KUBE_CONFIG_CONTENT" | tr -d '\r' | base64 -d > ~/.kube/config 2>/dev/null; then
             echo "kubeconfig loaded from base64 secret"
           else
             printf '%s' "$KUBE_CONFIG_CONTENT" | tr -d '\r' > ~/.kube/config
             echo "kubeconfig loaded from raw yaml secret"
           fi
+
           WORKLOAD_KIND="${K8S_WORKLOAD_KIND}"
           WORKLOAD_NAME="${K8S_WORKLOAD_NAME}"
           NAMESPACE="${K8S_NAMESPACE}"
+          CONTAINER_NAME="${K8S_CONTAINER_NAME}"
           IMAGE_REF="${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest"
+
           echo "Deploy context: $(kubectl config current-context)"
           echo "Deploy namespace: ${NAMESPACE}"
 
@@ -156,7 +130,6 @@ jobs:
             exit 1
           fi
 
-          CONTAINER_NAME="${K8S_CONTAINER_NAME}"
           if [ -z "$CONTAINER_NAME" ]; then
             CONTAINER_NAME=$(kubectl get "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE" -o jsonpath='{.spec.template.spec.containers[0].name}')
           fi
@@ -181,17 +154,6 @@ jobs:
             PVC_NAME=$(kubectl get "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE" \
               -o jsonpath="{.spec.template.spec.volumes[?(@.name=='$DATA_VOLUME_NAME')].persistentVolumeClaim.claimName}")
 
-            # StatefulSet commonly uses volumeClaimTemplates instead of .spec.template.spec.volumes.
-            if [ -z "$PVC_NAME" ] && [ "$WORKLOAD_KIND" = "statefulset" ]; then
-              TEMPLATE_NAME=$(kubectl get statefulset/"$WORKLOAD_NAME" -n "$NAMESPACE" \
-                -o jsonpath="{.spec.volumeClaimTemplates[?(@.metadata.name=='$DATA_VOLUME_NAME')].metadata.name}")
-              if [ -n "$TEMPLATE_NAME" ]; then
-                PVC_NAME=$(kubectl get pvc -n "$NAMESPACE" \
-                  -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' \
-                  | grep -E "^${TEMPLATE_NAME}-${WORKLOAD_NAME}-[0-9]+$" | head -n 1 || true)
-              fi
-            fi
-
             if [ -z "$PVC_NAME" ]; then
               echo "::error::Volume '$DATA_VOLUME_NAME' is not backed by persistentVolumeClaim. Refusing deploy."
               kubectl get "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE" -o yaml | sed -n '1,220p'
@@ -210,128 +172,56 @@ jobs:
             echo "Skipping /data PVC guard (REQUIRE_DATA_PVC=${REQUIRE_DATA_PVC})"
           fi
 
-          # No backward compatibility: image path migration requires a short maintenance window.
-          ORIGINAL_REPLICAS=$(kubectl get "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE" -o jsonpath='{.spec.replicas}')
-          # Some clusters keep spec.replicas=0 for statefulsets; treat 0 as "at least 1"
-          # so the service won't stay down after maintenance jobs.
-          if [ -z "$ORIGINAL_REPLICAS" ] || [ "$ORIGINAL_REPLICAS" = "0" ]; then
-            ORIGINAL_REPLICAS=1
-          fi
+          if [ "${RUN_DB_MIGRATIONS}" = "true" ]; then
+            echo "Running DB migrations via Job (from workload template)..."
 
-          echo "Scaling down workload to 0 (original replicas=$ORIGINAL_REPLICAS)..."
-          kubectl scale "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE" --replicas=0
+            SHORT_SHA="${GITHUB_SHA:0:7}"
+            MIGRATE_JOB="${WORKLOAD_NAME}-dbmig-${SHORT_SHA}"
 
-          # Wait for pods to exit before doing non-compatible migrations.
-          SELECTOR=$(kubectl get "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE" -o go-template='{{range $k,$v := .spec.selector.matchLabels}}{{printf "%s=%s," $k $v}}{{end}}' | sed 's/,$//')
-          if [ -n "$SELECTOR" ]; then
-            echo "Waiting for pods to terminate: selector=$SELECTOR"
-            for i in $(seq 1 180); do
-              PODS=$(kubectl get pods -n "$NAMESPACE" -l "$SELECTOR" -o name 2>/dev/null || true)
-              if [ -z "$PODS" ]; then
-                echo "All pods are gone."
-                break
-              fi
-              sleep 1
-            done
+            # Create a Job using the workload pod template so it inherits env (PG/MinIO creds) without putting secrets in Actions.
+            kubectl get "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE" -o json \
+              | jq --arg job "$MIGRATE_JOB" \
+                    --arg image "$IMAGE_REF" \
+                    --arg container "$CONTAINER_NAME" \
+                    --arg cmd "${DB_MIGRATION_COMMAND}" \
+                    '{
+                      apiVersion: "batch/v1",
+                      kind: "Job",
+                      metadata: {
+                        name: $job,
+                        labels: {
+                          "app.kubernetes.io/name": "db-migrate",
+                          "app.kubernetes.io/part-of": "eggturtles"
+                        }
+                      },
+                      spec: {
+                        backoffLimit: 0,
+                        ttlSecondsAfterFinished: 600,
+                        template: {
+                          metadata: (.spec.template.metadata // {}),
+                          spec: (
+                            .spec.template.spec
+                            | .restartPolicy = "Never"
+                            | .containers = [
+                                (.containers[]
+                                  | select(.name == $container)
+                                  | .image = $image
+                                  | .command = ["sh", "-lc", $cmd]
+                                  | del(.ports, .livenessProbe, .readinessProbe, .startupProbe)
+                                )
+                              ]
+                          )
+                        }
+                      }
+                    }' \
+              | kubectl apply -n "$NAMESPACE" -f -
 
-            PODS=$(kubectl get pods -n "$NAMESPACE" -l "$SELECTOR" -o name 2>/dev/null || true)
-            if [ -n "$PODS" ]; then
-              echo "::error::Pods still exist after waiting:"
-              printf '%s\n' "$PODS"
-              exit 1
-            fi
+            kubectl wait --for=condition=complete job/"$MIGRATE_JOB" -n "$NAMESPACE" --timeout=900s
+            kubectl logs job/"$MIGRATE_JOB" -n "$NAMESPACE" || true
           else
-            echo "Warning: cannot resolve selector for $WORKLOAD_KIND/$WORKLOAD_NAME; skipping pod wait."
+            echo "Skipping DB migrations (RUN_DB_MIGRATIONS=${RUN_DB_MIGRATIONS})"
           fi
 
-          # Run Alembic migrations via a one-off Job using the same image and the same /data PVC.
-          # This avoids manual intervention and keeps DB schema in sync with code.
-          SHORT_SHA="${GITHUB_SHA:0:7}"
-          MIGRATE_JOB="${WORKLOAD_NAME}-migrate-${SHORT_SHA}"
-          echo "Running DB migrations via Job: $MIGRATE_JOB"
-
-          if [ -z "$PVC_NAME" ]; then
-            echo "::error::Cannot resolve PVC_NAME for /data; refusing to run migrations."
-            exit 1
-          fi
-
-          cat <<YAML | kubectl apply -n "$NAMESPACE" -f -
-          apiVersion: batch/v1
-          kind: Job
-          metadata:
-            name: ${MIGRATE_JOB}
-            labels:
-              app.kubernetes.io/name: ${WORKLOAD_NAME}
-              app.kubernetes.io/component: migrate
-          spec:
-            backoffLimit: 0
-            ttlSecondsAfterFinished: 600
-            template:
-              spec:
-                restartPolicy: Never
-                containers:
-                  - name: migrate
-                    image: ${IMAGE_REF}
-                    imagePullPolicy: Always
-                    command: ["sh", "-lc", "python scripts/db_migrate.py upgrade"]
-                    env:
-                      - name: DATABASE_URL
-                        value: "${DATABASE_URL:-sqlite:////data/app.db}"
-                    volumeMounts:
-                      - name: data
-                        mountPath: /data
-                volumes:
-                  - name: data
-                    persistentVolumeClaim:
-                      claimName: ${PVC_NAME}
-          YAML
-
-          kubectl wait --for=condition=complete job/"$MIGRATE_JOB" -n "$NAMESPACE" --timeout=600s
-          kubectl logs job/"$MIGRATE_JOB" -n "$NAMESPACE" || true
-
-          # Migrate image folders + normalize product_images.url.
-          # NOTE: K8s Job names must be <=63 chars. Keep this short.
-          IMAGE_MIGRATE_JOB="${WORKLOAD_NAME}-imgmig-${SHORT_SHA}"
-          echo "Running image migration via Job: $IMAGE_MIGRATE_JOB"
-
-          cat <<YAML | kubectl apply -n "$NAMESPACE" -f -
-          apiVersion: batch/v1
-          kind: Job
-          metadata:
-            name: ${IMAGE_MIGRATE_JOB}
-            labels:
-              app.kubernetes.io/name: ${WORKLOAD_NAME}
-              app.kubernetes.io/component: image-migrate
-          spec:
-            backoffLimit: 0
-            ttlSecondsAfterFinished: 600
-            template:
-              spec:
-                restartPolicy: Never
-                containers:
-                  - name: image-migrate
-                    image: ${IMAGE_REF}
-                    imagePullPolicy: Always
-                    command: ["sh", "-lc", "python scripts/migrate_images_to_product_id.py --apply"]
-                    env:
-                      - name: DATABASE_URL
-                        value: "${DATABASE_URL:-sqlite:////data/app.db}"
-                      - name: UPLOAD_DIR
-                        value: "/data/images"
-                    volumeMounts:
-                      - name: data
-                        mountPath: /data
-                volumes:
-                  - name: data
-                    persistentVolumeClaim:
-                      claimName: ${PVC_NAME}
-          YAML
-
-          kubectl wait --for=condition=complete job/"$IMAGE_MIGRATE_JOB" -n "$NAMESPACE" --timeout=3600s
-          kubectl logs job/"$IMAGE_MIGRATE_JOB" -n "$NAMESPACE" || true
-
-          echo "Updating workload image and scaling back up..."
+          echo "Updating workload image and rolling out..."
           kubectl set image "$WORKLOAD_KIND"/"$WORKLOAD_NAME" "$CONTAINER_NAME"="$IMAGE_REF" -n "$NAMESPACE"
-          kubectl scale "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE" --replicas="$ORIGINAL_REPLICAS"
-
-          kubectl rollout status "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE" --timeout=300s
+          kubectl rollout status "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE" --timeout=600s
