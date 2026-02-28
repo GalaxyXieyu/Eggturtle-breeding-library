@@ -41,6 +41,38 @@ type ProductPlan = {
   share?: boolean;
 };
 
+type SeriesPlan = {
+  code: string;
+  name: string;
+  description: string | null;
+  sortOrder: number;
+  isActive: boolean;
+};
+
+type BreederEventPlan = {
+  eventDate: string;
+  eventType: string;
+  note: string;
+};
+
+type BreederPlan = {
+  code: string;
+  seriesCode: string;
+  name: string | null;
+  sex: string | null;
+  description: string | null;
+  sireCode: string | null;
+  damCode: string | null;
+  mateCode: string | null;
+  isActive: boolean;
+  events: BreederEventPlan[];
+};
+
+type BreederDatasetPlan = {
+  series: SeriesPlan[];
+  breeders: BreederPlan[];
+};
+
 type SkipReason =
   | 'planned-near-collision'
   | 'existing-near-collision'
@@ -64,6 +96,12 @@ type ApplyStats = {
   featuredUpdated: number;
   sharesCreated: number;
   sharesUpdated: number;
+  seriesCreated: number;
+  seriesUpdated: number;
+  breedersCreated: number;
+  breedersUpdated: number;
+  breederEventsCreated: number;
+  breederEventsDeleted: number;
 };
 
 type DatasetApplyResult = {
@@ -80,6 +118,7 @@ const DEFAULT_MIRROR_TENANT_NAME = 'UX Sandbox Shadow';
 const DEFAULT_OWNER_EMAIL = 'synthetic.owner@ux-sandbox.local';
 
 const SHARED_CODE = 'SYN-COMMON-001';
+const SYNTHETIC_EVENT_NOTE_PREFIX = 'SYNTHETIC:';
 
 function parseArgs(argv: string[]): CliArgs {
   let confirm = false;
@@ -371,6 +410,241 @@ function mirrorTenantProducts(): ProductPlan[] {
   ];
 }
 
+function primaryBreederDataset(): BreederDatasetPlan {
+  return {
+    series: [
+      {
+        code: 'SYN-SERIES-ALPHA',
+        name: 'Synthetic Alpha Line',
+        description: 'Primary synthetic series used for breeder pages and filtering screenshots.',
+        sortOrder: 10,
+        isActive: true
+      },
+      {
+        code: 'SYN-SERIES-BETA',
+        name: 'Synthetic Beta Line',
+        description: 'Secondary synthetic series to validate cross-series filtering.',
+        sortOrder: 20,
+        isActive: true
+      },
+      {
+        code: 'SYN-SERIES-LEGACY',
+        name: 'Synthetic Legacy Line',
+        description: 'Inactive synthetic series to verify status rendering in list pages.',
+        sortOrder: 30,
+        isActive: false
+      }
+    ],
+    breeders: [
+      {
+        code: 'SYN-BRD-ALPHA-SIRE',
+        seriesCode: 'SYN-SERIES-ALPHA',
+        name: 'Alpha Sire',
+        sex: 'M',
+        description: 'Synthetic sire record for family-tree checks.',
+        sireCode: null,
+        damCode: null,
+        mateCode: null,
+        isActive: true,
+        events: [
+          {
+            eventType: 'HATCHED',
+            eventDate: '2022-03-01T00:00:00.000Z',
+            note: `${SYNTHETIC_EVENT_NOTE_PREFIX} Hatch baseline record.`
+          },
+          {
+            eventType: 'HEALTH_CHECK',
+            eventDate: '2025-02-10T08:30:00.000Z',
+            note: `${SYNTHETIC_EVENT_NOTE_PREFIX} Periodic synthetic health check.`
+          }
+        ]
+      },
+      {
+        code: 'SYN-BRD-ALPHA-DAM',
+        seriesCode: 'SYN-SERIES-ALPHA',
+        name: 'Alpha Dam',
+        sex: 'F',
+        description: 'Synthetic dam record for family-tree checks.',
+        sireCode: null,
+        damCode: null,
+        mateCode: null,
+        isActive: true,
+        events: [
+          {
+            eventType: 'HATCHED',
+            eventDate: '2022-03-04T00:00:00.000Z',
+            note: `${SYNTHETIC_EVENT_NOTE_PREFIX} Hatch baseline record.`
+          },
+          {
+            eventType: 'HEALTH_CHECK',
+            eventDate: '2025-02-12T08:30:00.000Z',
+            note: `${SYNTHETIC_EVENT_NOTE_PREFIX} Periodic synthetic health check.`
+          }
+        ]
+      },
+      {
+        code: 'SYN-BRD-ALPHA-MATE',
+        seriesCode: 'SYN-SERIES-ALPHA',
+        name: 'Alpha Mate',
+        sex: 'M',
+        description: 'Synthetic mate linked to SYN-BRD-ALPHA-001.',
+        sireCode: null,
+        damCode: null,
+        mateCode: 'SYN-BRD-ALPHA-001',
+        isActive: true,
+        events: [
+          {
+            eventType: 'HATCHED',
+            eventDate: '2022-04-01T00:00:00.000Z',
+            note: `${SYNTHETIC_EVENT_NOTE_PREFIX} Hatch baseline record.`
+          },
+          {
+            eventType: 'PAIRING',
+            eventDate: '2025-01-06T09:00:00.000Z',
+            note: `${SYNTHETIC_EVENT_NOTE_PREFIX} Paired with SYN-BRD-ALPHA-001.`
+          }
+        ]
+      },
+      {
+        code: 'SYN-BRD-ALPHA-001',
+        seriesCode: 'SYN-SERIES-ALPHA',
+        name: 'Alpha Featured Breeder',
+        sex: 'F',
+        description: 'Synthetic breeder used in detail page screenshots.',
+        sireCode: 'SYN-BRD-ALPHA-SIRE',
+        damCode: 'SYN-BRD-ALPHA-DAM',
+        mateCode: 'SYN-BRD-ALPHA-MATE',
+        isActive: true,
+        events: [
+          {
+            eventType: 'HATCHED',
+            eventDate: '2023-03-15T00:00:00.000Z',
+            note: `${SYNTHETIC_EVENT_NOTE_PREFIX} Hatch baseline record.`
+          },
+          {
+            eventType: 'PAIRING',
+            eventDate: '2025-01-08T09:30:00.000Z',
+            note: `${SYNTHETIC_EVENT_NOTE_PREFIX} Paired with SYN-BRD-ALPHA-MATE.`
+          },
+          {
+            eventType: 'HEALTH_CHECK',
+            eventDate: '2025-02-20T08:00:00.000Z',
+            note: `${SYNTHETIC_EVENT_NOTE_PREFIX} Demo health-check event.`
+          }
+        ]
+      },
+      {
+        code: 'SYN-BRD-ALPHA-CHILD-01',
+        seriesCode: 'SYN-SERIES-ALPHA',
+        name: 'Alpha Child 01',
+        sex: 'M',
+        description: 'Synthetic direct child for family-tree child rendering.',
+        sireCode: 'SYN-BRD-ALPHA-MATE',
+        damCode: 'SYN-BRD-ALPHA-001',
+        mateCode: null,
+        isActive: true,
+        events: [
+          {
+            eventType: 'HATCHED',
+            eventDate: '2025-01-18T00:00:00.000Z',
+            note: `${SYNTHETIC_EVENT_NOTE_PREFIX} Hatch baseline record.`
+          },
+          {
+            eventType: 'HEALTH_CHECK',
+            eventDate: '2025-02-23T08:15:00.000Z',
+            note: `${SYNTHETIC_EVENT_NOTE_PREFIX} Juvenile synthetic check.`
+          }
+        ]
+      },
+      {
+        code: 'SYN-BRD-BETA-001',
+        seriesCode: 'SYN-SERIES-BETA',
+        name: 'Beta Baseline Breeder',
+        sex: 'F',
+        description: 'Synthetic breeder in a second active series for filter coverage.',
+        sireCode: null,
+        damCode: null,
+        mateCode: null,
+        isActive: true,
+        events: [
+          {
+            eventType: 'HATCHED',
+            eventDate: '2024-05-02T00:00:00.000Z',
+            note: `${SYNTHETIC_EVENT_NOTE_PREFIX} Hatch baseline record.`
+          },
+          {
+            eventType: 'TRANSFERRED',
+            eventDate: '2025-01-25T10:00:00.000Z',
+            note: `${SYNTHETIC_EVENT_NOTE_PREFIX} Transfer event for timeline visualization.`
+          }
+        ]
+      },
+      {
+        code: 'SYN-BRD-LEGACY-001',
+        seriesCode: 'SYN-SERIES-LEGACY',
+        name: 'Legacy Archived Breeder',
+        sex: 'U',
+        description: 'Inactive synthetic breeder in inactive series for status checks.',
+        sireCode: null,
+        damCode: null,
+        mateCode: null,
+        isActive: false,
+        events: [
+          {
+            eventType: 'HATCHED',
+            eventDate: '2021-09-10T00:00:00.000Z',
+            note: `${SYNTHETIC_EVENT_NOTE_PREFIX} Hatch baseline record.`
+          },
+          {
+            eventType: 'RETIRED',
+            eventDate: '2024-12-01T00:00:00.000Z',
+            note: `${SYNTHETIC_EVENT_NOTE_PREFIX} Synthetic retirement event.`
+          }
+        ]
+      }
+    ]
+  };
+}
+
+function mirrorBreederDataset(): BreederDatasetPlan {
+  return {
+    series: [
+      {
+        code: 'SYN-SERIES-MIRROR',
+        name: 'Synthetic Mirror Line',
+        description: 'Mirror tenant demo series used for isolation checks.',
+        sortOrder: 10,
+        isActive: true
+      }
+    ],
+    breeders: [
+      {
+        code: 'SYN-BRD-MIRROR-001',
+        seriesCode: 'SYN-SERIES-MIRROR',
+        name: 'Mirror Baseline Breeder',
+        sex: 'F',
+        description: 'Synthetic mirror breeder to keep mirror tenant non-empty.',
+        sireCode: null,
+        damCode: null,
+        mateCode: null,
+        isActive: true,
+        events: [
+          {
+            eventType: 'HATCHED',
+            eventDate: '2024-01-10T00:00:00.000Z',
+            note: `${SYNTHETIC_EVENT_NOTE_PREFIX} Hatch baseline record.`
+          },
+          {
+            eventType: 'HEALTH_CHECK',
+            eventDate: '2025-02-05T08:00:00.000Z',
+            note: `${SYNTHETIC_EVENT_NOTE_PREFIX} Periodic synthetic health check.`
+          }
+        ]
+      }
+    ]
+  };
+}
+
 function normalizeCodeForCollision(code: string): string {
   return code.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
@@ -428,7 +702,13 @@ function emptyApplyStats(): ApplyStats {
     featuredCreated: 0,
     featuredUpdated: 0,
     sharesCreated: 0,
-    sharesUpdated: 0
+    sharesUpdated: 0,
+    seriesCreated: 0,
+    seriesUpdated: 0,
+    breedersCreated: 0,
+    breedersUpdated: 0,
+    breederEventsCreated: 0,
+    breederEventsDeleted: 0
   };
 }
 
@@ -629,12 +909,164 @@ async function upsertSyntheticImages(
   }
 }
 
+async function upsertSyntheticBreeders(
+  tx: InstanceType<typeof PrismaClient>,
+  tenantId: string,
+  dataset: BreederDatasetPlan,
+  stats: ApplyStats
+): Promise<void> {
+  const seriesByCode = new Map<string, string>();
+
+  for (const plan of dataset.series) {
+    const existing = await tx.series.findUnique({
+      where: {
+        tenantId_code: {
+          tenantId,
+          code: plan.code
+        }
+      },
+      select: {
+        id: true
+      }
+    });
+
+    const series = await tx.series.upsert({
+      where: {
+        tenantId_code: {
+          tenantId,
+          code: plan.code
+        }
+      },
+      update: {
+        name: plan.name,
+        description: plan.description,
+        sortOrder: plan.sortOrder,
+        isActive: plan.isActive
+      },
+      create: {
+        tenantId,
+        code: plan.code,
+        name: plan.name,
+        description: plan.description,
+        sortOrder: plan.sortOrder,
+        isActive: plan.isActive
+      }
+    });
+
+    seriesByCode.set(plan.code, series.id);
+
+    if (existing) {
+      stats.seriesUpdated += 1;
+    } else {
+      stats.seriesCreated += 1;
+    }
+  }
+
+  const breederByCode = new Map<string, string>();
+
+  for (const plan of dataset.breeders) {
+    const seriesId = seriesByCode.get(plan.seriesCode);
+    if (!seriesId) {
+      throw new Error(
+        `Series code ${plan.seriesCode} is missing for breeder ${plan.code}. Check synthetic breeder dataset plan.`
+      );
+    }
+
+    const existing = await tx.breeder.findUnique({
+      where: {
+        tenantId_code: {
+          tenantId,
+          code: plan.code
+        }
+      },
+      select: {
+        id: true
+      }
+    });
+
+    const breeder = await tx.breeder.upsert({
+      where: {
+        tenantId_code: {
+          tenantId,
+          code: plan.code
+        }
+      },
+      update: {
+        seriesId,
+        name: plan.name,
+        sex: plan.sex,
+        description: plan.description,
+        sireCode: plan.sireCode,
+        damCode: plan.damCode,
+        mateCode: plan.mateCode,
+        isActive: plan.isActive
+      },
+      create: {
+        tenantId,
+        seriesId,
+        code: plan.code,
+        name: plan.name,
+        sex: plan.sex,
+        description: plan.description,
+        sireCode: plan.sireCode,
+        damCode: plan.damCode,
+        mateCode: plan.mateCode,
+        isActive: plan.isActive
+      }
+    });
+
+    breederByCode.set(plan.code, breeder.id);
+
+    if (existing) {
+      stats.breedersUpdated += 1;
+    } else {
+      stats.breedersCreated += 1;
+    }
+  }
+
+  for (const plan of dataset.breeders) {
+    const breederId = breederByCode.get(plan.code);
+    if (!breederId) {
+      continue;
+    }
+
+    const deleted = await tx.breederEvent.deleteMany({
+      where: {
+        tenantId,
+        breederId,
+        note: {
+          startsWith: SYNTHETIC_EVENT_NOTE_PREFIX
+        }
+      }
+    });
+
+    stats.breederEventsDeleted += deleted.count;
+
+    if (plan.events.length === 0) {
+      continue;
+    }
+
+    await tx.breederEvent.createMany({
+      data: plan.events.map((event) => ({
+        tenantId,
+        breederId,
+        eventType: event.eventType,
+        eventDate: new Date(event.eventDate),
+        note: event.note
+      }))
+    });
+
+    stats.breederEventsCreated += plan.events.length;
+  }
+}
+
 async function applyTenantDataset(
   tx: InstanceType<typeof PrismaClient>,
   tenantId: string,
   tenantSlug: string,
   ownerUserId: string,
   productPlans: ProductPlan[],
+  breederDataset: BreederDatasetPlan,
   dedupe: boolean
 ): Promise<DatasetApplyResult> {
   const stats = emptyApplyStats();
@@ -797,6 +1229,8 @@ async function applyTenantDataset(
     }
   }
 
+  await upsertSyntheticBreeders(tx, tenantId, breederDataset, stats);
+
   return {
     tenantId,
     productIdsByCode,
@@ -887,7 +1321,14 @@ async function runIsolationChecks(
   };
 }
 
-function printPlan(args: CliArgs, databaseUrl: string, plannedPrimary: ProductPlan[], plannedMirror: ProductPlan[]) {
+function printPlan(
+  args: CliArgs,
+  databaseUrl: string,
+  plannedPrimaryProducts: ProductPlan[],
+  plannedMirrorProducts: ProductPlan[],
+  plannedPrimaryBreeders: BreederDatasetPlan,
+  plannedMirrorBreeders: BreederDatasetPlan
+) {
   console.info('Synthetic dataset seed plan:');
   console.info(`- mode: ${args.confirm ? 'WRITE' : 'DRY-RUN (default)'}`);
   console.info(`- database: ${databaseUrl}`);
@@ -895,8 +1336,12 @@ function printPlan(args: CliArgs, databaseUrl: string, plannedPrimary: ProductPl
   console.info(`- primary tenant: ${args.tenantSlug} (${args.tenantName})`);
   console.info(`- mirror tenant: ${args.mirrorTenantSlug} (${args.mirrorTenantName})`);
   console.info(`- dedupe synthetic images: ${args.dedupe ? 'enabled' : 'disabled'}`);
-  console.info(`- planned primary products: ${plannedPrimary.length}`);
-  console.info(`- planned mirror products: ${plannedMirror.length}`);
+  console.info(`- planned primary products: ${plannedPrimaryProducts.length}`);
+  console.info(`- planned mirror products: ${plannedMirrorProducts.length}`);
+  console.info(`- planned primary series: ${plannedPrimaryBreeders.series.length}`);
+  console.info(`- planned primary breeders: ${plannedPrimaryBreeders.breeders.length}`);
+  console.info(`- planned mirror series: ${plannedMirrorBreeders.series.length}`);
+  console.info(`- planned mirror breeders: ${plannedMirrorBreeders.breeders.length}`);
   console.info(`- shared code across tenants: ${SHARED_CODE}`);
 }
 
@@ -925,6 +1370,12 @@ function printStats(label: string, stats: ApplyStats): void {
   console.info(`  - featured updated: ${stats.featuredUpdated}`);
   console.info(`  - shares created: ${stats.sharesCreated}`);
   console.info(`  - shares updated: ${stats.sharesUpdated}`);
+  console.info(`  - series created: ${stats.seriesCreated}`);
+  console.info(`  - series updated: ${stats.seriesUpdated}`);
+  console.info(`  - breeders created: ${stats.breedersCreated}`);
+  console.info(`  - breeders updated: ${stats.breedersUpdated}`);
+  console.info(`  - breeder events created: ${stats.breederEventsCreated}`);
+  console.info(`  - breeder events deleted: ${stats.breederEventsDeleted}`);
 }
 
 async function main(): Promise<void> {
@@ -943,8 +1394,17 @@ async function main(): Promise<void> {
 
   const primaryResolution = resolvePlanNearCollisions(primaryProductCandidates());
   const mirrorResolution = resolvePlanNearCollisions(mirrorTenantProducts());
+  const primaryBreeders = primaryBreederDataset();
+  const mirrorBreeders = mirrorBreederDataset();
 
-  printPlan(args, databaseUrl, primaryResolution.accepted, mirrorResolution.accepted);
+  printPlan(
+    args,
+    databaseUrl,
+    primaryResolution.accepted,
+    mirrorResolution.accepted,
+    primaryBreeders,
+    mirrorBreeders
+  );
   printSkips('Planned near-collision skips (pre-write)', primaryResolution.skipped);
 
   const prisma = new PrismaClient();
@@ -970,6 +1430,12 @@ async function main(): Promise<void> {
       console.info(`- owner user exists: ${existingOwner ? 'yes' : 'no'}`);
       console.info(`- primary tenant exists: ${existingPrimaryTenant ? 'yes' : 'no'}`);
       console.info(`- mirror tenant exists: ${existingMirrorTenant ? 'yes' : 'no'}`);
+      console.info(
+        `- planned writes (primary): ${primaryResolution.accepted.length} products, ${primaryBreeders.series.length} series, ${primaryBreeders.breeders.length} breeders`
+      );
+      console.info(
+        `- planned writes (mirror): ${mirrorResolution.accepted.length} products, ${mirrorBreeders.series.length} series, ${mirrorBreeders.breeders.length} breeders`
+      );
       console.info('- no rows written (default dry-run behavior).');
       console.info('Re-run with --confirm to write synthetic dataset.');
       return;
@@ -990,6 +1456,7 @@ async function main(): Promise<void> {
         args.tenantSlug,
         primaryOwner.userId,
         primaryResolution.accepted,
+        primaryBreeders,
         args.dedupe
       );
 
@@ -999,6 +1466,7 @@ async function main(): Promise<void> {
         args.mirrorTenantSlug,
         mirrorOwner.userId,
         mirrorResolution.accepted,
+        mirrorBreeders,
         args.dedupe
       );
 

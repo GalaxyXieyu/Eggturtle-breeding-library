@@ -98,6 +98,12 @@ export default function TenantAppPage() {
         {state.error ? <p className="error">{state.error}</p> : null}
 
         <div className="row">
+          <button type="button" onClick={() => router.push(`/app/${tenantSlug}/series`)}>
+            Series
+          </button>
+          <button type="button" onClick={() => router.push(`/app/${tenantSlug}/breeders`)}>
+            Breeders
+          </button>
           <button type="button" onClick={() => router.push(`/app/${tenantSlug}/featured-products`)}>
             Featured products
           </button>
