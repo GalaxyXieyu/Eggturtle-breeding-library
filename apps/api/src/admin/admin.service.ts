@@ -5,6 +5,7 @@ import type {
   CreateAdminTenantResponse,
   DeleteTenantMemberResponse,
   GetAdminTenantResponse,
+  GetAdminTenantSubscriptionResponse,
   ListAdminTenantMembersQuery,
   ListAdminTenantMembersResponse,
   ListAdminTenantsQuery,
@@ -12,12 +13,15 @@ import type {
   ListAdminUsersResponse,
   ListSuperAdminAuditLogsQuery,
   ListSuperAdminAuditLogsResponse,
+  UpdateTenantSubscriptionRequest,
+  UpdateTenantSubscriptionResponse,
   UpsertTenantMemberRequest,
   UpsertTenantMemberResponse
 } from '@eggturtle/shared';
 import { Prisma, TenantMemberRole } from '@prisma/client';
 
 import { PrismaService } from '../prisma.service';
+import { TenantSubscriptionsService } from '../subscriptions/tenant-subscriptions.service';
 
 import { SuperAdminAuditLogsService } from './super-admin-audit-logs.service';
 
@@ -25,7 +29,8 @@ import { SuperAdminAuditLogsService } from './super-admin-audit-logs.service';
 export class AdminService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly superAdminAuditLogsService: SuperAdminAuditLogsService
+    private readonly superAdminAuditLogsService: SuperAdminAuditLogsService,
+    private readonly tenantSubscriptionsService: TenantSubscriptionsService
   ) {}
 
   async listTenants(
@@ -123,6 +128,91 @@ export class AdminService {
         memberCount: tenant._count.members
       }
     };
+  }
+
+  async getTenantSubscription(
+    actorUserId: string,
+    tenantId: string
+  ): Promise<GetAdminTenantSubscriptionResponse> {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: {
+        id: tenantId
+      },
+      select: {
+        id: true,
+        slug: true
+      }
+    });
+
+    if (!tenant) {
+      throw new NotFoundException({
+        message: 'Tenant not found.',
+        errorCode: ErrorCode.TenantNotFound
+      });
+    }
+
+    const subscription = await this.tenantSubscriptionsService.getSubscriptionForTenant(tenant.id);
+
+    await this.superAdminAuditLogsService.createLog({
+      actorUserId,
+      targetTenantId: tenant.id,
+      action: SuperAdminAuditAction.GetTenantSubscription,
+      metadata: {
+        tenantSlug: tenant.slug,
+        isConfigured: subscription.isConfigured,
+        plan: subscription.plan,
+        status: subscription.status
+      }
+    });
+
+    return {
+      subscription
+    };
+  }
+
+  async updateTenantSubscription(
+    actorUserId: string,
+    tenantId: string,
+    payload: UpdateTenantSubscriptionRequest
+  ): Promise<UpdateTenantSubscriptionResponse> {
+    return this.prisma.$transaction(async (tx) => {
+      const tenant = await tx.tenant.findUnique({
+        where: {
+          id: tenantId
+        },
+        select: {
+          id: true,
+          slug: true
+        }
+      });
+
+      if (!tenant) {
+        throw new NotFoundException({
+          message: 'Tenant not found.',
+          errorCode: ErrorCode.TenantNotFound
+        });
+      }
+
+      const subscription = await this.tenantSubscriptionsService.upsertSubscription(tenant.id, payload, tx);
+      const auditLogId = await this.superAdminAuditLogsService.createLog(
+        {
+          actorUserId,
+          targetTenantId: tenant.id,
+          action: SuperAdminAuditAction.UpdateTenantSubscription,
+          metadata: {
+            tenantSlug: tenant.slug,
+            payload,
+            subscription
+          }
+        },
+        tx
+      );
+
+      return {
+        subscription,
+        auditLogId
+      };
+    });
   }
 
   async createTenant(

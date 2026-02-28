@@ -157,6 +157,22 @@ export type {
   ShareResourceType
 } from './share';
 export {
+  getAdminTenantSubscriptionResponseSchema,
+  tenantSubscriptionPlanSchema,
+  tenantSubscriptionSchema,
+  tenantSubscriptionStatusSchema,
+  updateTenantSubscriptionRequestSchema,
+  updateTenantSubscriptionResponseSchema
+} from './subscription';
+export type {
+  GetAdminTenantSubscriptionResponse,
+  TenantSubscription,
+  TenantSubscriptionPlan,
+  TenantSubscriptionStatus,
+  UpdateTenantSubscriptionRequest,
+  UpdateTenantSubscriptionResponse
+} from './subscription';
+export {
   aiInputLimitSchema,
   aiInputTooLargeErrorResponseSchema,
   aiPurchasePackSchema,

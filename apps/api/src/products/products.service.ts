@@ -22,6 +22,7 @@ import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { PrismaService } from '../prisma.service';
 import { STORAGE_PROVIDER_TOKEN } from '../storage/storage.constants';
 import type { StorageProvider } from '../storage/storage.provider';
+import { TenantSubscriptionsService } from '../subscriptions/tenant-subscriptions.service';
 
 export type UploadedBinaryFile = {
   originalname: string;
@@ -44,6 +45,7 @@ export class ProductsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditLogsService: AuditLogsService,
+    private readonly tenantSubscriptionsService: TenantSubscriptionsService,
     @Inject(STORAGE_PROVIDER_TOKEN) private readonly storageProvider: StorageProvider
   ) {}
 
@@ -121,6 +123,8 @@ export class ProductsService {
     file: UploadedBinaryFile
   ): Promise<ProductImage> {
     const product = await this.findProductOrThrow(tenantId, productId);
+    await this.tenantSubscriptionsService.assertImageUploadAllowed(tenantId, file.buffer.length);
+
     const nextSortOrder = await this.getNextSortOrder(tenantId, product.id);
     const existingImageCount = await this.prisma.productImage.count({
       where: {
@@ -149,6 +153,7 @@ export class ProductsService {
           key: uploadResult.key,
           url: uploadResult.url,
           contentType,
+          sizeBytes: BigInt(file.buffer.length),
           sortOrder: nextSortOrder,
           isMain: existingImageCount === 0
         }

@@ -4,7 +4,7 @@
 
 ## Goals
 
-- Split scenarios by module (`auth`, `products`, `series`, `breeders`, `images`, `featured`, `shares`, `admin`, `account-matrix`)
+- Split scenarios by module (`auth`, `products`, `series`, `breeders`, `images`, `featured`, `shares`, `admin`, `subscription`, `account-matrix`)
 - Keep logs concise by default, with optional JSONL output for debugging (`--json`)
 - Safe by default: no write requests are sent unless `--confirm-writes` is provided
 
@@ -14,7 +14,7 @@
 # Dry-run plan only (no network requests)
 pnpm api-tests
 
-# Run default modules (auth/products/series/breeders/images/featured/shares/admin)
+# Run default modules (auth/products/series/breeders/images/featured/shares/admin/subscription)
 pnpm api-tests -- --confirm-writes
 
 # Run selected modules only
@@ -85,7 +85,7 @@ pnpm api-tests -- \
 - `--tenant-slug <slug>` / `--tenant-name <name>`: tenant metadata when auto-creating tenant
 - `--email <email>`: base email for non-matrix modules
 - `--owner-email / --admin-email / --editor-email / --viewer-email`: role emails for matrix
-- `--super-admin-email <email>`: super-admin checks/provisioning
+- `--super-admin-email <email>`: super-admin checks/provisioning (admin/subscription/account-matrix)
 - `--provision`: create tenant and assign role memberships using `/admin/*`
 - `--require-super-admin-pass`: fail if super-admin positive check is not 2xx
 

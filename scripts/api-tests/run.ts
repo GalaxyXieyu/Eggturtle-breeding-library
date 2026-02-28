@@ -19,6 +19,7 @@ import {
 import { productsModule } from './products';
 import { seriesModule } from './series';
 import { sharesModule } from './shares';
+import { subscriptionModule } from './subscription';
 
 const allModules: TestModule[] = [
   authModule,
@@ -29,6 +30,7 @@ const allModules: TestModule[] = [
   featuredModule,
   sharesModule,
   adminModule,
+  subscriptionModule,
   accountMatrixModule,
 ];
 
@@ -41,6 +43,7 @@ const defaultModuleOrder: TestModule[] = [
   featuredModule,
   sharesModule,
   adminModule,
+  subscriptionModule,
 ];
 
 async function main(): Promise<void> {
