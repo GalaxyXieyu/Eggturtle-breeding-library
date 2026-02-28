@@ -7,12 +7,13 @@ import {
 import { ErrorCode } from '@eggturtle/shared';
 import type {
   AuthUser,
+  PasswordLoginResponse,
   RequestCodeResponse,
   SwitchTenantRequest,
   SwitchTenantResponse,
   VerifyCodeResponse
 } from '@eggturtle/shared';
-import { createHash, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, randomInt, scryptSync, timingSafeEqual } from 'node:crypto';
 
 import { PrismaService } from '../prisma.service';
 
@@ -62,7 +63,7 @@ export class AuthService {
     };
   }
 
-  async verifyCode(email: string, code: string): Promise<VerifyCodeResponse> {
+  async verifyCode(email: string, code: string, password?: string): Promise<VerifyCodeResponse> {
     const latestCode = await this.prisma.authCode.findFirst({
       where: {
         email,
@@ -105,12 +106,52 @@ export class AuthService {
         this.throwInvalidCode();
       }
 
+      const passwordUpdate = password
+        ? {
+            passwordHash: this.hashPassword(password),
+            passwordUpdatedAt: now
+          }
+        : {};
+
       return tx.user.upsert({
         where: { email },
-        update: {},
-        create: { email }
+        update: passwordUpdate,
+        create: {
+          email,
+          ...passwordUpdate
+        }
       });
     });
+
+    const accessToken = this.issueAccessToken({
+      id: user.id,
+      email: user.email
+    });
+
+    return {
+      accessToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name
+      }
+    };
+  }
+
+  async passwordLogin(email: string, password: string): Promise<PasswordLoginResponse> {
+    const user = await this.prisma.user.findUnique({
+      where: {
+        email
+      }
+    });
+
+    if (!user?.passwordHash) {
+      this.throwInvalidCredentials();
+    }
+
+    if (!this.verifyPassword(password, user.passwordHash)) {
+      this.throwInvalidCredentials();
+    }
 
     const accessToken = this.issueAccessToken({
       id: user.id,
@@ -231,11 +272,39 @@ export class AuthService {
     return createHash('sha256').update(`${salt}:${code}:${pepper}`).digest('hex');
   }
 
-  private isHashEqual(left: string, right: string): boolean {
-    const leftBuffer = Buffer.from(left, 'utf8');
-    const rightBuffer = Buffer.from(right, 'utf8');
+  private hashPassword(password: string): string {
+    const salt = randomBytes(16);
+    const derived = scryptSync(`${password}:${this.getPasswordPepper()}`, salt, 64);
+    return `scrypt$${salt.toString('hex')}$${derived.toString('hex')}`;
+  }
 
-    if (leftBuffer.length !== rightBuffer.length) {
+  private verifyPassword(password: string, storedHash: string): boolean {
+    const parts = storedHash.split('$');
+    if (parts.length !== 3) {
+      return false;
+    }
+
+    const [algorithm, saltHex, expectedHex] = parts;
+    if (algorithm !== 'scrypt') {
+      return false;
+    }
+
+    const salt = Buffer.from(saltHex, 'hex');
+    const expected = Buffer.from(expectedHex, 'hex');
+    const candidate = scryptSync(`${password}:${this.getPasswordPepper()}`, salt, expected.length);
+
+    return this.isHashEqual(candidate, expected);
+  }
+
+  private getPasswordPepper() {
+    return process.env.AUTH_PASSWORD_PEPPER ?? process.env.AUTH_CODE_PEPPER ?? '';
+  }
+
+  private isHashEqual(left: string | Buffer, right: string | Buffer): boolean {
+    const leftBuffer = typeof left === 'string' ? Buffer.from(left, 'utf8') : left;
+    const rightBuffer = typeof right === 'string' ? Buffer.from(right, 'utf8') : right;
+
+    if (leftBuffer.byteLength !== rightBuffer.byteLength) {
       return false;
     }
 
@@ -246,6 +315,13 @@ export class AuthService {
     throw new UnauthorizedException({
       message: 'Code is invalid.',
       errorCode: ErrorCode.InvalidCode
+    });
+  }
+
+  private throwInvalidCredentials(): never {
+    throw new UnauthorizedException({
+      message: 'Email or password is incorrect.',
+      errorCode: ErrorCode.Unauthorized
     });
   }
 }

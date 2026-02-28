@@ -67,57 +67,66 @@ export default function TenantAppPage() {
   }, [router, tenantSlug]);
 
   return (
-    <main>
-      <h1>Eggturtle Web v0</h1>
-      <p>Tenant-scoped dashboard.</p>
+    <main className="workspace-shell">
+      <header className="workspace-head">
+        <div className="stack">
+          <h1>租户工作台</h1>
+          <p className="muted">
+            当前租户：<strong>{tenantSlug || '(none)'}</strong>
+          </p>
+        </div>
+        <button
+          type="button"
+          className="secondary"
+          onClick={() => {
+            clearAccessToken();
+            router.replace('/login');
+          }}
+        >
+          退出登录
+        </button>
+      </header>
 
-      <section className="card stack">
-        <p>
-          <strong>tenantSlug:</strong> {tenantSlug || '(none)'}
-        </p>
-
-        {state.loading ? <p>Loading /me ...</p> : null}
+      <section className="card panel stack">
+        {state.loading ? <p className="notice notice-info">正在加载账号信息...</p> : null}
+        {state.error ? <p className="notice notice-error">{state.error}</p> : null}
 
         {state.me ? (
-          <>
+          <div className="kv-grid">
             <p>
-              <strong>User ID:</strong> {state.me.user.id}
+              <span className="muted">用户 ID</span>
+              <strong>{state.me.user.id}</strong>
             </p>
             <p>
-              <strong>Email:</strong> {state.me.user.email}
+              <span className="muted">邮箱</span>
+              <strong>{state.me.user.email}</strong>
             </p>
             <p>
-              <strong>Name:</strong> {state.me.user.name ?? '(empty)'}
+              <span className="muted">姓名</span>
+              <strong>{state.me.user.name ?? '(empty)'}</strong>
             </p>
             <p>
-              <strong>tenantId:</strong> {state.me.tenantId ?? '(none)'}
+              <span className="muted">租户 ID</span>
+              <strong>{state.me.tenantId ?? '(none)'}</strong>
             </p>
-          </>
+          </div>
         ) : null}
+      </section>
 
-        {state.error ? <p className="error">{state.error}</p> : null}
-
-        <div className="row">
+      <section className="card panel stack">
+        <h2>快捷入口</h2>
+        <div className="action-grid">
           <button type="button" onClick={() => router.push(`/app/${tenantSlug}/series`)}>
-            Series
+            系列管理
           </button>
           <button type="button" onClick={() => router.push(`/app/${tenantSlug}/breeders`)}>
-            Breeders
+            种龟管理
           </button>
           <button type="button" onClick={() => router.push(`/app/${tenantSlug}/featured-products`)}>
-            Featured products
+            推荐产品
           </button>
           <button type="button" onClick={() => router.push(`/app/${tenantSlug}/tenants`)}>
-            Manage tenants
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              clearAccessToken();
-              router.replace('/login');
-            }}
-          >
-            Log out
+            租户成员
           </button>
         </div>
       </section>
@@ -134,5 +143,5 @@ function formatError(error: unknown) {
     return error.message;
   }
 
-  return 'Unknown error';
+  return '未知错误';
 }

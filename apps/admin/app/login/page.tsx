@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   meResponseSchema,
+  passwordLoginRequestSchema,
   requestCodeRequestSchema,
   requestCodeResponseSchema,
   verifyCodeRequestSchema
@@ -11,11 +12,15 @@ import {
 
 import { ApiError, apiRequest } from '../../lib/api-client';
 
+type LoginMode = 'password' | 'code';
+
 export default function LoginPage() {
   const router = useRouter();
   const [redirectTo, setRedirectTo] = useState('/dashboard');
+  const [mode, setMode] = useState<LoginMode>('password');
 
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [requestedEmail, setRequestedEmail] = useState<string | null>(null);
   const [code, setCode] = useState('');
   const [devCode, setDevCode] = useState<string | null>(null);
@@ -43,7 +48,7 @@ export default function LoginPage() {
           router.replace(redirectTo);
         }
       } catch {
-        // No active session; keep the user on login page.
+        // 无有效会话，留在登录页。
       } finally {
         if (!cancelled) {
           setCheckingSession(false);
@@ -57,6 +62,48 @@ export default function LoginPage() {
       cancelled = true;
     };
   }, [redirectTo, router]);
+
+  function resetCodeFlow() {
+    setRequestedEmail(null);
+    setCode('');
+    setDevCode(null);
+  }
+
+  function switchMode(nextMode: LoginMode) {
+    if (mode === nextMode) {
+      return;
+    }
+
+    setMode(nextMode);
+    setError(null);
+    resetCodeFlow();
+  }
+
+  async function handlePasswordLogin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      const payload = passwordLoginRequestSchema.parse({
+        email,
+        password
+      });
+
+      await apiRequest('/api/auth/password-login', {
+        method: 'POST',
+        body: payload,
+        requestSchema: passwordLoginRequestSchema,
+        responseSchema: meResponseSchema
+      });
+
+      router.replace(redirectTo);
+    } catch (requestError) {
+      setError(formatError(requestError));
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function handleRequestCode(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -114,25 +161,44 @@ export default function LoginPage() {
 
   if (checkingSession) {
     return (
-      <main className="login-wrap">
-        <div className="card stack">
-          <h1>Super Admin Sign In</h1>
-          <p className="muted">Checking active session...</p>
-        </div>
+      <main className="login-wrap login-wrap-admin">
+        <section className="card stack login-admin-hero">
+          <h1>平台后台登录</h1>
+          <p className="muted">正在检查会话状态...</p>
+        </section>
       </main>
     );
   }
 
   return (
-    <main className="login-wrap">
-      <div className="card stack">
-        <h1>Super Admin Sign In</h1>
-        <p className="muted">Use email verification code to enter `/dashboard`.</p>
+    <main className="login-wrap login-wrap-admin">
+      <section className="card stack login-admin-hero">
+        <p className="super-admin-banner">SUPER ADMIN</p>
+        <h1>平台后台登录</h1>
+        <p className="muted">仅白名单账号可访问 `/dashboard`。支持账号密码与邮箱验证码两种方式。</p>
+      </section>
+
+      <div className="login-mode-toggle" role="tablist" aria-label="登录模式">
+        <button
+          type="button"
+          className={mode === 'password' ? 'login-mode-btn active' : 'login-mode-btn'}
+          onClick={() => switchMode('password')}
+        >
+          账号密码
+        </button>
+        <button
+          type="button"
+          className={mode === 'code' ? 'login-mode-btn active' : 'login-mode-btn'}
+          onClick={() => switchMode('code')}
+        >
+          邮箱验证码
+        </button>
       </div>
 
-      {!requestedEmail ? (
-        <form className="card stack" onSubmit={handleRequestCode}>
-          <label htmlFor="email">Email</label>
+      {mode === 'password' ? (
+        <form className="card stack login-panel login-panel-compact" onSubmit={handlePasswordLogin}>
+          <h2>账号密码登录</h2>
+          <label htmlFor="email">邮箱</label>
           <input
             id="email"
             type="email"
@@ -141,21 +207,47 @@ export default function LoginPage() {
             onChange={(event) => setEmail(event.target.value)}
             required
           />
+          <label htmlFor="password">密码</label>
+          <input
+            id="password"
+            type="password"
+            value={password}
+            placeholder="请输入密码"
+            onChange={(event) => setPassword(event.target.value)}
+            required
+          />
           <button type="submit" disabled={loading}>
-            {loading ? 'Sending...' : 'Request code'}
+            {loading ? '登录中...' : '登录后台'}
+          </button>
+        </form>
+      ) : !requestedEmail ? (
+        <form className="card stack login-panel login-panel-compact" onSubmit={handleRequestCode}>
+          <h2>发送验证码</h2>
+          <label htmlFor="code-email">邮箱</label>
+          <input
+            id="code-email"
+            type="email"
+            value={email}
+            placeholder="you@eggturtle.local"
+            onChange={(event) => setEmail(event.target.value)}
+            required
+          />
+          <button type="submit" disabled={loading}>
+            {loading ? '发送中...' : '获取验证码'}
           </button>
         </form>
       ) : (
-        <form className="card stack" onSubmit={handleVerifyCode}>
+        <form className="card stack login-panel login-panel-compact" onSubmit={handleVerifyCode}>
+          <h2>验证码登录</h2>
           <p>
-            Code sent to: <strong>{requestedEmail}</strong>
+            已发送到：<strong>{requestedEmail}</strong>
           </p>
           {devCode ? (
-            <p>
-              Dev code: <code>{devCode}</code>
+            <p className="login-dev-code">
+              开发验证码：<code>{devCode}</code>
             </p>
           ) : null}
-          <label htmlFor="code">Verification code</label>
+          <label htmlFor="code">验证码</label>
           <input
             id="code"
             type="text"
@@ -163,25 +255,16 @@ export default function LoginPage() {
             pattern="[0-9]{6}"
             maxLength={6}
             value={code}
-            placeholder="6-digit code"
+            placeholder="6 位数字"
             onChange={(event) => setCode(event.target.value)}
             required
           />
           <div className="inline-actions">
             <button type="submit" disabled={loading}>
-              {loading ? 'Verifying...' : 'Verify code'}
+              {loading ? '验证中...' : '验证并登录'}
             </button>
-            <button
-              className="secondary"
-              type="button"
-              disabled={loading}
-              onClick={() => {
-                setRequestedEmail(null);
-                setDevCode(null);
-                setCode('');
-              }}
-            >
-              Change email
+            <button className="secondary" type="button" disabled={loading} onClick={resetCodeFlow}>
+              更换邮箱
             </button>
           </div>
         </form>
@@ -201,5 +284,5 @@ function formatError(error: unknown) {
     return error.message;
   }
 
-  return 'Unknown error';
+  return '未知错误';
 }

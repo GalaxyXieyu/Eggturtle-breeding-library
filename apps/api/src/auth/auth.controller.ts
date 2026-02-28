@@ -1,5 +1,7 @@
 import { Body, Controller, Post, UseGuards } from '@nestjs/common';
 import {
+  passwordLoginRequestSchema,
+  passwordLoginResponseSchema,
   requestCodeRequestSchema,
   requestCodeResponseSchema,
   switchTenantRequestSchema,
@@ -30,9 +32,17 @@ export class AuthController {
   @Post('verify-code')
   async verifyCode(@Body() body: unknown) {
     const payload = parseOrThrow(verifyCodeRequestSchema, body);
-    const response = await this.authService.verifyCode(payload.email, payload.code);
+    const response = await this.authService.verifyCode(payload.email, payload.code, payload.password);
 
     return verifyCodeResponseSchema.parse(response);
+  }
+
+  @Post('password-login')
+  async passwordLogin(@Body() body: unknown) {
+    const payload = parseOrThrow(passwordLoginRequestSchema, body);
+    const response = await this.authService.passwordLogin(payload.email, payload.password);
+
+    return passwordLoginResponseSchema.parse(response);
   }
 
   @Post('switch-tenant')

@@ -67,43 +67,43 @@ export default function DashboardOverviewPage() {
   return (
     <section className="page">
       <header className="page-header">
-        <h2>Dashboard Overview</h2>
-        <p>Cross-tenant controls live under `/admin/*` and are available only to allowlisted users.</p>
+        <h2>后台总览</h2>
+        <p>这里展示平台级租户与审计概况，仅白名单超级管理员可访问。</p>
       </header>
 
       <div className="grid">
         <article className="card stack">
-          <h3>Total tenants</h3>
+          <h3>租户总数</h3>
           <p>
             <span className="badge">{state.tenants.length}</span>
           </p>
           <Link className="nav-link" href="/dashboard/tenants">
-            Manage tenants
+            打开租户管理
           </Link>
         </article>
 
         <article className="card stack">
-          <h3>Recent super-admin events</h3>
+          <h3>近期平台操作</h3>
           <p>
             <span className="badge">{state.logs.length}</span>
           </p>
           <Link className="nav-link" href="/dashboard/audit-logs">
-            Open audit logs
+            打开审计日志
           </Link>
         </article>
       </div>
 
       <article className="card stack">
-        <h3>Latest audit events</h3>
-        {state.logs.length === 0 ? <p className="muted">No audit events yet.</p> : null}
+        <h3>最新审计记录</h3>
+        {state.logs.length === 0 ? <p className="muted">当前暂无审计记录。</p> : null}
         {state.logs.length > 0 ? (
           <table className="data-table">
             <thead>
               <tr>
-                <th>Action</th>
-                <th>Actor</th>
-                <th>Tenant</th>
-                <th>Created</th>
+                <th>动作</th>
+                <th>操作者</th>
+                <th>目标租户</th>
+                <th>时间</th>
               </tr>
             </thead>
             <tbody>
@@ -130,7 +130,7 @@ export default function DashboardOverviewPage() {
         ) : null}
       </article>
 
-      {state.loading ? <p className="muted">Loading overview...</p> : null}
+      {state.loading ? <p className="muted">加载总览中...</p> : null}
       {state.error ? <p className="error">{state.error}</p> : null}
     </section>
   );
@@ -154,5 +154,5 @@ function formatError(error: unknown) {
     return error.message;
   }
 
-  return 'Unknown error';
+  return '未知错误';
 }

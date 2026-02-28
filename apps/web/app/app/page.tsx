@@ -49,21 +49,29 @@ export default function AppEntryPage() {
   }, [router]);
 
   return (
-    <main>
-      <h1>Loading workspace</h1>
-      {state.loading ? <p>Resolving tenant context...</p> : null}
-      {state.error ? <p className="error">{state.error}</p> : null}
-
-      {!state.loading && state.error ? (
-        <div className="row">
-          <button type="button" onClick={() => router.push('/tenant-select')}>
-            Open tenant selector
-          </button>
-          <button type="button" onClick={() => router.push('/login')}>
-            Back to login
-          </button>
+    <main className="workspace-shell">
+      <header className="workspace-head">
+        <div className="stack">
+          <h1>正在进入工作台</h1>
+          <p className="muted">正在解析租户上下文。</p>
         </div>
-      ) : null}
+      </header>
+
+      <section className="card panel stack">
+        {state.loading ? <p className="notice notice-info">正在解析租户信息...</p> : null}
+        {state.error ? <p className="notice notice-error">{state.error}</p> : null}
+
+        {!state.loading && state.error ? (
+          <div className="row">
+            <button type="button" onClick={() => router.push('/tenant-select')}>
+              打开租户选择
+            </button>
+            <button type="button" className="secondary" onClick={() => router.push('/login')}>
+              返回登录
+            </button>
+          </div>
+        ) : null}
+      </section>
     </main>
   );
 }

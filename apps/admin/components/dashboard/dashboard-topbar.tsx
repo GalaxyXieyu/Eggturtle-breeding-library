@@ -19,7 +19,7 @@ export function DashboardTopbar({
   const [signingOut, setSigningOut] = useState(false);
 
   const breadcrumbs = useMemo(() => buildBreadcrumbs(pathname), [pathname]);
-  const currentPageLabel = breadcrumbs[breadcrumbs.length - 1] ?? 'Overview';
+  const currentPageLabel = breadcrumbs[breadcrumbs.length - 1] ?? '总览';
 
   async function handleSignOut() {
     if (signingOut) {
@@ -46,13 +46,13 @@ export function DashboardTopbar({
           type="button"
           className="icon-button"
           onClick={onToggleSidebar}
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={collapsed ? '展开侧边栏' : '收起侧边栏'}
         >
           <span aria-hidden="true">☰</span>
         </button>
 
         <div>
-          <nav className="breadcrumbs" aria-label="Breadcrumb">
+          <nav className="breadcrumbs" aria-label="面包屑">
             {breadcrumbs.map((crumb) => (
               <span key={crumb}>{crumb}</span>
             ))}
@@ -62,9 +62,9 @@ export function DashboardTopbar({
       </div>
 
       <div className="topbar-actions">
-        <p className="topbar-meta">Signed in as {currentUserEmail}</p>
+        <p className="topbar-meta">当前账号：{currentUserEmail}</p>
         <button className="secondary" type="button" onClick={handleSignOut} disabled={signingOut}>
-          {signingOut ? 'Signing out...' : 'Sign out'}
+          {signingOut ? '退出中...' : '退出登录'}
         </button>
       </div>
     </header>
@@ -73,7 +73,7 @@ export function DashboardTopbar({
 
 function buildBreadcrumbs(pathname: string) {
   if (!pathname.startsWith('/dashboard')) {
-    return ['Dashboard'];
+    return ['平台后台'];
   }
 
   const segments = pathname
@@ -82,12 +82,19 @@ function buildBreadcrumbs(pathname: string) {
     .slice(1)
     .map((segment) => toTitleCase(segment));
 
-  return ['Dashboard', ...(segments.length > 0 ? segments : ['Overview'])];
+  return ['平台后台', ...(segments.length > 0 ? segments : ['总览'])];
 }
 
 function toTitleCase(segment: string) {
+  const zhMap: Record<string, string> = {
+    tenants: '租户',
+    memberships: '成员',
+    audit: '审计',
+    logs: '日志'
+  };
+
   return segment
     .split('-')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .map((word) => zhMap[word] ?? word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 }

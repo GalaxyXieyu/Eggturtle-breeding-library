@@ -70,19 +70,19 @@ export default function DashboardTenantsPage() {
   return (
     <section className="page">
       <header className="page-header">
-        <h2>Tenants</h2>
-        <p>Read-only tenant directory with quick search by slug or name.</p>
+        <h2>租户目录</h2>
+        <p>只读查看所有租户，支持按 slug / 名称快速检索。</p>
       </header>
 
       <div className="grid metrics-grid">
         <article className="card stack">
-          <h3>Total tenants</h3>
+          <h3>租户总数</h3>
           <p>
             <span className="badge">{tenants.length}</span>
           </p>
         </article>
         <article className="card stack">
-          <h3>Total memberships</h3>
+          <h3>成员关系总数</h3>
           <p>
             <span className="badge">{totalMembers}</span>
           </p>
@@ -90,15 +90,15 @@ export default function DashboardTenantsPage() {
       </div>
 
       <form className="card stack" onSubmit={handleSearchSubmit}>
-        <h3>Search</h3>
+        <h3>搜索</h3>
         <div className="inline-actions">
           <input
             type="search"
             value={searchInput}
-            placeholder="Search by tenant slug or name"
+            placeholder="按租户 slug 或名称搜索"
             onChange={(event) => setSearchInput(event.target.value)}
           />
-          <button type="submit">Apply</button>
+          <button type="submit">应用</button>
           <button
             className="secondary"
             type="button"
@@ -107,25 +107,25 @@ export default function DashboardTenantsPage() {
               setAppliedSearch('');
             }}
           >
-            Reset
+            重置
           </button>
         </div>
       </form>
 
       <article className="card stack">
-        <h3>Tenant list</h3>
-        {status.loading ? <p className="muted">Loading tenants...</p> : null}
+        <h3>租户列表</h3>
+        {status.loading ? <p className="muted">加载租户中...</p> : null}
         {!status.loading && tenants.length === 0 ? (
-          <p className="muted">No tenants found for the current search.</p>
+          <p className="muted">当前筛选下未找到租户。</p>
         ) : null}
         {tenants.length > 0 ? (
           <table className="data-table">
             <thead>
               <tr>
-                <th>Name</th>
+                <th>名称</th>
                 <th>Slug</th>
-                <th>Members</th>
-                <th>Created</th>
+                <th>成员数</th>
+                <th>创建时间</th>
                 <th />
               </tr>
             </thead>
@@ -138,7 +138,7 @@ export default function DashboardTenantsPage() {
                   <td>{formatDate(tenant.createdAt)}</td>
                   <td>
                     <Link className="nav-link" href={`/dashboard/tenants/${tenant.id}`}>
-                      View details
+                      查看详情
                     </Link>
                   </td>
                 </tr>
@@ -171,5 +171,5 @@ function formatError(error: unknown) {
     return error.message;
   }
 
-  return 'Unknown error';
+  return '未知错误';
 }

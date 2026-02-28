@@ -5,8 +5,11 @@ export type { ApiError } from './error';
 export {
   authCodeSchema,
   authEmailSchema,
+  authPasswordSchema,
   authUserSchema,
   meResponseSchema,
+  passwordLoginRequestSchema,
+  passwordLoginResponseSchema,
   requestCodeRequestSchema,
   requestCodeResponseSchema,
   verifyCodeRequestSchema,
@@ -15,6 +18,8 @@ export {
 export type {
   AuthUser,
   MeResponse,
+  PasswordLoginRequest,
+  PasswordLoginResponse,
   RequestCodeRequest,
   RequestCodeResponse,
   VerifyCodeRequest,

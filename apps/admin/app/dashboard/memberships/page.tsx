@@ -294,19 +294,19 @@ export default function DashboardMembershipsPage() {
   return (
     <section className="page">
       <header className="page-header">
-        <h2>Tenant memberships</h2>
-        <p>View tenant members and update roles with auditable server-side writes.</p>
+        <h2>租户成员管理</h2>
+        <p>按租户查看成员并调整角色，所有写操作都会记录审计日志。</p>
       </header>
 
       <article className="card stack">
-        <h3>Tenant scope</h3>
-        {status.loadingTenants ? <p className="muted">Loading tenants...</p> : null}
+        <h3>租户范围</h3>
+        {status.loadingTenants ? <p className="muted">加载租户中...</p> : null}
         {!status.loadingTenants && tenants.length === 0 ? (
-          <p className="muted">No tenants available yet.</p>
+          <p className="muted">暂无可用租户。</p>
         ) : null}
 
         <div className="inline-actions">
-          <label htmlFor="membership-tenant">Tenant</label>
+          <label htmlFor="membership-tenant">租户</label>
           <select
             id="membership-tenant"
             value={selectedTenantId}
@@ -324,19 +324,19 @@ export default function DashboardMembershipsPage() {
           </select>
           {selectedTenant ? (
             <Link className="nav-link" href={`/dashboard/tenants/${selectedTenant.id}`}>
-              Open tenant detail
+              查看租户详情
             </Link>
           ) : null}
         </div>
       </article>
 
       <form className="card stack" onSubmit={handleAddMember}>
-        <h3>Add member / update by email</h3>
+        <h3>新增成员 / 按邮箱更新角色</h3>
         <div className="inline-actions">
           <input
             type="email"
             value={newMemberEmail}
-            placeholder="member@example.com"
+            placeholder="member@example.com（请输入成员邮箱）"
             onChange={(event) => setNewMemberEmail(event.target.value)}
             required
           />
@@ -348,21 +348,21 @@ export default function DashboardMembershipsPage() {
             ))}
           </select>
           <button type="submit" disabled={!selectedTenantId || status.saving || Boolean(removingUserId)}>
-            {status.saving ? 'Saving...' : 'Apply role'}
+            {status.saving ? '保存中...' : '应用角色'}
           </button>
         </div>
       </form>
 
       <article className="card stack">
-        <h3>Members</h3>
+        <h3>成员列表</h3>
         <form className="inline-actions" onSubmit={handleSearchSubmit}>
           <input
             type="search"
             value={searchInput}
-            placeholder="Search members by email"
+            placeholder="按邮箱搜索成员"
             onChange={(event) => setSearchInput(event.target.value)}
           />
-          <button type="submit">Apply</button>
+          <button type="submit">应用</button>
           <button
             className="secondary"
             type="button"
@@ -371,23 +371,23 @@ export default function DashboardMembershipsPage() {
               setMemberSearch('');
             }}
           >
-            Reset
+            重置
           </button>
         </form>
 
-        {status.loadingMembers ? <p className="muted">Loading members...</p> : null}
+        {status.loadingMembers ? <p className="muted">加载成员中...</p> : null}
         {!status.loadingMembers && members.length === 0 ? (
-          <p className="muted">No members found for this tenant.</p>
+          <p className="muted">该租户下没有匹配成员。</p>
         ) : null}
 
         {members.length > 0 ? (
           <table className="data-table">
             <thead>
               <tr>
-                <th>Email</th>
-                <th>Name</th>
-                <th>Role</th>
-                <th>Joined</th>
+                <th>邮箱</th>
+                <th>姓名</th>
+                <th>角色</th>
+                <th>加入时间</th>
                 <th>操作</th>
               </tr>
             </thead>
@@ -470,11 +470,11 @@ function buildActionMessage(response: {
   auditLogId: string;
 }) {
   if (response.created) {
-    return `Added ${response.user.email} as ${response.role}. Audit: ${response.auditLogId}`;
+    return `已新增成员 ${response.user.email}，角色：${response.role}。审计ID：${response.auditLogId}`;
   }
 
   const previousRoleLabel = response.previousRole ?? 'UNKNOWN';
-  return `Updated ${response.user.email} from ${previousRoleLabel} to ${response.role}. Audit: ${response.auditLogId}`;
+  return `已将 ${response.user.email} 从 ${previousRoleLabel} 调整为 ${response.role}。审计ID：${response.auditLogId}`;
 }
 
 function formatDate(value: string) {
@@ -495,7 +495,7 @@ function formatError(error: unknown) {
     return error.message;
   }
 
-  return 'Unknown error';
+  return '未知错误';
 }
 
 function isTenantMemberNotFoundError(error: unknown) {

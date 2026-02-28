@@ -7,22 +7,22 @@ export type DashboardNavItem = {
 export const dashboardNavItems: DashboardNavItem[] = [
   {
     href: '/dashboard',
-    label: 'Overview',
-    description: 'Cross-tenant snapshot and recent activity.'
+    label: '总览',
+    description: '跨租户关键指标与最近操作。'
   },
   {
     href: '/dashboard/tenants',
-    label: 'Tenants',
-    description: 'Browse tenant workspaces and inspect details.'
+    label: '租户',
+    description: '浏览租户工作区并查看详情。'
   },
   {
     href: '/dashboard/memberships',
-    label: 'Memberships',
-    description: 'View members and update tenant roles.'
+    label: '成员',
+    description: '查看成员并调整租户角色。'
   },
   {
     href: '/dashboard/audit-logs',
-    label: 'Audit Logs',
-    description: 'Track super-admin operations with filters.'
+    label: '审计日志',
+    description: '按条件追踪平台级操作。'
   }
 ];

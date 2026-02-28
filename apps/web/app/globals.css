@@ -1,123 +1,143 @@
-* {
-  box-sizing: border-box;
+.auth-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 14px;
 }
 
-html,
-body {
+.auth-shell-login {
+  width: 100%;
+  max-width: none;
   margin: 0;
-  padding: 0;
-  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: #f8fafc;
-  color: #0f172a;
+  padding: 24px 14px;
 }
 
-main {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 40px 20px;
+.login-layout {
+  width: min(460px, 100%);
 }
 
-h1,
-h2,
-p {
-  margin: 0;
+.login-kicker {
+  font-size: 11px;
+  font-weight: 700;
+  color: #7d6320;
+  letter-spacing: 0.06em;
 }
 
-h1 {
-  margin-bottom: 10px;
+.locale-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px;
+  border: 1px solid #e4d39d;
+  border-radius: 999px;
+  background: #fff9e4;
+  font-size: 12px;
+  color: #574d3b;
+  width: fit-content;
 }
 
-main > p {
-  margin-bottom: 16px;
+.locale-btn {
+  min-height: 28px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0 10px;
+  background: transparent;
+  color: #5a4f39;
 }
 
-.card {
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 16px;
+.locale-btn.active {
+  background: #1c1710;
+  border-color: #1c1710;
+  color: #fff7da;
 }
 
-.stack {
+.login-card {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.row {
+.login-card-head {
+  gap: 4px;
+}
+
+.login-form-stack {
   display: flex;
+  flex-direction: column;
   gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
 }
 
-.between {
-  justify-content: space-between;
+.login-error {
+  margin-top: 2px;
 }
 
-label {
-  font-size: 14px;
-  color: #334155;
+.share-shell {
+  width: min(980px, 100% - 24px);
+  margin: 0 auto;
+  padding: 20px 0 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-input,
-select {
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  padding: 10px 12px;
-  font-size: 14px;
-  background: #ffffff;
+.share-hero {
+  background: linear-gradient(145deg, #fffbe8 0%, #fff 45%, #fff2be 100%);
 }
 
-button {
-  border: 0;
-  border-radius: 8px;
-  padding: 10px 14px;
-  background: #0f172a;
-  color: #ffffff;
-  cursor: pointer;
-}
-
-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.list {
-  list-style: none;
-  padding: 0;
-}
-
-.error {
-  color: #b91c1c;
-}
-
-.super-admin-banner {
-  display: inline-block;
-  margin-bottom: 10px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: #7c2d12;
-  color: #ffedd5;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+.share-kicker {
+  font-size: 11px;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
+  color: #7a611d;
+  font-weight: 700;
 }
 
-.env-warning {
-  margin-top: 6px;
-  margin-bottom: 18px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid #fca5a5;
-  background: #fef2f2;
-  color: #7f1d1d;
+.share-image-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
 }
 
-.env-warning.ok {
-  border-color: #fbbf24;
-  background: #fffbeb;
-  color: #78350f;
+.share-image-card {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.share-image-card img {
+  width: 100%;
+  border-radius: var(--radius-md);
+  border: 1px solid #e7ddc5;
+  background: #fff8e7;
+  object-fit: cover;
+}
+
+.share-image-card figcaption {
+  font-size: 12px;
+  color: #665b46;
+}
+
+@media (max-width: 900px) {
+  .share-shell {
+    width: min(100% - 16px, 760px);
+  }
+
+  .login-layout {
+    width: min(420px, 100%);
+  }
+
+  .login-card {
+    order: 1;
+  }
+
+  .locale-toggle {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .locale-btn {
+    flex: 1;
+  }
 }

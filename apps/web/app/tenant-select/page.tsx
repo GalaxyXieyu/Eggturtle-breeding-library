@@ -94,70 +94,102 @@ export default function TenantSelectPage() {
   }
 
   return (
-    <main>
-      <h1>Select tenant</h1>
-      <p>Choose a tenant to enter the tenant-scoped app.</p>
+    <main className="workspace-shell">
+      <header className="workspace-head">
+        <div className="stack">
+          <h1>选择租户</h1>
+          <p className="muted">请选择要进入的租户。</p>
+        </div>
+        <button type="button" className="secondary" onClick={() => router.push('/app')}>
+          返回入口
+        </button>
+      </header>
 
-      <section className="card stack">
-        <h2>My tenants</h2>
-        {loading ? <p>Loading tenants...</p> : null}
-        {!loading && tenants.length === 0 ? <p>No tenants yet.</p> : null}
+      <section className="card panel stack">
+        <div className="row between">
+          <h2>我的租户</h2>
+          {!loading ? <p className="muted">共 {tenants.length} 个</p> : null}
+        </div>
 
-        <ul className="stack list">
-          {tenants.map((membership) => (
-            <li key={membership.tenant.id} className="row between">
-              <span>
-                <strong>{membership.tenant.slug}</strong> / {membership.tenant.name} ({membership.role})
-              </span>
-              <button
-                type="button"
-                disabled={switchingSlug === membership.tenant.slug}
-                onClick={() => {
-                  void handleSwitchTenant(membership.tenant.slug);
-                }}
-              >
-                {switchingSlug === membership.tenant.slug ? 'Switching...' : 'Open'}
-              </button>
-            </li>
-          ))}
-        </ul>
+        {loading ? <p className="notice notice-info">正在加载租户列表...</p> : null}
+        {!loading && tenants.length === 0 ? <p className="notice notice-warning">当前账号还没有租户。</p> : null}
+
+        {!loading && tenants.length > 0 ? (
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Slug</th>
+                  <th>名称</th>
+                  <th>角色</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tenants.map((membership) => (
+                  <tr key={membership.tenant.id}>
+                    <td>
+                      <strong>{membership.tenant.slug}</strong>
+                    </td>
+                    <td>{membership.tenant.name}</td>
+                    <td>{membership.role}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="btn-compact"
+                        disabled={switchingSlug === membership.tenant.slug}
+                        onClick={() => {
+                          void handleSwitchTenant(membership.tenant.slug);
+                        }}
+                      >
+                        {switchingSlug === membership.tenant.slug ? '切换中...' : '进入'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
       </section>
 
-      <form className="card stack" onSubmit={handleCreateTenant}>
-        <h2>Create tenant</h2>
-        <label htmlFor="tenant-slug">Slug</label>
-        <input
-          id="tenant-slug"
-          type="text"
-          value={slug}
-          placeholder="my-first-tenant"
-          onChange={(event) => setSlug(event.target.value)}
-          required
-        />
+      <form className="card panel stack" onSubmit={handleCreateTenant}>
+        <h2>创建租户</h2>
+        <div className="form-grid form-grid-2">
+          <div className="stack">
+            <label htmlFor="tenant-slug">Slug</label>
+            <input
+              id="tenant-slug"
+              type="text"
+              value={slug}
+              placeholder="my-first-tenant"
+              onChange={(event) => setSlug(event.target.value)}
+              required
+            />
+          </div>
 
-        <label htmlFor="tenant-name">Name</label>
-        <input
-          id="tenant-name"
-          type="text"
-          value={name}
-          placeholder="My First Tenant"
-          onChange={(event) => setName(event.target.value)}
-          required
-        />
+          <div className="stack">
+            <label htmlFor="tenant-name">名称</label>
+            <input
+              id="tenant-name"
+              type="text"
+              value={name}
+              placeholder="My First Tenant"
+              onChange={(event) => setName(event.target.value)}
+              required
+            />
+          </div>
+        </div>
 
-        <button type="submit" disabled={saving}>
-          {saving ? 'Creating...' : 'Create tenant'}
-        </button>
+        <div className="row">
+          <button type="submit" disabled={saving}>
+            {saving ? '创建中...' : '创建租户'}
+          </button>
+        </div>
       </form>
 
-      <div className="row">
-        <button type="button" onClick={() => router.push('/app')}>
-          Back to /app
-        </button>
-      </div>
-
-      {message ? <p>{message}</p> : null}
-      {error ? <p className="error">{error}</p> : null}
+      {message ? <p className="notice notice-success">{message}</p> : null}
+      {error ? <p className="notice notice-error">{error}</p> : null}
     </main>
   );
 }
@@ -171,5 +203,5 @@ function formatError(error: unknown) {
     return error.message;
   }
 
-  return 'Unknown error';
+  return '未知错误';
 }

@@ -11,16 +11,17 @@ export default function DeprecatedWebAdminEntry() {
   }
 
   return (
-    <main>
-      <p className="super-admin-banner">Moved</p>
-      <h1>Super-admin dashboard moved</h1>
-      <p>
-        The backoffice UI now lives in <code>apps/admin</code> and routes under <code>/dashboard/*</code>.
-      </p>
-      <p>
-        Start the admin app on port <code>30020</code>, then open{' '}
-        <Link href={`${defaultAdminOrigin}/dashboard`}>{defaultAdminOrigin}/dashboard</Link>.
-      </p>
+    <main className="workspace-shell">
+      <section className="card panel stack">
+        <p className="super-admin-banner">已迁移</p>
+        <h1>后台入口已迁移到 apps/admin</h1>
+        <p className="muted">
+          请启动 <code>apps/admin</code>（端口 <code>30020</code>），并访问：
+        </p>
+        <p>
+          <Link href={`${defaultAdminOrigin}/dashboard`}>{defaultAdminOrigin}/dashboard</Link>
+        </p>
+      </section>
     </main>
   );
 }

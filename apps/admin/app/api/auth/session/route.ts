@@ -11,13 +11,13 @@ export async function GET() {
   const token = getSessionToken();
 
   if (!token) {
-    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ message: '未登录' }, { status: 401 });
   }
 
   const session = await resolveSessionFromToken(token);
 
   if (!session || !isSuperAdminEmailAllowlisted(session.user.email)) {
-    const response = NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    const response = NextResponse.json({ message: '未登录' }, { status: 401 });
     clearSessionCookie(response);
     return response;
   }

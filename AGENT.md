@@ -199,6 +199,29 @@
   - 登录页中英文切换可用（`中文`/`English`）
   - `admin@turtlealbum.local` 仅属于 `turtle-album`；访问 `ux-sandbox` 会提示 `User is not a member of this tenant`
   - `synthetic.owner@ux-sandbox.local` 访问 `ux-sandbox/series` 显示 `3/3` 条 series，链路正常
+- 2026-02-28 合并回退后的重建补充：
+  - `apps/web` 与 `apps/admin` 已统一改为 Admin Mode 紧凑比例（小字号/小间距/小控件/紧凑表格行高）
+  - `apps/admin` 全部核心页面改为中文文案（登录、总览、租户、成员、审计日志、侧边栏/顶栏）
+  - 登录链路已升级为“双模式”：账号密码 + 邮箱验证码（admin/web 同步可用）
+  - 密码登录后端已落地并迁移：
+    - 共享协议：`packages/shared/src/auth.ts`
+    - API：`POST /auth/password-login` + `verify-code` 支持可选 `password`
+    - 数据库迁移：`apps/api/prisma/migrations/20260228160000_auth_password_login`
+  - 已确认“有图片有数据”的主租户：`turtle-album`
+    - 当前统计：`products=32`、`product_images=64`（该租户图片数据最完整）
+  - 本地可用账号（已设置密码）：
+    - 租户端（图片数据主账号）：`admin@turtlealbum.local` / `Turtle@2026!`
+    - 平台后台（super-admin）：`synthetic.superadmin@local.test` / `Super@2026!`
+    - 本地后台 allowlist 已写入：`apps/admin/.env.local`
+  - 当前删除其它租户会影响 smoke/回归样例，默认先不做破坏性清理；如确认清理再执行“只保留 turtle-album”。
+- 2026-02-28 UI_STYLE_GUIDE 对齐优化补充（apps/web）：
+  - 登录页重构为“单卡片居中”标准布局，移除冗余说明块，保留中英文切换与双模式登录（密码/验证码）
+  - 批量收口 v0 页面视觉风格（`/app`、`/tenant-select`、`/app/[tenantSlug]/series|breeders|featured-products|tenants|breeders/[id]`、`/public/share`）
+  - 新增统一样式基座（页面壳层、面板、表格、状态提示、紧凑按钮），并按 Admin Mode 紧凑密度统一
+  - 移动端适配已实测（390px 视口）：登录页、工作台、种龟列表、分享页均可用
+  - 代码与实测证据：
+    - 主要文件：`apps/web/app/globals.css`、`apps/web/app/login/page.tsx`、`apps/web/app/app/*`、`apps/web/app/public/share/page.tsx`
+    - 验证：`pnpm --filter @eggturtle/web lint` 通过（仅 `next/image` 规则 warning）；Chrome MCP 截图确认桌面/移动端布局
 
 ---
 

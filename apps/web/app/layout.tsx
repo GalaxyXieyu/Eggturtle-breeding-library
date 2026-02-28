@@ -1,3 +1,4 @@
+import '../../../packages/shared/styles/ui-foundation.css';
 import './globals.css';
 
 export const metadata = {

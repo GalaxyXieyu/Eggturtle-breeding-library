@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { verifyCodeRequestSchema, verifyCodeResponseSchema } from '@eggturtle/shared/auth';
+import { passwordLoginRequestSchema, passwordLoginResponseSchema } from '@eggturtle/shared/auth';
 
 import { isSuperAdminEmailAllowlisted } from '../../../../lib/admin-auth';
 import {
@@ -11,9 +11,20 @@ import {
 
 export async function POST(request: Request) {
   try {
-    const payload = verifyCodeRequestSchema.parse(await request.json());
+    const payload = passwordLoginRequestSchema.parse(await request.json());
 
-    const upstreamResponse = await fetch(`${getAdminApiBaseUrl()}/auth/verify-code`, {
+    if (!isSuperAdminEmailAllowlisted(payload.email)) {
+      return withClearedSessionCookie(
+        NextResponse.json(
+          {
+            message: '后台访问未授权。'
+          },
+          { status: 403 }
+        )
+      );
+    }
+
+    const upstreamResponse = await fetch(`${getAdminApiBaseUrl()}/auth/password-login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -28,14 +39,14 @@ export async function POST(request: Request) {
       return withClearedSessionCookie(
         NextResponse.json(
           {
-            message: pickErrorMessage(body, `Request failed with status ${upstreamResponse.status}`)
+            message: pickErrorMessage(body, `请求失败（${upstreamResponse.status}）`)
           },
           { status: upstreamResponse.status }
         )
       );
     }
 
-    const { accessToken } = verifyCodeResponseSchema.parse(body);
+    const { accessToken } = passwordLoginResponseSchema.parse(body);
     const session = await resolveSessionFromToken(accessToken);
 
     if (!session || !isSuperAdminEmailAllowlisted(session.user.email)) {

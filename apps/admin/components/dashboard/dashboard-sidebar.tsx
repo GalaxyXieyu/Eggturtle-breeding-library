@@ -15,16 +15,16 @@ export function DashboardSidebar({ collapsed }: DashboardSidebarProps) {
   const pathname = usePathname();
 
   return (
-    <aside className="dashboard-sidebar" aria-label="Dashboard sidebar">
+    <aside className="dashboard-sidebar" aria-label="后台导航">
       <div className="sidebar-brand">
         <span className="sidebar-brand-logo">ET</span>
         <div className="sidebar-brand-copy">
-          <strong>Eggturtle Admin</strong>
-          <span>Backoffice shell</span>
+          <strong>Eggturtle 平台后台</strong>
+          <span>跨租户运维控制台</span>
         </div>
       </div>
 
-      <nav className="sidebar-nav" aria-label="Dashboard navigation">
+      <nav className="sidebar-nav" aria-label="后台主导航">
         {dashboardNavItems.map((item) => {
           const isActive =
             pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(`${item.href}/`));
@@ -45,7 +45,7 @@ export function DashboardSidebar({ collapsed }: DashboardSidebarProps) {
 
       <div className="sidebar-footer">
         <p className={`sidebar-hint${webSuperAdminEnabled ? ' enabled' : ''}`}>
-          Super-admin access is enforced by server session + allowlist.
+          后台权限由服务端会话 + 白名单双重校验。
         </p>
       </div>
     </aside>

@@ -177,15 +177,15 @@ export default function DashboardAuditLogsPage() {
   return (
     <section className="page">
       <header className="page-header">
-        <h2>Audit Logs</h2>
-        <p>Track super-admin actions with tenant, user, action, and time-range filters.</p>
+        <h2>审计日志</h2>
+        <p>按租户、用户、动作和时间范围过滤平台级操作日志。</p>
       </header>
 
       <form className="card stack" onSubmit={handleFilterSubmit}>
-        <h3>Filters</h3>
+        <h3>筛选条件</h3>
         <div className="form-grid filter-grid">
           <div className="stack">
-            <label htmlFor="audit-tenant">Tenant</label>
+            <label htmlFor="audit-tenant">租户</label>
             <select
               id="audit-tenant"
               value={filtersDraft.tenantId}
@@ -193,7 +193,7 @@ export default function DashboardAuditLogsPage() {
                 setFiltersDraft((previous) => ({ ...previous, tenantId: event.target.value }))
               }
             >
-              <option value="">All tenants</option>
+              <option value="">全部租户</option>
               {tenants.map((tenant) => (
                 <option key={tenant.id} value={tenant.id}>
                   {tenant.name} ({tenant.slug})
@@ -203,7 +203,7 @@ export default function DashboardAuditLogsPage() {
           </div>
 
           <div className="stack">
-            <label htmlFor="audit-user">User</label>
+            <label htmlFor="audit-user">用户</label>
             <select
               id="audit-user"
               value={filtersDraft.actorUserId}
@@ -211,7 +211,7 @@ export default function DashboardAuditLogsPage() {
                 setFiltersDraft((previous) => ({ ...previous, actorUserId: event.target.value }))
               }
             >
-              <option value="">All users</option>
+              <option value="">全部用户</option>
               {users.map((user) => (
                 <option key={user.id} value={user.id}>
                   {user.email}
@@ -221,7 +221,7 @@ export default function DashboardAuditLogsPage() {
           </div>
 
           <div className="stack">
-            <label htmlFor="audit-action">Action</label>
+            <label htmlFor="audit-action">动作</label>
             <select
               id="audit-action"
               value={filtersDraft.action}
@@ -232,7 +232,7 @@ export default function DashboardAuditLogsPage() {
                 }))
               }
             >
-              <option value="">All actions</option>
+              <option value="">全部动作</option>
               {actionOptions.map((action) => (
                 <option key={action} value={action}>
                   {action}
@@ -242,7 +242,7 @@ export default function DashboardAuditLogsPage() {
           </div>
 
           <div className="stack">
-            <label htmlFor="audit-from">From</label>
+            <label htmlFor="audit-from">开始时间</label>
             <input
               id="audit-from"
               type="datetime-local"
@@ -254,7 +254,7 @@ export default function DashboardAuditLogsPage() {
           </div>
 
           <div className="stack">
-            <label htmlFor="audit-to">To</label>
+            <label htmlFor="audit-to">结束时间</label>
             <input
               id="audit-to"
               type="datetime-local"
@@ -267,7 +267,7 @@ export default function DashboardAuditLogsPage() {
         </div>
 
         <div className="inline-actions">
-          <button type="submit">Apply filters</button>
+          <button type="submit">应用筛选</button>
           <button
             className="secondary"
             type="button"
@@ -284,31 +284,31 @@ export default function DashboardAuditLogsPage() {
               setState((previous) => ({ ...previous, page: 1 }));
             }}
           >
-            Reset
+            重置
           </button>
         </div>
       </form>
 
       <article className="card stack">
-        <h3>Events</h3>
+        <h3>日志列表</h3>
         <p className="muted">
-          Total: {state.total} · Page {state.page}/{state.totalPages}
+          总数：{state.total} · 第 {state.page}/{state.totalPages} 页
         </p>
 
-        {state.loading ? <p className="muted">Loading audit logs...</p> : null}
+        {state.loading ? <p className="muted">加载审计日志中...</p> : null}
         {!state.loading && state.logs.length === 0 ? (
-          <p className="muted">No audit events found for the current filters.</p>
+          <p className="muted">当前筛选条件下暂无日志。</p>
         ) : null}
 
         {state.logs.length > 0 ? (
           <table className="data-table">
             <thead>
               <tr>
-                <th>Action</th>
-                <th>Actor</th>
-                <th>Tenant</th>
-                <th>Metadata</th>
-                <th>Created</th>
+                <th>动作</th>
+                <th>操作者</th>
+                <th>目标租户</th>
+                <th>元数据</th>
+                <th>时间</th>
               </tr>
             </thead>
             <tbody>
@@ -342,7 +342,7 @@ export default function DashboardAuditLogsPage() {
             disabled={!canGoPrevious}
             onClick={() => setState((previous) => ({ ...previous, page: Math.max(1, previous.page - 1) }))}
           >
-            Previous
+            上一页
           </button>
           <button
             className="secondary"
@@ -352,7 +352,7 @@ export default function DashboardAuditLogsPage() {
               setState((previous) => ({ ...previous, page: Math.min(previous.totalPages, previous.page + 1) }))
             }
           >
-            Next
+            下一页
           </button>
         </div>
       </article>
@@ -370,7 +370,7 @@ function stringifyMetadata(metadata: unknown) {
   try {
     return JSON.stringify(metadata);
   } catch {
-    return '[unserializable]';
+    return '[无法序列化]';
   }
 }
 
@@ -405,5 +405,5 @@ function formatError(error: unknown) {
     return error.message;
   }
 
-  return 'Unknown error';
+  return '未知错误';
 }

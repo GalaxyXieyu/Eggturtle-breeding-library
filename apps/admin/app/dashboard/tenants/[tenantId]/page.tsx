@@ -100,25 +100,25 @@ export default function TenantDetailPage() {
   return (
     <section className="page">
       <header className="page-header">
-        <h2>Tenant detail</h2>
-        <p>Inspect tenant profile, member roster, and recent audit actions.</p>
+        <h2>租户详情</h2>
+        <p>查看租户档案、成员清单与近期审计记录。</p>
       </header>
 
       <div className="inline-actions">
         <Link className="nav-link" href="/dashboard/tenants">
-          Back to tenant list
+          返回租户列表
         </Link>
         <Link className="nav-link" href={`/dashboard/memberships?tenantId=${tenantId}`}>
-          Manage memberships
+          打开成员管理
         </Link>
       </div>
 
       {state.tenant ? (
         <article className="card stack">
-          <h3>Profile</h3>
+          <h3>基本信息</h3>
           <dl className="detail-list">
             <div>
-              <dt>Name</dt>
+              <dt>名称</dt>
               <dd>{state.tenant.name}</dd>
             </div>
             <div>
@@ -126,15 +126,15 @@ export default function TenantDetailPage() {
               <dd className="mono">{state.tenant.slug}</dd>
             </div>
             <div>
-              <dt>Tenant ID</dt>
+              <dt>租户 ID</dt>
               <dd className="mono">{state.tenant.id}</dd>
             </div>
             <div>
-              <dt>Members</dt>
+              <dt>成员数</dt>
               <dd>{state.tenant.memberCount}</dd>
             </div>
             <div>
-              <dt>Created</dt>
+              <dt>创建时间</dt>
               <dd>{formatDate(state.tenant.createdAt)}</dd>
             </div>
           </dl>
@@ -142,15 +142,15 @@ export default function TenantDetailPage() {
       ) : null}
 
       <article className="card stack">
-        <h3>Members</h3>
+        <h3>成员列表</h3>
         <form className="inline-actions" onSubmit={handleMemberSearch}>
           <input
             type="search"
             value={memberSearchInput}
-            placeholder="Search members by email"
+            placeholder="按邮箱搜索成员"
             onChange={(event) => setMemberSearchInput(event.target.value)}
           />
-          <button type="submit">Apply</button>
+          <button type="submit">应用</button>
           <button
             className="secondary"
             type="button"
@@ -159,23 +159,23 @@ export default function TenantDetailPage() {
               setMemberSearch('');
             }}
           >
-            Reset
+            重置
           </button>
         </form>
 
-        {state.loading ? <p className="muted">Loading tenant detail...</p> : null}
+        {state.loading ? <p className="muted">加载租户详情中...</p> : null}
         {!state.loading && state.members.length === 0 ? (
-          <p className="muted">No members found for this tenant.</p>
+          <p className="muted">当前租户暂无成员。</p>
         ) : null}
 
         {state.members.length > 0 ? (
           <table className="data-table">
             <thead>
               <tr>
-                <th>Email</th>
-                <th>Name</th>
-                <th>Role</th>
-                <th>Joined</th>
+                <th>邮箱</th>
+                <th>姓名</th>
+                <th>角色</th>
+                <th>加入时间</th>
               </tr>
             </thead>
             <tbody>
@@ -193,15 +193,15 @@ export default function TenantDetailPage() {
       </article>
 
       <article className="card stack">
-        <h3>Recent audit logs</h3>
-        {state.recentLogs.length === 0 ? <p className="muted">No tenant audit logs yet.</p> : null}
+        <h3>近期审计日志</h3>
+        {state.recentLogs.length === 0 ? <p className="muted">该租户暂无审计记录。</p> : null}
         {state.recentLogs.length > 0 ? (
           <table className="data-table">
             <thead>
               <tr>
-                <th>Action</th>
-                <th>Actor</th>
-                <th>Created</th>
+                <th>动作</th>
+                <th>操作者</th>
+                <th>时间</th>
               </tr>
             </thead>
             <tbody>
@@ -240,5 +240,5 @@ function formatError(error: unknown) {
     return error.message;
   }
 
-  return 'Unknown error';
+  return '未知错误';
 }

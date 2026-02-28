@@ -42,11 +42,21 @@ export function getApiBaseUrl() {
 }
 
 function getSuperAdminAllowlist() {
-  return parseAllowlist(
+  const configuredAllowlist = parseAllowlist(
     process.env.ADMIN_SUPER_EMAIL_ALLOWLIST ??
       process.env.ADMIN_SUPER_ADMIN_EMAILS ??
       process.env.SUPER_ADMIN_EMAILS
   );
+
+  if (configuredAllowlist.size > 0) {
+    return configuredAllowlist;
+  }
+
+  if (process.env.NODE_ENV !== 'production') {
+    return new Set(['synthetic.superadmin@local.test']);
+  }
+
+  return configuredAllowlist;
 }
 
 export function isSuperAdminEmailAllowlisted(email: string) {

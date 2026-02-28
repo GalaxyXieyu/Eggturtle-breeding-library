@@ -115,80 +115,103 @@ export default function SeriesListPage() {
   }
 
   return (
-    <main>
-      <h1>Series</h1>
-      <p>Tenant: {tenantSlug || '(unknown)'}</p>
+    <main className="workspace-shell">
+      <header className="workspace-head">
+        <div className="stack">
+          <h1>系列管理</h1>
+          <p className="muted">租户：{tenantSlug || '(unknown)'}</p>
+        </div>
+        <div className="row">
+          <button type="button" className="secondary" onClick={() => router.push(`/app/${tenantSlug}`)}>
+            返回工作台
+          </button>
+          <button type="button" onClick={() => router.push(`/app/${tenantSlug}/breeders`)}>
+            打开种龟列表
+          </button>
+        </div>
+      </header>
 
-      <section className="card stack">
-        <h2>Search</h2>
+      <section className="card panel stack">
+        <h2>搜索筛选</h2>
         <form className="row" onSubmit={handleSearch}>
           <input
             type="text"
-            placeholder="Search by code or name"
+            placeholder="按系列编码或名称搜索"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
           <button type="submit" disabled={loading}>
-            {loading ? 'Loading...' : 'Apply'}
+            {loading ? '加载中...' : '应用'}
           </button>
           <button
             type="button"
+            className="secondary"
             disabled={loading && search.length === 0}
             onClick={() => {
               void handleResetSearch();
             }}
           >
-            Reset
+            重置
           </button>
         </form>
       </section>
 
-      <section className="card stack">
-        <h2>Series list</h2>
-        {loading ? <p>Loading series...</p> : null}
-        {!loading ? (
-          <p>
-            Showing {series.length} of {meta.total} item(s). Page {meta.page}/{meta.totalPages}.
-          </p>
-        ) : null}
+      <section className="card panel stack">
+        <div className="row between">
+          <h2>系列列表</h2>
+          {!loading ? (
+            <p className="muted">
+              共 {meta.total} 条，当前第 {meta.page}/{meta.totalPages} 页
+            </p>
+          ) : null}
+        </div>
 
+        {loading ? <p className="notice notice-info">正在加载系列数据...</p> : null}
         {!loading && series.length === 0 ? (
-          <p>No series found. Try another keyword or seed demo data first.</p>
+          <p className="notice notice-warning">暂无系列数据，可先录入种龟或初始化示例数据。</p>
         ) : null}
 
-        <ul className="stack list">
-          {series.map((item) => (
-            <li key={item.id} className="card stack">
-              <p>
-                <strong>{item.code}</strong> / {item.name}
-              </p>
-              <p>{item.description || 'No description'}</p>
-              <p>
-                sortOrder={item.sortOrder} / status={item.isActive ? 'active' : 'inactive'}
-              </p>
-              <div className="row">
-                <button
-                  type="button"
-                  onClick={() => router.push(`/app/${tenantSlug}/breeders?seriesId=${item.id}`)}
-                >
-                  View breeders in this series
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+        {!loading && series.length > 0 ? (
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>编码</th>
+                  <th>名称</th>
+                  <th>描述</th>
+                  <th>排序</th>
+                  <th>状态</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {series.map((item) => (
+                  <tr key={item.id}>
+                    <td>
+                      <strong>{item.code}</strong>
+                    </td>
+                    <td>{item.name}</td>
+                    <td>{item.description || '-'}</td>
+                    <td>{item.sortOrder}</td>
+                    <td>{item.isActive ? '启用' : '停用'}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="btn-compact"
+                        onClick={() => router.push(`/app/${tenantSlug}/breeders?seriesId=${item.id}`)}
+                      >
+                        查看种龟
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
       </section>
 
-      <div className="row">
-        <button type="button" onClick={() => router.push(`/app/${tenantSlug}`)}>
-          Back to dashboard
-        </button>
-        <button type="button" onClick={() => router.push(`/app/${tenantSlug}/breeders`)}>
-          Open breeders
-        </button>
-      </div>
-
-      {error ? <p className="error">{error}</p> : null}
+      {error ? <p className="notice notice-error">{error}</p> : null}
     </main>
   );
 }
@@ -202,5 +225,5 @@ function formatError(error: unknown) {
     return error.message;
   }
 
-  return 'Unknown error';
+  return '未知错误';
 }

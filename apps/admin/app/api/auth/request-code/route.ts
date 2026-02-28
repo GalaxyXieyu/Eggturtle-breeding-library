@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     if (!isSuperAdminEmailAllowlisted(payload.email)) {
       return NextResponse.json(
         {
-          message: 'Unable to process sign-in request.'
+          message: '该账号不在后台白名单中。'
         },
         { status: 403 }
       );
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json(
       {
-        message: 'Invalid request payload.'
+        message: '请求参数无效。'
       },
       { status: 400 }
     );

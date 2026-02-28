@@ -13,9 +13,11 @@ export default async function PublicSharePage({
 
   if (!sid) {
     return (
-      <main>
-        <h1>Shared page unavailable</h1>
-        <p className="error">Missing share identifier.</p>
+      <main className="share-shell">
+        <section className="card panel stack">
+          <h1>分享页不可用</h1>
+          <p className="notice notice-error">缺少分享标识参数（sid）。</p>
+        </section>
       </main>
     );
   }
@@ -30,9 +32,11 @@ export default async function PublicSharePage({
 
   if (!parsedQuery.success) {
     return (
-      <main>
-        <h1>Shared page unavailable</h1>
-        <p className="error">Share link is invalid or expired.</p>
+      <main className="share-shell">
+        <section className="card panel stack">
+          <h1>分享页不可用</h1>
+          <p className="notice notice-error">分享链接无效或已过期。</p>
+        </section>
       </main>
     );
   }
@@ -41,9 +45,11 @@ export default async function PublicSharePage({
 
   if (!shareResult.success) {
     return (
-      <main>
-        <h1>Shared page unavailable</h1>
-        <p className="error">{shareResult.message}</p>
+      <main className="share-shell">
+        <section className="card panel stack">
+          <h1>分享页不可用</h1>
+          <p className="notice notice-error">{shareResult.message}</p>
+        </section>
       </main>
     );
   }
@@ -51,39 +57,47 @@ export default async function PublicSharePage({
   const { tenant, product, expiresAt } = shareResult.data;
 
   return (
-    <main>
-      <h1>{product.name || product.code}</h1>
-      <p>
-        Shared by tenant <strong>{tenant.name}</strong> ({tenant.slug})
-      </p>
-      <p>Share token expires at: {new Date(expiresAt).toLocaleString()}</p>
-
-      <section className="card stack">
-        <h2>Product details</h2>
-        <p>
-          <strong>Code:</strong> {product.code}
+    <main className="share-shell">
+      <section className="card share-hero stack">
+        <p className="share-kicker">TurtleAlbum · Public Share</p>
+        <h1>{product.name || product.code}</h1>
+        <p className="muted">
+          由租户 <strong>{tenant.name}</strong>（{tenant.slug}）分享
         </p>
-        <p>
-          <strong>ID:</strong> {product.id}
-        </p>
-        <p>
-          <strong>Description:</strong> {product.description ?? 'No description'}
-        </p>
+        <p className="muted">链接有效期至：{new Date(expiresAt).toLocaleString('zh-CN')}</p>
       </section>
 
-      <section className="card stack">
-        <h2>Images</h2>
-        {product.images.length === 0 ? <p>No images uploaded.</p> : null}
-        <div className="stack">
-          {product.images.map((image) => (
-            <figure key={image.id} className="stack">
-              <img src={image.url} alt={product.name ?? product.code} style={{ width: '100%', borderRadius: 8 }} />
-              <figcaption>
-                {image.isMain ? 'Main image' : 'Image'} #{image.sortOrder + 1}
-              </figcaption>
-            </figure>
-          ))}
+      <section className="card panel stack">
+        <h2>产品信息</h2>
+        <div className="kv-grid">
+          <p>
+            <span className="muted">Code</span>
+            <strong>{product.code}</strong>
+          </p>
+          <p>
+            <span className="muted">ID</span>
+            <strong>{product.id}</strong>
+          </p>
+          <p>
+            <span className="muted">描述</span>
+            <strong>{product.description ?? '暂无描述'}</strong>
+          </p>
         </div>
+      </section>
+
+      <section className="card panel stack">
+        <h2>图片</h2>
+        {product.images.length === 0 ? <p className="notice notice-warning">该产品暂无图片。</p> : null}
+        {product.images.length > 0 ? (
+          <div className="share-image-grid">
+            {product.images.map((image) => (
+              <figure key={image.id} className="share-image-card">
+                <img src={image.url} alt={product.name ?? product.code} />
+                <figcaption>{image.isMain ? '主图' : '图片'} #{image.sortOrder + 1}</figcaption>
+              </figure>
+            ))}
+          </div>
+        ) : null}
       </section>
     </main>
   );
@@ -133,7 +147,7 @@ async function fetchPublicShare(
   if (!parsed.success) {
     return {
       success: false,
-      message: 'Unexpected response for public share page.'
+      message: '分享接口返回结构异常。'
     };
   }
 
@@ -165,11 +179,11 @@ function pickErrorMessage(payload: unknown, status: number): string {
   }
 
   if (status === 401) {
-    return 'This share link has expired. Please ask for a fresh share link.';
+    return '该分享链接已过期，请重新生成。';
   }
 
   if (status === 404) {
-    return 'Share content not found.';
+    return '未找到分享内容。';
   }
 
   return `Request failed with status ${status}`;

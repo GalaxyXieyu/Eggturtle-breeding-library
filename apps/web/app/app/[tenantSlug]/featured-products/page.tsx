@@ -150,82 +150,104 @@ export default function FeaturedProductsPage() {
   }
 
   return (
-    <main>
-      <h1>Featured products</h1>
-      <p>Tenant: {tenantSlug || '(unknown)'}</p>
+    <main className="workspace-shell">
+      <header className="workspace-head">
+        <div className="stack">
+          <h1>推荐产品管理</h1>
+          <p className="muted">租户：{tenantSlug || '(unknown)'}</p>
+        </div>
+        <button type="button" className="secondary" onClick={() => router.push(`/app/${tenantSlug}`)}>
+          返回工作台
+        </button>
+      </header>
 
-      <section className="card stack">
-        <h2>Add featured product</h2>
+      <section className="card panel stack">
+        <h2>新增推荐产品</h2>
         <form className="row" onSubmit={handleAdd}>
           <input
             type="text"
-            placeholder="productId"
+            placeholder="输入 productId"
             value={productId}
             onChange={(event) => setProductId(event.target.value)}
             required
           />
           <button type="submit" disabled={submitting}>
-            {submitting ? 'Saving...' : 'Add'}
+            {submitting ? '保存中...' : '添加'}
           </button>
         </form>
       </section>
 
-      <section className="card stack">
-        <h2>Current featured list</h2>
-        {loading ? <p>Loading...</p> : null}
-        {!loading && items.length === 0 ? <p>No featured products yet.</p> : null}
+      <section className="card panel stack">
+        <div className="row between">
+          <h2>当前推荐列表</h2>
+          {!loading ? <p className="muted">共 {items.length} 项</p> : null}
+        </div>
+        {loading ? <p className="notice notice-info">正在加载推荐列表...</p> : null}
+        {!loading && items.length === 0 ? <p className="notice notice-warning">尚未配置推荐产品。</p> : null}
 
-        <ul className="stack list">
-          {items.map((item, index) => (
-            <li key={item.id} className="row between">
-              <span>
-                #{index + 1} {item.productId}
-                {item.product.code ? ` / ${item.product.code}` : ''}
-                {item.product.name ? ` / ${item.product.name}` : ''}
-              </span>
-
-              <div className="row">
-                <button
-                  type="button"
-                  disabled={submitting || index === 0}
-                  onClick={() => {
-                    void handleMove(index, -1);
-                  }}
-                >
-                  Up
-                </button>
-                <button
-                  type="button"
-                  disabled={submitting || index === items.length - 1}
-                  onClick={() => {
-                    void handleMove(index, 1);
-                  }}
-                >
-                  Down
-                </button>
-                <button
-                  type="button"
-                  disabled={submitting}
-                  onClick={() => {
-                    void handleDelete(item.id);
-                  }}
-                >
-                  Delete
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+        {!loading && items.length > 0 ? (
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>排序</th>
+                  <th>Product ID</th>
+                  <th>编码</th>
+                  <th>名称</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item, index) => (
+                  <tr key={item.id}>
+                    <td>#{index + 1}</td>
+                    <td>{item.productId}</td>
+                    <td>{item.product.code || '-'}</td>
+                    <td>{item.product.name || '-'}</td>
+                    <td>
+                      <div className="row">
+                        <button
+                          type="button"
+                          className="btn-compact secondary"
+                          disabled={submitting || index === 0}
+                          onClick={() => {
+                            void handleMove(index, -1);
+                          }}
+                        >
+                          上移
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-compact secondary"
+                          disabled={submitting || index === items.length - 1}
+                          onClick={() => {
+                            void handleMove(index, 1);
+                          }}
+                        >
+                          下移
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-compact"
+                          disabled={submitting}
+                          onClick={() => {
+                            void handleDelete(item.id);
+                          }}
+                        >
+                          删除
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
       </section>
 
-      <div className="row">
-        <button type="button" onClick={() => router.push(`/app/${tenantSlug}`)}>
-          Back to dashboard
-        </button>
-      </div>
-
-      {message ? <p>{message}</p> : null}
-      {error ? <p className="error">{error}</p> : null}
+      {message ? <p className="notice notice-success">{message}</p> : null}
+      {error ? <p className="notice notice-error">{error}</p> : null}
     </main>
   );
 }
@@ -239,5 +261,5 @@ function formatError(error: unknown) {
     return error.message;
   }
 
-  return 'Unknown error';
+  return '未知错误';
 }
