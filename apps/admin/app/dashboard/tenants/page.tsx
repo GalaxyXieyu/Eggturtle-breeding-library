@@ -1,9 +1,18 @@
 'use client';
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import { listAdminTenantsResponseSchema, type AdminTenant } from '@eggturtle/shared';
+import {
+  listAdminTenantsResponseSchema,
+  type AdminTenant
+} from '@eggturtle/shared';
 
+import {
+  AdminActionLink,
+  AdminMetricCard,
+  AdminPageHeader,
+  AdminPanel,
+  AdminTableFrame
+} from '../../../components/dashboard/polish-primitives';
 import { ApiError, apiRequest } from '../../../lib/api-client';
 
 type PageState = {
@@ -68,30 +77,33 @@ export default function DashboardTenantsPage() {
   }
 
   return (
-    <section className="page">
-      <header className="page-header">
-        <h2>租户目录</h2>
-        <p>只读查看所有租户，支持按 slug / 名称快速检索。</p>
-      </header>
+    <section className="page admin-page">
+      <AdminPageHeader
+        eyebrow="Tenant Directory"
+        title="租户目录"
+        description="统一查看平台租户，支持按名称或 slug 快速检索。"
+      />
 
-      <div className="grid metrics-grid">
-        <article className="card stack">
-          <h3>租户总数</h3>
-          <p>
-            <span className="badge">{tenants.length}</span>
-          </p>
-        </article>
-        <article className="card stack">
-          <h3>成员关系总数</h3>
-          <p>
-            <span className="badge">{totalMembers}</span>
-          </p>
-        </article>
+      <div className="admin-metrics-grid">
+        <AdminMetricCard
+          label="租户总数"
+          value={tenants.length}
+          meta="覆盖当前可访问的全部租户空间"
+        />
+        <AdminMetricCard
+          label="成员关系总数"
+          value={totalMembers}
+          meta="按当前筛选条件统计"
+        />
       </div>
 
-      <form className="card stack" onSubmit={handleSearchSubmit}>
-        <h3>搜索</h3>
-        <div className="inline-actions">
+      <AdminPanel className="stack admin-filter-panel">
+        <div className="admin-section-head">
+          <h3>搜索条件</h3>
+          <p>支持租户名称与 slug 模糊检索。</p>
+        </div>
+
+        <form className="inline-actions admin-inline-form" onSubmit={handleSearchSubmit}>
           <input
             type="search"
             value={searchInput}
@@ -109,17 +121,22 @@ export default function DashboardTenantsPage() {
           >
             重置
           </button>
-        </div>
-      </form>
+        </form>
+      </AdminPanel>
 
-      <article className="card stack">
-        <h3>租户列表</h3>
+      <AdminPanel className="stack">
+        <div className="admin-section-head">
+          <h3>租户列表</h3>
+          <p>点击详情可进入 Subscription、配额与成员信息视图。</p>
+        </div>
+
         {status.loading ? <p className="muted">加载租户中...</p> : null}
         {!status.loading && tenants.length === 0 ? (
           <p className="muted">当前筛选下未找到租户。</p>
         ) : null}
+
         {tenants.length > 0 ? (
-          <table className="data-table">
+          <AdminTableFrame>
             <thead>
               <tr>
                 <th>名称</th>
@@ -137,16 +154,14 @@ export default function DashboardTenantsPage() {
                   <td>{tenant.memberCount}</td>
                   <td>{formatDate(tenant.createdAt)}</td>
                   <td>
-                    <Link className="nav-link" href={`/dashboard/tenants/${tenant.id}`}>
-                      查看详情
-                    </Link>
+                    <AdminActionLink href={`/dashboard/tenants/${tenant.id}`}>查看详情</AdminActionLink>
                   </td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </AdminTableFrame>
         ) : null}
-      </article>
+      </AdminPanel>
 
       {status.error ? <p className="error">{status.error}</p> : null}
     </section>

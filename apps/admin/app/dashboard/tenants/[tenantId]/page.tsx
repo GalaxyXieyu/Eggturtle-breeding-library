@@ -1,7 +1,6 @@
 'use client';
 
 import { FormEvent, useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import {
   getAdminTenantResponseSchema,
@@ -15,6 +14,13 @@ import {
   type TenantSubscriptionPlan
 } from '@eggturtle/shared';
 
+import {
+  AdminActionLink,
+  AdminBadge,
+  AdminPageHeader,
+  AdminPanel,
+  AdminTableFrame
+} from '../../../../components/dashboard/polish-primitives';
 import {
   ApiError,
   apiRequest,
@@ -249,25 +255,26 @@ export default function TenantDetailPage() {
   }
 
   return (
-    <section className="page">
-      <header className="page-header">
-        <h2>租户详情</h2>
-        <p>查看租户档案、成员清单与近期审计记录。</p>
-      </header>
-
-      <div className="inline-actions">
-        <Link className="nav-link" href="/dashboard/tenants">
-          返回租户列表
-        </Link>
-        <Link className="nav-link" href={`/dashboard/memberships?tenantId=${tenantId}`}>
-          打开成员管理
-        </Link>
-      </div>
+    <section className="page admin-page">
+      <AdminPageHeader
+        eyebrow="Tenant Detail"
+        title="租户详情"
+        description="统一管理租户基础信息、Subscription 配额与成员关系。"
+        actions={
+          <div className="inline-actions">
+            <AdminActionLink href="/dashboard/tenants">返回租户列表</AdminActionLink>
+            <AdminActionLink href={`/dashboard/memberships?tenantId=${tenantId}`}>打开成员管理</AdminActionLink>
+          </div>
+        }
+      />
 
       {state.tenant ? (
-        <article className="card stack">
-          <h3>基本信息</h3>
-          <dl className="detail-list">
+        <AdminPanel className="stack">
+          <div className="admin-section-head">
+            <h3>基础信息</h3>
+            <p>租户标识、创建信息与成员规模。</p>
+          </div>
+          <dl className="detail-list admin-detail-list">
             <div>
               <dt>名称</dt>
               <dd>{state.tenant.name}</dd>
@@ -289,23 +296,32 @@ export default function TenantDetailPage() {
               <dd>{formatDate(state.tenant.createdAt)}</dd>
             </div>
           </dl>
-        </article>
+        </AdminPanel>
       ) : null}
 
-      <article className="card stack">
-        <h3>Subscription &amp; quota</h3>
+      <AdminPanel className="stack">
+        <div className="admin-section-head">
+          <h3>Subscription &amp; quota</h3>
+          <p>查看当前订阅计划并按需调整资源配额。</p>
+        </div>
 
         {subscriptionState.loading ? <p className="muted">Loading subscription...</p> : null}
 
         {subscriptionState.subscription ? (
-          <dl className="detail-list">
+          <dl className="detail-list admin-detail-list">
             <div>
               <dt>Plan</dt>
-              <dd>{subscriptionState.subscription.plan}</dd>
+              <dd>
+                <AdminBadge tone="accent">{subscriptionState.subscription.plan}</AdminBadge>
+              </dd>
             </div>
             <div>
               <dt>Status</dt>
-              <dd>{subscriptionState.subscription.status}</dd>
+              <dd>
+                <AdminBadge tone={toSubscriptionStatusTone(subscriptionState.subscription.status)}>
+                  {subscriptionState.subscription.status}
+                </AdminBadge>
+              </dd>
             </div>
             <div>
               <dt>Expiry</dt>
@@ -326,10 +342,10 @@ export default function TenantDetailPage() {
           </dl>
         ) : null}
 
-        <form className="stack" onSubmit={handleSubscriptionSubmit}>
+        <form className="stack admin-subscription-form" onSubmit={handleSubscriptionSubmit}>
           <h3>Update subscription</h3>
 
-          <div className="form-grid">
+          <div className="form-grid admin-subscription-grid">
             <label className="stack row-tight" htmlFor="subscription-plan">
               <span>Plan</span>
               <select
@@ -348,7 +364,7 @@ export default function TenantDetailPage() {
 
             <label className="stack row-tight" htmlFor="subscription-expires-at">
               <span>Expires at</span>
-              <div className="inline-actions">
+              <div className="inline-actions admin-inline-form">
                 <input
                   id="subscription-expires-at"
                   type="datetime-local"
@@ -418,11 +434,15 @@ export default function TenantDetailPage() {
 
         {subscriptionState.error ? <p className="error">{subscriptionState.error}</p> : null}
         {subscriptionState.actionMessage ? <p className="success">{subscriptionState.actionMessage}</p> : null}
-      </article>
+      </AdminPanel>
 
-      <article className="card stack">
-        <h3>成员列表</h3>
-        <form className="inline-actions" onSubmit={handleMemberSearch}>
+      <AdminPanel className="stack">
+        <div className="admin-section-head">
+          <h3>成员列表</h3>
+          <p>按邮箱筛选当前租户成员。</p>
+        </div>
+
+        <form className="inline-actions admin-inline-form" onSubmit={handleMemberSearch}>
           <input
             type="search"
             value={memberSearchInput}
@@ -448,7 +468,7 @@ export default function TenantDetailPage() {
         ) : null}
 
         {state.members.length > 0 ? (
-          <table className="data-table">
+          <AdminTableFrame>
             <thead>
               <tr>
                 <th>邮箱</th>
@@ -462,20 +482,26 @@ export default function TenantDetailPage() {
                 <tr key={`${member.tenantId}:${member.user.id}`}>
                   <td>{member.user.email}</td>
                   <td>{member.user.name ?? '-'}</td>
-                  <td>{member.role}</td>
+                  <td>
+                    <AdminBadge tone={toRoleTone(member.role)}>{member.role}</AdminBadge>
+                  </td>
                   <td>{formatDate(member.joinedAt)}</td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </AdminTableFrame>
         ) : null}
-      </article>
+      </AdminPanel>
 
-      <article className="card stack">
-        <h3>近期审计日志</h3>
+      <AdminPanel className="stack">
+        <div className="admin-section-head">
+          <h3>近期审计日志</h3>
+          <p>默认展示最近 8 条与当前租户相关的操作记录。</p>
+        </div>
+
         {state.recentLogs.length === 0 ? <p className="muted">该租户暂无审计记录。</p> : null}
         {state.recentLogs.length > 0 ? (
-          <table className="data-table">
+          <AdminTableFrame>
             <thead>
               <tr>
                 <th>动作</th>
@@ -492,9 +518,9 @@ export default function TenantDetailPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </AdminTableFrame>
         ) : null}
-      </article>
+      </AdminPanel>
 
       {state.error ? <p className="error">{state.error}</p> : null}
     </section>
@@ -581,6 +607,38 @@ function formatNullableValue(value: string | number | null) {
   }
 
   return String(value);
+}
+
+function toRoleTone(role: string): 'accent' | 'info' | 'warning' | 'neutral' {
+  if (role === 'OWNER') {
+    return 'accent';
+  }
+
+  if (role === 'ADMIN') {
+    return 'info';
+  }
+
+  if (role === 'EDITOR') {
+    return 'warning';
+  }
+
+  return 'neutral';
+}
+
+function toSubscriptionStatusTone(status: string): 'success' | 'warning' | 'danger' | 'neutral' {
+  if (status === 'ACTIVE') {
+    return 'success';
+  }
+
+  if (status === 'TRIALING') {
+    return 'warning';
+  }
+
+  if (status === 'EXPIRED' || status === 'CANCELED') {
+    return 'danger';
+  }
+
+  return 'neutral';
 }
 
 function formatError(error: unknown) {
