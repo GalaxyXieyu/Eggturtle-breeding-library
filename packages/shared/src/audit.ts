@@ -7,7 +7,8 @@ export const AuditAction = {
   ProductImageSetMain: 'product.image.set_main',
   ProductImageReorder: 'product.image.reorder',
   ShareCreate: 'share.create',
-  ShareAccess: 'share.access'
+  ShareAccess: 'share.access',
+  SubscriptionActivationRedeem: 'subscription.activation.redeem'
 } as const;
 
 export const auditActionSchema = z.enum([
@@ -17,7 +18,8 @@ export const auditActionSchema = z.enum([
   AuditAction.ProductImageSetMain,
   AuditAction.ProductImageReorder,
   AuditAction.ShareCreate,
-  AuditAction.ShareAccess
+  AuditAction.ShareAccess,
+  AuditAction.SubscriptionActivationRedeem
 ]);
 
 export const auditLogSchema = z.object({

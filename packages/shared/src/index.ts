@@ -162,7 +162,12 @@ export type {
   ShareResourceType
 } from './share';
 export {
+  createTenantSubscriptionActivationCodeRequestSchema,
+  createTenantSubscriptionActivationCodeResponseSchema,
   getAdminTenantSubscriptionResponseSchema,
+  redeemTenantSubscriptionActivationCodeRequestSchema,
+  redeemTenantSubscriptionActivationCodeResponseSchema,
+  tenantSubscriptionActivationCodeSchema,
   tenantSubscriptionPlanSchema,
   tenantSubscriptionSchema,
   tenantSubscriptionStatusSchema,
@@ -170,7 +175,12 @@ export {
   updateTenantSubscriptionResponseSchema
 } from './subscription';
 export type {
+  CreateTenantSubscriptionActivationCodeRequest,
+  CreateTenantSubscriptionActivationCodeResponse,
   GetAdminTenantSubscriptionResponse,
+  RedeemTenantSubscriptionActivationCodeRequest,
+  RedeemTenantSubscriptionActivationCodeResponse,
+  TenantSubscriptionActivationCode,
   TenantSubscription,
   TenantSubscriptionPlan,
   TenantSubscriptionStatus,

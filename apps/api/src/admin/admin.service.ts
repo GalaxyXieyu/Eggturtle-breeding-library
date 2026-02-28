@@ -3,6 +3,8 @@ import { ErrorCode, SuperAdminAuditAction } from '@eggturtle/shared';
 import type {
   CreateAdminTenantRequest,
   CreateAdminTenantResponse,
+  CreateTenantSubscriptionActivationCodeRequest,
+  CreateTenantSubscriptionActivationCodeResponse,
   DeleteTenantMemberResponse,
   GetAdminTenantResponse,
   GetAdminTenantSubscriptionResponse,
@@ -210,6 +212,63 @@ export class AdminService {
 
       return {
         subscription,
+        auditLogId
+      };
+    });
+  }
+
+  async createSubscriptionActivationCode(
+    actorUserId: string,
+    payload: CreateTenantSubscriptionActivationCodeRequest
+  ): Promise<CreateTenantSubscriptionActivationCodeResponse> {
+    return this.prisma.$transaction(async (tx) => {
+      let targetTenantSlug: string | null = null;
+      if (payload.targetTenantId) {
+        const tenant = await tx.tenant.findUnique({
+          where: {
+            id: payload.targetTenantId
+          },
+          select: {
+            id: true,
+            slug: true
+          }
+        });
+
+        if (!tenant) {
+          throw new NotFoundException({
+            message: 'Tenant not found.',
+            errorCode: ErrorCode.TenantNotFound
+          });
+        }
+
+        targetTenantSlug = tenant.slug;
+      }
+
+      const activationCode = await this.tenantSubscriptionsService.createSubscriptionActivationCode(
+        actorUserId,
+        payload,
+        tx
+      );
+
+      const auditLogId = await this.superAdminAuditLogsService.createLog(
+        {
+          actorUserId,
+          targetTenantId: payload.targetTenantId ?? null,
+          action: SuperAdminAuditAction.CreateSubscriptionActivationCode,
+          metadata: {
+            targetTenantId: payload.targetTenantId ?? null,
+            targetTenantSlug,
+            plan: activationCode.plan,
+            durationDays: activationCode.durationDays,
+            redeemLimit: activationCode.redeemLimit,
+            codeLabel: activationCode.codeLabel
+          }
+        },
+        tx
+      );
+
+      return {
+        activationCode,
         auditLogId
       };
     });

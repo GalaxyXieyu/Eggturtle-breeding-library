@@ -10,11 +10,12 @@ import { JwtTokenService } from './jwt-token.service';
 import { MeController } from './me.controller';
 import { RbacGuard } from './rbac.guard';
 import { SuperAdminGuard } from './super-admin.guard';
+import { SubscriptionActivationCodesController } from './subscription-activation-codes.controller';
 import { TenantSubscriptionGuard } from './tenant-subscription.guard';
 
 @Module({
   imports: [PrismaModule, SubscriptionsModule],
-  controllers: [AuthController, MeController],
+  controllers: [AuthController, MeController, SubscriptionActivationCodesController],
   providers: [AuthService, AuthGuard, RbacGuard, SuperAdminGuard, TenantSubscriptionGuard, JwtTokenService],
   exports: [AuthGuard, RbacGuard, SuperAdminGuard, TenantSubscriptionGuard, AuthService]
 })

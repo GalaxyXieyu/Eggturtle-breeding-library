@@ -1,5 +1,7 @@
 import {
+  createTenantSubscriptionActivationCodeResponseSchema,
   getAdminTenantSubscriptionResponseSchema,
+  redeemTenantSubscriptionActivationCodeResponseSchema,
   updateTenantSubscriptionResponseSchema,
 } from '../../packages/shared/src/subscription';
 
@@ -21,7 +23,8 @@ import {
 
 export const subscriptionModule: TestModule = {
   name: 'subscription',
-  description: 'Admin subscription GET/PUT and tenant share/image quota enforcement checks',
+  description:
+    'Admin subscription + activation-code generate/redeem and tenant share/image quota enforcement checks',
   requiresWrites: true,
   run,
 };
@@ -155,22 +158,63 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
   assertErrorCode(secondUploadDenied, 'TENANT_SUBSCRIPTION_QUOTA_EXCEEDED');
   checks += 1;
 
-  const setProResponse = await ctx.request({
-    method: 'PUT',
-    path: `/admin/tenants/${session.tenantId}/subscription`,
+  const createActivationCodeResponse = await ctx.request({
+    method: 'POST',
+    path: '/admin/subscription-activation-codes',
     token: superAdminLogin.token,
     json: {
+      targetTenantId: session.tenantId,
       plan: 'PRO',
+      durationDays: 30,
       maxImages: null,
       maxStorageBytes: '1',
       maxShares: 3,
+      redeemLimit: 1,
     },
   });
-  assertStatus(setProResponse, 200, 'subscription.admin.set-pro');
-  const setProPayload = updateTenantSubscriptionResponseSchema.parse(setProResponse.body);
-  if (setProPayload.subscription.plan !== 'PRO') {
-    throw new ApiTestError('subscription.admin.set-pro expected plan PRO');
+  assertStatus(createActivationCodeResponse, 201, 'subscription.activation-code.create');
+  const createActivationCodePayload = createTenantSubscriptionActivationCodeResponseSchema.parse(
+    createActivationCodeResponse.body,
+  );
+  if (createActivationCodePayload.activationCode.plan !== 'PRO') {
+    throw new ApiTestError('subscription.activation-code.create expected plan PRO');
   }
+  checks += 1;
+
+  const redeemActivationCodeResponse = await ctx.request({
+    method: 'POST',
+    path: '/subscriptions/activation-codes/redeem',
+    token: session.token,
+    json: {
+      code: createActivationCodePayload.activationCode.code,
+    },
+  });
+  assertStatus(redeemActivationCodeResponse, 200, 'subscription.activation-code.redeem');
+  const redeemActivationCodePayload = redeemTenantSubscriptionActivationCodeResponseSchema.parse(
+    redeemActivationCodeResponse.body,
+  );
+  if (redeemActivationCodePayload.subscription.plan !== 'PRO') {
+    throw new ApiTestError('subscription.activation-code.redeem expected plan PRO');
+  }
+  checks += 1;
+
+  const redeemActivationCodeAgainResponse = await ctx.request({
+    method: 'POST',
+    path: '/subscriptions/activation-codes/redeem',
+    token: session.token,
+    json: {
+      code: createActivationCodePayload.activationCode.code,
+    },
+  });
+  assertStatus(
+    redeemActivationCodeAgainResponse,
+    403,
+    'subscription.activation-code.redeem-denied-redeem-limit',
+  );
+  assertErrorCode(
+    redeemActivationCodeAgainResponse,
+    'SUBSCRIPTION_ACTIVATION_CODE_REDEEM_LIMIT_REACHED',
+  );
   checks += 1;
 
   const createShareAllowed = await ctx.request({

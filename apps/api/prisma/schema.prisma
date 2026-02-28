@@ -29,6 +29,7 @@ model User {
   createdAt           DateTime             @default(now()) @map("created_at")
   updatedAt           DateTime             @updatedAt @map("updated_at")
   tenantMembers       TenantMember[]
+  createdSubscriptionActivationCodes SubscriptionActivationCode[] @relation("SubscriptionActivationCodeCreator")
   auditLogs           AuditLog[]           @relation("AuditLogActor")
   createdShares       PublicShare[]        @relation("PublicShareCreator")
   superAdminAuditLogs SuperAdminAuditLog[] @relation("SuperAdminAuditLogActor")
@@ -64,6 +65,7 @@ model Tenant {
   featuredProducts    FeaturedProduct[]
   shares              PublicShare[]
   auditLogs           AuditLog[]
+  targetedSubscriptionActivationCodes SubscriptionActivationCode[] @relation("SubscriptionActivationCodeTargetTenant")
   superAdminAuditLogs SuperAdminAuditLog[] @relation("SuperAdminAuditLogTenant")
   subscription        TenantSubscription?
 
@@ -87,6 +89,33 @@ model TenantSubscription {
 
   @@index([plan], map: "tenant_subscriptions_plan_idx")
   @@map("tenant_subscriptions")
+}
+
+model SubscriptionActivationCode {
+  id              String                 @id @default(cuid())
+  codeDigest      String                 @unique @map("code_digest") @db.VarChar(128)
+  codeLabel       String                 @map("code_label") @db.VarChar(32)
+  targetTenantId  String?                @map("target_tenant_id")
+  plan            TenantSubscriptionPlan @default(PRO)
+  durationDays    Int?                   @map("duration_days")
+  maxImages       Int?                   @map("max_images")
+  maxStorageBytes BigInt?                @map("max_storage_bytes")
+  maxShares       Int?                   @map("max_shares")
+  redeemLimit     Int                    @default(1) @map("redeem_limit")
+  redeemedCount   Int                    @default(0) @map("redeemed_count")
+  expiresAt       DateTime?              @map("expires_at")
+  disabledAt      DateTime?              @map("disabled_at")
+  createdByUserId String                 @map("created_by_user_id")
+  createdAt       DateTime               @default(now()) @map("created_at")
+  updatedAt       DateTime               @updatedAt @map("updated_at")
+  createdByUser   User                   @relation("SubscriptionActivationCodeCreator", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  targetTenant    Tenant?                @relation("SubscriptionActivationCodeTargetTenant", fields: [targetTenantId], references: [id], onDelete: SetNull)
+
+  @@index([targetTenantId], map: "subscription_activation_codes_target_tenant_id_idx")
+  @@index([createdByUserId], map: "subscription_activation_codes_created_by_user_id_idx")
+  @@index([expiresAt], map: "subscription_activation_codes_expires_at_idx")
+  @@index([plan], map: "subscription_activation_codes_plan_idx")
+  @@map("subscription_activation_codes")
 }
 
 model TenantMember {

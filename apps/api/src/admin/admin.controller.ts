@@ -1,5 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import {
+  createTenantSubscriptionActivationCodeRequestSchema,
+  createTenantSubscriptionActivationCodeResponseSchema,
   createAdminTenantRequestSchema,
   createAdminTenantResponseSchema,
   deleteTenantMemberResponseSchema,
@@ -71,6 +73,16 @@ export class AdminController {
     const response = await this.adminService.updateTenantSubscription(user.id, tenantId, payload);
 
     return updateTenantSubscriptionResponseSchema.parse(response);
+  }
+
+  @Post('subscription-activation-codes')
+  async createSubscriptionActivationCode(
+    @CurrentUser() user: NonNullable<AuthenticatedRequest['user']>,
+    @Body() body: unknown
+  ) {
+    const payload = parseOrThrow(createTenantSubscriptionActivationCodeRequestSchema, body);
+    const response = await this.adminService.createSubscriptionActivationCode(user.id, payload);
+    return createTenantSubscriptionActivationCodeResponseSchema.parse(response);
   }
 
   @Post('tenants')

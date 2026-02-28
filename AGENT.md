@@ -226,6 +226,10 @@
   - `T40`（Milestone1 收口）已由“宇宇”接手并完成，证据：`docs/plan/evidence/milestone1-closeout-20260228.md`
   - `T41`（Membership/Quota v1 规划审阅）已由“宇宇”接手并完成，证据：`docs/plan/evidence/membership-v1-plan-review-20260228.md`
   - 其余进行中任务继续由 openclaw/宇仔推进（按 `docs/plan/EggsTask.csv` 为准）
+- 2026-02-28 Membership 补充收口（宇宇）：
+  - `T48` 激活码接口已落地：`POST /admin/subscription-activation-codes`（生成）、`POST /subscriptions/activation-codes/redeem`（兑换）
+  - `T49` 验收与回滚证据已补齐：`docs/plan/evidence/membership-v1-acceptance-rollback-20260228.md`
+  - 订阅回归（含激活码链路）通过：`out/t49-subscription-acceptance/20260228-155551/api-tests-subscription.log`（checks=12）
 
 ---
 

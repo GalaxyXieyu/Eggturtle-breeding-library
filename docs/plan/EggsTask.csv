@@ -121,8 +121,8 @@ T44,,P0 Membership v1: 到期/禁用全站拦截 Guard（tenant-scoped 403）,,T
 T45,,P0 Membership v1: Share 创建仅 PRO（POST /shares gating）,,T44,,,,,openclaw/宇仔,,done,PR#12 https://github.com/GalaxyXieyu/Eggturtle-breeding-library/pull/12,,,,
 T46,,P1 Membership v1: 图片配额拦截（upload images maxImages/maxStorage）,,T44,,,,,openclaw/宇仔,,done,PR#12 https://github.com/GalaxyXieyu/Eggturtle-breeding-library/pull/12,,,,
 T47,,P1 Membership v1: Admin UI 配置套餐/有效期/配额页面,,T43,,,,,openclaw/宇仔,,done,PR#13 https://github.com/GalaxyXieyu/Eggturtle-breeding-library/pull/13,,,,
-T48,,P2 Membership v1: 激活码（生成/兑换）接口（可选）,,T43,,,,,codex,,todo,source: out/share/MEMBERSHIP_LATEST_20260228.docx,,,,
-T49,,P0 Membership v1: 验收/回滚/证据（smoke doc + commands）,,T44,,,,,宇仔,,todo,source: out/share/MEMBERSHIP_LATEST_20260228.docx,,,,
+T48,,P2 Membership v1: 激活码（生成/兑换）接口（可选）,,T43,,,,,宇宇,,done,apps/api/src/admin/admin.controller.ts; apps/api/src/auth/subscription-activation-codes.controller.ts; apps/api/src/subscriptions/tenant-subscriptions.service.ts; apps/api/prisma/migrations/20260228174000_subscription_activation_codes/migration.sql,,,,
+T49,,P0 Membership v1: 验收/回滚/证据（smoke doc + commands）,,T44,,,,,宇宇,,done,docs/plan/evidence/membership-v1-acceptance-rollback-20260228.md; out/t49-subscription-acceptance/20260228-155551/api-tests-subscription.log; docs/migration/MEMBERSHIP_SUBSCRIPTION_V1_EVIDENCE.md,,,,
 T50,4,P0 UX Smoke execution,"1) 按 UX_SMOKE_PLAN_20260228.xlsx 逐行执行
 2) 记录 pass/fail + bug
 3) 汇总 blocker 并分配修复","T40,T49",out/share/UX_SMOKE_PLAN_20260228.xlsx（Result/Notes 已回填）,Smoke 表每行有结果；关键失败附日志/截图,Web+Admin 核心链路完成一轮 smoke，结论可复现,测试数据不足导致假失败；需先做数据充分性检查,openclaw/宇仔,宇宇（今晚）,doing,docs/plan/evidence/ux-smoke-20260228.md (screenshots: out/ui-smoke/20260228-*),N,,,

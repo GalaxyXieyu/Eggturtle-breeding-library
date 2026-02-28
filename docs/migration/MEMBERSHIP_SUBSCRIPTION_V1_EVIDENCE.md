@@ -6,6 +6,7 @@ Date: 2026-02-28
 
 - Tenant subscription schema + migration
 - Admin subscription GET/PUT contracts and API handlers
+- Admin activation-code create + tenant activation-code redeem
 - Tenant write guard for inactive subscriptions
 - Share creation plan gate (configured subscription requires PRO)
 - Image upload quota checks (`maxImages`, `maxStorageBytes`)
@@ -34,5 +35,6 @@ kill $API_PID
 
 ## Result snapshot
 
-- `subscription` module: pass (`checks=10`)
+- `subscription` module: pass (`checks=12`, includes activation-code create/redeem and single-use guard)
 - `shares,images,admin,subscription` subset: pass (`totalChecks=27`)
+- T49 evidence logs: `out/t49-subscription-acceptance/20260228-155551/`
