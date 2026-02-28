@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  SuperAdminAuditAction,
   type ListSuperAdminAuditLogsQuery,
   type ListSuperAdminAuditLogsResponse,
   type SuperAdminAuditActionType,
@@ -50,7 +51,13 @@ export class SuperAdminAuditLogsService {
     const where: Prisma.SuperAdminAuditLogWhereInput = {
       ...(query.tenantId ? { targetTenantId: query.tenantId } : {}),
       ...(query.actorUserId ? { actorUserId: query.actorUserId } : {}),
-      ...(query.action ? { action: query.action } : {}),
+      ...(query.action
+        ? { action: query.action }
+        : {
+            action: {
+              not: SuperAdminAuditAction.ListAuditLogs
+            }
+          }),
       ...((query.from || query.to)
         ? {
             createdAt: {
