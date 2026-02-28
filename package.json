@@ -7,7 +7,7 @@
     "build": "pnpm -r build",
     "format": "prettier --write .",
     "api-tests": "pnpm --filter @eggturtle/api exec ts-node --project tsconfig.json ../../scripts/api-tests/run.ts",
-    "api-tests:gate": "pnpm api-tests -- --only auth,products,series,breeders,images,featured,shares,admin --clear-token-cache",
+    "api-tests:gate": "pnpm api-tests -- --only auth,products,series,breeders,images,featured,shares,admin,subscription --clear-token-cache",
     "api-tests:matrix": "pnpm api-tests -- --only account-matrix"
   },
   "devDependencies": {

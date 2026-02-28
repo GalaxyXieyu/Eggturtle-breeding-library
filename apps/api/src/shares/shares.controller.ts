@@ -22,6 +22,7 @@ import { AuthGuard } from '../auth/auth.guard';
 import type { AuthenticatedRequest } from '../auth/auth.types';
 import { RbacGuard } from '../auth/rbac.guard';
 import { RequireTenantRole } from '../auth/require-tenant-role.decorator';
+import { TenantSubscriptionGuard } from '../auth/tenant-subscription.guard';
 import { parseOrThrow } from '../common/zod-parse';
 
 import { SharesService } from './shares.service';
@@ -39,7 +40,7 @@ export class SharesController {
   constructor(private readonly sharesService: SharesService) {}
 
   @Post('shares')
-  @UseGuards(AuthGuard, RbacGuard)
+  @UseGuards(AuthGuard, RbacGuard, TenantSubscriptionGuard)
   @RequireTenantRole('EDITOR')
   async createShare(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
     const tenantId = this.requireTenantId(request.tenantId);

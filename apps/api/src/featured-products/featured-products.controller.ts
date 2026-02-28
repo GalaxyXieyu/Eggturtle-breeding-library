@@ -24,12 +24,13 @@ import { AuthGuard } from '../auth/auth.guard';
 import type { AuthenticatedRequest } from '../auth/auth.types';
 import { RbacGuard } from '../auth/rbac.guard';
 import { RequireTenantRole } from '../auth/require-tenant-role.decorator';
+import { TenantSubscriptionGuard } from '../auth/tenant-subscription.guard';
 import { parseOrThrow } from '../common/zod-parse';
 
 import { FeaturedProductsService } from './featured-products.service';
 
 @Controller('featured-products')
-@UseGuards(AuthGuard, RbacGuard)
+@UseGuards(AuthGuard, RbacGuard, TenantSubscriptionGuard)
 @RequireTenantRole('VIEWER')
 export class FeaturedProductsController {
   constructor(private readonly featuredProductsService: FeaturedProductsService) {}

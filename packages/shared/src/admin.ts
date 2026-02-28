@@ -9,7 +9,9 @@ export const SuperAdminAuditAction = {
   ListUsers: 'admin.users.list',
   UpsertTenantMember: 'admin.tenants.members.upsert',
   RemoveTenantMember: 'admin.tenants.members.remove',
-  ListAuditLogs: 'admin.audit-logs.list'
+  ListAuditLogs: 'admin.audit-logs.list',
+  GetTenantSubscription: 'admin.tenants.subscription.get',
+  UpdateTenantSubscription: 'admin.tenants.subscription.update'
 } as const;
 
 export const superAdminAuditActionSchema = z.enum([
@@ -18,7 +20,9 @@ export const superAdminAuditActionSchema = z.enum([
   SuperAdminAuditAction.ListUsers,
   SuperAdminAuditAction.UpsertTenantMember,
   SuperAdminAuditAction.RemoveTenantMember,
-  SuperAdminAuditAction.ListAuditLogs
+  SuperAdminAuditAction.ListAuditLogs,
+  SuperAdminAuditAction.GetTenantSubscription,
+  SuperAdminAuditAction.UpdateTenantSubscription
 ]);
 
 export const adminUserSchema = authUserSchema.extend({

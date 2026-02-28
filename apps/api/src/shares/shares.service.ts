@@ -12,6 +12,7 @@ import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { PrismaService } from '../prisma.service';
+import { TenantSubscriptionsService } from '../subscriptions/tenant-subscriptions.service';
 
 type PublicShareQueryInput = {
   tenantId: string;
@@ -38,7 +39,8 @@ export class SharesService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly auditLogsService: AuditLogsService
+    private readonly auditLogsService: AuditLogsService,
+    private readonly tenantSubscriptionsService: TenantSubscriptionsService
   ) {}
 
   async createShare(tenantId: string, actorUserId: string, payload: CreateShareRequest) {
@@ -66,7 +68,22 @@ export class SharesService {
       });
     }
 
-    const share = await this.getOrCreateProductShare(tenantId, product.id, actorUserId);
+    await this.tenantSubscriptionsService.assertSharePlanAllowsCreate(tenantId);
+
+    const existingShare = await this.prisma.publicShare.findUnique({
+      where: {
+        tenantId_productId: {
+          tenantId,
+          productId: product.id
+        }
+      }
+    });
+
+    if (!existingShare) {
+      await this.tenantSubscriptionsService.assertShareQuotaAllowsCreate(tenantId);
+    }
+
+    const share = existingShare ?? (await this.getOrCreateProductShare(tenantId, product.id, actorUserId));
 
     await this.auditLogsService.createLog({
       tenantId,

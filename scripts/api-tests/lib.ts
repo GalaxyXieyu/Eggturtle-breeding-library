@@ -14,6 +14,7 @@ export type ModuleName =
   | 'featured'
   | 'shares'
   | 'admin'
+  | 'subscription'
   | 'account-matrix';
 
 export type LogLevel = 'info' | 'ok' | 'warn' | 'error';
@@ -245,7 +246,7 @@ export function printUsage(): void {
     '  --confirm-writes            Execute write scenarios (safe mode is dry-run)',
     '  --json                      Emit JSONL logs',
     '  --clear-token-cache         Delete local auth token cache before run',
-    '  --only <list>               Comma-separated modules: auth,products,series,breeders,images,featured,shares,admin,account-matrix',
+    '  --only <list>               Comma-separated modules: auth,products,series,breeders,images,featured,shares,admin,subscription,account-matrix',
     '  --tenant-id <id>            Existing tenant ID for tenant-scoped modules',
     '  --tenant-slug <slug>        Tenant slug when auto-creating tenant',
     '  --tenant-name <name>        Tenant name when auto-creating tenant',
@@ -254,7 +255,7 @@ export function printUsage(): void {
     '  --admin-email <email>       Account-matrix ADMIN email',
     '  --editor-email <email>      Account-matrix EDITOR email',
     '  --viewer-email <email>      Account-matrix VIEWER email',
-    '  --super-admin-email <email> super-admin email for admin/account-matrix checks',
+    '  --super-admin-email <email> super-admin email for admin/subscription/account-matrix checks',
     '  --provision                 Account-matrix: create tenant + memberships via /admin/*',
     '  --require-super-admin-pass  Fail if super-admin positive checks are not 2xx',
     '  -h, --help                  Show help',
@@ -343,6 +344,7 @@ export function parseOnlyModules(value: string | undefined): ModuleName[] | null
     'featured',
     'shares',
     'admin',
+    'subscription',
     'account-matrix',
   ]);
 

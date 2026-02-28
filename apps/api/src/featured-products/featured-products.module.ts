@@ -2,13 +2,14 @@ import { Module } from '@nestjs/common';
 
 import { AuthModule } from '../auth/auth.module';
 import { PrismaModule } from '../prisma.module';
+import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 
 import { FeaturedProductsController } from './featured-products.controller';
 import { FeaturedProductsService } from './featured-products.service';
 import { ProductsPublicController } from './products-public.controller';
 
 @Module({
-  imports: [PrismaModule, AuthModule],
+  imports: [PrismaModule, AuthModule, SubscriptionsModule],
   controllers: [FeaturedProductsController, ProductsPublicController],
   providers: [FeaturedProductsService]
 })

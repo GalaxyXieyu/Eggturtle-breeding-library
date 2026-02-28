@@ -1,9 +1,10 @@
-import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import {
   createAdminTenantRequestSchema,
   createAdminTenantResponseSchema,
   deleteTenantMemberResponseSchema,
   getAdminTenantResponseSchema,
+  getAdminTenantSubscriptionResponseSchema,
   listAdminTenantMembersQuerySchema,
   listAdminTenantMembersResponseSchema,
   listAdminTenantsQuerySchema,
@@ -11,6 +12,8 @@ import {
   listAdminUsersResponseSchema,
   listSuperAdminAuditLogsQuerySchema,
   listSuperAdminAuditLogsResponseSchema,
+  updateTenantSubscriptionRequestSchema,
+  updateTenantSubscriptionResponseSchema,
   upsertTenantMemberRequestSchema,
   upsertTenantMemberResponseSchema
 } from '@eggturtle/shared';
@@ -47,6 +50,27 @@ export class AdminController {
   ) {
     const response = await this.adminService.getTenant(user.id, tenantId);
     return getAdminTenantResponseSchema.parse(response);
+  }
+
+  @Get('tenants/:tenantId/subscription')
+  async getTenantSubscription(
+    @CurrentUser() user: NonNullable<AuthenticatedRequest['user']>,
+    @Param('tenantId') tenantId: string
+  ) {
+    const response = await this.adminService.getTenantSubscription(user.id, tenantId);
+    return getAdminTenantSubscriptionResponseSchema.parse(response);
+  }
+
+  @Put('tenants/:tenantId/subscription')
+  async updateTenantSubscription(
+    @CurrentUser() user: NonNullable<AuthenticatedRequest['user']>,
+    @Param('tenantId') tenantId: string,
+    @Body() body: unknown
+  ) {
+    const payload = parseOrThrow(updateTenantSubscriptionRequestSchema, body);
+    const response = await this.adminService.updateTenantSubscription(user.id, tenantId, payload);
+
+    return updateTenantSubscriptionResponseSchema.parse(response);
   }
 
   @Post('tenants')
