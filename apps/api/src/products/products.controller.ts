@@ -21,6 +21,7 @@ import {
   createProductRequestSchema,
   createProductResponseSchema,
   deleteProductImageResponseSchema,
+  listProductImagesResponseSchema,
   listProductsQuerySchema,
   listProductsResponseSchema,
   reorderProductImagesRequestSchema,
@@ -74,6 +75,14 @@ export class ProductsController {
     const response = await this.productsService.listProducts(tenantId, parsedQuery);
 
     return listProductsResponseSchema.parse(response);
+  }
+
+  @Get(':id/images')
+  async listImages(@Req() request: AuthenticatedRequest, @Param('id') productId: string) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const images = await this.productsService.listProductImages(tenantId, productId);
+
+    return listProductImagesResponseSchema.parse({ images });
   }
 
   @Post(':id/images')

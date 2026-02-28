@@ -135,6 +135,31 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
   }
   checks += 1;
 
+  const listImagesResponse = await ctx.request({
+    method: 'GET',
+    path: `/products/${productId}/images`,
+    token: session.token,
+  });
+  if (listImagesResponse.status !== 200) {
+    throw new ApiTestError(`list images expected 200, got ${listImagesResponse.status}`);
+  }
+
+  const listImagesBody = asObject(listImagesResponse.body, 'products.images.list response');
+  const listedImages = asArray(listImagesBody.images, 'products.images.list.images').map((entry) =>
+    asObject(entry, 'products.images.list.item'),
+  );
+
+  if (listedImages.length !== 2) {
+    throw new ApiTestError(`list images expected 2 images, got ${listedImages.length}`);
+  }
+  if (readString(listedImages[0], 'id', 'products.images.list[0].id') !== secondImageId) {
+    throw new ApiTestError('list images unexpected first image id');
+  }
+  if (!readBoolean(listedImages[0], 'isMain', 'products.images.list[0].isMain')) {
+    throw new ApiTestError('list images expected first item to be main after set-main');
+  }
+  checks += 1;
+
   const contentResponse = await ctx.request({
     method: 'GET',
     path: `/products/${productId}/images/${secondImageId}/content`,

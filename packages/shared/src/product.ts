@@ -48,6 +48,10 @@ export const productImageSchema = z.object({
   isMain: z.boolean()
 });
 
+export const listProductImagesResponseSchema = z.object({
+  images: z.array(productImageSchema)
+});
+
 export const uploadProductImageResponseSchema = z.object({
   image: productImageSchema
 });

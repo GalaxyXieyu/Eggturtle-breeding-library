@@ -56,6 +56,7 @@ export {
   createProductRequestSchema,
   createProductResponseSchema,
   deleteProductImageResponseSchema,
+  listProductImagesResponseSchema,
   listProductsQuerySchema,
   listProductsResponseSchema,
   productCodeSchema,
