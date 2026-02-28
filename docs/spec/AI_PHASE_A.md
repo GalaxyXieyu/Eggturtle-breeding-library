@@ -1,83 +1,80 @@
-# AI Phase A: Turtle Photo Analysis (Advice-Only)
+# 智能分析一期：海龟照片分析（建议型输出）
 
-Status: Spec only (do not implement yet)
-Owner: Team
-Updated: 2026-02-27
+状态：仅规格，暂不直接进入实现
+负责人：团队
+更新日期：2026-02-28
 
-Related specs:
+关联文档：
 - `docs/spec/SAAS_SPEC.md`
 - `docs/spec/AI_SYSTEM_DESIGN.md`
 - `docs/spec/AI_QUOTA_BILLING.md`
 
-## Goal
+## 1. 目标
 
-Provide a low-risk, high-perceived-value feature:
-- User uploads turtle photos + basic context
-- System returns structured advice text
-- Must clearly state "not medical diagnosis"
+在低风险前提下提供高感知价值能力：
+- 用户上传海龟照片并补充基础信息
+- 系统输出结构化养护建议文本
+- 必须明确声明“非医疗诊断”
 
-This feature also supports monetization via usage quota (free tier limited).
+该能力同时用于后续配额和增值付费。
 
-## Inputs
+## 2. 输入
 
-- Photos: 1-3 images
-- Basic info (optional unless noted):
-  - Species/breed (optional)
-  - Age range (optional)
-  - Weight (optional)
-  - Environment (optional): water temp, basking, tank size, diet
-  - User question (optional)
+- 照片：每次 1-3 张
+- 基础信息（除非特别说明，均可选）：
+  - 品种/类型
+  - 年龄区间
+  - 体重
+  - 环境信息（如水温、晒背、缸体、喂养）
+  - 用户问题
 
-## Outputs (Structured Text)
+## 3. 输出（结构化中文文本）
 
-The response must include the following sections (in Chinese):
+必须包含以下分段：
 
-1) Observations
-- Body condition / shell shape observations
-- Use cautious language ("可能/疑似/建议进一步观察")
+1) 观察结果
+- 体态、背甲形态等观察项
+- 语气需谨慎，使用“可能/疑似/建议继续观察”等措辞
 
-2) Risk Notes
-- Explicit disclaimer: advice-only, not medical diagnosis
-- If suspicious: recommend professional vet consultation
+2) 风险提示
+- 明确声明：仅作建议，不构成医疗诊断
+- 如有异常风险，建议尽快线下就医
 
-3) Care Suggestions (Checklist)
-- Actionable steps (feeding, water quality, basking, UVB, enclosure)
+3) 养护建议清单
+- 可执行步骤：喂养、水质、晒背、UVB、空间等
 
-4) Follow-up
-- What to re-check and when (e.g., "建议隔 2 周同角度再拍对比")
-- What signals require urgent attention
+4) 复查建议
+- 说明复查项与复查周期（例如 2 周后同角度复拍）
+- 说明需要立即关注的危险信号
 
-## Safety / Compliance
+## 4. 安全与合规
 
-- Never claim diagnosis.
-- Avoid recommending medication or invasive treatment.
-- Avoid collecting unnecessary sensitive personal data.
+- 禁止输出“诊断结论”。
+- 禁止给出药物/侵入性治疗建议。
+- 禁止采集与目标无关的敏感个人信息。
 
-## Quota / Monetization (Phase A Baseline)
+## 5. 配额与商业化基线（一期）
 
-Phase A quota/billing details are defined in:
-- `docs/spec/AI_QUOTA_BILLING.md`
+详细规则以 `docs/spec/AI_QUOTA_BILLING.md` 为准，当前基线：
 
-Launch baseline:
-- Enforced unit: `image_count` (charged by uploaded image count)
-- Quota scope: per-tenant
-- Quota period: monthly reset
-- Free trial baseline: 10 images / month / tenant (roughly 10 turtles)
-- Input size guardrail: each image <= `10 MB`
-- Over quota: return paywall-ready error payload so web can open recharge modal
+- 计费单位：`image_count`（按上传图片张数扣减）
+- 配额范围：按租户
+- 配额周期：按月重置
+- 试用基线：每租户每月 10 张
+- 输入大小限制：单图不超过 `10 MB`
+- 配额不足时：返回可直接触发前端充值弹窗的错误载荷
 
-API placeholder contracts are defined in:
-- `packages/shared/src/ai.ts`
+API 占位契约：`packages/shared/src/ai.ts`
 
-## Sharing / Growth Hook (Later)
+## 6. 分享与增长（后续）
 
-On public share pages, provide CTA:
-- "I also want to record my turtles" -> sign up
-- Positioning: works for hobby users and sellers
+在公开分享页提供引导入口：
+- “我也想记录我的海龟” -> 注册
+- 面向爱好者与商家均可用
 
-## Non-Goals (Phase A)
+## 7. 一期非目标
 
-- No disease diagnosis.
-- No long-term trend analysis.
-- No breeding/lineage reasoning.
-- No automated decisions that affect user assets.
+- 不做疾病诊断
+- 不做长期趋势分析
+- 不做繁殖/谱系推理
+- 不做影响用户资产的自动决策

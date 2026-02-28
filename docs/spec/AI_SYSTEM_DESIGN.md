@@ -1,158 +1,161 @@
-# AI System Design (Phase A + Config)
+# 智能分析系统设计规格（一期 + 配置）
 
-Status: Design/spec only (Phase A implementation can be staged)
-Updated: 2026-02-27
+状态：设计规格阶段（可分阶段实现）
+更新日期：2026-02-28
 
-Related specs:
+关联文档：
 - `docs/spec/SAAS_SPEC.md`
 - `docs/spec/AI_PHASE_A.md`
 - `docs/spec/AI_QUOTA_BILLING.md`
 
-## Scope
+## 1. 范围
 
-Phase A (Advice-only turtle photo analysis):
-- User uploads 1-3 photos + optional basic info
-- System returns structured text (observations / risk notes / care checklist / follow-up)
-- Must include non-diagnosis disclaimer
+AI 一期能力为“建议型海龟照片分析”：
+- 用户上传 1-3 张照片 + 可选基础信息
+- 系统输出结构化建议文本（观察、风险、养护、复查）
+- 必须包含“非医疗诊断”免责声明
 
-Also define: how to configure models in backend (admin/tenant settings), quota/usage tracking, and logging.
+同时定义：模型配置方式、租户配额与用量跟踪、日志规范。
 
-## Key Product Decisions (Confirmed)
+## 2. 已确认产品决策
 
-- Public sharing links are viewable by anyone with the link.
-- AI outputs are advice-only, not medical diagnosis.
-- Quota is measured by image count, scoped per-tenant, reset monthly.
+- 公开分享链接持有者可访问。
+- AI 输出仅作建议，不做医疗诊断。
+- 配额按图片张数计费，按租户计，按月重置。
 
-## Architecture Overview
+## 3. 模块架构
 
-### Modules (apps/api)
+### 3.1 后端（`apps/api`）
 
-- `ai/` (API layer)
-  - `POST /ai/turtle-analysis` (auth required, tenant-scoped)
-  - Validates inputs with Zod (from `@eggturtle/shared`)
-  - Enforces quota + writes usage/audit logs
+- `ai/`（接口层）
+  - `POST /ai/turtle-analysis`（需鉴权，按租户生效）
+  - 使用 `@eggturtle/shared` 的 Zod 契约做输入校验
+  - 负责配额校验、用量记录、审计记录
 
-- `ai-providers/` (provider abstraction)
-  - `AiProvider` interface
-  - Implementations:
-    - `OpenAIProvider` / `AnthropicProvider` / `GeminiProvider` (optional; pick one first)
-  - Provider selection by `provider` + `modelId`
+- `ai-providers/`（模型提供方抽象）
+  - 统一接口：`AiProvider`
+  - 可选实现：`OpenAIProvider`、`AnthropicProvider`、`GeminiProvider`
+  - 按 `provider + modelId` 选择实际调用
 
-- `ai-config/` (model catalog + tenant policy)
-  - Server-level model catalog: non-secret definitions
-  - Tenant-level policy: which model is enabled/selected, feature toggles
+- `ai-config/`（模型目录与租户策略）
+  - 服务级模型目录：仅非密钥信息
+  - 租户级策略：启用状态、默认模型、配额策略
 
-- `ai-quota/` (tenant credits / rate limiting)
-  - Per-tenant counters with monthly reset
-  - Hard limits (max images, max single image size 10 MB, max total input size 30 MB, max requests/min)
+- `ai-quota/`（配额与限流）
+  - 租户级计数器，按月重置
+  - 强约束：单图上限 `10 MB`、单次总输入建议上限 `30 MB`
 
-- `ai-usage/` (billing/analytics)
-  - Stores usage events with token counts + estimated cost
+- `ai-usage/`（用量与成本）
+  - 记录请求用量、令牌数、估算成本
 
-### Web (apps/web)
+### 3.2 前端（`apps/web`）
 
-- `GET /app/[tenantSlug]/ai` (later): run analysis UI
-- `GET /app/[tenantSlug]/settings/ai` (later): owner/admin selects model + quota policy
+- `GET /app/[tenantSlug]/ai`：后续接入分析交互页
+- `GET /app/[tenantSlug]/settings/ai`：后续接入模型与配额策略设置页（限 OWNER/ADMIN）
 
-## Data Model (Prisma) Proposal
+## 4. 数据模型建议（Prisma）
 
-Keep secrets in env, not DB.
+密钥只放环境变量，不落库。
 
 - `AiTenantPolicy`
-  - `tenantId` (unique)
-  - `enabled` (bool)
-  - `defaultModelId` (string)
-  - `monthlyImageCreditLimit` (int)
-  - `extraImageCredits` (int, add-on packs)
-  - `resetDayOfMonth` (int, usually 1)
+  - `tenantId`（唯一）
+  - `enabled`
+  - `defaultModelId`
+  - `monthlyImageCreditLimit`
+  - `extraImageCredits`
+  - `resetDayOfMonth`
 
 - `AiUsageEvent`
-  - `tenantId`, `actorUserId`
-  - `action` (e.g. `turtle_analysis`)
-  - `modelId`, `provider`
+  - `tenantId`、`actorUserId`
+  - `action`（例如 `turtle_analysis`）
+  - `modelId`、`provider`
   - `inputImageCount`
-  - `promptTokens`, `completionTokens`, `totalTokens` (nullable if provider does not return)
+  - `promptTokens`、`completionTokens`、`totalTokens`（可空）
   - `estimatedCostCents`
   - `createdAt`
 
 - `AiQuotaCounter`
   - `tenantId`
-  - `periodStart` (month start datetime)
+  - `periodStart`
   - `usedImageCount`
   - `remainingImageCredits`
 
-## API Contracts (@eggturtle/shared)
+## 5. 共享契约（`@eggturtle/shared`）
 
-Defined in `packages/shared/src/ai.ts` (placeholder contracts):
+定义文件：`packages/shared/src/ai.ts`
+
 - `turtleAnalysisRequestSchema`
-  - `images: [{ key: string, contentType?: string, sizeBytes?: number }]`
-  - `species?`, `ageRange?`, `weightGrams?`, `environment?`, `question?`
+  - `images: [{ key, contentType?, sizeBytes? }]`
+  - `species?`、`ageRange?`、`weightGrams?`、`environment?`、`question?`
+
 - `turtleAnalysisResponseSchema`
   - `analysisId`
-  - `result` (`observations`, `riskNotes`, `careChecklist`, `followUp`, `disclaimer`)
-  - `quotaConsumed` (image count consumed in this request)
-  - `quota` (`scope`, `period`, `unit`, `limit`, `used`, `remaining`, `resetAt`)
+  - `result`（`observations`、`riskNotes`、`careChecklist`、`followUp`、`disclaimer`）
+  - `quotaConsumed`
+  - `quota`（`scope`、`period`、`unit`、`limit`、`used`、`remaining`、`resetAt`）
   - `modelId`
-  - `limits` (`maxImages`, `maxTotalInputBytes`)
+  - `limits`（`maxImages`、`maxTotalInputBytes`）
+
 - `aiQuotaStatusResponseSchema`
-  - `tenantId`, `items[]`, `checkedAt`
-- Error payload placeholders
+  - `tenantId`、`items[]`、`checkedAt`
+
+- 错误响应占位
   - `aiQuotaExceededErrorResponseSchema`
   - `aiInputTooLargeErrorResponseSchema`
 
-Error codes (extend `ErrorCode`):
+扩展错误码：
 - `AI_FEATURE_DISABLED`
 - `AI_MODEL_NOT_CONFIGURED`
 - `AI_RATE_LIMITED`
 - `QUOTA_EXCEEDED`
 - `AI_PROVIDER_ERROR`
 
-## Model Configuration (How Admin Chooses Models)
+## 6. 模型配置策略
 
-### Server-level (env)
+### 6.1 服务级（环境变量）
 
-- `AI_PROVIDER_DEFAULT` (e.g. `openai`)
-- `AI_MODELS_JSON` (non-secret catalog)
-  - Example items: `{ "id": "gpt-4o-mini", "provider": "openai", "capabilities": ["vision"], "priceTier": "cheap" }`
+- `AI_PROVIDER_DEFAULT`（例如 `openai`）
+- `AI_MODELS_JSON`（非密钥模型目录）
+  - 示例：`{"id":"gpt-4o-mini","provider":"openai","capabilities":["vision"],"priceTier":"cheap"}`
 
-### Secrets (env)
+### 6.2 密钥策略
 
-- Provider API keys live in env only.
-- Never store API keys in DB.
+- 提供方 API Key 仅放环境变量
+- 禁止写入数据库
 
-### Tenant-level (DB)
+### 6.3 租户级策略
 
-- Tenant policy chooses one model id from the catalog.
+- 租户从服务级目录中选择一个 `modelId` 作为默认模型
 
-## Quota / Billing Behavior
+## 7. 配额与计费行为
 
-- Enforce quota before provider call.
-- Quota unit for Phase A is image count (`image_count`).
-- Quota scope is tenant-level and resets monthly.
-- Enforce model input size limit before provider call (max single image bytes = 10 MB; recommended max total input bytes = 30 MB).
-- On quota exhaustion, return paywall-ready error payload so web can open recharge modal with add-on packs.
-- Record usage event after provider returns.
+- 调用模型前必须先做配额预校验。
+- 一期配额单位固定为 `image_count`。
+- 配额按租户生效，按月重置。
+- 调用模型前先校验输入大小上限。
+- 配额不足时返回可直接触发前端充值弹窗的错误载荷。
+- 模型返回后写入用量事件。
 
-## Sharing & Growth Hook (Later)
+## 8. 分享增长挂钩（后续）
 
-On public share pages (e.g. `/s/<token>`):
-- Add CTA: "I also want to record my turtles" -> signup
-- Optional: show sample AI analysis teaser (no user photos)
+在公开分享页（如 `/s/<token>`）增加引导：
+- “我也想记录我的海龟” -> 注册
+- 可选展示 AI 分析示例文案（不展示用户原图）
 
-## Logging Style (Required)
+## 9. 日志规范（强制）
 
-Structured fields in logs:
-- `requestId`, `tenantId`, `userId`, `action`, `errorCode`
+结构化字段：
+- `requestId`、`tenantId`、`userId`、`action`、`errorCode`
 
-Never log:
-- provider API keys
-- signed URLs
-- user private data
+禁止写入日志：
+- 提供方 API Key
+- 签名 URL 全量值
+- 用户非必要隐私内容
 
-## Implementation Plan (Suggested)
+## 10. 建议落地顺序
 
-1) Land specs only (`docs/spec/AI_PHASE_A.md`, `docs/spec/AI_QUOTA_BILLING.md`, this doc)
-2) Add DB tables + shared schema (`packages/shared/src/ai.ts` already provides placeholder contracts)
-3) Implement API with stub provider returning deterministic placeholder text (for UI wiring)
-4) Integrate real provider + usage counters + cost estimation
-5) Add tenant settings UI
+1. 先冻结规格（`AI_PHASE_A`、`AI_QUOTA_BILLING`、本文）
+2. 落库表结构与共享契约
+3. 先接桩提供方（确定性占位输出），打通前端链路
+4. 接入真实提供方与配额记账
+5. 接入租户侧 AI 设置页

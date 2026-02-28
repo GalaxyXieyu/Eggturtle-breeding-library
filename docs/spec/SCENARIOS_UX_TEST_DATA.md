@@ -1,210 +1,206 @@
-# SCENARIOS_UX_TEST_DATA
+# 交互测试场景数据规格
 
-## Purpose
+## 1. 目的
 
-Define stable UX test scenarios and exact dataset requirements for:
-- Auth and tenant switching flows
-- Product list and detail behavior
-- Featured products behavior
-- Share link behavior
-- Role/permission behavior (owner/editor/viewer)
+定义稳定、可复现的 UX 测试场景与数据集要求，用于：
 
-This dataset spec is designed for local and CI smoke validation and for manual UX acceptance.
+- 登录与租户切换流程
+- 产品列表与详情行为
+- 精选产品行为
+- 分享链接行为
+- 角色权限行为（owner/editor/viewer）
 
-## Dataset Scope
+该数据规格用于本地与 CI 冒烟验证，也用于人工验收。
 
-### Source and target
+## 2. 数据范围
 
-- Source: TurtleAlbum sqlite (`products`, `product_images`, `users`)
-- Target: Eggturtle Postgres via Prisma (`users`, `tenants`, `tenant_members`, `products`, `product_images`)
-- Tenant slug for migrated data: `turtle-album`
-- Default owner account for migrated tenant: `admin@turtlealbum.local` (OWNER role)
+### 2.1 来源与目标
 
-### Required baseline quantities
+- 来源：TurtleAlbum sqlite（`products`、`product_images`、`users`）
+- 目标：Eggturtle Postgres（Prisma）
+  - `users`、`tenants`、`tenant_members`、`products`、`product_images`
+- 迁移租户 slug：`turtle-album`
+- 默认 owner 账号：`admin@turtlealbum.local`（`OWNER`）
 
-These counts are minimums for UX coverage:
+### 2.2 基线数量（最小值）
 
-- `users`: 3 in target tenant context
-  - owner: `admin@turtlealbum.local` (OWNER)
-  - editor: `editor@turtlealbum.local` (EDITOR)
-  - viewer: `viewer@turtlealbum.local` (VIEWER)
-- `products`: at least 12 migrated products (real-world style codes)
-- `product_images`: at least 12 images (at least 1 image for each sampled product)
-- `featured_products`: at least 2 entries (can be created during smoke)
-- `public_shares`: at least 1 entry (can be created during smoke)
+- `users`：目标租户上下文至少 3 个
+  - owner：`admin@turtlealbum.local`
+  - editor：`editor@turtlealbum.local`
+  - viewer：`viewer@turtlealbum.local`
+- `products`：至少 12 条迁移产品
+- `product_images`：至少 12 张（采样产品至少 1 张）
+- `featured_products`：至少 2 条（可在 smoke 中创建）
+- `public_shares`：至少 1 条（可在 smoke 中创建）
 
-## Canonical Scenario Set
+## 3. 标准场景集
 
-## S1 - Login and initial tenant state
+### S1：登录与初始租户状态
 
-Goal:
-- User can request and verify auth code
-- New user starts without selected tenant
+目标：
+- 用户可完成验证码登录
+- 新用户初始没有选中租户
 
-Data requirements:
-- Auth code flow enabled in local dev (`AUTH_DEV_CODE_ENABLED=true`)
-- At least one existing tenant (`turtle-album`) and one owner member
+数据要求：
+- 本地开发开启验证码：`AUTH_DEV_CODE_ENABLED=true`
+- 至少存在一个租户 `turtle-album` 与 owner 成员
 
-Assertions:
-- `POST /auth/request-code` returns `devCode` in local dev
-- `POST /auth/verify-code` returns `accessToken`
-- API routes requiring tenant should fail before switch (`TENANT_NOT_SELECTED` path)
+断言：
+- `POST /auth/request-code` 在本地返回 `devCode`
+- `POST /auth/verify-code` 返回 `accessToken`
+- 未切租户时访问租户接口应命中 `TENANT_NOT_SELECTED`
 
-Edge cases:
-- invalid code format (`code` not 6 digits)
-- expired or consumed code
+边界：
+- 验证码格式非法（非 6 位）
+- 验证码过期或已消费
 
-## S2 - Tenant switch and tenant-scoped token
+### S2：租户切换与租户作用域 token
 
-Goal:
-- User selects `turtle-album` and receives tenant-scoped token
+目标：
+- 用户切到 `turtle-album`，拿到租户作用域 token
 
-Data requirements:
-- User is member of target tenant
-- tenant slug is unique and stable: `turtle-album`
+数据要求：
+- 用户是目标租户成员
+- 租户 slug 稳定且唯一（`turtle-album`）
 
-Assertions:
-- `POST /auth/switch-tenant` succeeds with tenant id or slug
-- subsequent calls to `/products`, `/featured-products`, `/shares` are tenant-scoped
+断言：
+- `POST /auth/switch-tenant` 成功
+- 后续 `/products`、`/featured-products`、`/shares` 均受租户作用域约束
 
-Edge cases:
-- switch to nonexistent tenant -> not found
-- switch to tenant without membership -> forbidden
+边界：
+- 切换到不存在租户 -> `not found`
+- 切换到非成员租户 -> `forbidden`
 
-## S3 - Product list UX (default state)
+### S3：产品列表 UX（默认态）
 
-Goal:
-- Product list renders realistic migrated dataset
+目标：
+- 产品列表能展示真实风格迁移数据
 
-Data requirements:
-- products with mixed description completeness:
-  - some `description` non-empty
-  - some `description` empty/null
-- codes are unique within tenant
-- list includes at least one product whose code has hyphen + numeric suffix (for sort and readability checks)
+数据要求：
+- `description` 既有非空也有空值
+- `code` 在租户内唯一
+- 至少存在一个带连字符+数字后缀的 code（便于排序与可读性检验）
 
-Assertions:
-- `/products` returns non-empty list
-- pagination metadata is valid (`page`, `pageSize`, `total`, `totalPages`)
-- each product has stable `id`, `tenantId`, `code`
+断言：
+- `/products` 返回非空
+- 分页元数据有效（`page`、`pageSize`、`total`、`totalPages`）
+- 每条产品含稳定 `id`、`tenantId`、`code`
 
-Edge cases:
-- duplicate code import attempts must upsert, not create duplicates
-- blank code rows from source should be skipped during import
+边界：
+- 导入重复 code 时应 upsert，不得新增重复记录
+- 源数据空白 code 行应在导入时跳过
 
-## S4 - Product image ordering and main image
+### S4：产品图片顺序与主图
 
-Goal:
-- UI shows correct main image and image order
+目标：
+- UI 主图与图片顺序正确
 
-Data requirements:
-- each tested product has 1+ images
-- `sort_order` preserved from source where possible
-- one image marked main (`type == main` in source) when available
-- after placeholder seeding, every `ProductImage.key` should be managed key `${tenantId}/products/${productId}/...`
-- for deterministic smoke data, each product maps to one of 5 local placeholder binaries by product code round-robin
+数据要求：
+- 测试产品每个至少 1 张图
+- `sort_order` 尽量保持源顺序
+- 有主图标记时应映射主图
+- 占位图回填后，`ProductImage.key` 应统一为受控 key：`${tenantId}/products/${productId}/...`
+- 为保证可重复 smoke，每个产品按 code 轮询映射到 5 个本地占位图文件
 
-Assertions:
-- first displayed image matches `isMain=true`
-- image order follows `sortOrder` ascending
-- `GET /products/:pid/images/:iid/content` streams bytes for managed keys (no redirect to MinIO)
-- legacy unmanaged keys still fall back to `url` redirect
+断言：
+- 第一张展示图应为 `isMain=true`
+- 列表顺序按 `sortOrder` 升序
+- `GET /products/:pid/images/:iid/content` 对受控 key 返回字节流
+- 历史非受控 key 允许回退到 `url` 跳转
 
-Edge cases:
-- script dry-run does not mutate DB or object storage
-- script `--confirm` can be re-run safely and keeps one image row per product
-- keys remain unique per image row to avoid cross-row delete coupling
+边界：
+- dry-run 不得修改数据库与对象存储
+- `--confirm` 可安全重跑，且每产品仍保持单图片记录约束
+- 每行图片 key 必须唯一，避免误删联动
 
-## S5 - Featured products UX
+### S5：精选产品 UX
 
-Goal:
-- Featured list can be created, listed, and reordered
+目标：
+- 精选列表可新增、查询、重排
 
-Data requirements:
-- at least 2 existing products in same tenant
+数据要求：
+- 同租户至少 2 个产品
 
-Assertions:
-- `POST /featured-products` adds item
-- `GET /featured-products` returns tenant-scoped list
-- `PUT /featured-products/reorder` updates sort order
-- `GET /products/featured?tenantSlug=turtle-album` returns public featured list
+断言：
+- `POST /featured-products` 可新增
+- `GET /featured-products` 返回租户内列表
+- `PUT /featured-products/reorder` 生效
+- `GET /products/featured?tenantSlug=turtle-album` 返回公开精选
 
-Edge cases:
-- duplicate feature add for same product should not create duplicates
-- cross-tenant product id must be rejected
+边界：
+- 同产品重复加精选不应生成重复记录
+- 跨租户 product id 必须拒绝
 
-## S6 - Public share UX
+### S6：公开分享 UX
 
-Goal:
-- Share creation and public read path work end-to-end
+目标：
+- 分享创建与公开读取全链路可用
 
-Data requirements:
-- at least 1 product with image in tenant
-- `PUBLIC_SHARE_SIGNING_SECRET` configured
+数据要求：
+- 目标租户至少 1 个带图片产品
+- `PUBLIC_SHARE_SIGNING_SECRET` 已配置
 
-Assertions:
-- `POST /shares` returns share id + share token + entry url
-- `GET /s/:shareToken` returns 302 redirect with signed params
-- `GET /shares/:shareId/public?...` returns product payload
+断言：
+- `POST /shares` 返回 share id、share token、入口 URL
+- `GET /s/:shareToken` 返回带签名参数的 `302`
+- `GET /shares/:shareId/public?...` 返回产品公开载荷
 
-Edge cases:
-- invalid signature -> unauthorized
-- expired signature -> unauthorized
-- unknown share token -> not found
+边界：
+- 签名非法 -> `unauthorized`
+- 签名过期 -> `unauthorized`
+- share token 不存在 -> `not found`
 
-## S7 - Role and permission UX
+### S7：角色权限 UX
 
-Goal:
-- owner/editor/viewer roles produce expected access behavior
+目标：
+- owner/editor/viewer 行为符合预期
 
-Data requirements:
-- tenant members:
-  - OWNER: can manage tenant + data
-  - EDITOR: can create/edit products and featured entries
-  - VIEWER: read-only for protected resources
+数据要求：
+- 租户成员包含：
+  - `OWNER`：可管理租户与核心数据
+  - `EDITOR`：可写产品与精选
+  - `VIEWER`：受保护资源只读
 
-Assertions:
-- viewer cannot create product/featured/share write actions that require editor+
-- editor can create product and featured entries
-- owner has full tenant management behavior
+断言：
+- viewer 不能执行需要 editor+ 的写操作
+- editor 可以创建产品与精选
+- owner 具备完整租户管理能力
 
-Edge cases:
-- user with valid token but no tenant membership should get forbidden on switch or scoped operations
+边界：
+- 有效 token 但非租户成员，切换或租户操作应返回 `forbidden`
 
-## Migration and Seed Rules
+## 4. 迁移与种子规则
 
-## Import idempotency
+### 4.1 导入幂等性
 
-Importer must be re-runnable:
-- product upsert key: `(tenantId, code)`
-- image upsert lookup: `(tenantId, productId, key)` behavior by key
-- repeated runs should update existing rows, not create uncontrolled duplicates
+导入脚本必须可重复执行：
+- 产品 upsert 主键：`(tenantId, code)`
+- 图片 upsert 查找键：`(tenantId, productId, key)`
+- 重复运行应更新已有记录，不产生无控制重复
 
-## Safety defaults
+### 4.2 安全默认值
 
-All write scripts must default to dry-run and require explicit confirm flag:
-- default mode: dry-run
-- write mode: `--confirm`
+所有写脚本默认 dry-run，必须显式确认：
+- 默认：dry-run
+- 写入：`--confirm`
 
-Production safety guard:
-- scripts refuse when `DATABASE_URL` looks like production
-- override only with `--i-know-what-im-doing`
+生产保护：
+- 当 `DATABASE_URL` 呈现生产特征时脚本拒绝执行
+- 仅允许通过 `--i-know-what-im-doing` 强制覆盖
 
-## Non-goals for this phase
+## 5. 本阶段非目标
 
-- no password migration from legacy users
-- no direct migration of legacy auth credentials
+- 不迁移 legacy 用户密码
+- 不直接迁移 legacy 鉴权凭据
 
-## Verification Checklist
+## 6. 验证清单
 
-After migration and seed:
-
-1. `scripts/migrate/turtle_album_export.py` dry-run works by default
-2. `scripts/migrate/turtle_album_export.py --confirm` outputs JSON without secrets
-3. `scripts/seed/import_turtle_album.ts` dry-run works by default
-4. `scripts/seed/import_turtle_album.ts --confirm` creates/updates tenant data
-5. `scripts/migrate/seed_placeholder_images_to_storage.ts` dry-run works by default
-6. `scripts/migrate/seed_placeholder_images_to_storage.ts --confirm` uploads deterministic placeholder binaries to storage, enforces one `ProductImage` row per product, and rewrites `product_images.key/contentType/url` with per-row unique managed keys
-7. `scripts/seed/bootstrap_admin.ts --confirm` creates editor/viewer memberships
-8. `pnpm api-tests -- --confirm-writes --only auth,products,featured,shares` passes auth, tenant switch, products, featured, and share checks
-9. `pnpm -r lint && pnpm -r build` passes
+1. `scripts/migrate/turtle_album_export.py` 默认 dry-run 可执行
+2. `scripts/migrate/turtle_album_export.py --confirm` 输出 JSON 且不泄漏密钥
+3. `scripts/seed/import_turtle_album.ts` 默认 dry-run 可执行
+4. `scripts/seed/import_turtle_album.ts --confirm` 可创建/更新租户数据
+5. `scripts/migrate/seed_placeholder_images_to_storage.ts` 默认 dry-run 可执行
+6. `scripts/migrate/seed_placeholder_images_to_storage.ts --confirm` 可上传确定性占位图并改写 `product_images.key/contentType/url`
+7. `scripts/seed/bootstrap_admin.ts --confirm` 可创建 editor/viewer 会员关系
+8. `pnpm api-tests -- --confirm-writes --only auth,products,featured,shares` 通过
+9. `pnpm -r lint && pnpm -r build` 通过
