@@ -3,6 +3,7 @@ import { ErrorCode, SuperAdminAuditAction } from '@eggturtle/shared';
 import type {
   CreateAdminTenantRequest,
   CreateAdminTenantResponse,
+  DeleteTenantMemberResponse,
   GetAdminTenantResponse,
   ListAdminTenantMembersQuery,
   ListAdminTenantMembersResponse,
@@ -365,6 +366,78 @@ export class AdminService {
       previousRole: result.previousRole,
       auditLogId: result.auditLogId
     };
+  }
+
+  async deleteTenantMember(
+    actorUserId: string,
+    tenantId: string,
+    userId: string
+  ): Promise<DeleteTenantMemberResponse> {
+    return this.prisma.$transaction(async (tx) => {
+      const tenant = await tx.tenant.findUnique({
+        where: {
+          id: tenantId
+        },
+        select: {
+          id: true,
+          slug: true
+        }
+      });
+
+      if (!tenant) {
+        throw new NotFoundException({
+          message: 'Tenant not found.',
+          errorCode: ErrorCode.TenantNotFound
+        });
+      }
+
+      const existingMembership = await tx.tenantMember.findUnique({
+        where: {
+          tenantId_userId: {
+            tenantId: tenant.id,
+            userId
+          }
+        }
+      });
+
+      if (!existingMembership) {
+        throw new NotFoundException({
+          message: 'Tenant member not found.',
+          errorCode: ErrorCode.TenantMemberNotFound
+        });
+      }
+
+      await tx.tenantMember.delete({
+        where: {
+          tenantId_userId: {
+            tenantId: tenant.id,
+            userId
+          }
+        }
+      });
+
+      const auditLogId = await this.superAdminAuditLogsService.createLog(
+        {
+          actorUserId,
+          targetTenantId: tenant.id,
+          action: SuperAdminAuditAction.RemoveTenantMember,
+          metadata: {
+            tenantSlug: tenant.slug,
+            memberUserId: userId,
+            previousRole: existingMembership.role
+          }
+        },
+        tx
+      );
+
+      return {
+        tenantId: tenant.id,
+        userId,
+        removed: true,
+        previousRole: existingMembership.role,
+        auditLogId
+      };
+    });
   }
 
   async listAuditLogs(

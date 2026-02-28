@@ -1,7 +1,8 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import {
   createAdminTenantRequestSchema,
   createAdminTenantResponseSchema,
+  deleteTenantMemberResponseSchema,
   getAdminTenantResponseSchema,
   listAdminTenantMembersQuerySchema,
   listAdminTenantMembersResponseSchema,
@@ -87,6 +88,17 @@ export class AdminController {
     const response = await this.adminService.upsertTenantMember(user.id, tenantId, payload);
 
     return upsertTenantMemberResponseSchema.parse(response);
+  }
+
+  @Delete('tenants/:tenantId/members/:userId')
+  async deleteTenantMember(
+    @CurrentUser() user: NonNullable<AuthenticatedRequest['user']>,
+    @Param('tenantId') tenantId: string,
+    @Param('userId') userId: string
+  ) {
+    const response = await this.adminService.deleteTenantMember(user.id, tenantId, userId);
+
+    return deleteTenantMemberResponseSchema.parse(response);
   }
 
   @Get('audit-logs')
