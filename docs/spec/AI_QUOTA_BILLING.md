@@ -1,98 +1,96 @@
-# AI Phase A Quota + Billing Spec
+# 智能分析一期配额与计费规格
 
-Status: spec + API contract placeholder only (no full implementation)
-Updated: 2026-02-27
+状态：规格与接口占位阶段（未进入完整结算实现）
+更新日期：2026-02-28
 
-## 1. Purpose
+## 1. 目的
 
-Define a minimal, enforceable quota model for AI turtle photo analysis in Phase A.
-This version is designed for fast launch and cost control, not full financial settlement.
+定义 AI 海龟照片分析在一期的最小可执行配额模型，重点是可落地、可控成本，而非完整财务结算。
 
-## 2. Quota Model (Confirmed)
+## 2. 配额模型（已确认）
 
-Core quota rules:
-- **Quota unit**: `image_count` (charged by number of uploaded images, not by request count).
-- **Quota scope**: per-tenant.
-- **Quota period**: monthly reset.
-- **Per-request image count**: 1-3 images.
+核心规则：
+- 配额单位：`image_count`（按上传图片张数计费，不按请求次数计）
+- 配额范围：按租户
+- 配额周期：按月重置
+- 单次请求图片数：1-3 张
 
-Input size guardrail:
-- Each uploaded image must be <= `10 MB`.
-- Recommended max total input size per request: <= `30 MB` (up to 3 images at 10MB each).
-- Requests exceeding limits are rejected before provider call.
+输入大小限制：
+- 单图不超过 `10 MB`
+- 建议单次总输入不超过 `30 MB`
+- 超限请求在调用模型前直接拒绝
 
-Monetization behavior:
-- Base plan provides monthly image credits.
-- Free trial baseline: 10 images / month / tenant (roughly 10 turtles).
-- Tenant can purchase additional image-credit packs (add-on credits) separately.
-- When remaining credits are insufficient, API must return paywall-ready payload so web can open recharge modal.
+商业化行为：
+- 基础套餐按月提供图片额度
+- 试用基线：每租户每月 10 张
+- 支持购买图片加油包（附加额度）
+- 剩余额度不足时，API 必须返回可触发前端充值弹窗的错误载荷
 
-## 3. Enforcement Points (Request Lifecycle)
+## 3. 执行时机（请求生命周期）
 
-1) Auth + tenant context check.
-2) Feature switch/model policy check (tenant-level allowlist).
-3) Input validation check (schema, image count, input size <= 10 MB).
-4) Rate-limit check (user + tenant dimensions).
-5) Quota pre-check on `image_count` needed for current request.
-6) Provider call.
-7) Usage/audit write (images consumed, model, result status, latency, token telemetry).
-8) Final quota accounting:
-   - Success: consume requested image credits.
-   - Provider/system fail before completion: refund policy is configurable, default can be refund-on-fail.
+1. 鉴权与租户上下文校验
+2. 功能开关与模型策略校验
+3. 输入校验（格式、张数、大小）
+4. 限流校验（用户维度 + 租户维度）
+5. 配额预校验（本次需要的 `image_count`）
+6. 调用模型
+7. 记录用量与审计日志（含耗时、模型、令牌统计）
+8. 最终记账
+- 成功：扣减本次图片额度
+- 失败：退款策略可配置，一期默认可按“失败返还”执行
 
-## 4. Audit / Logging Fields
+## 4. 审计与日志字段
 
-Required structured fields:
+必填结构化字段：
 - `requestId`
 - `tenantId`
 - `userId`
-- `action` (for example `ai.turtle_analysis`)
+- `action`（例如 `ai.turtle_analysis`）
 - `modelId`
 - `provider`
-- `quotaUnit` (fixed: `image_count`)
-- `quotaConsumed` (images consumed in this request)
+- `quotaUnit`（固定为 `image_count`）
+- `quotaConsumed`
 - `quotaRemaining`
 - `quotaResetAt`
 - `inputImageCount`
 - `inputBytes`
-- `promptTokens` (nullable)
-- `completionTokens` (nullable)
-- `totalTokens` (nullable)
+- `promptTokens`（可空）
+- `completionTokens`（可空）
+- `totalTokens`（可空）
 - `latencyMs`
-- `result` (`success` | `blocked` | `error`)
-- `errorCode` (nullable)
+- `result`（`success | blocked | error`）
+- `errorCode`（可空）
 - `createdAt`
 
-Do not log:
-- provider API keys
-- raw signed URLs
-- sensitive user-private payloads beyond operational minimum
+日志禁止项：
+- 模型提供方密钥
+- 原始签名 URL
+- 非必要的用户敏感数据
 
-## 5. Rate Limiting Notes
+## 5. 限流建议
 
-Phase A baseline recommendation:
-- Scope: `tenantId + userId + route`.
-- Short window: 10 requests / 60 seconds.
-- Burst mitigation: block with retry-after hint.
+一期建议：
+- 维度：`tenantId + userId + route`
+- 窗口：60 秒内最多 10 次
+- 突发：超限后返回带重试提示
 
-Operational notes:
-- Keep limiter deterministic and easy to explain to support users.
-- In-memory limiter is acceptable for local single-instance dev.
-- Multi-instance deploy should use shared store (for example Redis).
+实现建议：
+- 本地单实例可使用内存限流
+- 多实例部署应使用共享存储（如 Redis）
 
-## 6. Error Semantics (API Placeholder)
+## 6. 错误语义（接口占位）
 
-### 6.1 Over quota (paywall trigger)
+### 6.1 配额耗尽（触发付费引导）
 
-- HTTP status: `402 Payment Required` (preferred), or `429` when gateway/policy requires throttling semantics.
-- `errorCode`: `QUOTA_EXCEEDED`.
-- Response includes paywall metadata for UI modal.
+- HTTP：优先 `402 Payment Required`，必要时可降级为 `429`
+- `errorCode`：`QUOTA_EXCEEDED`
+- 响应体应包含前端弹窗所需的加油包信息
 
-Payload shape:
+示例：
 
 ```json
 {
-  "message": "Monthly image credits exhausted.",
+  "message": "本月图片额度已用完。",
   "errorCode": "QUOTA_EXCEEDED",
   "statusCode": 402,
   "data": {
@@ -102,7 +100,7 @@ Payload shape:
       "packs": [
         {
           "id": "pack_100",
-          "name": "100-image add-on",
+          "name": "100 张图片加油包",
           "imageCredits": 100,
           "priceCents": 990,
           "currency": "CNY"
@@ -113,16 +111,16 @@ Payload shape:
 }
 ```
 
-### 6.2 Input too large (>10 MB per image)
+### 6.2 输入过大（单图超过 10 MB）
 
-- HTTP status: `413 Payload Too Large`.
-- `errorCode`: `INVALID_REQUEST_PAYLOAD`.
+- HTTP：`413 Payload Too Large`
+- `errorCode`：`INVALID_REQUEST_PAYLOAD`
 
-Payload shape:
+示例：
 
 ```json
 {
-  "message": "An input image exceeds 10 MB.",
+  "message": "存在超过 10 MB 的输入图片。",
   "errorCode": "INVALID_REQUEST_PAYLOAD",
   "statusCode": 413,
   "data": {
@@ -132,39 +130,35 @@ Payload shape:
 }
 ```
 
-### 6.3 Related AI errors
+### 6.3 相关 AI 错误码
 
 - `AI_FEATURE_DISABLED`
 - `AI_MODEL_NOT_CONFIGURED`
 - `AI_RATE_LIMITED`
 - `AI_PROVIDER_ERROR`
 
-These are declared in `packages/shared/src/error-codes.ts`.
+以上错误码定义见：`packages/shared/src/error-codes.ts`。
 
-## 7. API Placeholder Contract (Shared Types)
+## 7. 接口占位契约
 
-This spec defines contract shape only. Runtime endpoints can be implemented later.
+契约文件：`packages/shared/src/ai.ts`
 
-Contract file:
-- `packages/shared/src/ai.ts`
-
-Proposed endpoints:
+建议端点：
 - `GET /ai/quota/status`
-  - Response schema: `aiQuotaStatusResponseSchema`
+  - 响应：`aiQuotaStatusResponseSchema`
 - `POST /ai/turtle-analysis`
-  - Request schema: `turtleAnalysisRequestSchema`
-  - Response schema: `turtleAnalysisResponseSchema`
+  - 请求：`turtleAnalysisRequestSchema`
+  - 响应：`turtleAnalysisResponseSchema`
 
-Error payload schemas:
+错误响应占位：
 - `aiQuotaExceededErrorResponseSchema`
 - `aiInputTooLargeErrorResponseSchema`
 
-Current route convention reminder:
-- API uses **no `/api` prefix**.
+路由约定提醒：API 不带 `/api` 前缀。
 
-## 8. Rollout Constraints
+## 8. 上线约束
 
-- Keep Phase A to advice-only output with disclaimer.
-- No diagnosis claims.
-- No medication/treatment prescriptions.
-- Any billing expansion beyond quota counters requires a separate settlement spec.
+- 一期仅允许建议型输出，并强制免责声明。
+- 禁止输出诊断结论。
+- 禁止给出药物与治疗方案。
+- 超出配额计数模型的完整结算能力需单独立项出规格。

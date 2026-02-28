@@ -2,6 +2,10 @@ import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/co
 import {
   createAdminTenantRequestSchema,
   createAdminTenantResponseSchema,
+  getAdminTenantResponseSchema,
+  listAdminTenantMembersQuerySchema,
+  listAdminTenantMembersResponseSchema,
+  listAdminTenantsQuerySchema,
   listAdminTenantsResponseSchema,
   listAdminUsersResponseSchema,
   listSuperAdminAuditLogsQuerySchema,
@@ -26,9 +30,22 @@ export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
   @Get('tenants')
-  async listTenants(@CurrentUser() user: NonNullable<AuthenticatedRequest['user']>) {
-    const response = await this.adminService.listTenants(user.id);
+  async listTenants(
+    @CurrentUser() user: NonNullable<AuthenticatedRequest['user']>,
+    @Query() query: unknown
+  ) {
+    const parsedQuery = parseOrThrow(listAdminTenantsQuerySchema, query);
+    const response = await this.adminService.listTenants(user.id, parsedQuery);
     return listAdminTenantsResponseSchema.parse(response);
+  }
+
+  @Get('tenants/:tenantId')
+  async getTenant(
+    @CurrentUser() user: NonNullable<AuthenticatedRequest['user']>,
+    @Param('tenantId') tenantId: string
+  ) {
+    const response = await this.adminService.getTenant(user.id, tenantId);
+    return getAdminTenantResponseSchema.parse(response);
   }
 
   @Post('tenants')
@@ -46,6 +63,18 @@ export class AdminController {
   async listUsers(@CurrentUser() user: NonNullable<AuthenticatedRequest['user']>) {
     const response = await this.adminService.listUsers(user.id);
     return listAdminUsersResponseSchema.parse(response);
+  }
+
+  @Get('tenants/:tenantId/members')
+  async listTenantMembers(
+    @CurrentUser() user: NonNullable<AuthenticatedRequest['user']>,
+    @Param('tenantId') tenantId: string,
+    @Query() query: unknown
+  ) {
+    const parsedQuery = parseOrThrow(listAdminTenantMembersQuerySchema, query);
+    const response = await this.adminService.listTenantMembers(user.id, tenantId, parsedQuery);
+
+    return listAdminTenantMembersResponseSchema.parse(response);
   }
 
   @Post('tenants/:tenantId/members')

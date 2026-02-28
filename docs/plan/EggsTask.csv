@@ -1,0 +1,134 @@
+ID,Phase,Task,Subtasks,Depends On,Deliverable,Verify (how),Success Criteria,Pitfalls/Risks,Executor (agent/subagent),Review Gate (who/when),Status (todo/doing/done/blocked),Evidence (link/log/path),Blocker? (Y/N),Decision Needed (what),Decision Owner,Blocker Log Entry (path#line)
+T1,0,Local infra up (Docker compose),Build+up compose; confirm app/pg/minio ports; document commands,docker installed,Local infra running on 30000+ ports,docker compose -f docker-compose.local.yml up -d --build; curl http://localhost:30080/health; docker compose ps; docker exec <pg> pg_isready,health ok; containers healthy; ports reachable,Port conflict; Apple silicon image issues; volume permissions,ops subagent (local-infra-up),主 agent 复核：检查 health/ps/端口,done,local-infra-up: health ok; pg_isready ok; minio console 200,N,,,
+T2,0,Docs/runbook 与端口约定对齐,README/docker/compose 端口 30000+；文件发送规则；归档说明,T1,README + AGENTS 约定一致,rg 30080/30001/30002/30003 in README + docker-compose.local.yml,新同学照文档 10min 内跑通,文档漂移,主 agent,自检 + 宇宇过目,done,README.md 更新 + docker-compose.local.yml,N,,,
+T3,0,前端技术栈/目录架构定稿（SaaS-ready）,选择 Next.js App Router；Zod schema；TanStack Query；表单/表格策略；组件分层规则；API 客户端约定,SAAS_REQUIREMENTS.md,技术选型 + 目录结构 + 组件分层规则（文档/ADR）,文档落在 docs/ 或 out/plan；能回答“新页面放哪/状态放哪/请求放哪”,后续扩展不散、可复用,过度工程；路由/状态重复,codex subagent + 主 agent整合,主 agent已复核并固化为规则,done,out/plan/FRONTEND_ARCH.md (stack+structure+rules+migration plan),N,,,
+T4,0,Node/TS monorepo 骨架（不写业务）,pnpm workspace；apps/web apps/api packages/shared；lint/format；env.example；基础 CI（lint/build）,T3,可 build 的空壳工程,pnpm -r install; pnpm -r lint; pnpm -r build,web/api 都能构建；类型共享可用,工具链反复换导致返工,codex subagent,reviewer subagent（可选）+ 主 agent,done,commit 70b8a2f（Node monorepo skeleton + compose + README）已 push main,N,是否用 NestJS vs Fastify（推荐 NestJS）,宇宇,out/plan/BLOCKERS.md#L1
+T5,0/1,DB schema baseline（tenant 核心）,选择 ORM（Prisma/Drizzle）；建 users/tenants/tenant_members；迁移与 seed,T4 + T1,迁移可跑 + seed 可建租户,docker exec pg psql or prisma migrate; basic CRUD,"迁移可重复执行；唯一约束按 (tenant_id, key)",tenant 维度漏掉导致返工,codex subagent,主 agent复核 schema + 约束,done,apps/api/prisma/schema.prisma + prisma/migrations/20260226170000_tenant_core_init (tenant core); prisma migrate dev OK (db in sync),N,ORM 选型（Prisma vs Drizzle）,宇宇,out/plan/BLOCKERS.md#L1
+T6,1,Auth v0（email）+ tenant-scoped token + switch-tenant,email code/link（先 stub/本地）; login; JWT 带 tenant_id; switch-tenant re-issue; rate limit,T5,Auth endpoints + middleware,curl 登录/切租户；token decode 检查 tenant_id,token 必含 user_id+tenant_id；越权切租户被拒绝,投递可达性；token/tenant 不一致,codex subagent,主 agent + reviewer subagent（安全/越权）,done,Auth+Tenant v0 E2E: /Volumes/DATABASE/code/Eggturtle-breeding-library/docs/evidence/auth-v0-smoke-20260227.md + /Volumes/DATABASE/code/Eggturtle-breeding-library/docs/evidence/tenant-v0-smoke-20260227.md,N,login 采用 magic link 还是 email code（默认 code）,宇宇,out/plan/BLOCKERS.md#L1
+T7,1,RBAC 骨架 + audit log,role 常量；deny-by-default guard；audit_logs 表；关键写操作写审计,T6,RBAC middleware + audit 写入,用不同角色调用受保护接口；查 audit_logs,默认拒绝；审计包含 actor/tenant/action/trace_id,过度记录/泄露敏感信息,codex subagent,reviewer subagent（安全/越权）,done,RBAC+Audit code+migration included; smoke evidence pending,N,权限粒度最小集合（先按 SAAS_REQUIREMENTS）,宇宇,out/plan/BLOCKERS.md#L1
+T8,1,Web v0 pages（可体验闭环）,/login /onboarding /app/:tenantSlug shell；tenant switch UI；layout 组件层,T6,可手动体验登录->进入租户,pnpm dev + 浏览器手测,能走通主流程；UI 结构不散,路由/状态重复、组件散落,codex subagent,主 agent + codex 前端架构规则约束,done,Web v0 smoke: /Volumes/DATABASE/code/Eggturtle-breeding-library/docs/evidence/web-v0-smoke-20260227.md (login + tenants + switch),N,UI 组件库（shadcn/ui or MUI）,宇宇,out/plan/BLOCKERS.md#L1
+T9,1,Legacy 功能对齐清单（parity checklist）,对照 FastAPI 路由清单；标注 SaaS 重构保留/废弃/改名；列验收用例,docs/API_OVERVIEW.md,对齐表 + 验收 checklist,逐条对照 API_OVERVIEW 与新栈路由,重构不漏核心能力,范围膨胀,主 agent,宇宇 review,done,out/plan/PARITY_CHECKLIST.md (legacy->SaaS feature mapping + next actions),N,哪些 legacy 模块直接 drop（carousels/featured/settings?),宇宇,out/plan/BLOCKERS.md#L1
+T10,1+,StorageProvider 抽象（MinIO-ready）,定义接口；实现 S3(MinIO) + local；signed URL helper；key 规范 tenant 前缀,T4,可替换的存储层,单测 key 格式；本地 put/get；MinIO endpoint smoke,无硬编码磁盘路径；外链可控,key 冲突；直链泄露,codex subagent,主 agent,done,Products+StorageProvider smoke: /Volumes/DATABASE/code/Eggturtle-breeding-library/docs/evidence/products-storage-smoke-20260227.md,N,bucket 命名与环境划分（dev/staging/prod）,宇宇,out/plan/BLOCKERS.md#L1
+T11,0,进度/卡点机制落地（供定时任务监控）,新增 BLOCKERS.md/PROGRESS.md；excel 状态同步规则；每次 subagent 完成写 evidence,None,两个文档 + excel 字段口径,更新一条 blocker；定时任务可 grep blocked,卡点可见、可绕开；不阻塞其它任务,没人维护导致失效,主 agent,宇宇确认格式,done,out/plan/BLOCKERS.md + out/plan/PROGRESS.md + OpenClaw cron job EggTurtle 1am progress (jobId 0f54d427-65cf-4566-b599-27b7af097911),N,定时任务频率与输出方式（群里/只写文件）,宇宇,out/plan/BLOCKERS.md#L1
+T12,1,Featured 管理（运营位）MVP-05（API+Web+evidence）,,,,,,,codex subagent + main agent (evidence),,done,docs/evidence/featured-smoke-20260227.md (API curl + web build),,,,
+T13,2,公开分享页（任何人可看）+ shareToken 稳定入口 + 动态签名URL/302跳转,,"StorageProvider, Product/ProductImage",,,,,codex subagent + 主 agent（push+merge）,,done,Merged to main: commit d9ae5c2; doc docs/public-share.md; migration 20260227130500_public_shares,,,,
+T14,1,Web 路由收敛为 /app/[tenantSlug]/...（与 token tenantId 一致）,,Tenant v0,,,,,codex subagent + 主 agent（push+merge）,,done,Merged to main: commit db145e8; routes unified under /app/[tenantSlug]/...,,,,
+T15,1,RBAC 收敛为 4 角色 + 默认 VIEWER + Deny-by-default（读写都校验 membership）,,"Auth, Tenant",,,,,codex subagent + 主 agent（push+merge）,,done,Merged to main: commit 63787f1; migration apps/api/prisma/migrations/20260227124500_rbac_remove_member_role,,,,
+T16,1,"Product.code 强业务键：强制非空 + (tenantId, code) 唯一约束",,Products,,,,,codex subagent + 主 agent（rebase+merge）,,done,Merged to main: commit 5c8dff9; migration apps/api/prisma/migrations/20260227113000_product_code_required_unique,,,,
+T17,1,业务 spec 归档到 docs/spec/ 并更新现有 README/evidence（与拍板口径一致）,,Spec alignment review,,,,,codex subagent + 主 agent（push+merge）,,done,Merged to main: commit 8d52f6b; docs/spec/SAAS_SPEC.md; docs/README.md,,,,
+T18,2,AI Phase A（建议型照片分析）: quota/计费口径 + 接口预留（先 spec 后实现）,,Public share/growth,,,,,codex subagent + 主 agent（push+merge）,,done,Merged to main: commit 8d52f6b; docs/spec/AI_QUOTA_BILLING.md; packages/shared/src/ai.ts,,,,
+T22,3,P1 场景分析 + UI/UX 测试数据需求清单（含边界/异常样例）,"1) 场景列表：登录/切租户/产品列表/产品详情/图片上传/Featured 管理/分享页/权限拒绝/异常提示
+2) UX 断言：页面入口、空态、加载态、错误态、权限态（403/402/404）
+3) 数据需求：每租户产品数/多图/无图/长文/重复code/跨租户隔离样例
+4) 最小账号矩阵：OWNER/EDITOR/VIEWER + super-admin",,docs/spec/SCENARIOS_UX_TEST_DATA.md,文档 + 数据集清单可直接转成造数脚本输入与 UI 测试 checklist,覆盖主流程 + 关键异常；数据规模足够做 UI/UX 评审与回归,避免引入真实敏感数据；图片尽量走可控 MinIO；外链不可用要有占位图策略,codex subagent,,done,Merged to main: unknown (docs/spec/SCENARIOS_UX_TEST_DATA.md),,,,
+T20,3,P0 turtle_album SQLite -> eggturtle 造数迁移（tenant=turtle-album；过滤无效图；MinIO 私有+API 出口）,"1) export: 读取 /Volumes/DATABASE/code/turtle_album/backend/data/app.db 输出 JSON（products/product_images/users 基础信息）
+2) validate images: 过滤 404/非 image/*/超 10MB 单张 的外链；有效图下载后上传 MinIO
+3) import: 创建 tenant slug=turtle-album；导入 products + product_images（key=external/<sha1(url)>）
+4) 缺图补齐：若有效图不足，使用同一张占位图（第一张有效图）补齐 UI 体验
+5) 安全护栏：dry-run 默认；--confirm 才写入；拒绝疑似 prod DATABASE_URL
+6) MinIO 不对外暴露：对象默认 private；图片通过 API 代理/签名 URL 输出以便做鉴权控制",T22,scripts/migrate/turtle_album_export.py + scripts/seed/import_turtle_album.ts (dry-run by default),dry-run 输出统计（总产品/有效图/被过滤图原因）；--confirm 后读回校验；UI 打开无 404 图,仅迁移有效图；产品/图片排序正确；tenantId 归属正确；无跨租户串数据,"外链不稳定/超时；MinIO/S3 provider 需配置；不要把 MinIO key/secret 写入仓库
+MinIO 端口应仅绑定 localhost（避免 0.0.0.0 暴露）；不要在仓库/群里记录 accessKey/secret。",codex subagent,,done,Merged to main: unknown (turtle_album export/import scripts; image access via API; MinIO localhost-only),,,,
+T23,3,P1 账号矩阵（OWNER/EDITOR/VIEWER + super-admin）与权限验收口径,"1) 创建 super-admin allowlist 账号（email-code 登录）
+2) 为 turtle-album tenant 创建/授予 OWNER/EDITOR/VIEWER 账号用于权限测试
+3) 输出账号矩阵（只写 email，不写任何 token/密钥/密码）",T19,scripts/seed/bootstrap_admin.ts + 文档（不含任何密码/密钥）,用不同角色登录：VIEWER 读可用/写被拒；EDITOR 可写；OWNER 可管理；super-admin 可跨租户操作,RBAC 行为可复现；权限拒绝信息清晰；所有 admin 操作有审计,email-code 流程需要 devCode/测试策略；别在群/仓库记录验证码或 token,codex subagent,,done,Merged to main: unknown (docs/spec/ACCOUNT_MATRIX_PERMISSIONS.md + scripts/smoke/account_matrix_smoke.sh; POST /shares min role=EDITOR),,,,
+T24,3,P1 合成/异常数据补齐（长描述/无图/多图/重复 code/跨租户）用于 UX/回归,"1) 合成 1 个 demo 租户：产品>=20（含无图/多图/长描述/特殊字符）
+2) 异常样例：重复 code（应 409），跨租户 productId 绑定（应被 DB/FK 拒绝）
+3) Featured/Share：至少 10 个产品生成 shareToken 并可访问 public 页面","T20,T23",scripts/seed/synthetic_dataset.ts,跑 smoke + UI 逐项检查；错误场景返回码/错误码符合约定,覆盖 UI/UX 评审所需；异常用例不污染主数据；跨租户隔离被强约束,造数脚本必须显式 --confirm；严禁默认写入生产,codex subagent,,done,"Merged to main: unknown (scripts/seed/synthetic_dataset.ts + docs/spec/SYNTHETIC_DATASET.md; dry-run default, --confirm writes)",,,,
+T21,3,P0 统一接口 smoke + CI：migrate deploy + curl 关键链路（含 /admin API 断言）,"1) smoke 脚本：migrate deploy 后用 curl 覆盖 auth/switch-tenant/products/featured/shares/public
+2) 断言：HTTP code + errorCode（403/402/409/404）+ 302 Location
+3) CI：新增 workflow 跑 pnpm -r lint && pnpm -r build + smoke（可选，避免依赖真实密钥）","T20,T19",scripts/smoke/api_smoke.sh + .github/workflows/ci.yml (lint/build + optional integration),本地/CI 一键跑；失败输出可定位到具体接口/断言,回归覆盖关键链路；对 public share/tenant RBAC/DB 约束有 guardrail,现有 deploy.yml 是 legacy backend；新增 workflow 不要破坏现有部署,codex subagent,,done,Merged to main: unknown (smoke + CI workflow ci-eggturtle),,,,
+T19,3,P0 全局 super-admin（管理所有租户）：/admin API+审计+护栏（UI 单独走 apps/admin /dashboard）,"1) 数据模型：super-admin 标记（或 allowlist 纯 env）+ guard + decorator
+2) API: /admin/* (tenants/users/members/audit-logs) 全部需要 super-admin
+3) Web: /admin 页面（清晰标识 Super Admin + 环境提示）
+4) 审计：所有 admin 动作写 AuditLog（含 targetTenantId）
+5) 护栏：SUPER_ADMIN_ENABLED + SUPER_ADMIN_EMAILS 双开关；默认关闭
+6) Web 路由对齐模板：super-admin UI 使用 /dashboard/*（而不是 /app），避免与 tenant app 混在一起
+7) 拆分 apps/admin（Next）与 apps/web：admin UI 不落在 apps/web 内，避免目录污染
+8) apps/admin 本地端口固定 30020；路由对齐 /dashboard/*（UI 1:1 复用模板结构）",T22,apps/api: admin module + apps/web: /admin 页面 + scripts/seed/bootstrap_super_admin + docs/spec,非白名单访问 /admin 必须 403；白名单可列全部租户/改 membership；审计可查,不影响原 tenant RBAC；super-admin 能安全做跨租户运维/造数辅助,"生产风险极高：必须默认关闭+白名单+审计；避免误操作写错租户
+目录卫生：新增页面/组件必须集中在 apps/web 的 dashboard 目录/命名空间，避免污染既有 /app/[tenantSlug] 组件。",codex subagent,,done,Merged to main: unknown (super-admin /admin API + audit + guardrails; apps/admin /dashboard),,,,
+T25,3,"P2 apps/admin(/dashboard,30020) 接入 shadcn dashboard 模板 UI（只复用 UI，不引 Clerk）","1) 梳理模板现有能力/依赖（Clerk/Org/Billing/Tanstack table/nuqs 等）与我们差异
+2) 决策：仅复用 UI 组件/布局 vs 整体接入（新 apps/admin）
+3) 输出介入路径：哪些文件/组件可直接 copy；哪些需要改造（auth/tenant/api）
+4) License/归属：MIT 引用与 NOTICE（如需要）",T21,docs/spec/ADMIN_BACKOFFICE_INTEGRATION.md + apps/admin 介入 checklist（不引 Clerk）,按 checklist 在 apps/admin 的 /dashboard/* 跑通 sidebar+table+form，数据来自 /admin/* API,减少 UI 造轮子；不引入 Clerk；不破坏现有 auth/tenant/RBAC,"Next.js 16/Tailwind v4 与我们 Next.js 14 可能不一致；避免整仓 clone 进 repo
+目录隔离：建议新建 apps/web/app/(dashboard)/dashboard/* + 专用 components/dashboard/*，避免改动既有 /app/[tenantSlug]；Next.js 版本差异需按我们当前 Next 14 适配。",codex subagent,,done,"Merged to main: unknown (apps/admin skeleton on 30020, /dashboard/*)",,,,
+T26,4,P0 接口测试（TS runner）收口：token cache + 分类跑 + CI gate,拆分为可并行子任务：T26.1 / T26.2 / T26.3 / T26.4 / T26.5（可并行）,T21,scripts/api-tests/* + .github/workflows/ci.yml（或等价）,"子任务完成后：ts-node scripts/api-tests/run.ts --only auth,products,images,featured,shares,admin --confirm-writes；CI green",本地一键全绿；失败能定位到模块/接口；CI 对核心链路有回归门槛,不要破坏现有 deploy.yml；避免在 CI 里依赖真实密钥/外部服务,codex subagent,宇宇 review,done,T26.1-3 merged earlier; T26.4-5 merged PR#5 + evidence in out/,N,,,
+T27,4,P1 apps/admin 参考模板审核（Kiranism dashboard starter）：差异清单 + 改造计划,拆分为可并行子任务：T27.1 / T27.2 / T27.3 / T27.4（可并行）,T25,docs/spec/ADMIN_BACKOFFICE_REFACTOR_PLAN.md（差异/清单/里程碑）,文档落地 + 评审通过（群里确认 go/no-go）,明确哪些文件 copy、哪些重写、哪些删除；避免后续返工,Next/Tailwind 版本差异；不要整仓 copy 进来污染依赖,codex subagent,宇宇 review,done,docs/spec/ADMIN_BACKOFFICE_REFACTOR_PLAN.md (template commit 63ff391; local checkout: /Volumes/DATABASE/code/.openclaw/workspace/tmp/t27/next-shadcn-dashboard-starter),N,,,
+T28,4,P1 apps/admin UI Shell 重构：对齐 dashboard 模板布局（不引 Clerk）,"1) /dashboard layout：sidebar/topbar/breadcrumb 基础框架
+2) 统一样式：globals.css + 基础组件（button/input/table）按模板风格
+3) 路由：/login -> /dashboard，未登录跳转；/dashboard 子路由占位
+4) API client：统一 baseUrl/headers/错误展示（403/401/500）",T27,apps/admin/app/dashboard/layout.tsx + 组件（或等价）,pnpm --filter @eggturtle/admin lint && pnpm --filter @eggturtle/admin build；打开 http://localhost:30020/dashboard 可见 shell,UI 结构稳定；后续页面只填内容不改骨架,不要把 tenant app 路由混进 admin；保持 apps/admin 目录隔离,codex subagent,宇宇 review,done,merged PR#3 into main. verify: gh pr checks 3; pnpm -r lint && pnpm -r build,N,,,
+T29,4,P0 admin 登录/鉴权接入：沿用现有 auth token（super-admin 白名单）,"1) 登录：/login 使用 /auth/request-code + /auth/verify-code（devCode 本地可用）
+2) super-admin gate：进入 /dashboard 前先调用 /admin/* 探测权限；无权限显示 403 页
+3) 安全：SUPER_ADMIN_ENABLED + SUPER_ADMIN_EMAILS 双开关仍然生效
+4) token 存储：仅浏览器 session（避免长期存储），退出即清空",T28,apps/admin/app/login/page.tsx + auth/session 封装,非白名单登录后访问 /dashboard 必须 403；白名单可进入且 /admin/tenants 返回 200,不会误把普通用户当 super-admin；默认关闭仍然挡住,不要在前端泄露敏感开关/白名单细节；错误信息需收敛,codex subagent,宇宇 review,done,merged PR#4 into main (mergeCommit=340b285). includes proxy allowlist + request-code gate. CI lint-build passed,N,,,
+T30,4,P0 租户管理页（read-only）：Tenants list + Tenant detail 基础信息,"1) /dashboard/tenants：表格展示 slug/name/id/createdAt
+2) 支持筛选/搜索（前端即可，后端不必先做复杂查询）
+3) tenant 详情页：展示基础字段（必要时加 counts）",T29,apps/admin/app/dashboard/tenants/*,白名单账号在 UI 可看到 >=1 个 tenant；点击进入详情无报错,最小可用的跨租户可视化；为后续成员/审计页打底,避免一次性做过多写操作；先 read-only 降风险,codex subagent (feat/t30-32-admin-pages),宇宇 review -> merge main,done,PR#6 https://github.com/GalaxyXieyu/Eggturtle-breeding-library/pull/6 ; docs/evidence/t30-32-admin-smoke-20260228.md,N,,,
+T31,4,P0 租户成员管理（write）：查看/调整 TenantMember 角色 + 审计可追踪,"1) 成员列表：按 tenant 展示 email/role
+2) 变更角色：OWNER/EDITOR/VIEWER（规则以 API 约束为准）
+3) 所有写操作写 AuditLog（action/actor/targetTenantId/targetUserId）
+4) UI 二次确认（confirm）+ 错误提示",T30,apps/admin/app/dashboard/memberships/page.tsx + API 调用,做一次角色变更；随后在 /dashboard/audit-logs 能看到对应记录,能安全做跨租户运维；有审计、有确认、有失败提示,生产误操作风险：必须明确 tenant、二次确认、审计完整,codex subagent (feat/t30-32-admin-pages),宇宇 review -> merge main,done,PR#6 https://github.com/GalaxyXieyu/Eggturtle-breeding-library/pull/6 ; docs/evidence/t30-32-admin-smoke-20260228.md,N,,,
+T32,4,P1 审计日志页：AuditLog 列表 + 过滤（tenant/user/action）,"1) /dashboard/audit-logs：分页/按时间倒序
+2) 过滤：tenantId / actorUserId / action（最小实现）
+3) 展示字段：time, actor, tenant, action, target, requestId",T31,apps/admin/app/dashboard/audit-logs/page.tsx,完成一次成员变更后，日志页可检索到该条；字段齐全,后续所有 admin 写操作都有可查证据,不要把敏感 token/headers 写入日志展示,codex subagent (feat/t30-32-admin-pages),宇宇 review -> merge main,done,PR#6 https://github.com/GalaxyXieyu/Eggturtle-breeding-library/pull/6 ; docs/evidence/t30-32-admin-smoke-20260228.md,N,,,
+T33,4,P0 上线前总验收：接口 tests 全绿 + admin UI 清单 + 回滚预案,"1) 跑全量：pnpm -r lint && pnpm -r build + scripts/api-tests 全绿
+2) admin UI 手工清单：登录/403/租户列表/成员改角色/审计可见
+3) 开关：SUPER_ADMIN_ENABLED 默认 false；生产 allowlist 走配置
+4) 输出：上线/回滚 SOP（含验证命令）","T26,T32",docs/spec/RELEASE_CHECKLIST_ADMIN.md（或 out/ 下验收记录）,给出命令输出/路径 evidence；可复跑,上线可控；出问题可回滚；审计可追,避免在生产开 super-admin；必须默认关闭+白名单,codex subagent,宇宇 review,todo,,N,,,
+T26.1,4,P0 api-tests: token cache + clear cache,"1) .data/api-tests/token-cache.json 读写
+2) 按 apiBase+email+tenantId 键控
+3) 支持 --clear-token-cache
+4) 脱敏日志（不输出 token）",T26,scripts/api-tests/lib.ts（token cache）+ docs/spec/API_TESTS.md（口径）,连续跑 2 次 auth 模块：第二次不再走 request-code/verify-code（命中 cache）,接口测试跑得快、可复用；不泄露 token,cache 需 gitignore；token 过期要自动刷新/失效处理,codex subagent,宇宇 review,done,merged PR#2 into main (HEAD=1980e3a). verify: pnpm -r lint && pnpm -r build; pnpm api-tests:gate,N,,,
+T26.2,4,P0 api-tests: 模块化并行准备（按 only 切分 + 失败定位）,"1) 校验 --only 值
+2) 每模块独立 result 输出
+3) 失败时打印模块名/接口/断言",T26,scripts/api-tests/run.ts + scripts/api-tests/*（错误信息增强）,--only auth 只跑 auth；故意坏 base 时错误可读,后续可并行跑不同模块、排障不耗时,避免 runner 行为变化导致现有模块误判,codex subagent,宇宇 review,done,merged PR#2 into main (HEAD=1980e3a). verify: pnpm -r lint && pnpm -r build; pnpm api-tests:gate,N,,,
+T26.3,4,P0 CI gate: lint/build + api-tests（不破坏 deploy.yml）,"1) 新增 .github/workflows/ci.yml
+2) 默认跑 lint/build
+3) api-tests 先跑只读模块或使用本地 env stub
+4) 输出 artifacts（可选）",T26,.github/workflows/ci.yml,开 PR 触发 CI；main 上跑一次全绿,每次合并前都能回归关键链路,CI 不得依赖真实密钥/外部 MinIO；避免 flaky,codex subagent,宇宇 review,done,merged PR#2 into main (HEAD=1980e3a). verify: pnpm -r lint && pnpm -r build; pnpm api-tests:gate,N,,,
+T26.4,4,P1 接口验收矩阵（Excel）+ 场景文档补齐,"1) 以模块拆分：auth/products/images/featured/shares/admin
+2) 每条写清：前置/请求/断言/错误码
+3) 对应脚本文件名/函数",T26,out/share/API_TEST_MATRIX.xlsx（或追加到现有表）+ docs/spec/API_TEST_SCENARIOS.md,矩阵与脚本逐条对齐（抽查 10 条）,新人/后续迭代不用问口径，照矩阵跑,避免内容过泛；必须可执行可验,writer/codex,宇宇 review,done,merged PR#5 into main (HEAD=5c81475). evidence: out/t26-api-full-run/20260227-230656/*; run: scripts/api-tests/evidence-harness.sh,N,,,
+T26.5,4,P0 接口全量验收跑通（本地）：输出 evidence 到 out/,"1) 一键跑全模块
+2) 收集日志/JSONL
+3) 把关键命令+结果写成 evidence","T26.1,T26.2",out/api-tests/<date>/report.jsonl + 关键命令摘要,全模块 runner.done；totalChecks>0,接口回归基线成立,注意不要把 .env/凭据进 evidence,codex subagent,宇宇 review,done,merged PR#5 into main (HEAD=5c81475). evidence: out/t26-api-full-run/20260227-230656/*; run: scripts/api-tests/evidence-harness.sh,N,,,
+T27.1,4,P1 模板盘点：next-shadcn-dashboard-starter 依赖/路由/组件清单,"1) 列出模板的目录结构/路由
+2) 标注 auth(Clerk)/org/billing 相关
+3) 标注我们可直接 copy 的 UI 组件",T27,docs/spec/ADMIN_BACKOFFICE_REFACTOR_PLAN.md#template-inventory,清单可对照 repo 路径逐条定位,不会盲抄导致返工,不要引入 Clerk；保持 Next14 兼容,reviewer subagent,宇宇 review,done,docs/spec/ADMIN_BACKOFFICE_REFACTOR_PLAN.md (template commit 63ff391; local checkout: /Volumes/DATABASE/code/.openclaw/workspace/tmp/t27/next-shadcn-dashboard-starter),N,,,
+T27.2,4,P1 差异分析：模板 vs 我们 apps/admin（Next14）,"1) 对齐路由：/login /dashboard/*
+2) 对齐布局：sidebar/topbar
+3) 组件差异：table/form/filter
+4) 依赖差异：tailwind/shadcn",T27,docs/spec/ADMIN_BACKOFFICE_REFACTOR_PLAN.md#diff,能落到具体文件（apps/admin/...),改造范围明确,不要把模板依赖整仓搬进来,reviewer subagent,宇宇 review,done,docs/spec/ADMIN_BACKOFFICE_REFACTOR_PLAN.md (template commit 63ff391; local checkout: /Volumes/DATABASE/code/.openclaw/workspace/tmp/t27/next-shadcn-dashboard-starter),N,,,
+T27.3,4,P1 改造计划：拆分并行 workstreams（UI shell / auth / pages）,"1) workstream A：UI shell
+2) workstream B：登录鉴权
+3) workstream C：tenants page
+4) workstream D：memberships+audit logs
+5) 每个写清验收标准","T27.1,T27.2",docs/spec/ADMIN_BACKOFFICE_REFACTOR_PLAN.md#milestones,每个 milestone 有命令/页面可验,后续可并行开发,避免 milestone 之间强耦合,reviewer subagent,宇宇 review,done,docs/spec/ADMIN_BACKOFFICE_REFACTOR_PLAN.md (template commit 63ff391; local checkout: /Volumes/DATABASE/code/.openclaw/workspace/tmp/t27/next-shadcn-dashboard-starter),N,,,
+T27.4,4,P2 License/NOTICE + 引用方式确认（如需）,"1) 确认模板 license
+2) 如需：新增 NOTICE/引用说明
+3) 只 copy 必要代码",T27.1,docs/spec/ADMIN_BACKOFFICE_REFACTOR_PLAN.md#license（或 NOTICE 文件）,repo 内可追溯,合规风险可控,避免整仓复制触发复杂合规,reviewer subagent,宇宇 review,done,docs/spec/ADMIN_BACKOFFICE_REFACTOR_PLAN.md (template commit 63ff391; local checkout: /Volumes/DATABASE/code/.openclaw/workspace/tmp/t27/next-shadcn-dashboard-starter),N,,,
+T34,3,Docs: legacy endpoint/UI 对照矩阵 + 迁移里程碑待办,输出 MIGRATION_API_MATRIX + MIGRATION_UI_MATRIX；补 MIGRATION_TODO；docs/README.md 加索引,-,docs/MIGRATION_API_MATRIX.md + docs/MIGRATION_UI_MATRIX.md + docs/MIGRATION_TODO.md + docs/README.md,打开 docs/README.md 链接均可跳转；矩阵覆盖 breeders/admin records/series/imports/settings/carousels 缺口,一眼看出 legacy 缺口与 Node 缺口；可直接转 milestone ticket,口径漂移（需以 SAAS_REQUIREMENTS + API_ACCEPTANCE_MATRIX 为准）,主 agent,宇宇过目（PR 合并前）,doing,PR#6 https://github.com/GalaxyXieyu/Eggturtle-breeding-library/pull/6（docs/ 目录）,N,,,
+T35,4,P0 Milestone1: Series schema+API（只读）,"Prisma 加 series；API: GET /series, GET /series/:id（search/分页）","T5,T6",apps/api/prisma/schema.prisma + apps/api/src/series/*,pnpm --filter @eggturtle/api build；curl /series,接口可用 + RBAC/tenant 隔离正确,范围膨胀；family-tree 先简版；所有写入必须带 --confirm,codex subagent,主 agent 复核 + 宇宇验收,done,PR#7 https://github.com/GalaxyXieyu/Eggturtle-breeding-library/pull/7 (merged); mergeCommit 299b83fe30316e0bc02b44a50cb0d9ccc939d0f9,N,,,
+T36,4,P0 Milestone1: Breeders schema+API（只读）,Prisma 加 breeders(+可选 relations)；API: list/detail/by-code/events/family-tree(简版),T35,apps/api/src/breeders/*,curl /breeders /breeders/:id /breeders/:id/events,BreederDetail 所需最小数据齐,范围膨胀；family-tree 先简版；所有写入必须带 --confirm,codex subagent,主 agent 复核 + 宇宇验收,done,PR#7 https://github.com/GalaxyXieyu/Eggturtle-breeding-library/pull/7 (merged); tests/evidence in out/t37-series-breeders-full-run/20260228-070349/summary.md,N,,,
+T37,4,P1 Milestone1: API tests + acceptance matrix 补齐（series/breeders）,在 docs/spec/API_ACCEPTANCE_MATRIX.md 增加 series/breeders；scripts/api-tests 增加场景；evidence harness 跑通,"T35,T36",docs/spec/API_ACCEPTANCE_MATRIX.md + scripts/api-tests/*,NODE_ENV=development AUTH_DEV_CODE_ENABLED=true scripts/api-tests/evidence-harness.sh,evidence PASS + 负例断言齐,范围膨胀；family-tree 先简版；所有写入必须带 --confirm,codex subagent,主 agent 复核 + 宇宇验收,done,out/t37-series-breeders-full-run/20260228-070349/summary.md; PR#7 https://github.com/GalaxyXieyu/Eggturtle-breeding-library/pull/7 (merged),N,,,
+T38,4,P0 Milestone1: Web 入口页（SeriesFeed/BreederDetail）,apps/web 增加 /app/[tenantSlug]/series、/breeders、/breeders/[id] 三个入口；空态/加载态/错误态,T36,apps/web/app/app/[tenantSlug]/*,pnpm --filter @eggturtle/web dev 手测,legacy 核心浏览链路在 Node 端有入口,范围膨胀；family-tree 先简版；所有写入必须带 --confirm,codex subagent,主 agent 复核 + 宇宇验收,done,PR#8 https://github.com/GalaxyXieyu/Eggturtle-breeding-library/pull/8 (merged); mergeCommit 4590cb1816f1a2cfec46a97b5fea47adde403b7d,N,,,
+T39,4,P1 Milestone1: seed/demo 数据（可展示）,扩展 synthetic_dataset：生成 series+breeders+events demo 数据；保证 UI 可截图验收,T36,scripts/seed/synthetic_dataset.ts,dry-run + --confirm 写入后打开页面,UI 有稳定可展示数据,范围膨胀；family-tree 先简版；所有写入必须带 --confirm,codex subagent,主 agent 复核 + 宇宇验收,done,PR#8 https://github.com/GalaxyXieyu/Eggturtle-breeding-library/pull/8 (merged); docs/evidence/m1-web-series-breeders-smoke-20260228.md; PR#9 https://github.com/GalaxyXieyu/Eggturtle-breeding-library/pull/9 (merged; redact DATABASE_URL); mergeCommit 4c009e17d758df906f36f689930d4d9f39ab0386,N,,,
+T40,4,P0 Milestone1: 里程碑收口（文档+回滚+验收清单）,docs/MIGRATION_TODO 里更新 milestone 1 完成条件；补回滚开关/禁用入口策略,"T37,T38",docs/MIGRATION_TODO.md + out/plan/PROGRESS.md,按清单逐条验收,可宣布 Milestone1 完成,范围膨胀；family-tree 先简版；所有写入必须带 --confirm,宇仔,主 agent 复核 + 宇宇验收,doing,next: milestone closeout checklist + demo URLs + screenshot evidence,N,,,
+T41,,P0 Membership/Quota v1 规划文档（Word 审阅）,,T40,,,,,宇仔,,doing,out/share/MEMBERSHIP_V0_PLAN_20260228.docx; out/plan/MEMBERSHIP_V0_PLAN.md,,,,
+T42,,P0 Membership v1: 数据模型 tenant_subscription + migration,,T41,,,,,宇仔,,todo,source: out/share/MEMBERSHIP_LATEST_20260228.docx,,,,
+T43,,P0 Membership v1: Admin API subscription GET/PUT + audit-log,,T42,,,,,codex,,todo,source: out/share/MEMBERSHIP_LATEST_20260228.docx,,,,
+T44,,P0 Membership v1: 到期/禁用全站拦截 Guard（tenant-scoped 403）,,T43,,,,,codex,,todo,source: out/share/MEMBERSHIP_LATEST_20260228.docx,,,,
+T45,,P0 Membership v1: Share 创建仅 PRO（POST /shares gating）,,T44,,,,,codex,,todo,source: out/share/MEMBERSHIP_LATEST_20260228.docx,,,,
+T46,,P1 Membership v1: 图片配额拦截（upload images maxImages/maxStorage）,,T44,,,,,codex,,todo,source: out/share/MEMBERSHIP_LATEST_20260228.docx,,,,
+T47,,P1 Membership v1: Admin UI 配置套餐/有效期/配额页面,,T43,,,,,codex,,todo,source: out/share/MEMBERSHIP_LATEST_20260228.docx,,,,
+T48,,P2 Membership v1: 激活码（生成/兑换）接口（可选）,,T43,,,,,codex,,todo,source: out/share/MEMBERSHIP_LATEST_20260228.docx,,,,
+T49,,P0 Membership v1: 验收/回滚/证据（smoke doc + commands）,,T44,,,,,宇仔,,todo,source: out/share/MEMBERSHIP_LATEST_20260228.docx,,,,
+T50,4,P0 UX Smoke execution,"1) 按 UX_SMOKE_PLAN_20260228.xlsx 逐行执行
+2) 记录 pass/fail + bug
+3) 汇总 blocker 并分配修复","T40,T49",out/share/UX_SMOKE_PLAN_20260228.xlsx（Result/Notes 已回填）,Smoke 表每行有结果；关键失败附日志/截图,Web+Admin 核心链路完成一轮 smoke，结论可复现,测试数据不足导致假失败；需先做数据充分性检查,宇仔,宇宇（今晚）,doing,start from Smoke row: Login - request code,N,,,
+T51,4,P0 UX Smoke - Web flows,覆盖 login/tenant-select/series/breeders/detail/events/family-tree/featured/products-create-upload/share-public,T50,Web smoke 结果 + bug list（含复现步骤）,每个 web 场景有 pass/fail 与 DevTools 检查结论,Web 指定场景全覆盖，失败项可定位到接口/页面,products UI 未完整上线，需走 API-backed 步骤,codex subagent,主 agent 复核,todo,"sheet Smoke, Area=web",N,,,
+T52,4,P0 UX Smoke - Admin flows (PR#6),覆盖 admin login/tenants list+detail/memberships write/audit logs filters,T50,Admin smoke 结果 + bug list（含接口证据）,关键代理接口无 4xx/5xx；console 无红错,PR#6 管理后台主流程可走通并可审计,allowlist/会话配置不对会阻断登录,codex subagent,主 agent 复核,todo,"sheet Smoke, Area=admin",N,,,
+T53,4,P0 Data sufficiency check for smoke,确认 tenant/series/breeders/events/products/images/share 参数齐备；缺失即补 seed,T50,"可执行数据清单（tenantSlug, breederId, productId, share params）",Smoke 前置条件列可被逐条满足,执行 smoke 时不因缺数据中断,跨租户数据混用导致误判,宇仔,宇宇,todo,docs/spec/SCENARIOS_UX_TEST_DATA.md + runtime ids,N,,,
+T54,4,P0 Bugfix loop after smoke,"1) 按严重级排序修复
+2) 每修一项回归对应 smoke 行
+3) 更新证据与剩余风险","T51,T52,T53",修复清单 + 回归结果 + 未解问题,失败项复测通过或明确 blocker 与 owner,本轮 smoke 阻断问题清零或都有 owner/ETA,修复引入回归；需小步回归,codex subagent,主 agent + 宇宇,todo,关联 bug tickets / commit / smoke 回填,N,,,

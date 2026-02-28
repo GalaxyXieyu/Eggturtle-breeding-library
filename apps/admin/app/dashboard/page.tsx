@@ -5,7 +5,7 @@ import Link from 'next/link';
 import {
   listAdminTenantsResponseSchema,
   listSuperAdminAuditLogsResponseSchema,
-  type Tenant,
+  type AdminTenant,
   type SuperAdminAuditLog
 } from '@eggturtle/shared';
 
@@ -14,7 +14,7 @@ import { ApiError, apiRequest } from '../../lib/api-client';
 type OverviewState = {
   loading: boolean;
   error: string | null;
-  tenants: Tenant[];
+  tenants: AdminTenant[];
   logs: SuperAdminAuditLog[];
 };
 
@@ -110,8 +110,18 @@ export default function DashboardOverviewPage() {
               {state.logs.map((log) => (
                 <tr key={log.id}>
                   <td>{log.action}</td>
-                  <td className="mono">{log.actorUserId}</td>
-                  <td className="mono">{log.targetTenantId ?? '-'}</td>
+                  <td>
+                    <div className="stack row-tight">
+                      <span>{log.actorUserEmail ?? '-'}</span>
+                      <span className="mono">{log.actorUserId}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <div className="stack row-tight">
+                      <span>{log.targetTenantSlug ?? '-'}</span>
+                      <span className="mono">{log.targetTenantId ?? '-'}</span>
+                    </div>
+                  </td>
                   <td>{formatDate(log.createdAt)}</td>
                 </tr>
               ))}

@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { requestCodeRequestSchema, requestCodeResponseSchema } from '@eggturtle/shared/auth';
 
-import { getApiBaseUrl, isSuperAdminEmailAllowlisted } from '../../../../lib/admin-auth';
+import { isSuperAdminEmailAllowlisted } from '../../../../lib/admin-auth';
+import { getAdminApiBaseUrl } from '../../../../lib/server-session';
 
 export async function POST(request: Request) {
   try {
@@ -16,7 +17,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const upstreamResponse = await fetch(`${getApiBaseUrl()}/auth/request-code`, {
+    const upstreamResponse = await fetch(`${getAdminApiBaseUrl()}/auth/request-code`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

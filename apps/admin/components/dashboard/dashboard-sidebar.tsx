@@ -26,7 +26,8 @@ export function DashboardSidebar({ collapsed }: DashboardSidebarProps) {
 
       <nav className="sidebar-nav" aria-label="Dashboard navigation">
         {dashboardNavItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive =
+            pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(`${item.href}/`));
 
           return (
             <Link
@@ -44,7 +45,7 @@ export function DashboardSidebar({ collapsed }: DashboardSidebarProps) {
 
       <div className="sidebar-footer">
         <p className={`sidebar-hint${webSuperAdminEnabled ? ' enabled' : ''}`}>
-          Dashboard routes are server-guarded.
+          Super-admin access is enforced by server session + allowlist.
         </p>
       </div>
     </aside>

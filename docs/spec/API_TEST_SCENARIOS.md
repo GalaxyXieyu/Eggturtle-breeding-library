@@ -1,20 +1,19 @@
-# API Interface Test Scenarios
+# 接口测试场景
 
-Status: active  
-Updated: 2026-02-28
+状态：生效中
+更新日期：2026-02-28
 
-This document defines categorized API interface scenarios for `scripts/api-tests/` TypeScript scripts.
+本文定义 `scripts/api-tests/` 的模块化接口测试场景。
 
-## 1. Scope and Alignment
+## 1. 范围与对齐关系
 
-These scenarios align with:
+场景口径与以下文档保持一致：
 
 - `docs/spec/ACCOUNT_MATRIX_PERMISSIONS.md`
-- role-based acceptance baseline (`OWNER / ADMIN / EDITOR / VIEWER` + `super-admin`)
-- acceptance matrix (`docs/spec/API_ACCEPTANCE_MATRIX.md`) used for module-level status/code coverage reviews
+- 角色验收基线（`OWNER / ADMIN / EDITOR / VIEWER` + `super-admin`）
+- `docs/spec/API_ACCEPTANCE_MATRIX.md`
 
-The scripts are organized by module, not by one monolithic smoke script:
-
+脚本按模块拆分，不使用单体 smoke 脚本：
 - `auth.ts`
 - `products.ts`
 - `series.ts`
@@ -25,213 +24,176 @@ The scripts are organized by module, not by one monolithic smoke script:
 - `admin.ts`
 - `account-matrix.ts`
 
-Runner entry: `scripts/api-tests/run.ts`
+运行入口：`scripts/api-tests/run.ts`
 
-## 2. Safety and Execution Policy
+## 2. 安全与执行策略
 
-- Default mode is dry-run (prints plan only, sends no requests)
-- Write scenarios require explicit `--confirm-writes`
-- Non-local API is blocked unless `--allow-remote` is passed
-- Output is concise by default; `--json` emits JSONL events for troubleshooting
-- Auth base token cache is stored at `.data/api-tests/token-cache.json` (1h TTL)
-- `--clear-token-cache` clears local cache before execution
+- 默认 `dry-run`（只打印计划，不发请求）
+- 写入类场景必须显式传 `--confirm-writes`
+- 默认拒绝非本地 API，远端需显式 `--allow-remote`
+- 默认输出精简日志，`--json` 输出 JSONL 便于排查
+- Token 缓存路径：`.data/api-tests/token-cache.json`（1 小时）
+- `--clear-token-cache` 可清理本地缓存
 
-## 3. Scenario Catalog
+## 3. 场景目录
 
-### 3.1 Auth and Identity (`auth`)
+### 3.1 鉴权与身份（`auth`）
 
-1. Health check
-
+1. 健康检查
 - `GET /health` -> `200`
-- `status` field should be `ok`
+- `status` 应为 `ok`
 
-2. Login via dev code flow
-
+2. 开发验证码登录
 - `POST /auth/request-code` -> `201`
-- response includes `ok`, `expiresAt`, and `devCode` (dev mode)
 - `POST /auth/verify-code` -> `201`
-- response includes `accessToken`, `user.id`, `user.email`
+- 返回包含 `accessToken`、`user.id`、`user.email`
 
-3. Current user check
+3. 当前用户
+- `GET /me`（带 token）-> `200`
 
-- `GET /me` with token -> `200`
-
-4. Optional tenant switch
-
-- if `--tenant-id` present: `POST /auth/switch-tenant` -> `201`
+4. 可选租户切换
+- 传 `--tenant-id` 时：`POST /auth/switch-tenant` -> `201`
 - `GET /tenants/current` -> `200`
 
-### 3.2 Products (`products`)
+### 3.2 产品（`products`）
 
-1. Create product
-
+1. 创建产品
 - `POST /products` -> `201`
-- response includes `product.id`, `product.code`
+- 返回包含 `product.id`、`product.code`
 
-2. List products
-
+2. 产品列表
 - `GET /products?page=1&pageSize=20` -> `200`
-- created product should appear in list payload
+- 新建产品应出现在列表中
 
-### 3.3 Series (`series`)
+### 3.3 系列（`series`）
 
-1. List series envelope
-
+1. 列表包装结构
 - `GET /series?page=1&pageSize=10` -> `200`
-- response must include `items`, `total`, `page`, `pageSize`, `totalPages`
+- 必须包含 `items`、`total`、`page`、`pageSize`、`totalPages`
 
-2. Invalid pagination guard
-
+2. 非法分页保护
 - `GET /series?page=0&pageSize=10` -> `400 INVALID_REQUEST_PAYLOAD`
 
-3. Not-found guard
+3. 未找到保护
+- `GET /series/:id`（不存在 id）-> `404 SERIES_NOT_FOUND`
 
-- `GET /series/:id` (unknown id) -> `404 SERIES_NOT_FOUND`
+4. 可选正向与隔离校验
+- 有数据时 `GET /series/:id` -> `200`
+- 跨租户 token 访问同 id -> `404 SERIES_NOT_FOUND`
 
-4. Optional positive + isolation checks (when tenant has series data)
+### 3.4 种龟（`breeders`）
 
-- `GET /series/:id` -> `200`
-- `GET /series/:id` from another tenant token -> `404 SERIES_NOT_FOUND`
-
-### 3.4 Breeders (`breeders`)
-
-1. List breeders envelope
-
+1. 列表包装结构
 - `GET /breeders?page=1&pageSize=10` -> `200`
-- response must include `items`, `total`, `page`, `pageSize`, `totalPages`
+- 必须包含 `items`、`total`、`page`、`pageSize`、`totalPages`
 
-2. Invalid parameter guards
-
+2. 参数非法保护
 - `GET /breeders?page=0&pageSize=10` -> `400 INVALID_REQUEST_PAYLOAD`
 - `GET /breeders/by-code/%20%20` -> `400 INVALID_REQUEST_PAYLOAD`
 
-3. Not-found guards
+3. 未找到保护
+- `GET /breeders/:id`（不存在 id）-> `404 BREEDER_NOT_FOUND`
+- `GET /breeders/:id/events`（不存在 id）-> `404 BREEDER_NOT_FOUND`
+- `GET /breeders/:id/family-tree`（不存在 id）-> `404 BREEDER_NOT_FOUND`
 
-- `GET /breeders/:id` (unknown id) -> `404 BREEDER_NOT_FOUND`
-- `GET /breeders/:id/events` (unknown id) -> `404 BREEDER_NOT_FOUND`
-- `GET /breeders/:id/family-tree` (unknown id) -> `404 BREEDER_NOT_FOUND`
-
-4. Optional positive + isolation checks (when tenant has breeder data)
-
+4. 可选正向与隔离校验
 - `GET /breeders/:id` -> `200`
 - `GET /breeders/by-code/:code` -> `200`
-- `GET /breeders/:id/events` -> `200` and timeline sorted by `eventDate desc`
-- `GET /breeders/:id/family-tree` -> `200` with `self/sire/dam/mate/children/links/limitations`
-- `GET /breeders/:id` from another tenant token -> `404 BREEDER_NOT_FOUND`
+- `GET /breeders/:id/events` -> `200`，按 `eventDate desc` 排序
+- `GET /breeders/:id/family-tree` -> `200`
+- 跨租户 token 访问 -> `404 BREEDER_NOT_FOUND`
 
-### 3.5 Product Images (`images`)
+### 3.5 产品图片（`images`）
 
-1. Upload image
+1. 上传
+- 先创建产品
+- `POST /products/:id/images`（multipart）-> `201`
 
-- fixture product is created first
-- `POST /products/:id/images` (multipart `file`) -> `201`
-
-2. Manage image metadata
-
+2. 元数据管理
 - `PUT /products/:pid/images/:iid/main` -> `200`
 - `PUT /products/:pid/images/reorder` -> `200`
 
-3. Content access
+3. 内容读取
+- `GET /products/:pid/images/:iid/content` -> `200`（本地）或 `302`（跳转对象存储）
 
-- `GET /products/:pid/images/:iid/content` -> `200` (local storage) or `302` (redirect storage)
-
-4. Delete image
-
+4. 删除
 - `DELETE /products/:pid/images/:iid` -> `200`
 
-### 3.6 Featured Products (`featured`)
+### 3.6 精选产品（`featured`）
 
-1. Create fixture products (2)
-
-2. Add featured records
-
-- `POST /featured-products` -> `201`
-
-3. List featured records
-
-- `GET /featured-products` -> `200`
-- should contain created featured item ids
-
-4. Reorder and delete
-
+1. 准备 2 个产品
+2. 新增精选：`POST /featured-products` -> `201`
+3. 查询精选：`GET /featured-products` -> `200`
+4. 重排与删除：
 - `PUT /featured-products/reorder` -> `200`
 - `DELETE /featured-products/:id` -> `200`
 
-### 3.7 Shares (`shares`)
+### 3.7 分享（`shares`）
 
-1. Create share
-
-- fixture product is created first
+1. 创建分享
+- 先创建产品
 - `POST /shares` -> `201`
-- response includes `share.id`, `share.shareToken`
+- 返回 `share.id`、`share.shareToken`
 
-2. Open share entry
-
+2. 打开分享入口
 - `GET /s/:shareToken` -> `302`
-- `Location` should include signed params: `sid`, `tenantId`, `resourceType`, `resourceId`, `exp`, `sig`
+- `Location` 包含签名参数：`sid`、`tenantId`、`resourceType`、`resourceId`、`exp`、`sig`
 
-3. Read public payload
-
+3. 读取公开载荷
 - `GET /shares/:sid/public?...` -> `200`
-- `shareId` and `product.id` should match created fixture
+- `shareId` 与 `product.id` 应匹配
 
-### 3.8 Admin Access (`admin`)
+### 3.8 后台访问（`admin`）
 
-1. Tenant role denial
+1. 租户角色拒绝
+- 非 `super-admin` token：`GET /admin/tenants` -> `403 FORBIDDEN`
 
-- non-super-admin token: `GET /admin/tenants` -> `403 FORBIDDEN`
+2. 可选正向校验
+- 传 `--super-admin-email` 时访问 `GET /admin/tenants`
+- 若传 `--require-super-admin-pass`，必须为 `200`
 
-2. Optional super-admin positive check
+### 3.9 账号矩阵（`account-matrix`）
 
-- with `--super-admin-email`: `GET /admin/tenants`
-- when `--require-super-admin-pass` is set: must be `200`
-- otherwise non-200 is warning (environment-dependent)
+该模块是角色矩阵自动验收的权威入口。
 
-### 3.9 Account Matrix (`account-matrix`)
+前置参数：
+- 必填：`--owner-email --admin-email --editor-email --viewer-email`
+- 需提供 `--tenant-id`，或使用 `--provision --super-admin-email` 自动建租户并授权
 
-This module is the authoritative automated check for role matrix acceptance.
+覆盖内容：
+- products 读写矩阵
+- featured 读写矩阵
+- shares 创建与公开读取矩阵
+- images 内容读取矩阵
+- `/admin/*` 对租户角色拒绝
+- 可选 `/admin/*` 的 `super-admin` 正向通过
 
-Preconditions:
+## 4. 核心反向断言
 
-- `--owner-email --admin-email --editor-email --viewer-email` required
-- provide `--tenant-id` OR use `--provision --super-admin-email`
-
-Coverage:
-
-- products write/read matrix
-- featured write/read matrix
-- shares create + public read matrix
-- images content access matrix
-- `/admin/*` deny for tenant roles
-- optional `/admin/*` positive for super-admin
-
-## 4. Negative Assertions (Core)
-
-Expected denial/error-code checks:
-
+必须覆盖以下拒绝/错误码：
 - `VIEWER -> POST /products` -> `403 FORBIDDEN`
 - `VIEWER -> POST /featured-products` -> `403 FORBIDDEN`
 - `VIEWER -> POST /shares` -> `403 FORBIDDEN`
 - `tenant role -> GET /admin/tenants` -> `403 FORBIDDEN`
 - `tenant token -> GET /series?page=0&pageSize=10` -> `400 INVALID_REQUEST_PAYLOAD`
 - `tenant token -> GET /breeders/by-code/%20%20` -> `400 INVALID_REQUEST_PAYLOAD`
-- `tenant token -> GET /breeders/:id` (unknown id) -> `404 BREEDER_NOT_FOUND`
+- `tenant token -> GET /breeders/:id`（不存在 id）-> `404 BREEDER_NOT_FOUND`
 
-## 5. Suggested Execution Sets
+## 5. 推荐执行命令
 
-1. Fast tenant module sweep
+1. 租户模块快速扫描
 
 ```bash
 pnpm api-tests -- --confirm-writes --only auth,products,series,breeders,images,featured,shares
 ```
 
-2. Admin access checks
+2. 后台访问校验
 
 ```bash
 pnpm api-tests -- --confirm-writes --only admin --super-admin-email super@example.com
 ```
 
-3. Full account matrix acceptance
+3. 全量账号矩阵验收
 
 ```bash
 pnpm api-tests -- \
@@ -244,10 +206,9 @@ pnpm api-tests -- \
   --tenant-id <tenant-id>
 ```
 
-## 6. Logging and Debugging
+## 6. 日志与排障
 
-- Default output: concise event lines suitable for local runs
-- `--json`: structured JSONL events (`ts`, `level`, `event`, metadata)
-- Runner continues module execution after single-module failure and emits `runner.failed` summary
-- Error payload rendering redacts token-like fields to avoid credential leakage in logs
-- Recommended for CI artifact collection and flaky-case replay
+- 默认输出精简事件，适合本地快速执行
+- `--json` 输出结构化 JSONL（含 `ts`、`level`、`event`）
+- Runner 会在单模块失败后继续执行其他模块，并输出 `runner.failed` 汇总
+- 错误载荷日志会脱敏 token 样式字段，避免泄漏凭据

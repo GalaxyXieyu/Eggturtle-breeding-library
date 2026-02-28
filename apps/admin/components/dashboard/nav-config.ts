@@ -13,16 +13,16 @@ export const dashboardNavItems: DashboardNavItem[] = [
   {
     href: '/dashboard/tenants',
     label: 'Tenants',
-    description: 'Create and inspect tenant workspaces.'
+    description: 'Browse tenant workspaces and inspect details.'
   },
   {
     href: '/dashboard/memberships',
     label: 'Memberships',
-    description: 'Grant tenant membership and roles.'
+    description: 'View members and update tenant roles.'
   },
   {
     href: '/dashboard/audit-logs',
     label: 'Audit Logs',
-    description: 'Track super-admin operations.'
+    description: 'Track super-admin operations with filters.'
   }
 ];

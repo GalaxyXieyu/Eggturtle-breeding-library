@@ -3,6 +3,10 @@ import { ErrorCode, SuperAdminAuditAction } from '@eggturtle/shared';
 import type {
   CreateAdminTenantRequest,
   CreateAdminTenantResponse,
+  GetAdminTenantResponse,
+  ListAdminTenantMembersQuery,
+  ListAdminTenantMembersResponse,
+  ListAdminTenantsQuery,
   ListAdminTenantsResponse,
   ListAdminUsersResponse,
   ListSuperAdminAuditLogsQuery,
@@ -23,10 +27,38 @@ export class AdminService {
     private readonly superAdminAuditLogsService: SuperAdminAuditLogsService
   ) {}
 
-  async listTenants(actorUserId: string): Promise<ListAdminTenantsResponse> {
+  async listTenants(
+    actorUserId: string,
+    query: ListAdminTenantsQuery
+  ): Promise<ListAdminTenantsResponse> {
     const tenants = await this.prisma.tenant.findMany({
+      where: query.search
+        ? {
+            OR: [
+              {
+                slug: {
+                  contains: query.search,
+                  mode: 'insensitive'
+                }
+              },
+              {
+                name: {
+                  contains: query.search,
+                  mode: 'insensitive'
+                }
+              }
+            ]
+          }
+        : undefined,
       orderBy: {
         createdAt: 'desc'
+      },
+      include: {
+        _count: {
+          select: {
+            members: true
+          }
+        }
       }
     });
 
@@ -34,6 +66,7 @@ export class AdminService {
       actorUserId,
       action: SuperAdminAuditAction.ListTenants,
       metadata: {
+        search: query.search ?? null,
         resultCount: tenants.length
       }
     });
@@ -42,8 +75,52 @@ export class AdminService {
       tenants: tenants.map((tenant) => ({
         id: tenant.id,
         slug: tenant.slug,
-        name: tenant.name
+        name: tenant.name,
+        createdAt: tenant.createdAt.toISOString(),
+        memberCount: tenant._count.members
       }))
+    };
+  }
+
+  async getTenant(actorUserId: string, tenantId: string): Promise<GetAdminTenantResponse> {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: {
+        id: tenantId
+      },
+      include: {
+        _count: {
+          select: {
+            members: true
+          }
+        }
+      }
+    });
+
+    if (!tenant) {
+      throw new NotFoundException({
+        message: 'Tenant not found.',
+        errorCode: ErrorCode.TenantNotFound
+      });
+    }
+
+    await this.superAdminAuditLogsService.createLog({
+      actorUserId,
+      targetTenantId: tenant.id,
+      action: SuperAdminAuditAction.ListTenants,
+      metadata: {
+        mode: 'detail',
+        tenantSlug: tenant.slug
+      }
+    });
+
+    return {
+      tenant: {
+        id: tenant.id,
+        slug: tenant.slug,
+        name: tenant.name,
+        createdAt: tenant.createdAt.toISOString(),
+        memberCount: tenant._count.members
+      }
     };
   }
 
@@ -80,7 +157,9 @@ export class AdminService {
         tenant: {
           id: tenant.id,
           slug: tenant.slug,
-          name: tenant.name
+          name: tenant.name,
+          createdAt: tenant.createdAt.toISOString(),
+          memberCount: 0
         }
       };
     } catch (error) {
@@ -116,6 +195,77 @@ export class AdminService {
         email: user.email,
         name: user.name,
         createdAt: user.createdAt.toISOString()
+      }))
+    };
+  }
+
+  async listTenantMembers(
+    actorUserId: string,
+    tenantId: string,
+    query: ListAdminTenantMembersQuery
+  ): Promise<ListAdminTenantMembersResponse> {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: {
+        id: tenantId
+      }
+    });
+
+    if (!tenant) {
+      throw new NotFoundException({
+        message: 'Tenant not found.',
+        errorCode: ErrorCode.TenantNotFound
+      });
+    }
+
+    const members = await this.prisma.tenantMember.findMany({
+      where: {
+        tenantId,
+        ...(query.search
+          ? {
+              user: {
+                email: {
+                  contains: query.search,
+                  mode: 'insensitive'
+                }
+              }
+            }
+          : {})
+      },
+      include: {
+        user: true
+      },
+      orderBy: [
+        {
+          role: 'asc'
+        },
+        {
+          createdAt: 'asc'
+        }
+      ]
+    });
+
+    await this.superAdminAuditLogsService.createLog({
+      actorUserId,
+      targetTenantId: tenantId,
+      action: SuperAdminAuditAction.ListUsers,
+      metadata: {
+        mode: 'tenant-members',
+        search: query.search ?? null,
+        resultCount: members.length
+      }
+    });
+
+    return {
+      tenantId,
+      members: members.map((member) => ({
+        tenantId,
+        role: member.role,
+        joinedAt: member.createdAt.toISOString(),
+        user: {
+          id: member.user.id,
+          email: member.user.email,
+          name: member.user.name
+        }
       }))
     };
   }
@@ -176,8 +326,7 @@ export class AdminService {
       });
 
       const created = !existingMembership;
-
-      await this.superAdminAuditLogsService.createLog(
+      const auditLogId = await this.superAdminAuditLogsService.createLog(
         {
           actorUserId,
           targetTenantId: tenant.id,
@@ -187,6 +336,7 @@ export class AdminService {
             memberUserId: user.id,
             memberEmail: user.email,
             role: membership.role,
+            previousRole: existingMembership?.role ?? null,
             created
           }
         },
@@ -196,7 +346,9 @@ export class AdminService {
       return {
         user,
         membership,
-        created
+        created,
+        previousRole: existingMembership?.role ?? null,
+        auditLogId
       };
     });
 
@@ -208,7 +360,10 @@ export class AdminService {
         name: result.user.name
       },
       role: result.membership.role,
-      created: result.created
+      joinedAt: result.membership.createdAt.toISOString(),
+      created: result.created,
+      previousRole: result.previousRole,
+      auditLogId: result.auditLogId
     };
   }
 
@@ -224,6 +379,10 @@ export class AdminService {
       action: SuperAdminAuditAction.ListAuditLogs,
       metadata: {
         tenantFilter: query.tenantId ?? null,
+        actorUserId: query.actorUserId ?? null,
+        action: query.action ?? null,
+        from: query.from ?? null,
+        to: query.to ?? null,
         page: query.page,
         pageSize: query.pageSize,
         resultCount: response.logs.length

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  SuperAdminAuditAction,
   type ListSuperAdminAuditLogsQuery,
   type ListSuperAdminAuditLogsResponse,
   type SuperAdminAuditActionType,
@@ -17,14 +18,23 @@ type CreateSuperAdminAuditLogInput = {
   metadata?: Prisma.InputJsonValue | null;
 };
 
+type SuperAdminAuditLogWithRelations = PrismaSuperAdminAuditLog & {
+  actorUser: {
+    email: string;
+  };
+  targetTenant: {
+    slug: string;
+  } | null;
+};
+
 @Injectable()
 export class SuperAdminAuditLogsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createLog(input: CreateSuperAdminAuditLogInput, db?: Prisma.TransactionClient): Promise<void> {
+  async createLog(input: CreateSuperAdminAuditLogInput, db?: Prisma.TransactionClient): Promise<string> {
     const client = db ?? this.prisma;
 
-    await client.superAdminAuditLog.create({
+    const created = await client.superAdminAuditLog.create({
       data: {
         actorUserId: input.actorUserId,
         targetTenantId: input.targetTenantId ?? null,
@@ -32,17 +42,47 @@ export class SuperAdminAuditLogsService {
         metadata: input.metadata === undefined ? undefined : (input.metadata ?? Prisma.JsonNull)
       }
     });
+
+    return created.id;
   }
 
   async listLogs(query: ListSuperAdminAuditLogsQuery): Promise<ListSuperAdminAuditLogsResponse> {
     const skip = (query.page - 1) * query.pageSize;
-    const where = {
-      ...(query.tenantId ? { targetTenantId: query.tenantId } : {})
+    const where: Prisma.SuperAdminAuditLogWhereInput = {
+      ...(query.tenantId ? { targetTenantId: query.tenantId } : {}),
+      ...(query.actorUserId ? { actorUserId: query.actorUserId } : {}),
+      ...(query.action
+        ? { action: query.action }
+        : {
+            action: {
+              not: SuperAdminAuditAction.ListAuditLogs
+            }
+          }),
+      ...((query.from || query.to)
+        ? {
+            createdAt: {
+              ...(query.from ? { gte: new Date(query.from) } : {}),
+              ...(query.to ? { lte: new Date(query.to) } : {})
+            }
+          }
+        : {})
     };
 
     const [items, total] = await Promise.all([
       this.prisma.superAdminAuditLog.findMany({
         where,
+        include: {
+          actorUser: {
+            select: {
+              email: true
+            }
+          },
+          targetTenant: {
+            select: {
+              slug: true
+            }
+          }
+        },
         orderBy: {
           createdAt: 'desc'
         },
@@ -61,11 +101,13 @@ export class SuperAdminAuditLogsService {
     };
   }
 
-  private toAuditLog(log: PrismaSuperAdminAuditLog): SuperAdminAuditLog {
+  private toAuditLog(log: SuperAdminAuditLogWithRelations): SuperAdminAuditLog {
     return {
       id: log.id,
       actorUserId: log.actorUserId,
+      actorUserEmail: log.actorUser?.email ?? null,
       targetTenantId: log.targetTenantId,
+      targetTenantSlug: log.targetTenant?.slug ?? null,
       action: log.action as SuperAdminAuditActionType,
       metadata: log.metadata,
       createdAt: log.createdAt.toISOString()

@@ -1,12 +1,20 @@
 import { ReactNode } from 'react';
+import { redirect } from 'next/navigation';
 
-import { DashboardAccessGuard } from '../../components/dashboard/dashboard-access-guard';
 import { DashboardShell } from '../../components/dashboard/dashboard-shell';
+import { getSessionToken, resolveSessionFromToken } from '../../lib/server-session';
 
-export default function DashboardLayout({ children }: { children: ReactNode }) {
-  return (
-    <DashboardAccessGuard>
-      <DashboardShell>{children}</DashboardShell>
-    </DashboardAccessGuard>
-  );
+export default async function DashboardLayout({ children }: { children: ReactNode }) {
+  const token = getSessionToken();
+
+  if (!token) {
+    redirect('/login?redirect=/dashboard');
+  }
+
+  const session = await resolveSessionFromToken(token);
+  if (!session) {
+    redirect('/login?redirect=/dashboard');
+  }
+
+  return <DashboardShell currentUserEmail={session.user.email}>{children}</DashboardShell>;
 }

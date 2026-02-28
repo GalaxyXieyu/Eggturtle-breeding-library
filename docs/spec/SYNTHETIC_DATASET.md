@@ -1,128 +1,127 @@
-# SYNTHETIC_DATASET
+# 合成数据集规格
 
-## Purpose
+## 1. 目的
 
-This dataset seeds deterministic, UX-focused synthetic/abnormal records for local and CI validation.
+该数据集用于生成确定性、偏 UX 的合成与异常记录，服务本地与 CI 验证。
 
-Primary goals:
-- Cover description edge cases (very long text and empty string)
-- Cover image edge cases (no image and multiple images)
-- Validate tenant-scoped uniqueness behavior
-- Generate featured product and public share records
-- Verify cross-tenant isolation with readback checks
+主要目标：
+- 覆盖描述字段边界（超长文本、空字符串）
+- 覆盖图片边界（无图、多图）
+- 验证租户作用域唯一性
+- 生成精选产品与公开分享记录
+- 通过回读校验跨租户隔离
 
-## Seed Script
+## 2. 种子脚本
 
-Path:
+路径：
 - `scripts/seed/synthetic_dataset.ts`
 
-Safety defaults:
-- Dry-run by default (no writes)
-- Requires `--confirm` for writes
-- Refuses to run when `DATABASE_URL` looks like production
-- Production override requires explicit `--i-know-what-im-doing`
+安全默认值：
+- 默认 dry-run（不写入）
+- 写入必须传 `--confirm`
+- 当 `DATABASE_URL` 呈现生产特征时拒绝执行
+- 生产覆盖必须显式传 `--i-know-what-im-doing`
 
-Determinism/idempotency:
-- Stable tenant slugs and product codes
-- Product upsert key: `(tenantId, code)`
-- Featured upsert key: `(tenantId, productId)`
-- Public share upsert key: `(tenantId, productId)`
-- Share tokens are deterministic from `tenantSlug + code`
-- Synthetic image keys are deterministic: `synthetic/<normalized-code>/<index>`
+确定性与幂等：
+- 租户 slug、产品 code 均固定
+- 产品 upsert 键：`(tenantId, code)`
+- 精选 upsert 键：`(tenantId, productId)`
+- 分享 upsert 键：`(tenantId, productId)`
+- share token 由 `tenantSlug + code` 确定性生成
+- 合成图片 key 确定性：`synthetic/<normalized-code>/<index>`
 
-## Default Tenants
+## 3. 默认租户
 
-Primary synthetic tenant:
-- slug: `ux-sandbox`
-- name: `UX Sandbox`
+主租户：
+- slug：`ux-sandbox`
+- name：`UX Sandbox`
 
-Mirror tenant for isolation checks:
-- slug: `ux-sandbox-shadow`
-- name: `UX Sandbox Shadow`
+镜像租户（隔离校验）：
+- slug：`ux-sandbox-shadow`
+- name：`UX Sandbox Shadow`
 
-Owner user (created/upserted for both tenants):
+所有者账号（两个租户共用/upsert）：
 - `synthetic.owner@ux-sandbox.local`
 
-## Dataset Contents
+## 4. 数据内容
 
-Primary tenant (`ux-sandbox`) products:
+主租户（`ux-sandbox`）产品：
 - `SYN-LONG-DESC-001`
-  - long description payload
-  - 1 image
-  - featured
+  - 超长描述
+  - 1 张图
+  - 置为精选
 - `SYN-EMPTY-DESC-001`
-  - empty description (`""`)
-  - 1 image
-  - public share
+  - 空描述 `""`
+  - 1 张图
+  - 含公开分享
 - `SYN-NO-IMAGE-001`
-  - no image rows
+  - 无图片记录
 - `SYN-MULTI-IMAGE-001`
-  - multiple images (deterministic order, first image main)
-  - featured
-  - public share
+  - 多图（确定性顺序，首图主图）
+  - 置为精选
+  - 含公开分享
 - `SYN-COMMON-001`
-  - same code also seeded in mirror tenant (allowed)
-  - 1 image
-  - public share
+  - 镜像租户也会写入同 code（允许）
+  - 1 张图
+  - 含公开分享
 - `SYN-COLLIDE-001`
-  - canonical near-collision code
+  - 近碰撞基准 code
 
-Planned near-collision variants (expected skip):
+计划中的近碰撞变体（预期跳过）：
 - `syn collide 001`
 - `SYN_COLLIDE_001`
 
-Mirror tenant (`ux-sandbox-shadow`) products:
-- `SYN-COMMON-001`
-  - same code as primary tenant by design
+镜像租户（`ux-sandbox-shadow`）产品：
+- `SYN-COMMON-001`（与主租户同 code，按设计允许）
 
-## Near-Collision Policy
+## 5. 近碰撞策略
 
-The script normalizes code with:
-- lowercase
-- non-alphanumeric characters removed
+脚本标准化规则：
+- 全部转小写
+- 去除非字母数字字符
 
-Example:
+示例：
 - `SYN-COLLIDE-001`
 - `syn collide 001`
 - `SYN_COLLIDE_001`
 
-All normalize to the same key and are treated as near-collisions.
+以上会标准化为同一键，按近碰撞处理。
 
-Behavior:
-- Planned near-collision variants are skipped
-- If existing tenant data already has conflicting normalized codes, candidate records are skipped and logged
+行为：
+- 计划中的近碰撞变体直接跳过
+- 若现有数据已存在冲突标准化键，则候选记录跳过并写日志
 
-## Cross-Tenant Isolation Readback Checks
+## 6. 跨租户隔离回读校验
 
-After `--confirm`, the script verifies:
-- `SYN-COMMON-001` exists once in primary tenant
-- `SYN-COMMON-001` exists once in mirror tenant
-- `featured_products.tenant_id` always matches related `products.tenant_id`
-- `public_shares.tenant_id` always matches related `products.tenant_id`
+在 `--confirm` 后，脚本必须校验：
+- `SYN-COMMON-001` 在主租户存在且仅 1 条
+- `SYN-COMMON-001` 在镜像租户存在且仅 1 条
+- `featured_products.tenant_id` 与关联 `products.tenant_id` 一致
+- `public_shares.tenant_id` 与关联 `products.tenant_id` 一致
 
-If any isolation check fails, script exits with error.
+任一校验失败即退出并返回错误码。
 
-## Commands
+## 7. 常用命令
 
-Dry-run (recommended first):
+先执行 dry-run：
 
 ```bash
 ts-node scripts/seed/synthetic_dataset.ts
 ```
 
-Write synthetic dataset:
+写入合成数据：
 
 ```bash
 ts-node scripts/seed/synthetic_dataset.ts --confirm
 ```
 
-Write + clean duplicate/stale synthetic image keys:
+写入并清理重复/陈旧合成图片 key：
 
 ```bash
 ts-node scripts/seed/synthetic_dataset.ts --confirm --dedupe
 ```
 
-Override defaults:
+覆盖默认参数：
 
 ```bash
 ts-node scripts/seed/synthetic_dataset.ts \
@@ -134,7 +133,7 @@ ts-node scripts/seed/synthetic_dataset.ts \
   --owner-email synthetic.owner@ux-sandbox.local
 ```
 
-Production override (dangerous, explicit opt-in only):
+生产覆盖（高风险，仅显式开启）：
 
 ```bash
 ts-node scripts/seed/synthetic_dataset.ts --confirm --i-know-what-im-doing
