@@ -85,12 +85,12 @@ const COPY: Record<Locale, LoginCopy> = {
   zh: {
     title: '蛋龟选育库',
     subtitle: '用数据驱动选育优化，提升繁育决策效率。',
-    heroEyebrow: 'Tenant Portal',
-    formTitle: '登录租户端',
+    heroEyebrow: '用户门户',
+    formTitle: '登录用户端',
     activationCardTitle: '用激活码激活',
     registerCardTitle: '注册账户',
     showcaseItemAuth: '统一登录与会话管理',
-    showcaseItemTenant: '多租户隔离与成员权限控制',
+    showcaseItemTenant: '用户空间隔离与成员权限控制',
     showcaseItemWorkflow: '验证码 + 密码双模式',
     localeLabel: '语言',
     modeLabel: '登录模式',
@@ -117,20 +117,20 @@ const COPY: Record<Locale, LoginCopy> = {
     setPasswordHint: '填写后将同步设置该账号的登录密码。',
     activationCta: '用激活码激活',
     registerCta: '注册账户',
-    activationTitle: '激活租户订阅',
-    activationHint: '请输入激活码以开通或续期订阅。当前接口要求你已登录并选择租户（OWNER）。',
+    activationTitle: '激活用户订阅',
+    activationHint: '请输入激活码以开通或续期订阅。当前接口要求你已登录并选择用户空间（OWNER）。',
     activationCodeLabel: '激活码',
     activationCodePlaceholder: '请输入 8-80 位激活码',
     activationSubmit: '立即激活',
     activationSubmitting: '激活中...',
-    activationNeedLogin: '请先登录并选择租户后再激活。',
+    activationNeedLogin: '请先登录并选择用户空间后再激活。',
     activationSuccess: '激活成功，订阅状态已更新。',
     activationPlanLabel: '当前套餐',
     activationExpiresLabel: '到期时间',
     activationRedeemLabel: '兑换次数',
     activationDoneAtLabel: '激活时间',
     backToLogin: '返回登录',
-    registerTitle: '创建租户端账户',
+    registerTitle: '创建用户账户',
     registerHint: '完成基础信息填写后即可提交注册申请。',
     registerEmailLabel: '注册邮箱',
     registerPasswordLabel: '设置密码',
@@ -143,12 +143,12 @@ const COPY: Record<Locale, LoginCopy> = {
   en: {
     title: 'Eggturtle Breeding Library',
     subtitle: 'Data-driven breeding optimization for faster and more reliable decisions.',
-    heroEyebrow: 'Tenant Portal',
+    heroEyebrow: 'User Portal',
     formTitle: 'Sign in to Workspace',
     activationCardTitle: 'Activate by Code',
     registerCardTitle: 'Register Account',
     showcaseItemAuth: 'Unified login and session handling',
-    showcaseItemTenant: 'Tenant isolation with role-based control',
+    showcaseItemTenant: 'Workspace isolation with role-based control',
     showcaseItemWorkflow: 'Password + one-time code modes',
     localeLabel: 'Language',
     modeLabel: 'Login mode',
@@ -175,21 +175,21 @@ const COPY: Record<Locale, LoginCopy> = {
     setPasswordHint: 'If provided, this will set your account password.',
     activationCta: 'Activate by code',
     registerCta: 'Register account',
-    activationTitle: 'Activate tenant subscription',
+    activationTitle: 'Activate user subscription',
     activationHint:
-      'Enter an activation code to enable or extend subscription. This endpoint requires a logged-in OWNER with a selected tenant.',
+      'Enter an activation code to enable or extend subscription. This endpoint requires a logged-in OWNER with a selected workspace.',
     activationCodeLabel: 'Activation code',
     activationCodePlaceholder: 'Enter 8-80 characters',
     activationSubmit: 'Activate now',
     activationSubmitting: 'Activating...',
-    activationNeedLogin: 'Please sign in and select a tenant before activation.',
+    activationNeedLogin: 'Please sign in and select a workspace before activation.',
     activationSuccess: 'Activation succeeded and subscription is updated.',
     activationPlanLabel: 'Plan',
     activationExpiresLabel: 'Expires at',
     activationRedeemLabel: 'Redeem usage',
     activationDoneAtLabel: 'Activated at',
     backToLogin: 'Back to sign in',
-    registerTitle: 'Create tenant account',
+    registerTitle: 'Create user account',
     registerHint: 'Fill the base information and submit your registration request.',
     registerEmailLabel: 'Email',
     registerPasswordLabel: 'Password',
@@ -431,25 +431,6 @@ export default function LoginPage() {
 
   return (
     <main className="auth-shell auth-shell-login">
-      <section className="login-toolbar">
-        <div className="locale-toggle" role="group" aria-label={copy.localeLabel}>
-          <button
-            type="button"
-            className={locale === 'zh' ? 'locale-btn active' : 'locale-btn'}
-            onClick={() => setLocale('zh')}
-          >
-            {copy.localeZh}
-          </button>
-          <button
-            type="button"
-            className={locale === 'en' ? 'locale-btn active' : 'locale-btn'}
-            onClick={() => setLocale('en')}
-          >
-            {copy.localeEn}
-          </button>
-        </div>
-      </section>
-
       <section className="login-layout">
         <section className="login-showcase">
           <div className="login-showcase-glow" aria-hidden />
@@ -467,13 +448,31 @@ export default function LoginPage() {
 
         <section className="login-card">
           <div className="login-card-head">
-            <h2>
-              {entryView === 'signin'
-                ? copy.formTitle
-                : entryView === 'activation'
-                  ? copy.activationCardTitle
-                  : copy.registerCardTitle}
-            </h2>
+            <div className="login-card-top">
+              <h2>
+                {entryView === 'signin'
+                  ? copy.formTitle
+                  : entryView === 'activation'
+                    ? copy.activationCardTitle
+                    : copy.registerCardTitle}
+              </h2>
+              <div className="locale-toggle" role="group" aria-label={copy.localeLabel}>
+                <button
+                  type="button"
+                  className={locale === 'zh' ? 'locale-btn active' : 'locale-btn'}
+                  onClick={() => setLocale('zh')}
+                >
+                  {copy.localeZh}
+                </button>
+                <button
+                  type="button"
+                  className={locale === 'en' ? 'locale-btn active' : 'locale-btn'}
+                  onClick={() => setLocale('en')}
+                >
+                  {copy.localeEn}
+                </button>
+              </div>
+            </div>
           </div>
 
           <div className="login-form-stack">

@@ -41,13 +41,6 @@
   padding-left: max(20px, env(safe-area-inset-left));
 }
 
-.login-toolbar {
-  position: absolute;
-  top: max(8px, env(safe-area-inset-top));
-  right: max(8px, env(safe-area-inset-right));
-  z-index: 10;
-}
-
 .login-layout {
   width: min(1200px, 100%);
   margin: 0 auto;
@@ -152,6 +145,11 @@
   backdrop-filter: blur(20px);
 }
 
+.login-card-top .locale-toggle {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
 .locale-btn {
   min-height: 32px;
   border: none;
@@ -208,6 +206,13 @@
 .login-card-head {
   position: relative;
   z-index: 1;
+}
+
+.login-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
 }
 
 .login-card-head h2 {
@@ -628,21 +633,16 @@ button.auth-action {
     padding-bottom: max(18px, env(safe-area-inset-bottom));
   }
 
-  .login-toolbar {
-    position: static;
-    display: flex;
-    justify-content: center;
-    margin-bottom: 12px;
-  }
-
   .login-layout {
+    width: min(520px, 100%);
     min-height: calc(100vh - 24px);
     min-height: calc(100svh - 24px);
-    gap: 20px;
+    gap: 30px;
+    justify-items: center;
   }
 
   .login-showcase {
-    gap: 8px;
+    gap: 10px;
   }
 
   .login-showcase-chips {
@@ -659,8 +659,30 @@ button.auth-action {
   }
 
   .login-card {
-    max-width: 100%;
+    width: min(100%, 420px);
+    max-width: 420px;
+    margin: 0 auto;
     border-radius: 22px;
+    padding: 22px 18px;
+  }
+
+  .login-card-top {
+    align-items: center;
+    gap: 10px;
+  }
+
+  .login-card-head h2 {
+    font-size: clamp(24px, 8vw, 32px);
+  }
+
+  .login-card-top .locale-toggle {
+    margin-top: 0;
+  }
+
+  .login-card-top .locale-btn {
+    min-height: 30px;
+    padding: 0 10px;
+    font-size: 12px;
   }
 
   .login-card .row {
