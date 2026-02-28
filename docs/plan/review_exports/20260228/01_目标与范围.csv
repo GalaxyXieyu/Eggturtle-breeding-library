@@ -1,0 +1,11 @@
+﻿ID,主题,内容,当前结论（2026-02-28）,证据/来源
+SCOPE-01,本轮目标,形成一套可执行的 UX/UI Smoke + 验收基线（Web + Admin）,作为 T50/T51/T54 执行底稿，支持 Chrome DevTools 逐步执行,docs/plan/EggsTask.csv:126-134
+SCOPE-02,验收对象,apps/web（租户端）+ apps/admin（平台后台）+ apps/api 对应核心接口,覆盖登录、租户切换、series/breeders、featured、share、admin tenants/memberships/audit/subscription,apps/web/app/**/page.tsx; apps/admin/app/**/page.tsx; apps/api/src/**/*.controller.ts
+SCOPE-03,环境口径,本地开发多端口：web 30010 / admin 30020 / api 30011；一体化 docker 入口 30080,测试执行时需在记录中注明采用哪套端口，以免误判,"README.md:66-70,150; apps/web/package.json:6; apps/admin/package.json:6"
+SCOPE-04,数据前置,主租户优先用 turtle-album（已有生产导入数据）,"已确认数据充分：products=32, images=64（用于分享/图片链路）",docs/plan/EggsTask.csv:131
+SCOPE-05,账号前置,租户侧 OWNER/ADMIN/EDITOR/VIEWER + super-admin,不在表内记录真实密码；仅记录邮箱矩阵与角色,docs/spec/ACCOUNT_MATRIX_PERMISSIONS.md
+SCOPE-06,已完成里程碑,Milestone 1（Series + Breeders 只读链路）,已完成，可进入高频回归用例池,docs/migration/TODO.md:27-71; docs/plan/evidence/milestone1-closeout-20260228.md
+SCOPE-07,未完成里程碑,Milestone 2/3（records 写入、imports、settings、carousels）,仍为缺口，本表会标记为 Blocked/待开发,docs/migration/TODO.md:73-139
+SCOPE-08,UI评估依据,统一按 UI_STYLE_GUIDE 审核（颜色、字级、圆角、间距、动效、响应式）,测试记录需给出“符合/不符合 + 截图”,docs/UI_STYLE_GUIDE.md
+SCOPE-09,验收输出,每条用例有结果、证据截图、缺陷编号,支持复测与回归追踪,本表 04_UX_UI测试路径 + 06_执行顺序
+SCOPE-10,当前任务状态,done=61 / doing=3 / todo=1,剩余聚焦：T50/T51/T54 + T33,docs/plan/EggsTask.csv

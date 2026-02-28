@@ -1,0 +1,69 @@
+﻿用例ID,优先级,端,用户路径,前置条件,步骤（Chrome Dev 可执行）,关键接口与期望返回,页面期望,UX检查点（误操作/反馈）,UI检查点（和谐/一致）,结果(P/F),证据路径,缺陷ID/备注
+TC-WEB-001,P0,Web,租户端密码登录成功,已有可用账号；服务已启动,"1) 打开 /login
+2) 选择“账号密码”
+3) 输入邮箱和密码
+4) 提交",POST /auth/password-login -> 200,自动跳转 /app，再进入 /app/{tenantSlug} 或 /tenant-select,提交后按钮进入 loading；失败不清空邮箱输入,登录卡片居中；主次按钮层级清晰；中英字体混排不拥挤,,out/ui-smoke/<ts>/web-login-password.png,
+TC-WEB-002,P0,Web,租户端密码登录失败,同 TC-WEB-001,"1) 输入错误密码
+2) 提交",POST /auth/password-login -> 401/4xx,留在登录页并显示错误提示,错误提示可理解，不出现死循环提交,错误提示色与正文对比度达标,,out/ui-smoke/<ts>/web-login-password-error.png,
+TC-WEB-003,P0,Web,验证码登录成功（可选设置密码）,AUTH_DEV_CODE_ENABLED=true（本地）,"1) 登录页切到“邮箱验证码”
+2) 请求验证码
+3) 输入 code
+4) 验证登录",POST /auth/request-code -> 200（devCode 可见）; POST /auth/verify-code -> 200,成功跳转 /app,“更换邮箱”可回退流程；验证码输入有格式约束,验证码表单与密码表单间距/控件大小一致,,out/ui-smoke/<ts>/web-login-code-flow.png,
+TC-WEB-004,P1,Web,登录页中英切换,打开 /login,"1) 点击 中文/英文 切换
+2) 检查标题、按钮、提示文案",无强制接口调用（仅前端状态）,文案完整切换，无中英混乱,切换不应重置已输入邮箱,切换控件视觉状态明确；active 态可辨识,,out/ui-smoke/<ts>/web-login-i18n.png,
+TC-WEB-005,P0,Web,未登录访问受保护页面,清除 access token,1) 直接访问 /app 或 /app/{slug}/series,无需接口，前端守卫触发,应被重定向到 /login,无 token 时不应闪现受保护数据,跳转期间 loading 文案清晰,,out/ui-smoke/<ts>/web-guard-redirect.png,
+TC-WEB-006,P0,Web,租户选择与切换,已登录且拥有 >=1 个租户,"1) 打开 /tenant-select
+2) 查看租户表格
+3) 点击“进入”",GET /tenants/me -> 200; POST /auth/switch-tenant -> 200,进入目标 /app/{tenantSlug},切换按钮应防抖（切换中禁用）,表格列宽合理，无挤压/换行错位,,out/ui-smoke/<ts>/web-tenant-select.png,
+TC-WEB-007,P1,Web,创建新租户,已登录,"1) 在 /tenant-select 填 slug/name
+2) 点击创建",POST /tenants -> 201（重复 slug 预期 4xx）,成功提示出现且列表刷新,创建期间按钮禁用，避免重复提交,成功/失败提示样式统一,,out/ui-smoke/<ts>/web-create-tenant.png,
+TC-WEB-008,P0,Web,租户工作台加载,已进入 /app/{slug},"1) 打开工作台
+2) 检查账号信息区",GET /me -> 200,用户邮箱/tenantId 显示正确,异常时给出返回登录/重试路径,信息卡片排版对齐，无信息拥堵,,out/ui-smoke/<ts>/web-tenant-dashboard.png,
+TC-WEB-009,P0,Web,Series 列表与搜索,目标租户已有 series 数据,"1) 打开 /app/{slug}/series
+2) 输入关键词应用
+3) 重置",GET /series?page=1&pageSize=50&search=... -> 200,列表/空态提示正确,搜索和重置路径可逆，不会卡死 loading,table 头/行距/按钮尺寸符合统一规范,,out/ui-smoke/<ts>/web-series-list.png,
+TC-WEB-010,P0,Web,Breeders 列表多条件筛选,目标租户有 breeders 数据,"1) 打开 /app/{slug}/breeders
+2) 组合 series/search/code
+3) 查看结果",GET /series -> 200; GET /breeders?... -> 200,结果条数、空态与筛选条件一致,筛选后 URL 参数与页面状态同步,筛选区布局在桌面/移动均可操作,,out/ui-smoke/<ts>/web-breeders-filter.png,
+TC-WEB-011,P0,Web,Breeder 详情页三联数据加载,已知 breederId,"1) 从列表进详情
+2) 检查详情/events/family-tree 区域",GET /breeders/:id -> 200; GET /breeders/:id/events -> 200; GET /breeders/:id/family-tree -> 200,详情信息完整，异常节点显示提示而非崩溃,“返回列表/关联系列”路径可逆,多卡片区块间距统一，表格不溢出,,out/ui-smoke/<ts>/web-breeder-detail.png,
+TC-WEB-012,P1,Web,Featured 产品增删排序,具备 EDITOR 及以上角色；有 productId,"1) 打开 /featured-products
+2) 添加 productId
+3) 上移/下移
+4) 删除",GET -> 200; POST -> 201; PUT /reorder -> 200; DELETE -> 200,列表立即更新并给出成功提示,操作期间按钮禁用，避免并发误触,按钮层级（主/次）清晰，状态颜色一致,,out/ui-smoke/<ts>/web-featured-crud.png,
+TC-WEB-013,P0,Web,权限拒绝：VIEWER 写 featured,VIEWER 角色账号,"1) 以 VIEWER 登录
+2) 尝试添加 featured",POST /featured-products -> 403 FORBIDDEN,页面显示拒绝提示，不出现假成功,错误需可理解并可恢复（可继续浏览）,错误提示样式统一（notice-error）,,out/ui-smoke/<ts>/web-featured-viewer-403.png,
+TC-WEB-014,P0,Web,公开分享页成功,已有有效 share 参数（sid+签名）,"1) 打开 /public/share?...
+2) 检查产品信息与图片",GET /shares/:shareId/public?... -> 200,展示租户、产品、图片与到期时间,无登录状态下可访问；失败可读,图片卡片比例、间距、标题层级一致,,out/ui-smoke/<ts>/web-public-share-ok.png,
+TC-WEB-015,P0,Web,公开分享页错误态,构造无效 sid 或过期签名,1) 打开 /public/share?sid=invalid ...,GET /shares/:shareId/public?... -> 401/404/4xx,展示“分享页不可用”与明确错误,错误态不暴露技术栈信息,错误卡片视觉与主站规范一致,,out/ui-smoke/<ts>/web-public-share-error.png,
+TC-WEB-016,P1,Web,移动端适配（390x844）,浏览器切换手机视口,"1) 打开 /login、/app/{slug}/breeders、/public/share
+2) 检查横向滚动与可点区域",接口同对应页面，不新增,核心功能在手机可完成，无遮挡/错位,触控目标 >= 40px；无误触高风险点,字体/间距缩放后仍保持层次,,out/ui-smoke/<ts>/web-mobile-390x844.png,
+TC-ADM-001,P0,Admin,后台密码登录成功,super-admin 白名单账号,"1) 打开 admin /login
+2) 账号密码登录",POST /api/auth/password-login -> 200,跳转 /dashboard,登录中按钮禁用，避免重复提交,登录卡片结构清晰；中文文案统一,,out/ui-smoke/<ts>/admin-login-password.png,
+TC-ADM-002,P0,Admin,后台登录拒绝（非白名单）,非白名单账号,1) 输入普通账号登录,POST /api/auth/password-login -> 403/4xx,留在登录页并提示无权限,拒绝信息明确且不泄露白名单细节,错误提示与主样式统一,,out/ui-smoke/<ts>/admin-login-denied.png,
+TC-ADM-003,P1,Admin,后台验证码登录流程,AUTH_DEV_CODE_ENABLED=true,"1) 切到验证码模式
+2) 请求并验证",POST /api/auth/request-code -> 200; POST /api/auth/verify-code -> 200,成功进入 /dashboard,可更换邮箱回退流程,模式切换组件可见性清晰,,out/ui-smoke/<ts>/admin-login-code.png,
+TC-ADM-004,P0,Admin,后台总览加载,已登录 super-admin,"1) 打开 /dashboard
+2) 检查租户统计和近期审计",GET /admin/tenants -> 200; GET /admin/audit-logs?page=1&pageSize=5 -> 200,卡片统计与列表一致，无 JS 报错,加载态/空态可辨识,统计卡片视觉层次明确,,out/ui-smoke/<ts>/admin-dashboard-overview.png,
+TC-ADM-005,P0,Admin,租户列表检索与详情跳转,已登录,"1) 打开 /dashboard/tenants
+2) 搜索 slug
+3) 进入详情",GET /admin/tenants?search=... -> 200; GET /admin/tenants/:id -> 200,结果可定位并进入详情页,搜索重置可恢复全量列表,表格在窄屏不破版,,out/ui-smoke/<ts>/admin-tenants-search.png,
+TC-ADM-006,P0,Admin,租户订阅读取与更新,目标 tenantId 存在,"1) 打开 /dashboard/tenants/{id}
+2) 修改 plan/expires/quota
+3) 保存",GET /admin/tenants/:id/subscription -> 200; PUT -> 200,保存成功提示出现且读回一致,保存前弹确认；输入非法值有报错,表单字段排版整齐，提示就近显示,,out/ui-smoke/<ts>/admin-tenant-subscription.png,
+TC-ADM-007,P0,Admin,成员新增/角色调整,目标租户存在；测试邮箱存在,"1) 打开 /dashboard/memberships
+2) 选择租户
+3) 新增或修改角色",POST /admin/tenants/:id/members -> 200,成员列表即时更新,保存中不可重复提交,操作区按钮与输入框对齐,,out/ui-smoke/<ts>/admin-membership-upsert.png,
+TC-ADM-008,P0,Admin,成员移除与审计回显,目标成员存在,"1) 在 memberships 触发删除
+2) 完成确认
+3) 查看提示中的 audit id",DELETE /admin/tenants/:id/members/:userId -> 200,成员从列表移除，显示 audit id,高风险操作必须二次确认,危险操作按钮视觉区分明显,,out/ui-smoke/<ts>/admin-membership-remove.png,
+TC-ADM-009,P0,Admin,审计日志筛选与分页,已有审计数据,"1) 打开 /dashboard/audit-logs
+2) 按租户/用户/动作/时间筛选
+3) 翻页",GET /admin/audit-logs?... -> 200,筛选结果与分页正确,筛选条件可重置；翻页按钮状态正确,筛选表单网格对齐，长元数据显示不溢出,,out/ui-smoke/<ts>/admin-audit-filters.png,
+TC-ADM-010,P1,Admin+API,激活码发放与兑换,super-admin + tenant 用户账号,"1) POST 生成激活码
+2) 以租户账号兑换
+3) 检查订阅变化",POST /admin/subscription-activation-codes -> 201/200; POST /subscriptions/activation-codes/redeem -> 200,兑换后 tenant subscription 更新,错误码（已用/过期）可理解,若后续补 UI，需沿用当前表单密度规范,,out/ui-smoke/<ts>/admin-activation-code-flow.png,当前偏 API smoke
+TC-GAP-001,P0,Gap,Admin Records 写入链路,当前版本,尝试定位 mating/egg/events 写入入口,预期：当前无可用接口或页面（缺口）,记录为 Blocked（待开发）,避免把“未实现”误判为 Bug,在任务板标记为开发缺口而非样式缺陷,,docs/migration/TODO.md,Milestone 2
+TC-GAP-002,P0,Gap,批量导入 imports,当前版本,尝试定位导入模板/上传入口,预期：当前无可用接口或页面（缺口）,记录为 Blocked（待开发）,避免手工导入替代造成误判,占位场景不计入 UI 分,,docs/migration/TODO.md,Milestone 3
+TC-GAP-003,P1,Gap,Settings 配置页,当前版本,尝试定位 settings 页面,预期：当前无可用接口或页面（缺口）,记录为 Blocked（待开发）,明确 owner 与 ETA,占位场景不计入 UI 分,,docs/migration/TODO.md,Milestone 3
+TC-GAP-004,P1,Gap,Carousels 轮播管理,当前版本,尝试定位 carousel 页面与接口,预期：当前无可用接口或页面（缺口）,记录为 Blocked（待开发）,避免误以为分享页图片=轮播能力,占位场景不计入 UI 分,,docs/migration/TODO.md,Milestone 3

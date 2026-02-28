@@ -51,10 +51,10 @@ type LoginCopy = {
 
 const COPY: Record<Locale, LoginCopy> = {
   zh: {
-    title: 'Eggturtle 控制台',
-    subtitle: '统一管理种龟档案、配种记录与租户协作。',
-    heroEyebrow: '租户端工作台',
-    formTitle: '登录控制台',
+    title: '蛋龟选育库',
+    subtitle: '用数据驱动选育优化，提升繁育决策效率。',
+    heroEyebrow: 'Tenant Portal',
+    formTitle: '登录租户端',
     showcaseItemAuth: '统一登录与会话管理',
     showcaseItemTenant: '多租户隔离与成员权限控制',
     showcaseItemWorkflow: '验证码 + 密码双模式',
@@ -83,10 +83,10 @@ const COPY: Record<Locale, LoginCopy> = {
     setPasswordHint: '填写后将同步设置该账号的登录密码。'
   },
   en: {
-    title: 'Eggturtle Console',
-    subtitle: 'Manage turtle records, pairing timelines, and tenant collaboration in one place.',
-    heroEyebrow: 'Tenant Workspace',
-    formTitle: 'Sign In',
+    title: 'Eggturtle Breeding Library',
+    subtitle: 'Data-driven breeding optimization for faster and more reliable decisions.',
+    heroEyebrow: 'Tenant Portal',
+    formTitle: 'Sign in to Workspace',
     showcaseItemAuth: 'Unified login and session handling',
     showcaseItemTenant: 'Tenant isolation with role-based control',
     showcaseItemWorkflow: 'Password + one-time code modes',

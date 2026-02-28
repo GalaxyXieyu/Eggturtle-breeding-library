@@ -1,0 +1,18 @@
+﻿模块,Legacy关键能力,Node接口现状（2026-02-28）,覆盖状态,对UX/UI影响,优先级,后续动作（验收前）,来源
+Auth,账号密码登录 + 会话,POST /auth/password-login; POST /auth/request-code; POST /auth/verify-code; POST /auth/switch-tenant; GET /me,已覆盖（增强）,登录双模式 + 租户切换可测,P0,保留双模式，补错误文案一致性回归,apps/api/src/auth/auth.controller.ts
+Tenants,租户选择/创建/切换,POST /tenants; GET /tenants/me; GET /tenants/current; POST /auth/switch-tenant,已覆盖,租户入口链路完整,P0,补“空租户账号”异常路径回归,apps/api/src/tenants/tenants.controller.ts
+Products-读写,产品列表/创建/图片管理,GET /products; POST /products; POST/DELETE/PUT images,部分覆盖,API可用但 Web 暂无完整 products 管理页，影响运营效率,P1,补 products 管理 UI 或临时 admin 入口,apps/api/src/products/products.controller.ts
+Products-缺口,legacy 的详情/更新/删除/filter-options,Node 暂无 GET /products/:id、PUT /products/:id、DELETE /products/:id、GET /products/filter-options,未覆盖,导致部分 legacy 运营流程无法迁移,P1,纳入下一轮接口补齐清单,docs/migration/API_MATRIX.md:56-95
+Series-只读,系列列表/详情,GET /series; GET /series/:id,已覆盖,SeriesFeed 可执行,P0,持续回归筛选/空态,apps/api/src/series/series.controller.ts
+Series-管理写入,admin series CRUD,Node 未见 /admin/series CRUD,未覆盖,后台无法直接维护系列,P1,在 Milestone 2/3 评估实现路径,docs/migration/API_MATRIX.md:111-129
+Breeders-只读,列表/详情/by-code/events/family-tree,GET /breeders; /by-code/:code; /:id; /:id/events; /:id/family-tree,已覆盖,核心浏览链路可跑,P0,持续补 family-tree 异常数据回归,apps/api/src/breeders/breeders.controller.ts
+Breeders-缺口,legacy records/mate-load,Node 暂无 /breeders/:id/records 与 /breeders/:id/mate-load,未覆盖,详情页“记录密度”不足，影响业务判断,P1,按 Milestone 2 增补,docs/migration/API_MATRIX.md:132-149
+Admin Records,交配/产蛋/事件写入,Node 暂无 POST/DELETE /admin/mating-records、/admin/egg-records、POST /admin/breeder-events,未覆盖,无法完成写入类业务验收,P0,优先进入下一波开发,docs/migration/TODO.md:73-111
+Featured Products,精选增删改排序,GET/POST/DELETE /featured-products; PUT /featured-products/reorder,基本覆盖,租户侧可维护推荐列表,P1,评估是否补单条更新接口,apps/api/src/featured-products/featured-products.controller.ts
+Shares,分享创建 + 公开访问,POST /shares; GET /s/:shareToken; GET /shares/:shareId/public,已覆盖,分享页可独立验收,P0,补签名过期/篡改回归,apps/api/src/shares/shares.controller.ts
+Admin Backoffice,平台租户/成员/审计管理,"GET /admin/tenants, /admin/users, /admin/audit-logs, /admin/tenants/:id/members, POST/DELETE members",已覆盖,后台主链路可执行,P0,持续验证审计字段完整性,apps/api/src/admin/admin.controller.ts
+Subscription v1,订阅查询/更新/配额约束,GET/PUT /admin/tenants/:tenantId/subscription + guard enforcement,已覆盖,可在后台配置套餐并影响业务接口,P0,补强跨角色回归,docs/plan/EggsTask.csv:118-125
+Activation Codes,激活码生成/兑换,POST /admin/subscription-activation-codes; POST /subscriptions/activation-codes/redeem,已覆盖,可支持人工发码/兑换流程,P2,补 UI 化入口（当前偏 API）,apps/api/src/admin/admin.controller.ts; apps/api/src/auth/subscription-activation-codes.controller.ts
+Imports,模板下载+批量导入,Node 暂无 /admin/imports/* 或 /products/batch-import,未覆盖,运营导入无法迁移,P0,Milestone 3 优先项,docs/migration/TODO.md:116-125
+Settings,系统设置读写,Node 暂无 /admin/settings,未覆盖,后台配置项不可迁移,P1,定义 settings schema 后补接口,docs/migration/TODO.md:126-130
+Carousels,轮播 CRUD,Node 暂无 /carousels CRUD,未覆盖,首页运营位能力缺失,P1,补数据模型 + 管理页,docs/migration/TODO.md:131-138

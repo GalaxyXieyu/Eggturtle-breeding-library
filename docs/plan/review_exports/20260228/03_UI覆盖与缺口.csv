@@ -1,0 +1,21 @@
+﻿端,页面路由,核心能力,关联接口,覆盖状态,遗留缺口/风险,优先级,来源
+Web,/login,租户端登录（密码 + 验证码 + 中英文切换）,"/auth/password-login, /auth/request-code, /auth/verify-code",已覆盖,需持续优化弱网与错误提示一致性,P0,apps/web/app/login/page.tsx
+Web,/app,入口分流（解析当前租户）,/tenants/current (via resolve flow),已覆盖,租户状态异常时需确保可回退到 /tenant-select,P0,apps/web/app/app/page.tsx
+Web,/tenant-select,租户列表/创建/切换,"/tenants/me, /tenants, /auth/switch-tenant",已覆盖,创建租户失败路径需回归,P0,apps/web/app/tenant-select/page.tsx
+Web,/app/[tenantSlug],租户工作台与快捷入口,/me,已覆盖,目前偏 v0 信息展示，后续可增强信息密度,P1,apps/web/app/app/[tenantSlug]/page.tsx
+Web,/app/[tenantSlug]/series,系列列表与筛选,/series,已覆盖,无写入入口（符合当前只读里程碑）,P0,apps/web/app/app/[tenantSlug]/series/page.tsx
+Web,/app/[tenantSlug]/breeders,种龟列表筛选,"/series, /breeders",已覆盖,多筛选组合需防“空结果误判”,P0,apps/web/app/app/[tenantSlug]/breeders/page.tsx
+Web,/app/[tenantSlug]/breeders/[id],种龟详情 + events + family-tree,"/breeders/:id, /events, /family-tree",已覆盖,records/mate-load 仍缺失,P0,apps/web/app/app/[tenantSlug]/breeders/[id]/page.tsx
+Web,/app/[tenantSlug]/featured-products,推荐产品管理,/featured-products GET/POST/DELETE/reorder,已覆盖,依赖 productId 手填，易误操作,P1,apps/web/app/app/[tenantSlug]/featured-products/page.tsx
+Web,/app/[tenantSlug]/tenants,租户管理（当前账号视角）,"/tenants/me, /tenants, /auth/switch-tenant",已覆盖,与 /tenant-select 能力重复，需后续收敛,P2,apps/web/app/app/[tenantSlug]/tenants/page.tsx
+Web,/public/share,公开分享页,/shares/:shareId/public,已覆盖,依赖签名参数完整性；无参数会直接报错态,P0,apps/web/app/public/share/page.tsx
+Admin,/login,后台登录（密码 + 验证码）,"/api/auth/password-login, /api/auth/request-code, /api/auth/verify-code",已覆盖,仅白名单可访问，需验证拒绝路径,P0,apps/admin/app/login/page.tsx
+Admin,/dashboard,后台总览,"/admin/tenants, /admin/audit-logs",已覆盖,统计口径与列表页需保持一致,P0,apps/admin/app/dashboard/page.tsx
+Admin,/dashboard/tenants,租户列表检索,/admin/tenants,已覆盖,暂无批量操作,P1,apps/admin/app/dashboard/tenants/page.tsx
+Admin,/dashboard/tenants/[tenantId],租户详情 + subscription 配置,"/admin/tenants/:id, /admin/tenants/:id/subscription",已覆盖,配额值输入校验需持续回归,P0,apps/admin/app/dashboard/tenants/[tenantId]/page.tsx
+Admin,/dashboard/memberships,成员角色管理 + 移除,/admin/tenants/:id/members (GET/POST/DELETE),已覆盖,删除操作需确认审计 id 展示稳定,P0,apps/admin/app/dashboard/memberships/page.tsx
+Admin,/dashboard/audit-logs,平台审计检索,"/admin/audit-logs, /admin/users, /admin/tenants",已覆盖,大数据量分页性能需后续观测,P1,apps/admin/app/dashboard/audit-logs/page.tsx
+Gap,legacy AdminProducts 页面,产品 CRUD+图片+导入一体化运营页,未覆盖,未开发,P0,迁移阻塞项：影响 legacy 下线,docs/migration/UI_MATRIX.md; docs/migration/TODO.md
+Gap,legacy AdminSeries 页面,系列管理写入页,未覆盖,未开发,P1,等待接口+页面一起补齐,docs/migration/UI_MATRIX.md; docs/migration/TODO.md
+Gap,legacy AdminSettings 页面,系统设置页,未覆盖,未开发,P1,等待 settings 模块,docs/migration/UI_MATRIX.md; docs/migration/TODO.md
+Gap,legacy AdminCarouselManager 页面,轮播管理页,未覆盖,未开发,P1,等待 carousels 模块,docs/migration/UI_MATRIX.md; docs/migration/TODO.md

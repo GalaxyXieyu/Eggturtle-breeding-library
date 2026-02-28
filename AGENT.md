@@ -230,6 +230,23 @@
   - `T48` 激活码接口已落地：`POST /admin/subscription-activation-codes`（生成）、`POST /subscriptions/activation-codes/redeem`（兑换）
   - `T49` 验收与回滚证据已补齐：`docs/plan/evidence/membership-v1-acceptance-rollback-20260228.md`
   - 订阅回归（含激活码链路）通过：`out/t49-subscription-acceptance/20260228-155551/api-tests-subscription.log`（checks=12）
+- 2026-02-28 UX Smoke（Codex 实测）：
+  - 运行时段：16:23~16:55（Asia/Shanghai）
+  - 证据目录：`out/ui-smoke/20260228-162328/`
+  - 已覆盖：Web 登录/守卫/租户切换/series/breeders/detail/public-share；Admin 登录/租户列表/订阅面板/成员页/审计筛选
+  - 证据文档：`docs/plan/evidence/ux-smoke-20260228.md`
+  - 任务表回填：`docs/plan/EggsTask.csv` 已补 `T50/T51` 最新 evidence 路径
+  - 中断说明（非产品缺陷）：`30011` API 临时中断一次、Chrome DevTools MCP 会话断开两次，均已恢复
+- 2026-02-28 T51 补测收口（Codex）：
+  - 补齐 pending：`products-create-upload`、`featured CRUD`、`share-public`（API-backed）
+  - 运行证据：`out/t51-web-flows/20260228-171556/api-backed-products-featured-share.log` + `summary.json`
+  - 文档：`docs/plan/evidence/t51-web-flows-closeout-20260228.md`
+  - 任务状态：`T50/T51/T54` 已回填 `done`
+- 2026-02-28 UI/UX 通用技能包重构（Codex）：
+  - 通用技能目录落地：`skills/ui-ux-test/`（`SKILL.md + scripts + assets + references`）
+  - 项目目录 `scripts/smoke` 下的 UI/UX 通用脚本已迁移到技能目录（避免项目耦合）
+  - 可执行命令（跨项目）：`node skills/ui-ux-test/scripts/init_uiux_plan.js`、`bash skills/ui-ux-test/scripts/preflight.sh`、`node skills/ui-ux-test/scripts/generate_uiux_report.js`
+  - 任务状态：`T57/T58/T59` 已回填 `done`
 
 ---
 

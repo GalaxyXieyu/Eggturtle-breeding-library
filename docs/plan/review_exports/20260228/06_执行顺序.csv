@@ -1,0 +1,9 @@
+﻿顺序,流程组,建议执行用例,目标,预估时长,证据目录建议,完成标记
+1,基础登录与会话,"TC-WEB-001~005, TC-ADM-001~003",先排除账号/会话阻塞,20-30 分钟,out/ui-smoke/<ts>/01-auth,
+2,租户与核心浏览,TC-WEB-006~011,确认主业务浏览闭环,25-35 分钟,out/ui-smoke/<ts>/02-web-core,
+3,推荐与分享,TC-WEB-012~015,确认运营位与公开链路,20-30 分钟,out/ui-smoke/<ts>/03-featured-share,
+4,移动端检查,TC-WEB-016,发现布局/触控问题,10-15 分钟,out/ui-smoke/<ts>/04-mobile,
+5,后台核心流程,TC-ADM-004~009,确认平台运维链路可用,30-45 分钟,out/ui-smoke/<ts>/05-admin,
+6,订阅与激活码,TC-ADM-010,验证 membership v1 闭环,15-25 分钟,out/ui-smoke/<ts>/06-subscription,
+7,缺口核对,TC-GAP-001~004,把未开发项明确标记 Blocked,10 分钟,docs/plan/evidence/* + 任务板,
+8,汇总与回填,所有失败项,进入 T54 修复闭环并更新结果,20 分钟,docs/plan/evidence/ux-smoke-*.md,
