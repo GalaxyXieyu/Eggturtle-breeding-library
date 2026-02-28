@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { BreedersModule } from './breeders/breeders.module';
 import { FeaturedProductsModule } from './featured-products/featured-products.module';
 import { HealthController } from './health.controller';
+import { PaymentsModule } from './payments/payments.module';
 import { PrismaModule } from './prisma.module';
 import { ProductsModule } from './products/products.module';
 import { SeriesModule } from './series/series.module';
@@ -17,6 +18,7 @@ import { TenantsModule } from './tenants/tenants.module';
     PrismaModule,
     AuthModule,
     TenantsModule,
+    PaymentsModule,
     ProductsModule,
     SeriesModule,
     BreedersModule,
