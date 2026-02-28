@@ -56,6 +56,10 @@ export const uploadProductImageResponseSchema = z.object({
   image: productImageSchema
 });
 
+export const listProductImagesResponseSchema = z.object({
+  images: z.array(productImageSchema)
+});
+
 export const setMainProductImageResponseSchema = z.object({
   image: productImageSchema
 });

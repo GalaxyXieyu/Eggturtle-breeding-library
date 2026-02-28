@@ -27,6 +27,7 @@ export default function TenantAppPage() {
     me: null,
     error: null
   });
+  const [productIdInput, setProductIdInput] = useState('');
 
   useEffect(() => {
     if (!getAccessToken()) {
@@ -127,6 +128,21 @@ export default function TenantAppPage() {
           </button>
           <button type="button" onClick={() => router.push(`/app/${tenantSlug}/tenants`)}>
             租户成员
+          </button>
+        </div>
+        <div className="row">
+          <input
+            type="text"
+            value={productIdInput}
+            onChange={(event) => setProductIdInput(event.target.value)}
+            placeholder="输入 Product ID 跳转图片管理"
+          />
+          <button
+            type="button"
+            disabled={!productIdInput.trim()}
+            onClick={() => router.push(`/app/${tenantSlug}/products/${productIdInput.trim()}`)}
+          >
+            产品图片管理
           </button>
         </div>
       </section>
