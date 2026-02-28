@@ -116,6 +116,20 @@ export class ProductsService {
     };
   }
 
+  async listProductImages(tenantId: string, productId: string): Promise<ProductImage[]> {
+    await this.findProductOrThrow(tenantId, productId);
+
+    const images = await this.prisma.productImage.findMany({
+      where: {
+        tenantId,
+        productId
+      },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }]
+    });
+
+    return images.map((image) => this.toProductImage(image));
+  }
+
   async uploadProductImage(
     tenantId: string,
     actorUserId: string,
