@@ -289,6 +289,16 @@ function looksLikeProductionDatabaseUrl(databaseUrl: string): boolean {
   return prodKeywordHit && !isLocalHost;
 }
 
+function redactDatabaseUrlForLog(url: string): string {
+  try {
+    const parsed = new URL(url);
+    // Keep host/path for troubleshooting while avoiding credential/token leakage in logs.
+    return `${parsed.protocol}//${parsed.host}${parsed.pathname}`;
+  } catch {
+    return '<redacted>';
+  }
+}
+
 function buildLongDescription(): string {
   return [
     'This synthetic record intentionally carries a very long description to exercise overflow and truncation behavior.',
@@ -1331,7 +1341,7 @@ function printPlan(
 ) {
   console.info('Synthetic dataset seed plan:');
   console.info(`- mode: ${args.confirm ? 'WRITE' : 'DRY-RUN (default)'}`);
-  console.info(`- database: ${databaseUrl}`);
+  console.info(`- database: ${redactDatabaseUrlForLog(databaseUrl)}`);
   console.info(`- owner email: ${args.ownerEmail}`);
   console.info(`- primary tenant: ${args.tenantSlug} (${args.tenantName})`);
   console.info(`- mirror tenant: ${args.mirrorTenantSlug} (${args.mirrorTenantName})`);
