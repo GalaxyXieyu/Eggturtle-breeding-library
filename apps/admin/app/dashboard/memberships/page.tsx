@@ -238,6 +238,8 @@ export default function DashboardMembershipsPage() {
     setRemovingUserId(member.user.id);
     setStatus((previous) => ({ ...previous, error: null, actionMessage: null }));
 
+    let shouldReload = false;
+
     try {
       const response = await apiRequest(
         `/admin/tenants/${selectedTenantId}/members/${member.user.id}`,
@@ -252,9 +254,12 @@ export default function DashboardMembershipsPage() {
         ...previous,
         actionMessage: `Removed ${member.user.email}. Audit: ${response.auditLogId}`
       }));
+
+      shouldReload = true;
     } catch (error) {
       if (isTenantMemberNotFoundError(error)) {
         setMembers((previous) => previous.filter((item) => item.user.id !== member.user.id));
+        shouldReload = true;
       }
 
       setStatus((previous) => ({
@@ -264,7 +269,9 @@ export default function DashboardMembershipsPage() {
     } finally {
       setRemovingUserId(null);
       setConfirmingRemoveUserId(null);
-      setMemberReloadSignal((previous) => previous + 1);
+      if (shouldReload) {
+        setMemberReloadSignal((previous) => previous + 1);
+      }
     }
   }
 
@@ -307,7 +314,7 @@ export default function DashboardMembershipsPage() {
               setSelectedTenantId(event.target.value);
               setConfirmingRemoveUserId(null);
             }}
-            disabled={tenants.length === 0}
+            disabled={tenants.length === 0 || status.saving || Boolean(removingUserId)}
           >
             {tenants.map((tenant) => (
               <option key={tenant.id} value={tenant.id}>
