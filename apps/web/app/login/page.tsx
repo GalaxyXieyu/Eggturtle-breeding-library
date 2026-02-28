@@ -587,7 +587,7 @@ export default function LoginPage() {
                 )}
 
                 <div className="login-secondary-actions">
-                  <button type="button" className="login-text-link" onClick={() => switchEntryView('activation')}>
+                  <button type="button" className="login-secondary-cta" onClick={() => switchEntryView('activation')}>
                     {copy.activationCta}
                   </button>
                   <button type="button" className="login-text-link" onClick={() => switchEntryView('register')}>
