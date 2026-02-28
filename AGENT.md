@@ -222,6 +222,10 @@
   - 代码与实测证据：
     - 主要文件：`apps/web/app/globals.css`、`apps/web/app/login/page.tsx`、`apps/web/app/app/*`、`apps/web/app/public/share/page.tsx`
     - 验证：`pnpm --filter @eggturtle/web lint` 通过（仅 `next/image` 规则 warning）；Chrome MCP 截图确认桌面/移动端布局
+- 2026-02-28 任务归属调整与收口：
+  - `T40`（Milestone1 收口）已由“宇宇”接手并完成，证据：`docs/plan/evidence/milestone1-closeout-20260228.md`
+  - `T41`（Membership/Quota v1 规划审阅）已由“宇宇”接手并完成，证据：`docs/plan/evidence/membership-v1-plan-review-20260228.md`
+  - 其余进行中任务继续由 openclaw/宇仔推进（按 `docs/plan/EggsTask.csv` 为准）
 
 ---
 

@@ -27,6 +27,10 @@
 ## Milestone 1: Series + Breeders 只读链路（替代 legacy 用户侧核心浏览）
 
 目标：让 Node Web 出现可用入口，覆盖 legacy 的 `SeriesFeed` + `BreederDetail` 的核心浏览能力。
+状态：✅ 已完成（2026-02-28）
+收口证据：
+- `docs/plan/evidence/milestone1-closeout-20260228.md`
+- `out/plan/PROGRESS.md`
 
 ### 1.1 Prisma / Schema
 
