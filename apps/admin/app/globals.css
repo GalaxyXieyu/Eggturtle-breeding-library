@@ -732,86 +732,34 @@ button.secondary:hover:not(:disabled) {
   align-items: center;
   justify-content: center;
   padding: 32px 14px;
-}
-
-.login-shell,
-.login-shell-loading {
-  width: min(1060px, 100%);
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-  gap: 18px;
-  align-items: stretch;
-}
-
-.login-shell-loading {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.login-brand,
-.login-card {
-  border-radius: 28px;
-  border: 1px solid rgba(24, 24, 27, 0.08);
   position: relative;
-  overflow: hidden;
 }
 
-.login-brand {
-  padding: clamp(32px, 5vw, 52px);
-  min-height: 360px;
-  display: flex;
-  justify-content: center;
-  background: linear-gradient(125deg, rgba(255, 252, 235, 0.96) 0%, rgba(255, 255, 255, 0.95) 52%, rgba(255, 239, 166, 0.82) 100%);
-  box-shadow: var(--admin-shadow-elevated);
-  gap: 16px;
-}
-
-.login-card {
-  padding: clamp(20px, 3vw, 30px);
-}
-
-.login-admin-hero::after {
+.login-page::before {
   content: '';
   position: absolute;
-  top: -66px;
-  right: -42px;
-  width: 210px;
-  height: 210px;
-  border-radius: 999px;
-  background: rgba(255, 212, 0, 0.24);
-  filter: blur(44px);
+  inset: 0;
   pointer-events: none;
+  background: radial-gradient(circle at 16% 20%, rgba(255, 212, 0, 0.13) 0%, rgba(255, 212, 0, 0) 48%), radial-gradient(circle at 85% 16%, rgba(255, 212, 0, 0.1) 0%, rgba(255, 212, 0, 0) 42%);
 }
 
-.login-brand > * {
+.login-layout {
+  width: min(1120px, 100%);
+  display: grid;
+  grid-template-columns: minmax(0, 470px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: center;
   position: relative;
   z-index: 1;
 }
 
-.login-eyebrow {
-  color: #6b7280;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-}
-
-.login-brand-title {
-  font-size: clamp(46px, 6.2vw, 74px);
-  line-height: 1.02;
-  letter-spacing: -0.02em;
-}
-
-.login-brand-description {
-  color: #44403c;
-  max-width: 24ch;
-  font-size: 15px;
-  line-height: 1.55;
-}
-
 .login-card {
-  background: rgba(255, 255, 255, 0.95);
+  border-radius: 28px;
+  border: 1px solid rgba(24, 24, 27, 0.08);
+  background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(8px);
   box-shadow: var(--admin-shadow-surface);
+  padding: clamp(20px, 3vw, 30px);
   gap: 14px;
 }
 
@@ -819,9 +767,22 @@ button.secondary:hover:not(:disabled) {
   gap: 6px;
 }
 
-.login-card h2 {
-  font-size: clamp(30px, 4.4vw, 40px);
-  line-height: 1.08;
+.login-product-title {
+  font-size: clamp(38px, 4.8vw, 58px);
+  line-height: 1.04;
+  letter-spacing: -0.02em;
+}
+
+.login-product-subtitle {
+  color: #44403c;
+  max-width: 26ch;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.login-session-hint {
+  margin: 0;
+  font-size: 13px;
 }
 
 .login-mode-toggle {
@@ -871,15 +832,6 @@ button.secondary:hover:not(:disabled) {
   padding-top: 4px;
 }
 
-.login-panel-head {
-  gap: 4px;
-}
-
-.login-form-title {
-  font-size: 22px;
-  line-height: 1.2;
-}
-
 .login-field {
   gap: 6px;
 }
@@ -890,6 +842,11 @@ button.secondary:hover:not(:disabled) {
   padding: 10px 14px;
   border-color: rgba(24, 24, 27, 0.12);
   background: #ffffff;
+}
+
+.login-code-hint {
+  margin: 0;
+  font-size: 13px;
 }
 
 .login-card button {
@@ -914,6 +871,20 @@ button.secondary:hover:not(:disabled) {
   border: 1px solid #e2ca73;
   border-radius: 14px;
   padding: 8px 10px;
+}
+
+.login-hero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 520px;
+  padding: 8px;
+}
+
+.login-hero-image {
+  width: min(100%, 640px);
+  height: auto;
+  filter: drop-shadow(0 20px 36px rgba(17, 24, 39, 0.14));
 }
 
 .dashboard-shell.sidebar-collapsed .sidebar-brand-copy,
@@ -1017,39 +988,26 @@ button.secondary:hover:not(:disabled) {
     padding: 14px 8px 24px;
   }
 
-  .login-shell,
-  .login-shell-loading {
+  .login-layout {
     grid-template-columns: 1fr;
-    width: min(100% - 4px, 760px);
+    width: min(100%, 560px);
   }
 
-  .login-brand,
   .login-card {
     padding: 20px 16px;
     border-radius: 22px;
   }
 
-  .login-brand {
-    min-height: 0;
-    gap: 12px;
+  .login-product-title {
+    font-size: clamp(32px, 10vw, 44px);
   }
 
-  .login-brand-title {
-    font-size: clamp(30px, 10vw, 42px);
-  }
-
-  .login-brand-description {
+  .login-product-subtitle {
     max-width: none;
-    font-size: 14px;
-    line-height: 1.5;
   }
 
-  .login-card h2 {
-    font-size: 30px;
-  }
-
-  .login-form-title {
-    font-size: 20px;
+  .login-hero {
+    display: none;
   }
 
   .login-inline-actions {
