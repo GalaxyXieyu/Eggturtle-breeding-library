@@ -132,3 +132,4 @@ T53,4,P0 Data sufficiency check for smoke,确认 tenant/series/breeders/events/p
 T54,4,P0 Bugfix loop after smoke,"1) 按严重级排序修复
 2) 每修一项回归对应 smoke 行
 3) 更新证据与剩余风险","T51,T52,T53",修复清单 + 回归结果 + 未解问题,失败项复测通过或明确 blocker 与 owner,本轮 smoke 阻断问题清零或都有 owner/ETA,修复引入回归；需小步回归,codex subagent,主 agent + 宇宇,todo,关联 bug tickets / commit / smoke 回填,N,,,
+T55,3,Admin perms: remove tenant member endpoint,Add DELETE /admin/tenants/:tenantId/members/:userId; audit action; extend api-tests/admin.ts,T31,API + shared contract + tests,Run scripts/api-tests (admin module) and verify member removed,Super-admin can revoke membership; audit logged; tests pass,Need MemberNotFound error + do not commit out/ artifacts,codex subagent,宇宇 (merge) + CI,done,PR#10 https://github.com/GalaxyXieyu/Eggturtle-breeding-library/pull/10,N,,,
