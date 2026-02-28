@@ -1,3 +1,10 @@
+import {
+  getAdminTenantSubscriptionResponseSchema,
+  updateTenantSubscriptionRequestSchema,
+  updateTenantSubscriptionResponseSchema,
+  type UpdateTenantSubscriptionRequest
+} from '@eggturtle/shared';
+
 const LOGIN_PATH = '/login';
 const AUTH_PROXY_PREFIX = '/api/proxy';
 
@@ -144,4 +151,22 @@ export async function apiRequest<RequestPayload = never, ResponsePayload = unkno
   }
 
   return options.responseSchema.parse(payload);
+}
+
+export async function getAdminTenantSubscription(tenantId: string) {
+  return apiRequest(`/admin/tenants/${tenantId}/subscription`, {
+    responseSchema: getAdminTenantSubscriptionResponseSchema
+  });
+}
+
+export async function updateAdminTenantSubscription(
+  tenantId: string,
+  payload: UpdateTenantSubscriptionRequest
+) {
+  return apiRequest(`/admin/tenants/${tenantId}/subscription`, {
+    method: 'PUT',
+    body: payload,
+    requestSchema: updateTenantSubscriptionRequestSchema,
+    responseSchema: updateTenantSubscriptionResponseSchema
+  });
 }

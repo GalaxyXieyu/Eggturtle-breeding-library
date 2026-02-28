@@ -7,12 +7,20 @@ import {
   getAdminTenantResponseSchema,
   listAdminTenantMembersResponseSchema,
   listSuperAdminAuditLogsResponseSchema,
+  tenantSubscriptionPlanSchema,
   type AdminTenant,
   type AdminTenantMember,
-  type SuperAdminAuditLog
+  type SuperAdminAuditLog,
+  type TenantSubscription,
+  type TenantSubscriptionPlan
 } from '@eggturtle/shared';
 
-import { ApiError, apiRequest } from '../../../../lib/api-client';
+import {
+  ApiError,
+  apiRequest,
+  getAdminTenantSubscription,
+  updateAdminTenantSubscription
+} from '../../../../lib/api-client';
 
 type DetailState = {
   loading: boolean;
@@ -21,6 +29,16 @@ type DetailState = {
   members: AdminTenantMember[];
   recentLogs: SuperAdminAuditLog[];
 };
+
+type SubscriptionState = {
+  loading: boolean;
+  saving: boolean;
+  error: string | null;
+  actionMessage: string | null;
+  subscription: TenantSubscription | null;
+};
+
+const subscriptionPlanOptions = tenantSubscriptionPlanSchema.options;
 
 export default function TenantDetailPage() {
   const params = useParams<{ tenantId: string }>();
@@ -33,6 +51,18 @@ export default function TenantDetailPage() {
     members: [],
     recentLogs: []
   });
+  const [subscriptionState, setSubscriptionState] = useState<SubscriptionState>({
+    loading: true,
+    saving: false,
+    error: null,
+    actionMessage: null,
+    subscription: null
+  });
+  const [subscriptionPlan, setSubscriptionPlan] = useState<TenantSubscriptionPlan>('FREE');
+  const [subscriptionExpiresAtInput, setSubscriptionExpiresAtInput] = useState('');
+  const [subscriptionMaxImagesInput, setSubscriptionMaxImagesInput] = useState('');
+  const [subscriptionMaxStorageBytesInput, setSubscriptionMaxStorageBytesInput] = useState('');
+  const [subscriptionMaxSharesInput, setSubscriptionMaxSharesInput] = useState('');
   const [memberSearchInput, setMemberSearchInput] = useState('');
   const [memberSearch, setMemberSearch] = useState('');
 
@@ -92,9 +122,130 @@ export default function TenantDetailPage() {
     };
   }, [memberSearch, tenantId]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadSubscription() {
+      setSubscriptionState((previous) => ({
+        ...previous,
+        loading: true,
+        error: null,
+        actionMessage: null
+      }));
+
+      try {
+        const response = await getAdminTenantSubscription(tenantId);
+        if (cancelled) {
+          return;
+        }
+
+        setSubscriptionState({
+          loading: false,
+          saving: false,
+          error: null,
+          actionMessage: null,
+          subscription: response.subscription
+        });
+        setSubscriptionPlan(response.subscription.plan);
+        setSubscriptionExpiresAtInput(toDateTimeLocalValue(response.subscription.expiresAt));
+        setSubscriptionMaxImagesInput(toNullableNumberInputValue(response.subscription.maxImages));
+        setSubscriptionMaxStorageBytesInput(response.subscription.maxStorageBytes ?? '');
+        setSubscriptionMaxSharesInput(toNullableNumberInputValue(response.subscription.maxShares));
+      } catch (error) {
+        if (!cancelled) {
+          setSubscriptionState((previous) => ({
+            ...previous,
+            loading: false,
+            error: formatError(error),
+            subscription: null
+          }));
+          setSubscriptionPlan('FREE');
+          setSubscriptionExpiresAtInput('');
+          setSubscriptionMaxImagesInput('');
+          setSubscriptionMaxStorageBytesInput('');
+          setSubscriptionMaxSharesInput('');
+        }
+      }
+    }
+
+    void loadSubscription();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tenantId]);
+
   function handleMemberSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMemberSearch(memberSearchInput.trim());
+  }
+
+  async function handleSubscriptionSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    let maxImages: number | null;
+    let maxShares: number | null;
+    let maxStorageBytes: string | null;
+
+    try {
+      maxImages = parseNullableInt(subscriptionMaxImagesInput, 'Max images');
+      maxShares = parseNullableInt(subscriptionMaxSharesInput, 'Max shares');
+      maxStorageBytes = parseNullableStorageBytes(subscriptionMaxStorageBytesInput);
+    } catch (error) {
+      setSubscriptionState((previous) => ({
+        ...previous,
+        error: error instanceof Error ? error.message : 'Invalid subscription input.'
+      }));
+      return;
+    }
+
+    const confirmMessage = [
+      `Update subscription for tenant ${tenantId}?`,
+      `Plan: ${subscriptionPlan}`,
+      `Expiry: ${subscriptionExpiresAtInput ? subscriptionExpiresAtInput : 'Never'}`
+    ].join('\n');
+
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    setSubscriptionState((previous) => ({
+      ...previous,
+      saving: true,
+      error: null,
+      actionMessage: null
+    }));
+
+    try {
+      const response = await updateAdminTenantSubscription(tenantId, {
+        plan: subscriptionPlan,
+        expiresAt: toIsoDateTimeOrNull(subscriptionExpiresAtInput),
+        maxImages,
+        maxStorageBytes,
+        maxShares
+      });
+
+      setSubscriptionState({
+        loading: false,
+        saving: false,
+        error: null,
+        actionMessage: response.auditLogId
+          ? `Subscription updated. Audit: ${response.auditLogId}`
+          : 'Subscription updated successfully.',
+        subscription: response.subscription
+      });
+      setSubscriptionPlan(response.subscription.plan);
+      setSubscriptionExpiresAtInput(toDateTimeLocalValue(response.subscription.expiresAt));
+      setSubscriptionMaxImagesInput(toNullableNumberInputValue(response.subscription.maxImages));
+      setSubscriptionMaxStorageBytesInput(response.subscription.maxStorageBytes ?? '');
+      setSubscriptionMaxSharesInput(toNullableNumberInputValue(response.subscription.maxShares));
+    } catch (error) {
+      setSubscriptionState((previous) => ({
+        ...previous,
+        saving: false,
+        error: formatError(error)
+      }));
+    }
   }
 
   return (
@@ -140,6 +291,134 @@ export default function TenantDetailPage() {
           </dl>
         </article>
       ) : null}
+
+      <article className="card stack">
+        <h3>Subscription &amp; quota</h3>
+
+        {subscriptionState.loading ? <p className="muted">Loading subscription...</p> : null}
+
+        {subscriptionState.subscription ? (
+          <dl className="detail-list">
+            <div>
+              <dt>Plan</dt>
+              <dd>{subscriptionState.subscription.plan}</dd>
+            </div>
+            <div>
+              <dt>Status</dt>
+              <dd>{subscriptionState.subscription.status}</dd>
+            </div>
+            <div>
+              <dt>Expiry</dt>
+              <dd>{formatOptionalDate(subscriptionState.subscription.expiresAt)}</dd>
+            </div>
+            <div>
+              <dt>Max images</dt>
+              <dd>{formatNullableValue(subscriptionState.subscription.maxImages)}</dd>
+            </div>
+            <div>
+              <dt>Max storage (bytes)</dt>
+              <dd>{formatNullableValue(subscriptionState.subscription.maxStorageBytes)}</dd>
+            </div>
+            <div>
+              <dt>Max shares</dt>
+              <dd>{formatNullableValue(subscriptionState.subscription.maxShares)}</dd>
+            </div>
+          </dl>
+        ) : null}
+
+        <form className="stack" onSubmit={handleSubscriptionSubmit}>
+          <h3>Update subscription</h3>
+
+          <div className="form-grid">
+            <label className="stack row-tight" htmlFor="subscription-plan">
+              <span>Plan</span>
+              <select
+                id="subscription-plan"
+                value={subscriptionPlan}
+                onChange={(event) => setSubscriptionPlan(event.target.value as TenantSubscriptionPlan)}
+                disabled={subscriptionState.saving}
+              >
+                {subscriptionPlanOptions.map((plan) => (
+                  <option key={plan} value={plan}>
+                    {plan}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="stack row-tight" htmlFor="subscription-expires-at">
+              <span>Expires at</span>
+              <div className="inline-actions">
+                <input
+                  id="subscription-expires-at"
+                  type="datetime-local"
+                  value={subscriptionExpiresAtInput}
+                  onChange={(event) => setSubscriptionExpiresAtInput(event.target.value)}
+                  disabled={subscriptionState.saving}
+                />
+                <button
+                  className="secondary"
+                  type="button"
+                  onClick={() => setSubscriptionExpiresAtInput('')}
+                  disabled={subscriptionState.saving}
+                >
+                  No expiry
+                </button>
+              </div>
+            </label>
+
+            <label className="stack row-tight" htmlFor="subscription-max-images">
+              <span>Max images</span>
+              <input
+                id="subscription-max-images"
+                type="number"
+                min={0}
+                step={1}
+                value={subscriptionMaxImagesInput}
+                onChange={(event) => setSubscriptionMaxImagesInput(event.target.value)}
+                placeholder="Unlimited"
+                disabled={subscriptionState.saving}
+              />
+            </label>
+
+            <label className="stack row-tight" htmlFor="subscription-max-storage-bytes">
+              <span>Max storage (bytes)</span>
+              <input
+                id="subscription-max-storage-bytes"
+                type="text"
+                inputMode="numeric"
+                value={subscriptionMaxStorageBytesInput}
+                onChange={(event) => setSubscriptionMaxStorageBytesInput(event.target.value)}
+                placeholder="Unlimited"
+                disabled={subscriptionState.saving}
+              />
+            </label>
+
+            <label className="stack row-tight" htmlFor="subscription-max-shares">
+              <span>Max shares</span>
+              <input
+                id="subscription-max-shares"
+                type="number"
+                min={0}
+                step={1}
+                value={subscriptionMaxSharesInput}
+                onChange={(event) => setSubscriptionMaxSharesInput(event.target.value)}
+                placeholder="Unlimited"
+                disabled={subscriptionState.saving}
+              />
+            </label>
+          </div>
+
+          <div className="inline-actions">
+            <button type="submit" disabled={subscriptionState.saving}>
+              {subscriptionState.saving ? 'Saving...' : 'Save subscription'}
+            </button>
+          </div>
+        </form>
+
+        {subscriptionState.error ? <p className="error">{subscriptionState.error}</p> : null}
+        {subscriptionState.actionMessage ? <p className="success">{subscriptionState.actionMessage}</p> : null}
+      </article>
 
       <article className="card stack">
         <h3>成员列表</h3>
@@ -222,6 +501,63 @@ export default function TenantDetailPage() {
   );
 }
 
+function toNullableNumberInputValue(value: number | null) {
+  return value === null ? '' : String(value);
+}
+
+function parseNullableInt(value: string, label: string) {
+  if (!value.trim()) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new Error(`${label} must be a non-negative integer.`);
+  }
+
+  return parsed;
+}
+
+function parseNullableStorageBytes(value: string) {
+  if (!value.trim()) {
+    return null;
+  }
+
+  if (!/^\d+$/.test(value.trim())) {
+    throw new Error('Max storage must be a non-negative integer in bytes.');
+  }
+
+  return value.trim();
+}
+
+function toDateTimeLocalValue(value: string | null) {
+  if (!value) {
+    return '';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  const timezoneOffsetMinutes = date.getTimezoneOffset();
+  const adjusted = new Date(date.getTime() - timezoneOffsetMinutes * 60 * 1000);
+  return adjusted.toISOString().slice(0, 16);
+}
+
+function toIsoDateTimeOrNull(value: string) {
+  if (!value.trim()) {
+    return null;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date.toISOString();
+}
+
 function formatDate(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
@@ -231,8 +567,28 @@ function formatDate(value: string) {
   return date.toLocaleString();
 }
 
+function formatOptionalDate(value: string | null) {
+  if (!value) {
+    return 'Never';
+  }
+
+  return formatDate(value);
+}
+
+function formatNullableValue(value: string | number | null) {
+  if (value === null) {
+    return 'Unlimited';
+  }
+
+  return String(value);
+}
+
 function formatError(error: unknown) {
   if (error instanceof ApiError) {
+    if (error.errorCode) {
+      return `${error.message} (errorCode: ${error.errorCode})`;
+    }
+
     return error.message;
   }
 
