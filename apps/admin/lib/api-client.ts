@@ -16,11 +16,13 @@ type ApiRequestOptions<RequestPayload, ResponsePayload> = {
 
 export class ApiError extends Error {
   status: number;
+  errorCode: string | null;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, errorCode: string | null = null) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
+    this.errorCode = errorCode;
   }
 }
 
@@ -69,6 +71,18 @@ function pickErrorMessage(payload: unknown, fallback: string) {
   }
 
   return fallback;
+}
+
+function pickErrorCode(payload: unknown) {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  if ('errorCode' in payload && typeof payload.errorCode === 'string') {
+    return payload.errorCode;
+  }
+
+  return null;
 }
 
 function normalizePath(path: string) {
@@ -124,7 +138,8 @@ export async function apiRequest<RequestPayload = never, ResponsePayload = unkno
   if (!response.ok) {
     throw new ApiError(
       pickErrorMessage(payload, `Request failed with status ${response.status}`),
-      response.status
+      response.status,
+      pickErrorCode(payload)
     );
   }
 

@@ -4,8 +4,11 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
+  ErrorCode,
+  deleteTenantMemberResponseSchema,
   listAdminTenantMembersResponseSchema,
   listAdminTenantsResponseSchema,
+  meResponseSchema,
   upsertTenantMemberRequestSchema,
   upsertTenantMemberResponseSchema,
   type AdminTenant,
@@ -43,6 +46,36 @@ export default function DashboardMembershipsPage() {
   const [memberSearch, setMemberSearch] = useState('');
   const [newMemberEmail, setNewMemberEmail] = useState('');
   const [newMemberRole, setNewMemberRole] = useState<TenantRole>('VIEWER');
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [confirmingRemoveUserId, setConfirmingRemoveUserId] = useState<string | null>(null);
+  const [removingUserId, setRemovingUserId] = useState<string | null>(null);
+  const [memberReloadSignal, setMemberReloadSignal] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCurrentUser() {
+      try {
+        const response = await apiRequest('/api/auth/session', {
+          responseSchema: meResponseSchema
+        });
+
+        if (!cancelled) {
+          setCurrentUserId(response.user.id);
+        }
+      } catch {
+        if (!cancelled) {
+          setCurrentUserId(null);
+        }
+      }
+    }
+
+    void loadCurrentUser();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -89,6 +122,7 @@ export default function DashboardMembershipsPage() {
   useEffect(() => {
     if (!selectedTenantId) {
       setMembers([]);
+      setConfirmingRemoveUserId(null);
       return;
     }
 
@@ -115,6 +149,9 @@ export default function DashboardMembershipsPage() {
         }
 
         setMembers(response.members);
+        setConfirmingRemoveUserId((previous) =>
+          previous && response.members.every((member) => member.user.id !== previous) ? null : previous
+        );
         setStatus((previous) => ({ ...previous, loadingMembers: false }));
       } catch (error) {
         if (!cancelled) {
@@ -132,7 +169,7 @@ export default function DashboardMembershipsPage() {
     return () => {
       cancelled = true;
     };
-  }, [memberSearch, selectedTenantId]);
+  }, [memberReloadSignal, memberSearch, selectedTenantId]);
 
   const selectedTenant = useMemo(
     () => tenants.find((tenant) => tenant.id === selectedTenantId) ?? null,
@@ -193,6 +230,51 @@ export default function DashboardMembershipsPage() {
     }
   }
 
+  async function handleRemoveMember(member: AdminTenantMember) {
+    if (!selectedTenantId || removingUserId) {
+      return;
+    }
+
+    setRemovingUserId(member.user.id);
+    setStatus((previous) => ({ ...previous, error: null, actionMessage: null }));
+
+    let shouldReload = false;
+
+    try {
+      const response = await apiRequest(
+        `/admin/tenants/${selectedTenantId}/members/${member.user.id}`,
+        {
+          method: 'DELETE',
+          responseSchema: deleteTenantMemberResponseSchema
+        }
+      );
+
+      setMembers((previous) => previous.filter((item) => item.user.id !== response.userId));
+      setStatus((previous) => ({
+        ...previous,
+        actionMessage: `Removed ${member.user.email}. Audit: ${response.auditLogId}`
+      }));
+
+      shouldReload = true;
+    } catch (error) {
+      if (isTenantMemberNotFoundError(error)) {
+        setMembers((previous) => previous.filter((item) => item.user.id !== member.user.id));
+        shouldReload = true;
+      }
+
+      setStatus((previous) => ({
+        ...previous,
+        error: formatRemoveMemberError(error)
+      }));
+    } finally {
+      setRemovingUserId(null);
+      setConfirmingRemoveUserId(null);
+      if (shouldReload) {
+        setMemberReloadSignal((previous) => previous + 1);
+      }
+    }
+  }
+
   async function handleAddMember(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!newMemberEmail.trim()) {
@@ -228,8 +310,11 @@ export default function DashboardMembershipsPage() {
           <select
             id="membership-tenant"
             value={selectedTenantId}
-            onChange={(event) => setSelectedTenantId(event.target.value)}
-            disabled={tenants.length === 0}
+            onChange={(event) => {
+              setSelectedTenantId(event.target.value);
+              setConfirmingRemoveUserId(null);
+            }}
+            disabled={tenants.length === 0 || status.saving || Boolean(removingUserId)}
           >
             {tenants.map((tenant) => (
               <option key={tenant.id} value={tenant.id}>
@@ -262,7 +347,7 @@ export default function DashboardMembershipsPage() {
               </option>
             ))}
           </select>
-          <button type="submit" disabled={!selectedTenantId || status.saving}>
+          <button type="submit" disabled={!selectedTenantId || status.saving || Boolean(removingUserId)}>
             {status.saving ? 'Saving...' : 'Apply role'}
           </button>
         </div>
@@ -303,7 +388,7 @@ export default function DashboardMembershipsPage() {
                 <th>Name</th>
                 <th>Role</th>
                 <th>Joined</th>
-                <th />
+                <th>操作</th>
               </tr>
             </thead>
             <tbody>
@@ -317,7 +402,7 @@ export default function DashboardMembershipsPage() {
                       onChange={(event) =>
                         void applyRoleChange(member.user.email, event.target.value as TenantRole)
                       }
-                      disabled={status.saving}
+                      disabled={status.saving || Boolean(removingUserId)}
                     >
                       {tenantRoleOptions.map((role) => (
                         <option key={role} value={role}>
@@ -327,7 +412,43 @@ export default function DashboardMembershipsPage() {
                     </select>
                   </td>
                   <td>{formatDate(member.joinedAt)}</td>
-                  <td className="muted">Updated via audit log</td>
+                  <td>
+                    {confirmingRemoveUserId === member.user.id ? (
+                      <div className="inline-actions">
+                        <button
+                          type="button"
+                          onClick={() => void handleRemoveMember(member)}
+                          disabled={Boolean(removingUserId)}
+                        >
+                          {removingUserId === member.user.id ? '移除中...' : '确认移除'}
+                        </button>
+                        <button
+                          className="secondary"
+                          type="button"
+                          onClick={() => setConfirmingRemoveUserId(null)}
+                          disabled={Boolean(removingUserId)}
+                        >
+                          取消
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="inline-actions">
+                        <button
+                          className="secondary"
+                          type="button"
+                          onClick={() => setConfirmingRemoveUserId(member.user.id)}
+                          disabled={
+                            status.saving ||
+                            Boolean(removingUserId) ||
+                            member.user.id === currentUserId
+                          }
+                        >
+                          移除
+                        </button>
+                        {member.user.id === currentUserId ? <span className="muted">当前账号</span> : null}
+                      </div>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -375,4 +496,16 @@ function formatError(error: unknown) {
   }
 
   return 'Unknown error';
+}
+
+function isTenantMemberNotFoundError(error: unknown) {
+  return error instanceof ApiError && error.errorCode === ErrorCode.TenantMemberNotFound;
+}
+
+function formatRemoveMemberError(error: unknown) {
+  if (isTenantMemberNotFoundError(error)) {
+    return '成员已不存在，列表已刷新。';
+  }
+
+  return formatError(error);
 }
