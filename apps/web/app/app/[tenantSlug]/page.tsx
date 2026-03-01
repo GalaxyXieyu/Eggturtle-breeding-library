@@ -19,6 +19,7 @@ import { listFeaturedProductsResponseSchema } from '@eggturtle/shared/featured';
 import { Boxes, Image as ImageIcon, Layers, Star, Turtle, ArrowRight, Copy, Link2 } from 'lucide-react';
 
 import { ApiError, apiRequest, getAccessToken, resolveAuthenticatedAssetUrl } from '../../../lib/api-client';
+import { formatTenantDisplayName } from '../../../lib/tenant-display';
 import { switchTenantBySlug } from '../../../lib/tenant-session';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
@@ -64,6 +65,7 @@ export default function TenantAppPage() {
   const router = useRouter();
   const params = useParams<{ tenantSlug: string }>();
   const tenantSlug = useMemo(() => params.tenantSlug ?? '', [params.tenantSlug]);
+  const displayTenantName = useMemo(() => formatTenantDisplayName(tenantSlug, '蛋龟选育库'), [tenantSlug]);
   const [state, setState] = useState<DashboardState>({
     loading: true,
     error: null,
@@ -214,7 +216,7 @@ export default function TenantAppPage() {
                 <Badge variant="accent" className="w-fit">
                   BREEDING REPORT
                 </Badge>
-                <CardTitle className="mt-4 text-4xl text-neutral-900 sm:text-5xl">{tenantSlug}</CardTitle>
+                <CardTitle className="mt-4 text-4xl text-neutral-900 sm:text-5xl">{displayTenantName}</CardTitle>
                 <CardDescription className="text-neutral-600">
                   工作台已接入真实租户数据，你可以直接从这里进入核心链路。
                 </CardDescription>

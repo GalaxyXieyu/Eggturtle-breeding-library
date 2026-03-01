@@ -176,13 +176,13 @@ button:disabled {
 }
 
 button.secondary {
-  background: #f5f5f5;
-  border-color: #d4d4d8;
-  color: #27272a;
+  background: #eef2f7;
+  border-color: transparent;
+  color: #1f2937;
 }
 
 button.secondary:hover:not(:disabled) {
-  background: #ededed;
+  background: #e2e8f0;
 }
 
 :root[data-theme='dark'] input,
@@ -199,19 +199,24 @@ button.secondary:hover:not(:disabled) {
 }
 
 :root[data-theme='dark'] button {
-  border-color: #f3d64e;
-  background: linear-gradient(135deg, #ffe06a 0%, #ffd400 100%);
-  color: #1f1811;
+  border-color: transparent;
+  background: #253247;
+  color: #e8eef8;
+}
+
+:root[data-theme='dark'] button:hover:not(:disabled) {
+  background: #304261;
+  color: #f8fbff;
 }
 
 :root[data-theme='dark'] button.secondary {
-  border-color: var(--border-strong);
-  background: #161f2b;
-  color: var(--ink);
+  border-color: transparent;
+  background: #253247;
+  color: #e8eef8;
 }
 
 :root[data-theme='dark'] button.secondary:hover:not(:disabled) {
-  background: #1e2a39;
+  background: #304261;
 }
 
 .btn-compact {

@@ -14,7 +14,7 @@ const buttonVariants = cva(
         primary:
           'bg-gradient-to-r from-amber-300 via-[#FFD400] to-yellow-400 text-neutral-900 shadow-[0_6px_20px_rgba(255,212,0,0.28)] hover:brightness-95 dark:from-amber-300 dark:via-[#FFD400] dark:to-yellow-400 dark:text-neutral-900',
         secondary:
-          'bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50 dark:bg-neutral-900 dark:text-neutral-200 dark:border-neutral-700 dark:hover:bg-neutral-800',
+          'border-0 bg-neutral-100 text-neutral-800 shadow-none hover:bg-neutral-200 dark:bg-[#253247] dark:text-[#e8eef8] dark:hover:bg-[#304261]',
         ghost: 'bg-transparent text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800',
         outline:
           'bg-transparent text-neutral-700 border border-neutral-300 hover:bg-neutral-100 dark:text-neutral-300 dark:border-neutral-700 dark:hover:bg-neutral-800'

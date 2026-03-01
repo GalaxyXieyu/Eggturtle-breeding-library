@@ -18,6 +18,7 @@ import {
 import { UiPreferenceControls, useUiPreferences } from '../../../components/ui-preferences';
 import { Button } from '../../../components/ui/button';
 import { clearAccessToken } from '../../../lib/api-client';
+import { formatTenantDisplayName } from '../../../lib/tenant-display';
 import { cn } from '../../../lib/utils';
 
 type TenantRouteLayoutProps = {
@@ -90,6 +91,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const { locale } = useUiPreferences();
   const copy = SHELL_COPY[locale];
+  const displayTenantName = useMemo(() => formatTenantDisplayName(tenantSlug, copy.defaultTenant), [tenantSlug, copy.defaultTenant]);
 
   const activeLabel = useMemo(() => {
     const matched = NAV_ITEMS.find((item) => isActive(pathname, item.href(tenantSlug)));
@@ -109,7 +111,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
           <div className="border-b border-neutral-200 px-6 py-5 dark:border-neutral-800">
             <p className="text-xs uppercase tracking-[0.28em] text-neutral-500 dark:text-neutral-400">{copy.workspace}</p>
             <p className="mt-2 text-3xl font-semibold leading-none text-neutral-900 dark:text-neutral-100">
-              {tenantSlug || copy.defaultTenant}
+              {displayTenantName}
             </p>
           </div>
 
@@ -175,7 +177,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
                 <div className="min-w-0">
                   <p className="text-[10px] uppercase tracking-[0.34em] text-neutral-500 dark:text-neutral-400">{copy.workspace}</p>
                   <h1 className="mt-1 truncate text-3xl font-semibold leading-none text-neutral-900 dark:text-neutral-100">
-                    {tenantSlug || copy.defaultTenant}
+                    {displayTenantName}
                   </h1>
                   <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">{activeLabel}</p>
                 </div>
@@ -206,7 +208,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
               <div className="min-w-0">
                 <p className="text-xs uppercase tracking-[0.26em] text-neutral-500 dark:text-neutral-400">{copy.workspace}</p>
                 <h1 className="truncate text-3xl font-semibold text-neutral-900 dark:text-neutral-100 sm:text-4xl">
-                  {tenantSlug || copy.defaultTenant}
+                  {displayTenantName}
                 </h1>
                 <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">{activeLabel}</p>
               </div>

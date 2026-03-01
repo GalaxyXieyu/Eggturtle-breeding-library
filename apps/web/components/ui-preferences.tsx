@@ -156,9 +156,7 @@ type PreferenceToggleButtonProps = {
 function PreferenceToggleButton({ ariaLabel, icon, onClick }: PreferenceToggleButtonProps) {
   return (
     <button type="button" className="ui-pref-icon-btn" onClick={onClick} aria-label={ariaLabel} title={ariaLabel}>
-      <span className="ui-pref-icon-core">
-        <PreferenceIcon type={icon} />
-      </span>
+      <PreferenceIcon type={icon} />
     </button>
   );
 }
@@ -170,7 +168,7 @@ type PreferenceIconProps = {
 function PreferenceIcon({ type }: PreferenceIconProps) {
   if (type === 'locale') {
     return (
-      <svg viewBox="0 0 24 24" aria-hidden className="h-3.5 w-3.5">
+      <svg viewBox="0 0 24 24" aria-hidden className="h-4 w-4">
         <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="1.7" />
         <path d="M3 12h18M12 3a14 14 0 0 0 0 18M12 3a14 14 0 0 1 0 18" fill="none" stroke="currentColor" strokeWidth="1.5" />
       </svg>
@@ -179,7 +177,7 @@ function PreferenceIcon({ type }: PreferenceIconProps) {
 
   if (type === 'theme-light') {
     return (
-      <svg viewBox="0 0 24 24" aria-hidden className="h-3.5 w-3.5">
+      <svg viewBox="0 0 24 24" aria-hidden className="h-4 w-4">
         <circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" strokeWidth="1.8" />
         <path
           d="M12 2.5v3M12 18.5v3M21.5 12h-3M5.5 12h-3M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1M18.7 18.7l-2.1-2.1M7.4 7.4 5.3 5.3"
@@ -193,7 +191,7 @@ function PreferenceIcon({ type }: PreferenceIconProps) {
   }
 
   return (
-    <svg viewBox="0 0 24 24" aria-hidden className="h-3.5 w-3.5">
+    <svg viewBox="0 0 24 24" aria-hidden className="h-4 w-4">
       <path
         d="M21 13.5A8.9 8.9 0 1 1 10.5 3a8 8 0 0 0 10.5 10.5Z"
         fill="none"

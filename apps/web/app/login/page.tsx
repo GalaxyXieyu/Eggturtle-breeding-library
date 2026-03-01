@@ -28,7 +28,6 @@ type RegisterStep = 'email' | 'verify' | 'complete';
 type LoginCopy = {
   title: string;
   subtitle: string;
-  heroEyebrow: string;
   formTitle: string;
   activationCardTitle: string;
   registerCardTitle: string;
@@ -102,7 +101,6 @@ const COPY: Record<UiLocale, LoginCopy> = {
   zh: {
     title: '蛋龟选育库',
     subtitle: '用数据驱动选育优化，提升繁育决策效率。',
-    heroEyebrow: '用户门户',
     formTitle: '登录用户端',
     activationCardTitle: '用激活码激活',
     registerCardTitle: '注册账户',
@@ -174,7 +172,6 @@ const COPY: Record<UiLocale, LoginCopy> = {
   en: {
     title: 'Eggturtle Breeding Library',
     subtitle: 'Data-driven breeding optimization for faster and more reliable decisions.',
-    heroEyebrow: 'User Portal',
     formTitle: 'Sign in to Workspace',
     activationCardTitle: 'Activate by Code',
     registerCardTitle: 'Register Account',
@@ -353,7 +350,7 @@ export default function LoginPage() {
       setRegisterCode('');
       setRegisterStep('verify');
     } catch (requestError) {
-      setError(formatError(requestError));
+      setError(formatError(requestError, locale));
     } finally {
       setLoading(false);
     }
@@ -368,7 +365,7 @@ export default function LoginPage() {
       // We just verify the code format here, actual verification happens in register step
       setRegisterStep('complete');
     } catch (requestError) {
-      setError(formatError(requestError));
+      setError(formatError(requestError, locale));
     } finally {
       setLoading(false);
     }
@@ -409,7 +406,7 @@ export default function LoginPage() {
       setAccessToken(response.accessToken);
       router.replace(`/app/${response.tenant.slug}`);
     } catch (requestError) {
-      setError(formatError(requestError));
+      setError(formatError(requestError, locale));
     } finally {
       setRegisterLoading(false);
     }
@@ -447,7 +444,7 @@ export default function LoginPage() {
       setAccessToken(response.accessToken);
       router.replace('/app');
     } catch (requestError) {
-      setError(formatError(requestError));
+      setError(formatError(requestError, locale));
     } finally {
       setLoading(false);
     }
@@ -472,7 +469,7 @@ export default function LoginPage() {
       setDevCode(response.devCode ?? null);
       setCode('');
     } catch (requestError) {
-      setError(formatError(requestError));
+      setError(formatError(requestError, locale));
     } finally {
       setLoading(false);
     }
@@ -505,7 +502,7 @@ export default function LoginPage() {
       setAccessToken(response.accessToken);
       router.replace('/app');
     } catch (requestError) {
-      setError(formatError(requestError));
+      setError(formatError(requestError, locale));
     } finally {
       setLoading(false);
     }
@@ -538,7 +535,7 @@ export default function LoginPage() {
       setActivationResult(response);
       setActivationCode('');
     } catch (requestError) {
-      setError(formatError(requestError));
+      setError(formatError(requestError, locale));
     } finally {
       setActivationLoading(false);
     }
@@ -550,7 +547,6 @@ export default function LoginPage() {
         <section className="login-showcase">
           <div className="login-showcase-glow" aria-hidden />
           <div className="login-brand-copy">
-            <p className="login-kicker">{copy.heroEyebrow}</p>
             <h1>{copy.title}</h1>
             <p className="muted">{copy.subtitle}</p>
           </div>
@@ -743,7 +739,7 @@ export default function LoginPage() {
                   </div>
                 ) : null}
 
-                <button type="button" className="login-text-link login-text-link-start" onClick={() => switchEntryView('signin')}>
+                <button type="button" className="secondary login-back-btn" onClick={() => switchEntryView('signin')}>
                   {copy.backToLogin}
                 </button>
               </form>
@@ -898,14 +894,37 @@ export default function LoginPage() {
   );
 }
 
-function formatError(error: unknown) {
+function formatError(error: unknown, locale: UiLocale) {
+  const fallbackMessage = locale === 'zh' ? '请求失败，请稍后重试。' : 'Request failed. Please try again.';
+  const networkMessage =
+    locale === 'zh' ? '网络请求失败，请检查网络后重试。' : 'Network request failed. Please check your connection and try again.';
+  const timeoutMessage =
+    locale === 'zh' ? '请求超时，请稍后再试。' : 'Request timed out. Please try again later.';
+
+  const toFriendlyMessage = (message: string | undefined) => {
+    const normalizedMessage = message?.trim();
+    if (!normalizedMessage) {
+      return fallbackMessage;
+    }
+
+    if (/failed to fetch|fetch failed|networkerror|network request failed|load failed/i.test(normalizedMessage)) {
+      return networkMessage;
+    }
+
+    if (/timeout|timed out/i.test(normalizedMessage)) {
+      return timeoutMessage;
+    }
+
+    return normalizedMessage;
+  };
+
   if (error instanceof ApiError) {
-    return error.message;
+    return toFriendlyMessage(error.message);
   }
 
   if (error instanceof Error) {
-    return error.message;
+    return toFriendlyMessage(error.message);
   }
 
-  return '未知错误';
+  return fallbackMessage;
 }

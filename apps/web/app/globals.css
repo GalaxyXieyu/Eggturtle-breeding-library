@@ -61,7 +61,7 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 0;
+  min-height: clamp(320px, 58vh, 560px);
   z-index: 1;
 }
 
@@ -69,15 +69,10 @@
   position: relative;
   z-index: 2;
   max-width: 540px;
-}
-
-.login-kicker {
-  margin-bottom: 16px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: rgba(255, 226, 138, 0.96);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: clamp(220px, 42vh, 380px);
 }
 
 .login-showcase-glow {
@@ -161,72 +156,48 @@
 
 .ui-pref-controls {
   position: relative;
-  overflow: hidden;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px;
-  border-radius: 16px;
-  background: linear-gradient(142deg, rgba(255, 255, 255, 0.62) 0%, rgba(255, 255, 255, 0.34) 100%);
-  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
-  backdrop-filter: blur(16px) saturate(145%);
+  gap: 4px;
 }
 
-.ui-pref-controls::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0) 70%);
-}
-
-.tenant-header-pref {
-  flex-shrink: 0;
+.tenant-sidebar-pref {
+  width: 100%;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px;
+  border-radius: 14px;
 }
 
 .ui-pref-icon-btn {
   position: relative;
   z-index: 1;
-  width: 32px;
-  min-height: 32px;
+  width: 36px;
+  min-height: 36px;
   border: none;
-  border-radius: 10px;
+  border-radius: 999px;
   padding: 0;
-  background: rgba(255, 255, 255, 0.54);
-  color: #1f2937;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
-  transition: background 180ms ease, color 180ms ease, box-shadow 180ms ease;
+  transition: all 0.2s ease;
 }
 
 .ui-pref-icon-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.74);
-  color: #111827;
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.ui-pref-icon-btn:active:not(:disabled) {
+  background: rgba(255, 255, 255, 0.24);
+  transform: scale(0.96);
 }
 
 .ui-pref-icon-btn:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(255, 212, 0, 0.76), 0 0 0 4px rgba(255, 255, 255, 0.9);
-}
-
-.ui-pref-icon-core {
-  width: 22px;
-  height: 22px;
-  border-radius: 7px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.48);
-  color: #334155;
-  transition: background 180ms ease, color 180ms ease;
-}
-
-.ui-pref-icon-btn:hover:not(:disabled) .ui-pref-icon-core {
-  background: rgba(255, 212, 0, 0.28);
-  color: #5b4500;
+  box-shadow: 0 0 0 2px rgba(255, 212, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.2) inset;
 }
 
 .locale-btn {
@@ -255,35 +226,36 @@
 }
 
 :root[data-theme='dark'] .ui-pref-controls {
-  background: linear-gradient(145deg, rgba(20, 30, 46, 0.66) 0%, rgba(13, 20, 32, 0.56) 100%);
-  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.28);
+  border-color: rgba(255, 255, 255, 0.14);
 }
 
 :root[data-theme='dark'] .ui-pref-icon-btn {
-  border: none;
-  background: rgba(17, 27, 42, 0.72);
-  color: #e2e8f0;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.32);
+  color: rgba(255, 255, 255, 0.65);
 }
 
 :root[data-theme='dark'] .ui-pref-icon-btn:hover:not(:disabled) {
-  background: rgba(31, 45, 66, 0.84);
-  color: #f8fbff;
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.34);
+  background: rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.9);
 }
 
 :root[data-theme='dark'] .ui-pref-icon-btn:focus-visible {
-  box-shadow: 0 0 0 2px rgba(255, 212, 0, 0.76), 0 0 0 4px rgba(14, 22, 33, 0.96);
+  box-shadow: 0 0 0 2px rgba(255, 212, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.2) inset;
 }
 
-:root[data-theme='dark'] .ui-pref-icon-core {
-  background: rgba(255, 255, 255, 0.08);
-  color: #cbd5e1;
+:root[data-theme='light'] .tenant-sidebar-pref .ui-pref-icon-btn,
+:root[data-theme='dark'] .tenant-sidebar-pref .ui-pref-icon-btn {
+  flex: 1;
+  width: auto;
+  min-height: 34px;
 }
 
-:root[data-theme='dark'] .ui-pref-icon-btn:hover:not(:disabled) .ui-pref-icon-core {
-  background: rgba(255, 212, 0, 0.24);
-  color: #ffe38a;
+:root[data-theme='dark'] .tenant-sidebar-pref {
+  background: linear-gradient(145deg, rgba(28, 40, 58, 0.68) 0%, rgba(16, 24, 37, 0.58) 100%);
+}
+
+:root[data-theme='light'] .tenant-sidebar-pref {
+  background: linear-gradient(142deg, rgba(255, 255, 255, 0.7) 0%, rgba(250, 251, 255, 0.5) 100%);
 }
 
 .login-card {
@@ -559,15 +531,22 @@
   line-height: 1.55;
 }
 
-.login-error {
+.error.login-error {
   margin-top: 2px;
   padding: 12px 14px;
   border-radius: 12px;
-  border: 1px solid rgba(248, 113, 113, 0.36);
-  background: rgba(220, 38, 38, 0.18);
-  color: rgba(254, 226, 226, 0.97);
+  border: 1px solid rgba(239, 68, 68, 0.32);
+  background: #fef2f2;
+  color: #991b1b;
   font-size: 14px;
   font-weight: 500;
+  line-height: 1.45;
+}
+
+:root[data-theme='dark'] .error.login-error {
+  border-color: rgba(248, 113, 113, 0.42);
+  background: rgba(127, 29, 29, 0.52);
+  color: #fee2e2;
 }
 
 .login-dev-code {
@@ -785,7 +764,7 @@ button.auth-action {
     width: 100%;
     min-height: 172px;
     padding: 16px 14px;
-    justify-content: flex-end;
+    justify-content: center;
     border-radius: 18px;
     border: 1px solid rgba(255, 255, 255, 0.2);
     background:
@@ -803,6 +782,7 @@ button.auth-action {
 
   .login-brand-copy {
     max-width: none;
+    min-height: auto;
   }
 
   .login-showcase h1 {
@@ -1590,12 +1570,26 @@ button.auth-action {
 
 :root[data-theme='dark'] .tenant-shell-bg .text-neutral-700,
 :root[data-theme='dark'] .tenant-shell-bg .text-neutral-600 {
-  color: #c3cfde !important;
+  color: #d1dced !important;
 }
 
 :root[data-theme='dark'] .tenant-shell-bg .text-neutral-500,
 :root[data-theme='dark'] .tenant-shell-bg .text-neutral-400 {
-  color: #9eacc1 !important;
+  color: #bdcadf !important;
+}
+
+:root[data-theme='dark'] .tenant-shell-bg .dark\:text-neutral-400,
+:root[data-theme='dark'] .tenant-shell-bg .dark\:text-neutral-500 {
+  color: #bfcee3 !important;
+}
+
+:root[data-theme='dark'] .tenant-shell-bg .dark\:text-neutral-300 {
+  color: #d6e1f0 !important;
+}
+
+:root[data-theme='dark'] .tenant-shell-bg .dark\:text-neutral-200,
+:root[data-theme='dark'] .tenant-shell-bg .dark\:text-neutral-100 {
+  color: #ebf2fb !important;
 }
 
 :root[data-theme='dark'] .tenant-shell-bg .bg-white,
@@ -1651,8 +1645,18 @@ button.auth-action {
   color: rgba(51, 65, 85, 0.56);
 }
 
+:root[data-theme='light'] .login-card .login-mode-toggle {
+  border-color: rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.04);
+}
+
 :root[data-theme='light'] .login-mode-btn {
-  color: rgba(23, 29, 37, 0.72);
+  color: rgba(30, 41, 59, 0.72);
+}
+
+:root[data-theme='light'] .login-mode-btn:hover:not(:disabled) {
+  color: #111827;
+  background: rgba(255, 255, 255, 0.76);
 }
 
 :root[data-theme='light'] .login-mode-btn.active,
@@ -1660,6 +1664,38 @@ button.auth-action {
 :root[data-theme='light'] .locale-btn.active {
   color: #f8fafc;
   background: #1f2937;
+}
+
+:root[data-theme='light'] .login-card button.secondary,
+:root[data-theme='light'] .login-secondary-cta {
+  border-color: rgba(148, 163, 184, 0.34);
+  background: rgba(241, 245, 249, 0.92);
+  color: #1f2937;
+}
+
+:root[data-theme='light'] .login-card button.secondary:hover:not(:disabled),
+:root[data-theme='light'] .login-secondary-cta:hover:not(:disabled) {
+  border-color: rgba(100, 116, 139, 0.46);
+  background: #e2e8f0;
+  color: #111827;
+}
+
+:root[data-theme='light'] .login-secondary-cta:disabled {
+  color: #6b7280;
+  background: rgba(241, 245, 249, 0.72);
+}
+
+:root[data-theme='light'] .login-text-link {
+  color: #3b82f6;
+}
+
+:root[data-theme='light'] .login-preference-controls .ui-pref-icon-btn {
+  color: rgba(31, 41, 55, 0.7);
+}
+
+:root[data-theme='light'] .login-preference-controls .ui-pref-icon-btn:hover:not(:disabled) {
+  background: rgba(15, 23, 42, 0.08);
+  color: rgba(15, 23, 42, 0.9);
 }
 
 :root[data-theme='dark'] .auth-shell::after {
