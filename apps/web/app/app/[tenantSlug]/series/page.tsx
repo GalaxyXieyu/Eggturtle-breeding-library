@@ -15,7 +15,8 @@ import { Badge } from '../../../../components/ui/badge';
 import { Button } from '../../../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../components/ui/card';
 import { Input } from '../../../../components/ui/input';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../../components/ui/table';
+import { Label } from '../../../../components/ui/label';
+import { Textarea } from '../../../../components/ui/textarea';
 
 type ListMeta = {
   page: number;
@@ -24,38 +25,79 @@ type ListMeta = {
   totalPages: number;
 };
 
+type SeriesListItem = Series & {
+  coverImageUrl?: string | null;
+};
+
+type SeriesListResponse = {
+  items: SeriesListItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
+type SeriesEditFormState = {
+  name: string;
+  description: string;
+  isActive: boolean;
+  sortOrder: string;
+};
+
+type SeriesUpdatePayload = {
+  name: string;
+  description: string | null;
+  isActive: boolean;
+  sortOrder: number;
+};
+
+const passthroughSchema = {
+  parse(value: unknown) {
+    return value;
+  }
+};
+
 export default function SeriesListPage() {
   const router = useRouter();
   const params = useParams<{ tenantSlug: string }>();
   const tenantSlug = useMemo(() => params.tenantSlug ?? '', [params.tenantSlug]);
 
-  const [series, setSeries] = useState<Series[]>([]);
+  const [series, setSeries] = useState<SeriesListItem[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [editingSeries, setEditingSeries] = useState<SeriesListItem | null>(null);
+  const [editForm, setEditForm] = useState<SeriesEditFormState | null>(null);
   const [meta, setMeta] = useState<ListMeta>({
     page: 1,
     pageSize: 20,
     total: 0,
     totalPages: 1
   });
+
   const activeCount = series.filter((item) => item.isActive).length;
   const hasSearch = search.trim().length > 0;
 
   const loadSeries = useCallback(async (query: Pick<ListSeriesQuery, 'search'>) => {
     setLoading(true);
 
-    const params = new URLSearchParams();
-    params.set('page', '1');
-    params.set('pageSize', '50');
+    const requestParams = new URLSearchParams();
+    requestParams.set('page', '1');
+    requestParams.set('pageSize', '50');
 
     if (query.search) {
-      params.set('search', query.search);
+      requestParams.set('search', query.search);
     }
 
-    const path = `/series?${params.toString()}`;
+    const path = `/series?${requestParams.toString()}`;
     const response = await apiRequest(path, {
-      responseSchema: listSeriesResponseSchema
+      responseSchema: {
+        parse(value: unknown) {
+          return parseSeriesListResponse(value);
+        }
+      }
     });
 
     setSeries(response.items);
@@ -100,6 +142,26 @@ export default function SeriesListPage() {
     };
   }, [loadSeries, router, tenantSlug]);
 
+  useEffect(() => {
+    if (!editingSeries) {
+      return;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !saving) {
+        setEditingSeries(null);
+        setEditForm(null);
+        setSaveError(null);
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [editingSeries, saving]);
+
   async function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -131,6 +193,83 @@ export default function SeriesListPage() {
     }
   }
 
+  function openEditor(item: SeriesListItem) {
+    setEditingSeries(item);
+    setEditForm({
+      name: item.name,
+      description: item.description ?? '',
+      isActive: item.isActive,
+      sortOrder: String(item.sortOrder)
+    });
+    setSaveError(null);
+  }
+
+  function closeEditor() {
+    if (saving) {
+      return;
+    }
+
+    setEditingSeries(null);
+    setEditForm(null);
+    setSaveError(null);
+  }
+
+  async function handleSaveSeries(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!editingSeries || !editForm) {
+      return;
+    }
+
+    const name = editForm.name.trim();
+
+    if (!name) {
+      setSaveError('系列名称不能为空。');
+      return;
+    }
+
+    const sortOrder = Number(editForm.sortOrder);
+
+    if (!Number.isInteger(sortOrder)) {
+      setSaveError('排序必须是整数。');
+      return;
+    }
+
+    const payload: SeriesUpdatePayload = {
+      name,
+      description: editForm.description.trim() ? editForm.description.trim() : null,
+      isActive: editForm.isActive,
+      sortOrder
+    };
+
+    setSaving(true);
+    setSaveError(null);
+
+    try {
+      await saveSeriesChanges(editingSeries, payload);
+
+      setSeries((current) =>
+        current.map((item) =>
+          item.id === editingSeries.id
+            ? {
+                ...item,
+                ...payload
+              }
+            : item
+        )
+      );
+
+      setEditingSeries(null);
+      setEditForm(null);
+
+      await loadSeries({ search: search.trim() || undefined });
+    } catch (requestError) {
+      setSaveError(formatError(requestError));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <main className="space-y-4 pb-8 sm:space-y-6">
       {error ? (
@@ -148,7 +287,7 @@ export default function SeriesListPage() {
                 <Layers3 size={24} />
                 系列管理
               </CardTitle>
-              <CardDescription className="mt-2">按系列编码或名称快速定位，直接跳转到宠物列表继续编辑。</CardDescription>
+              <CardDescription className="mt-2">按系列编码或名称快速定位，点击卡片即可编辑系列信息。</CardDescription>
             </div>
             <div className="flex flex-wrap gap-2">
               <Badge variant="accent">TOTAL {meta.total}</Badge>
@@ -201,7 +340,7 @@ export default function SeriesListPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <CardTitle className="text-3xl">系列列表</CardTitle>
-              <CardDescription className="mt-1">共 {meta.total} 条记录，支持一键进入对应系列下的宠物管理。</CardDescription>
+              <CardDescription className="mt-1">卡片化展示，移动端优先，点开卡片可直接编辑。</CardDescription>
             </div>
             <Button
               type="button"
@@ -233,57 +372,252 @@ export default function SeriesListPage() {
           ) : null}
 
           {!loading && series.length > 0 ? (
-            <div className="overflow-hidden rounded-2xl border border-neutral-200/90">
-              <Table className="bg-white">
-                <TableHeader className="bg-neutral-50/90">
-                  <TableRow>
-                    <TableHead className="min-w-[140px]">编码</TableHead>
-                    <TableHead className="min-w-[120px]">名称</TableHead>
-                    <TableHead className="min-w-[320px]">描述</TableHead>
-                    <TableHead className="w-[96px] text-center">排序</TableHead>
-                    <TableHead className="w-[96px] text-center">状态</TableHead>
-                    <TableHead className="w-[140px] text-right">操作</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {series.map((item) => (
-                    <TableRow key={item.id} className="align-top">
-                      <TableCell>
-                        <p className="font-semibold text-neutral-900">{item.code}</p>
-                        <p className="mt-1 max-w-[180px] truncate text-xs text-neutral-500">{item.id}</p>
-                      </TableCell>
-                      <TableCell className="font-medium text-neutral-800">{item.name || '-'}</TableCell>
-                      <TableCell>
-                        <p className="line-clamp-2 text-sm leading-relaxed text-neutral-600">{item.description || '暂无描述'}</p>
-                      </TableCell>
-                      <TableCell className="text-center text-sm font-semibold text-neutral-700">{item.sortOrder}</TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant={item.isActive ? 'success' : 'default'}>{item.isActive ? '启用' : '停用'}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex justify-end">
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            className="rounded-xl"
-                            onClick={() => router.push(`/app/${tenantSlug}/products?seriesId=${item.id}`)}
-                          >
-                            查看宠物
-                            <ArrowUpRight size={14} />
-                          </Button>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {series.map((item) => {
+                const hasCover = Boolean(item.coverImageUrl);
+
+                return (
+                  <Card key={item.id} className="overflow-hidden border-neutral-200/90">
+                    <button
+                      type="button"
+                      className="w-full cursor-pointer text-left transition hover:bg-neutral-50"
+                      onClick={() => {
+                        openEditor(item);
+                      }}
+                    >
+                      <div
+                        className="aspect-[4/3] w-full border-b border-neutral-200 bg-neutral-100 bg-cover bg-center"
+                        style={hasCover ? { backgroundImage: `url(${item.coverImageUrl})` } : undefined}
+                        aria-label={`${item.name}封面`}
+                      >
+                        {!hasCover ? (
+                          <div className="flex h-full items-center justify-center text-sm font-medium text-neutral-400">暂无封面</div>
+                        ) : null}
+                      </div>
+
+                      <div className="space-y-3 p-4">
+                        <div className="space-y-1">
+                          <p className="font-mono text-xs text-neutral-500">{item.code}</p>
+                          <p className="line-clamp-1 text-base font-semibold text-neutral-900">{item.name || '-'}</p>
                         </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                        <Badge variant={item.isActive ? 'success' : 'default'}>{item.isActive ? '启用' : '停用'}</Badge>
+                      </div>
+                    </button>
+
+                    <CardContent className="flex gap-2 p-4 pt-0">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => {
+                          openEditor(item);
+                        }}
+                      >
+                        编辑
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => router.push(`/app/${tenantSlug}/products?seriesId=${item.id}`)}
+                      >
+                        查看宠物
+                        <ArrowUpRight size={14} />
+                      </Button>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           ) : null}
         </CardContent>
       </Card>
+
+      {editingSeries && editForm ? (
+        <div
+          className="fixed inset-0 z-50 bg-black/40"
+          onClick={() => {
+            closeEditor();
+          }}
+        >
+          <section
+            className="absolute inset-x-0 bottom-0 max-h-[88vh] overflow-y-auto rounded-t-3xl border border-neutral-200 bg-white p-4 shadow-2xl sm:inset-y-0 sm:right-0 sm:left-auto sm:max-h-none sm:w-[420px] sm:rounded-none sm:border-y-0 sm:border-r-0 sm:border-l"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="series-editor-title"
+            onClick={(event) => {
+              event.stopPropagation();
+            }}
+          >
+            <div className="space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">系列编辑</p>
+              <h3 id="series-editor-title" className="text-lg font-semibold text-neutral-900">
+                {editingSeries.code}
+              </h3>
+              <p className="text-xs text-neutral-500">保存后会直接更新当前租户的系列信息。</p>
+            </div>
+
+            <form className="mt-4 space-y-4" onSubmit={handleSaveSeries}>
+              <div className="space-y-2">
+                <Label htmlFor="series-edit-name">名称</Label>
+                <Input
+                  id="series-edit-name"
+                  value={editForm.name}
+                  onChange={(event) => {
+                    setEditForm((current) =>
+                      current
+                        ? {
+                            ...current,
+                            name: event.target.value
+                          }
+                        : current
+                    );
+                  }}
+                  disabled={saving}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="series-edit-description">描述</Label>
+                <Textarea
+                  id="series-edit-description"
+                  rows={3}
+                  value={editForm.description}
+                  onChange={(event) => {
+                    setEditForm((current) =>
+                      current
+                        ? {
+                            ...current,
+                            description: event.target.value
+                          }
+                        : current
+                    );
+                  }}
+                  className="min-h-[96px]"
+                  disabled={saving}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="series-edit-sort-order">排序</Label>
+                <Input
+                  id="series-edit-sort-order"
+                  type="number"
+                  step={1}
+                  value={editForm.sortOrder}
+                  onChange={(event) => {
+                    setEditForm((current) =>
+                      current
+                        ? {
+                            ...current,
+                            sortOrder: event.target.value
+                          }
+                        : current
+                    );
+                  }}
+                  disabled={saving}
+                />
+              </div>
+
+              <label
+                htmlFor="series-edit-active"
+                className="flex cursor-pointer items-center gap-2 rounded-xl border border-neutral-200 px-3 py-2 text-sm font-medium text-neutral-700"
+              >
+                <input
+                  id="series-edit-active"
+                  type="checkbox"
+                  checked={editForm.isActive}
+                  onChange={(event) => {
+                    setEditForm((current) =>
+                      current
+                        ? {
+                            ...current,
+                            isActive: event.target.checked
+                          }
+                        : current
+                    );
+                  }}
+                  className="h-4 w-4 rounded border-neutral-300 accent-[#FFD400]"
+                  disabled={saving}
+                />
+                <span>{editForm.isActive ? '当前状态：启用' : '当前状态：停用'}</span>
+              </label>
+
+              {saveError ? <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{saveError}</p> : null}
+
+              <div className="flex items-center justify-end gap-2">
+                <Button type="button" variant="secondary" onClick={closeEditor} disabled={saving}>
+                  取消
+                </Button>
+                <Button type="submit" variant="primary" disabled={saving}>
+                  {saving ? '保存中...' : '保存'}
+                </Button>
+              </div>
+            </form>
+          </section>
+        </div>
+      ) : null}
     </main>
   );
+}
+
+async function saveSeriesChanges(series: SeriesListItem, payload: SeriesUpdatePayload) {
+  try {
+    await apiRequest(`/series/${series.id}`, {
+      method: 'PATCH',
+      body: payload,
+      responseSchema: passthroughSchema
+    });
+  } catch (error) {
+    if (error instanceof ApiError && (error.status === 404 || error.status === 405)) {
+      await apiRequest(`/series/${series.id}`, {
+        method: 'PUT',
+        body: {
+          code: series.code,
+          ...payload
+        },
+        responseSchema: passthroughSchema
+      });
+
+      return;
+    }
+
+    throw error;
+  }
+}
+
+function parseSeriesListResponse(value: unknown): SeriesListResponse {
+  const parsed = listSeriesResponseSchema.parse(value);
+  const rawItems =
+    value && typeof value === 'object' && Array.isArray((value as { items?: unknown }).items)
+      ? (value as { items: unknown[] }).items
+      : [];
+
+  return {
+    ...parsed,
+    items: parsed.items.map((item, index) => ({
+      ...item,
+      coverImageUrl: extractCoverImageUrl(rawItems[index])
+    }))
+  };
+}
+
+function extractCoverImageUrl(item: unknown) {
+  if (!item || typeof item !== 'object') {
+    return null;
+  }
+
+  const value = (item as { coverImageUrl?: unknown }).coverImageUrl;
+
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 function formatError(error: unknown) {
