@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, extname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 
@@ -53,6 +54,7 @@ type CliArgs = {
   maxImageFailures: number;
   skipImageDownload: boolean;
   verifyManagedImageObjects: boolean;
+  selfCheck: boolean;
 };
 
 type ManagedImageCandidate = {
@@ -60,6 +62,7 @@ type ManagedImageCandidate = {
   productId: string;
   key: string;
   url: string | null;
+  resolvedUrl: string | null;
   contentType: string | null;
 };
 
@@ -68,7 +71,19 @@ type ImageBinaryFailure = {
   productId: string;
   key: string;
   url: string | null;
+  sourceUrl: string | null;
+  resolvedUrl: string | null;
   reason: string;
+};
+
+type ImageBinaryAttemptRecord = {
+  imageId: string;
+  productId: string;
+  key: string;
+  sourceUrl: string | null;
+  resolvedUrl: string | null;
+  outcome: 'uploaded' | 'reused-existing' | 'skipped-no-url' | 'failed';
+  reason?: string;
 };
 
 type ImageBinaryImportSummary = {
@@ -80,6 +95,9 @@ type ImageBinaryImportSummary = {
   skippedNoUrl: number;
   failed: number;
   maxFailuresAllowed: number;
+  attemptLogLimit: number;
+  attemptLogTruncated: boolean;
+  attempts: ImageBinaryAttemptRecord[];
   failures: ImageBinaryFailure[];
 };
 
@@ -257,6 +275,7 @@ function parseArgs(argv: string[]): CliArgs {
   let skipImageDownload = false;
   let verifyManagedImageObjects = false;
   let legacyImageBaseUrl: string | null = null;
+  let selfCheck = false;
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -301,7 +320,7 @@ function parseArgs(argv: string[]): CliArgs {
       continue;
     }
 
-    if (arg === '--legacy-image-base-url') {
+    if (arg === '--legacy-image-base-url' || arg === '--source-api-base-url') {
       legacyImageBaseUrl = requireValue(argv, index, arg).trim();
       index += 1;
       continue;
@@ -365,6 +384,11 @@ function parseArgs(argv: string[]): CliArgs {
       continue;
     }
 
+    if (arg === '--self-check') {
+      selfCheck = true;
+      continue;
+    }
+
     if (arg === '--help' || arg === '-h') {
       printHelpAndExit(0);
     }
@@ -372,7 +396,7 @@ function parseArgs(argv: string[]): CliArgs {
     throw new Error(`Unknown argument: ${arg}`);
   }
 
-  if (!input.trim()) {
+  if (!selfCheck && !input.trim()) {
     throw new Error('--input is required.');
   }
 
@@ -409,7 +433,8 @@ function parseArgs(argv: string[]): CliArgs {
     maxImages,
     maxImageFailures,
     skipImageDownload,
-    verifyManagedImageObjects
+    verifyManagedImageObjects,
+    selfCheck
   };
 }
 
@@ -452,6 +477,7 @@ function printHelpAndExit(code: number): never {
     '  --skip-shares               Skip synthetic share creation from shareSeeds',
     '  --report-dir <path>         Write import report files to this directory',
     '  --legacy-image-base-url <url>  Base URL to resolve relative legacy image URLs (defaults to export.source.apiBaseUrl)',
+    '  --source-api-base-url <url>    Alias of --legacy-image-base-url (CLI override for export.source.apiBaseUrl)',
     '  --import-image-binaries     Download legacy image binaries and upload to managed storage',
     '  --skip-image-download       Force metadata-only mode even if import flag is set',
     '  --image-concurrency <n>     Concurrent binary downloads/uploads (default: 3)',
@@ -461,6 +487,7 @@ function printHelpAndExit(code: number): never {
     '  --verify-managed-image-objects  Read managed objects after import to verify storage presence',
     '  --confirm                   Execute DB write operations (default is dry-run)',
     '  --confirm-prod              Required when --env=prod or target DB looks production',
+    '  --self-check                Run URL resolution assertions and exit (no DB access)',
     '  -h, --help                  Show help',
     '',
     'Safety rails:',
@@ -652,6 +679,8 @@ const IMAGE_EXTENSION_TO_CONTENT_TYPE: Record<string, string> = {
   '.svg': 'image/svg+xml'
 };
 
+const IMAGE_BINARY_ATTEMPT_LOG_LIMIT = 200;
+
 function createStorageProvider() {
   const provider = (process.env.STORAGE_PROVIDER ?? 'local').toLowerCase();
   if (provider === 's3') {
@@ -697,6 +726,98 @@ function resolveLegacyUrl(rawUrl: string | null | undefined, baseUrl: string | n
   } catch {
     return null;
   }
+}
+
+export function resolveLegacyDownloadUrl(
+  rawUrl: string | null | undefined,
+  sourceApiBaseUrl: string | null | undefined
+): string | null {
+  const url = normalizeString(rawUrl);
+  if (!url) {
+    return null;
+  }
+
+  if (isHttpUrl(url)) {
+    return url;
+  }
+
+  const base = normalizeString(sourceApiBaseUrl);
+  if (!base || !isHttpUrl(base)) {
+    return null;
+  }
+
+  // Prioritize leading-slash legacy paths exported from old API payloads.
+  if (url.startsWith('/')) {
+    try {
+      return new URL(url, base).toString();
+    } catch {
+      return null;
+    }
+  }
+
+  // Keep previous behavior for other relative URL shapes.
+  return resolveLegacyUrl(url, base);
+}
+
+export function sanitizeUrlForReport(rawUrl: string | null | undefined): string | null {
+  const value = normalizeString(rawUrl);
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(value);
+    parsed.username = '';
+    parsed.password = '';
+    parsed.search = '';
+    parsed.hash = '';
+    return parsed.toString();
+  } catch {
+    return value.split('#')[0]?.split('?')[0] ?? null;
+  }
+}
+
+function assertSelfCheckEqual(actual: unknown, expected: unknown, label: string): void {
+  if (actual !== expected) {
+    throw new Error(`Self-check failed for ${label}: expected ${expected}, got ${actual}`);
+  }
+}
+
+function runSelfCheck(): void {
+  const baseUrl = 'https://legacy.example.com';
+
+  assertSelfCheckEqual(
+    resolveLegacyDownloadUrl('/static/images/turtle.jpg', baseUrl),
+    'https://legacy.example.com/static/images/turtle.jpg',
+    'leading slash path resolution'
+  );
+  assertSelfCheckEqual(
+    resolveLegacyDownloadUrl('images/turtle.jpg', baseUrl),
+    'https://legacy.example.com/images/turtle.jpg',
+    'relative path resolution'
+  );
+  assertSelfCheckEqual(
+    resolveLegacyDownloadUrl('https://cdn.example.com/image.png?token=secret', baseUrl),
+    'https://cdn.example.com/image.png?token=secret',
+    'absolute URL passthrough'
+  );
+  assertSelfCheckEqual(
+    resolveLegacyDownloadUrl('/static/images/turtle.jpg', null),
+    null,
+    'missing base URL handling'
+  );
+  assertSelfCheckEqual(
+    sanitizeUrlForReport('https://cdn.example.com/image.png?token=secret#part'),
+    'https://cdn.example.com/image.png',
+    'report URL query/hash stripping'
+  );
+  assertSelfCheckEqual(
+    sanitizeUrlForReport('https://user:pass@cdn.example.com/image.png?token=secret'),
+    'https://cdn.example.com/image.png',
+    'report URL credential stripping'
+  );
+
+  console.info('Self-check passed');
 }
 
 function normalizeContentType(value: string | null | undefined): string | null {
@@ -905,8 +1026,30 @@ function createImageBinaryImportSummary(args: CliArgs): ImageBinaryImportSummary
     skippedNoUrl: 0,
     failed: 0,
     maxFailuresAllowed: args.maxImageFailures,
+    attemptLogLimit: IMAGE_BINARY_ATTEMPT_LOG_LIMIT,
+    attemptLogTruncated: false,
+    attempts: [],
     failures: []
   };
+}
+
+function appendImageBinaryAttemptRecord(
+  summary: ImageBinaryImportSummary,
+  record: Omit<ImageBinaryAttemptRecord, 'sourceUrl' | 'resolvedUrl'> & {
+    sourceUrl: string | null | undefined;
+    resolvedUrl: string | null | undefined;
+  }
+): void {
+  if (summary.attempts.length >= summary.attemptLogLimit) {
+    summary.attemptLogTruncated = true;
+    return;
+  }
+
+  summary.attempts.push({
+    ...record,
+    sourceUrl: sanitizeUrlForReport(record.sourceUrl),
+    resolvedUrl: sanitizeUrlForReport(record.resolvedUrl)
+  });
 }
 
 function createManagedImageObjectVerification(enabled: boolean): ManagedImageObjectVerification {
@@ -953,11 +1096,13 @@ async function importImageBinaries(
   await mapWithConcurrency(candidates, args.imageConcurrency, async (image) => {
     summary.attempted += 1;
 
+    const sourceUrl = normalizeString(image.url);
     const candidate: ManagedImageCandidate = {
       id: image.id,
       productId: image.productId,
       key: image.key,
-      url: resolveLegacyUrl(image.url, legacyImageBaseUrl),
+      url: sourceUrl,
+      resolvedUrl: resolveLegacyDownloadUrl(sourceUrl, legacyImageBaseUrl),
       contentType: normalizeContentType(image.contentType)
     };
 
@@ -972,6 +1117,14 @@ async function importImageBinaries(
         const exists = await storageObjectExists(storageProvider, candidate.key);
         if (exists) {
           summary.skippedManagedExisting += 1;
+          appendImageBinaryAttemptRecord(summary, {
+            imageId: candidate.id,
+            productId: candidate.productId,
+            key: candidate.key,
+            sourceUrl: candidate.url,
+            resolvedUrl: candidate.resolvedUrl,
+            outcome: 'reused-existing'
+          });
           return;
         }
       } else {
@@ -988,20 +1141,36 @@ async function importImageBinaries(
           });
           summary.dbUpdated += 1;
           summary.skippedManagedExisting += 1;
+          appendImageBinaryAttemptRecord(summary, {
+            imageId: candidate.id,
+            productId: candidate.productId,
+            key: candidate.key,
+            sourceUrl: candidate.url,
+            resolvedUrl: candidate.resolvedUrl,
+            outcome: 'reused-existing'
+          });
           return;
         }
       }
 
-      if (!candidate.url || !isHttpUrl(candidate.url)) {
+      if (!candidate.resolvedUrl || !isHttpUrl(candidate.resolvedUrl)) {
         if (alreadyManaged) {
           throw new Error('Managed key exists in DB but storage object is missing and URL is not downloadable.');
         }
 
         summary.skippedNoUrl += 1;
+        appendImageBinaryAttemptRecord(summary, {
+          imageId: candidate.id,
+          productId: candidate.productId,
+          key: candidate.key,
+          sourceUrl: candidate.url,
+          resolvedUrl: candidate.resolvedUrl,
+          outcome: 'skipped-no-url'
+        });
         return;
       }
 
-      const downloaded = await downloadImageBinary(candidate.url, args.imageTimeoutMs);
+      const downloaded = await downloadImageBinary(candidate.resolvedUrl, args.imageTimeoutMs);
       const extension = chooseManagedImageExtension(candidate, downloaded.contentType);
       const targetKey = alreadyManaged
         ? candidate.key
@@ -1022,6 +1191,14 @@ async function importImageBinaries(
           });
           summary.dbUpdated += 1;
           summary.skippedManagedExisting += 1;
+          appendImageBinaryAttemptRecord(summary, {
+            imageId: candidate.id,
+            productId: candidate.productId,
+            key: candidate.key,
+            sourceUrl: candidate.url,
+            resolvedUrl: candidate.resolvedUrl,
+            outcome: 'reused-existing'
+          });
           return;
         }
       }
@@ -1042,14 +1219,34 @@ async function importImageBinaries(
 
       summary.uploaded += 1;
       summary.dbUpdated += 1;
+      appendImageBinaryAttemptRecord(summary, {
+        imageId: candidate.id,
+        productId: candidate.productId,
+        key: candidate.key,
+        sourceUrl: candidate.url,
+        resolvedUrl: candidate.resolvedUrl,
+        outcome: 'uploaded'
+      });
     } catch (error) {
+      const reason = error instanceof Error ? error.message : 'Unknown image binary import error.';
       summary.failed += 1;
+      appendImageBinaryAttemptRecord(summary, {
+        imageId: candidate.id,
+        productId: candidate.productId,
+        key: candidate.key,
+        sourceUrl: candidate.url,
+        resolvedUrl: candidate.resolvedUrl,
+        outcome: 'failed',
+        reason
+      });
       summary.failures.push({
         imageId: candidate.id,
         productId: candidate.productId,
         key: candidate.key,
-        url: candidate.url,
-        reason: error instanceof Error ? error.message : 'Unknown image binary import error.'
+        url: sanitizeUrlForReport(candidate.resolvedUrl) ?? sanitizeUrlForReport(candidate.url),
+        sourceUrl: sanitizeUrlForReport(candidate.url),
+        resolvedUrl: sanitizeUrlForReport(candidate.resolvedUrl),
+        reason
       });
     }
   });
@@ -1234,6 +1431,8 @@ function uniqueCodes(values: Array<string | null | undefined>): string[] {
 }
 
 function printPlan(args: CliArgs, payload: ExportPayload, databaseUrl: string): void {
+  const sourceApiBaseUrl = args.legacyImageBaseUrl ?? normalizeString(payload.source?.apiBaseUrl);
+
   console.info('Import plan:');
   console.info(`- mode: ${args.confirm ? 'WRITE' : 'DRY-RUN (default)'}`);
   console.info(`- env: ${args.env}`);
@@ -1243,6 +1442,7 @@ function printPlan(args: CliArgs, payload: ExportPayload, databaseUrl: string): 
   console.info(`- skip shares: ${args.skipShares ? 'yes' : 'no'}`);
   console.info(`- import image binaries: ${args.importImageBinaries ? 'yes' : 'no'}`);
   if (args.importImageBinaries) {
+    console.info(`  - image source api base url: ${sanitizeUrlForReport(sourceApiBaseUrl) ?? '<none>'}`);
     console.info(`  - image concurrency: ${args.imageConcurrency}`);
     console.info(`  - image timeout ms: ${args.imageTimeoutMs}`);
     console.info(`  - max images: ${args.maxImages ?? 'all'}`);
@@ -2102,6 +2302,12 @@ function printWriteSummary(result: ImportResult, report: Record<string, unknown>
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
+
+  if (args.selfCheck) {
+    runSelfCheck();
+    return;
+  }
+
   const payload = parsePayload(args.input);
 
   const databaseUrl = process.env.DATABASE_URL;
@@ -2225,8 +2431,23 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((error: unknown) => {
-  console.error('Import failed');
-  console.error(error);
-  process.exitCode = 1;
-});
+function isExecutedAsMainModule(): boolean {
+  const entry = process.argv[1];
+  if (!entry) {
+    return false;
+  }
+
+  try {
+    return resolve(entry) === fileURLToPath(import.meta.url);
+  } catch {
+    return false;
+  }
+}
+
+if (isExecutedAsMainModule()) {
+  main().catch((error: unknown) => {
+    console.error('Import failed');
+    console.error(error);
+    process.exitCode = 1;
+  });
+}
