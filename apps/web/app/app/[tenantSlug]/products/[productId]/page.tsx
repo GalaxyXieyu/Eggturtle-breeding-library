@@ -11,7 +11,7 @@ import {
   uploadProductImageResponseSchema,
   type ProductImage
 } from '@eggturtle/shared';
-import { ArrowDown, ArrowUp, ImagePlus, Star } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ImagePlus, Star, Trash2 } from 'lucide-react';
 
 import { ApiError, apiRequest, getAccessToken, getApiBaseUrl, resolveAuthenticatedAssetUrl } from '../../../../../lib/api-client';
 import { switchTenantBySlug } from '../../../../../lib/tenant-session';
@@ -32,6 +32,10 @@ export default function ProductImagesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  const currentImage = images[currentImageIndex] ?? images[0] ?? null;
+  const hasMultipleImages = images.length > 1;
 
   const loadImages = useCallback(async () => {
     const response = await apiRequest(`/products/${productId}/images`, {
@@ -73,6 +77,17 @@ export default function ProductImagesPage() {
       }
     })();
   }, [isDemoMode, loadImages, productId, router, tenantSlug]);
+
+  useEffect(() => {
+    if (images.length === 0) {
+      setCurrentImageIndex(0);
+      return;
+    }
+
+    if (currentImageIndex > images.length - 1) {
+      setCurrentImageIndex(images.length - 1);
+    }
+  }, [currentImageIndex, images.length]);
 
   async function handleUpload(event: ChangeEvent<HTMLInputElement>) {
     const fileList = event.target.files;
@@ -263,83 +278,145 @@ export default function ProductImagesPage() {
       </Card>
 
       <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
-        <CardHeader>
+        <CardHeader className="pb-4">
           <CardTitle className="text-2xl">已上传图片</CardTitle>
+          {!loading && currentImage ? (
+            <CardDescription>
+              当前第 {currentImageIndex + 1}/{images.length} 张 · 排序 #{currentImageIndex + 1}
+            </CardDescription>
+          ) : null}
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
           {loading ? <p className="text-sm text-neutral-600">正在加载图片...</p> : null}
           {!loading && images.length === 0 ? <p className="text-sm text-neutral-500">该产品暂无图片，先上传一张吧。</p> : null}
 
-          {!loading && images.length > 0 ? (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4">
-              {images.map((image, index) => (
-                <article key={image.id} className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
-                  <div className="relative h-44 bg-neutral-100">
-                    <img src={resolveImageUrl(image.url)} alt={`产品图片 ${index + 1}`} className="h-full w-full object-cover" />
-                    {image.isMain ? (
-                      <div className="absolute left-3 top-3">
-                        <Badge variant="accent">主图</Badge>
-                      </div>
-                    ) : null}
+          {!loading && currentImage ? (
+            <>
+              <article className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-white">
+                <div className="relative aspect-[4/3] bg-neutral-100 sm:aspect-video">
+                  <img
+                    src={resolveImageUrl(currentImage.url)}
+                    alt={`产品图片 ${currentImageIndex + 1}`}
+                    className="h-full w-full object-cover"
+                  />
+
+                  <div className="absolute left-3 top-3 flex items-center gap-2">
+                    {currentImage.isMain ? <Badge variant="accent">主图</Badge> : null}
+                    <Badge>#{currentImageIndex + 1}</Badge>
                   </div>
 
-                  <div className="space-y-3 p-4">
-                    <p className="text-xs text-neutral-500">排序：#{index + 1}</p>
-                    <p className="truncate text-xs text-neutral-500">imageId: {image.id}</p>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="secondary"
-                        disabled={submitting || image.isMain}
-                        onClick={() => {
-                          void handleSetMain(image.id);
-                        }}
-                      >
-                        <Star size={14} />
-                        主图
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="secondary"
-                        disabled={submitting || index === 0}
-                        onClick={() => {
-                          void handleMove(index, -1);
-                        }}
-                      >
-                        <ArrowUp size={14} />
-                        上移
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="secondary"
-                        disabled={submitting || index === images.length - 1}
-                        onClick={() => {
-                          void handleMove(index, 1);
-                        }}
-                      >
-                        <ArrowDown size={14} />
-                        下移
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={submitting}
-                        onClick={() => {
-                          void handleDeleteImage(image.id);
-                        }}
-                      >
-                        删除
-                      </Button>
-                    </div>
+                  <div className="absolute right-3 top-3 flex gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      className="h-8 rounded-full bg-white/90 px-3 shadow-sm"
+                      disabled={submitting || currentImage.isMain}
+                      onClick={() => {
+                        void handleSetMain(currentImage.id);
+                      }}
+                    >
+                      <Star size={14} />
+                      设主图
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="secondary"
+                      aria-label="删除当前图片"
+                      className="h-8 w-8 rounded-full bg-white/90 shadow-sm"
+                      disabled={submitting}
+                      onClick={() => {
+                        void handleDeleteImage(currentImage.id);
+                      }}
+                    >
+                      <Trash2 size={14} />
+                    </Button>
                   </div>
-                </article>
-              ))}
-            </div>
+
+                  {hasMultipleImages ? (
+                    <>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="secondary"
+                        aria-label="上一张图片"
+                        className="absolute left-3 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full bg-white/90 shadow-sm"
+                        disabled={currentImageIndex === 0}
+                        onClick={() => {
+                          setCurrentImageIndex((current) => Math.max(0, current - 1));
+                        }}
+                      >
+                        <ChevronLeft size={16} />
+                      </Button>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="secondary"
+                        aria-label="下一张图片"
+                        className="absolute right-3 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full bg-white/90 shadow-sm"
+                        disabled={currentImageIndex === images.length - 1}
+                        onClick={() => {
+                          setCurrentImageIndex((current) => Math.min(images.length - 1, current + 1));
+                        }}
+                      >
+                        <ChevronRight size={16} />
+                      </Button>
+                    </>
+                  ) : null}
+
+                  <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/40 to-transparent" />
+                  <div className="absolute bottom-3 left-3 text-xs font-medium text-white/95">imageId: {currentImage.id}</div>
+                </div>
+              </article>
+
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  disabled={submitting || currentImageIndex === 0}
+                  onClick={() => {
+                    void handleMove(currentImageIndex, -1);
+                  }}
+                >
+                  <ArrowUp size={14} />
+                  上移
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  disabled={submitting || currentImageIndex === images.length - 1}
+                  onClick={() => {
+                    void handleMove(currentImageIndex, 1);
+                  }}
+                >
+                  <ArrowDown size={14} />
+                  下移
+                </Button>
+              </div>
+
+              {hasMultipleImages ? (
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {images.map((image, index) => (
+                    <button
+                      key={image.id}
+                      type="button"
+                      className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-md border-2 transition-all ${
+                        index === currentImageIndex ? 'border-neutral-900' : 'border-transparent'
+                      }`}
+                      onClick={() => setCurrentImageIndex(index)}
+                    >
+                      <img src={resolveImageUrl(image.url)} alt={`缩略图 ${index + 1}`} className="h-full w-full object-cover" />
+                      {image.isMain ? (
+                        <span className="absolute left-1 top-1 rounded bg-black/65 px-1 py-0.5 text-[10px] font-medium text-white">主图</span>
+                      ) : null}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </>
           ) : null}
         </CardContent>
       </Card>
