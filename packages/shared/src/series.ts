@@ -3,6 +3,8 @@ import { z } from 'zod';
 export const seriesCodeSchema = z.string().trim().min(1).max(120);
 export const seriesNameSchema = z.string().trim().min(1).max(120);
 
+const seriesDescriptionSchema = z.string().trim().max(5000).nullable().optional();
+
 export const seriesSummarySchema = z.object({
   id: z.string().min(1),
   tenantId: z.string().min(1),
@@ -14,6 +16,7 @@ export const seriesSummarySchema = z.object({
 
 export const seriesSchema = seriesSummarySchema.extend({
   description: z.string().nullable(),
+  coverImageUrl: z.string().nullable().optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime()
 });
@@ -36,6 +39,23 @@ export const getSeriesResponseSchema = z.object({
   series: seriesSchema
 });
 
+export const updateSeriesRequestSchema = z
+  .object({
+    name: seriesNameSchema.optional(),
+    description: seriesDescriptionSchema,
+    isActive: z.boolean().optional(),
+    sortOrder: z.number().int().optional()
+  })
+  .refine((payload) => Object.keys(payload).length > 0, {
+    message: 'At least one field must be provided for update.'
+  });
+
+export const updateSeriesResponseSchema = z.object({
+  series: seriesSchema
+});
+
 export type Series = z.infer<typeof seriesSchema>;
 export type SeriesSummary = z.infer<typeof seriesSummarySchema>;
 export type ListSeriesQuery = z.infer<typeof listSeriesQuerySchema>;
+export type UpdateSeriesRequest = z.infer<typeof updateSeriesRequestSchema>;
+export type UpdateSeriesResponse = z.infer<typeof updateSeriesResponseSchema>;
