@@ -9,9 +9,54 @@ cd /app
 : "${PRISMA_MIGRATE_ON_BOOT:=true}"
 : "${PRISMA_SEED_ON_BOOT:=true}"
 : "${INTERNAL_API_BASE_URL:=http://127.0.0.1:${API_PORT}}"
+: "${WEB_BUILD_ON_BOOT:=auto}"
 
 export NODE_ENV
 export INTERNAL_API_BASE_URL
+
+web_build_required() {
+  case "${WEB_BUILD_ON_BOOT}" in
+    true)
+      return 0
+      ;;
+    false)
+      return 1
+      ;;
+    auto)
+      ;;
+    *)
+      echo "[web] unknown WEB_BUILD_ON_BOOT=${WEB_BUILD_ON_BOOT}, fallback to auto"
+      ;;
+  esac
+
+  if [ ! -f /app/apps/web/.next/BUILD_ID ]; then
+    echo "[web] missing /app/apps/web/.next/BUILD_ID"
+    return 0
+  fi
+
+  if [ ! -d /app/apps/web/.next/server ] || [ ! -d /app/apps/web/.next/static ]; then
+    echo "[web] incomplete /app/apps/web/.next artifacts"
+    return 0
+  fi
+
+  if find \
+    /app/apps/web/app \
+    /app/apps/web/lib \
+    /app/apps/web/public \
+    /app/apps/web/next.config.mjs \
+    /app/apps/web/package.json \
+    /app/packages/shared/src \
+    /app/packages/shared/styles \
+    -type f \
+    -newer /app/apps/web/.next/BUILD_ID \
+    -print \
+    -quit 2>/dev/null | grep -q .; then
+    echo "[web] source changes detected after latest build"
+    return 0
+  fi
+
+  return 1
+}
 
 if [ "${PRISMA_MIGRATE_ON_BOOT}" = "true" ]; then
   pnpm --filter @eggturtle/api prisma:deploy
@@ -93,6 +138,14 @@ main()
   });
 NODE
   )
+fi
+
+if web_build_required; then
+  echo "[web] rebuilding Next.js artifacts"
+  pnpm --filter @eggturtle/shared build
+  pnpm --filter @eggturtle/web build
+else
+  echo "[web] reusing existing Next.js build"
 fi
 
 PORT="${API_PORT}" node /app/apps/api/dist/main.js &
