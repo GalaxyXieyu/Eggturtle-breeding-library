@@ -131,9 +131,17 @@ export {
   seriesCodeSchema,
   seriesNameSchema,
   seriesSchema,
-  seriesSummarySchema
+  seriesSummarySchema,
+  updateSeriesRequestSchema,
+  updateSeriesResponseSchema
 } from './series';
-export type { ListSeriesQuery, Series, SeriesSummary } from './series';
+export type {
+  ListSeriesQuery,
+  Series,
+  SeriesSummary,
+  UpdateSeriesRequest,
+  UpdateSeriesResponse
+} from './series';
 export {
   breederCodeSchema,
   breederEventSchema,
