@@ -7,8 +7,8 @@ services:
     ports:
       - "30080:80"
     environment:
-      # Legacy app defaults to sqlite on /data/app.db
-      DATABASE_URL: "sqlite:////data/app.db"
+      # Node stack uses Prisma + Postgres.
+      DATABASE_URL: "postgres://eggturtle:eggturtle@postgres:5432/eggturtle"
       UPLOAD_DIR: "/data/images"
       # Change these for any non-local use.
       SECRET_KEY: "dev-only-change-me"

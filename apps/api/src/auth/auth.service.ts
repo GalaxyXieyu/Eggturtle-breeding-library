@@ -147,11 +147,37 @@ export class AuthService {
   }
 
   async passwordLogin(email: string, password: string): Promise<PasswordLoginResponse> {
-    const user = await this.prisma.user.findUnique({
+    const loginIdentifier = email.trim().toLowerCase();
+    let user = await this.prisma.user.findUnique({
       where: {
-        email
+        email: loginIdentifier
       }
     });
+
+    // Support tenant-slug login (e.g. "siri") by resolving to the tenant owner account.
+    if (!user && !loginIdentifier.includes('@')) {
+      const ownerMembership = await this.prisma.tenantMember.findFirst({
+        where: {
+          role: TenantMemberRole.OWNER,
+          tenant: {
+            slug: loginIdentifier
+          },
+          user: {
+            passwordHash: {
+              not: null
+            }
+          }
+        },
+        include: {
+          user: true
+        },
+        orderBy: {
+          createdAt: 'asc'
+        }
+      });
+
+      user = ownerMembership?.user ?? null;
+    }
 
     if (!user?.passwordHash) {
       this.throwInvalidCredentials();

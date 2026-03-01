@@ -4,6 +4,12 @@ import { tenantSubscriptionSchema } from './subscription';
 import { tenantNameSchema, tenantSlugSchema } from './tenant';
 
 export const authEmailSchema = z.string().trim().email().max(255).transform((email) => email.toLowerCase());
+export const authLoginIdentifierSchema = z
+  .string()
+  .trim()
+  .min(1, 'Login identifier is required.')
+  .max(255)
+  .transform((value) => value.toLowerCase());
 export const authCodeSchema = z.string().trim().regex(/^\d{6}$/, 'Code must be a 6-digit number.');
 export const authPasswordSchema = z
   .string()
@@ -38,7 +44,7 @@ export const verifyCodeResponseSchema = z.object({
 });
 
 export const passwordLoginRequestSchema = z.object({
-  email: authEmailSchema,
+  email: authLoginIdentifierSchema,
   password: authPasswordSchema
 });
 

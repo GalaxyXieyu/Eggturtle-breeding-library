@@ -40,6 +40,8 @@ type LoginCopy = {
   localeEn: string;
   modePassword: string;
   modeCode: string;
+  passwordIdentifierLabel: string;
+  passwordIdentifierPlaceholder: string;
   emailLabel: string;
   emailPlaceholder: string;
   passwordLabel: string;
@@ -113,6 +115,8 @@ const COPY: Record<UiLocale, LoginCopy> = {
     localeEn: '英文',
     modePassword: '账号密码',
     modeCode: '邮箱验证',
+    passwordIdentifierLabel: '邮箱或租户标识',
+    passwordIdentifierPlaceholder: 'admin@eggturtle.local 或 siri',
     emailLabel: '邮箱',
     emailPlaceholder: 'you@eggturtle.local',
     passwordLabel: '密码',
@@ -184,6 +188,8 @@ const COPY: Record<UiLocale, LoginCopy> = {
     localeEn: 'English',
     modePassword: 'Password',
     modeCode: 'Email Verify',
+    passwordIdentifierLabel: 'Email or tenant slug',
+    passwordIdentifierPlaceholder: 'admin@eggturtle.local or siri',
     emailLabel: 'Email',
     emailPlaceholder: 'you@eggturtle.local',
     passwordLabel: 'Password',
@@ -593,13 +599,13 @@ export default function LoginPage() {
 
                 {mode === 'password' ? (
                   <form className="stack login-panel" onSubmit={handlePasswordLogin}>
-                    <label htmlFor="password-email">{copy.emailLabel}</label>
+                    <label htmlFor="password-email">{copy.passwordIdentifierLabel}</label>
                     <input
                       id="password-email"
-                      type="email"
-                      autoComplete="email"
+                      type="text"
+                      autoComplete="username"
                       value={email}
-                      placeholder={copy.emailPlaceholder}
+                      placeholder={copy.passwordIdentifierPlaceholder}
                       onChange={(event) => setEmail(event.target.value)}
                       required
                     />
