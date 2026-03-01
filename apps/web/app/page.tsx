@@ -95,14 +95,16 @@ export default function HomePage() {
 
           <div className={styles.heroVisual}>
             <div className={styles.heroImageWrap}>
-              <Image
-                src="/images/mg_01.jpg"
-                alt="种龟繁育展示"
-                fill
-                sizes="(max-width: 900px) 100vw, 42vw"
-                className={styles.heroImage}
-                priority
-              />
+              <picture className={styles.heroPicture}>
+                <source media="(max-width: 640px)" srcSet="/images/mg_02.jpg" />
+                <img
+                  src="/images/mg_01.jpg"
+                  alt="种龟繁育展示"
+                  className={styles.heroImage}
+                  loading="eager"
+                  decoding="async"
+                />
+              </picture>
             </div>
             <div className={styles.floatingCard}>
               <p>在库种龟</p>

@@ -255,7 +255,20 @@
   border: 1px solid rgba(255, 255, 255, 0.16);
 }
 
-.heroImage,
+.heroPicture {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.heroImage {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center 46%;
+}
+
 .galleryImage {
   object-fit: cover;
 }
@@ -493,6 +506,10 @@
 
   .heroImageWrap {
     min-height: 250px;
+  }
+
+  .heroImage {
+    object-position: center 44%;
   }
 
   .floatingCard {
