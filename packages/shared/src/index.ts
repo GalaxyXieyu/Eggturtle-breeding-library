@@ -148,15 +148,19 @@ export type {
 export {
   createShareRequestSchema,
   createShareResponseSchema,
+  publicProductShareResponseSchema,
+  publicShareFeedItemSchema,
+  publicShareProductSchema,
   publicShareQuerySchema,
   publicShareResponseSchema,
-  publicShareProductSchema,
   publicShareTenantSchema,
+  publicTenantFeedShareResponseSchema,
   shareResourceTypeSchema,
   shareSchema
 } from './share';
 export type {
   CreateShareRequest,
+  PublicShareFeedItem,
   PublicShareQuery,
   PublicShareResponse,
   Share,

@@ -21,6 +21,7 @@ type PublicShareQueryInput = {
   tenantId: string;
   resourceType: ShareResourceType;
   resourceId: string;
+  productId?: string;
   exp: string;
   sig: string;
 };
@@ -28,6 +29,24 @@ type PublicShareQueryInput = {
 type ShareAccessMeta = {
   ip: string | null;
   userAgent: string | null;
+};
+
+type ShareAuditScope = {
+  id: string;
+  tenantId: string;
+  resourceType: ShareResourceType;
+  resourceId: string;
+  productId: string | null;
+  createdByUserId: string;
+  shareToken?: string;
+};
+
+type ShareScope = ShareAuditScope & {
+  tenant: {
+    id: string;
+    slug: string;
+    name: string;
+  };
 };
 
 const DEFAULT_WEB_PUBLIC_BASE_URL = 'http://localhost:30010';
@@ -48,46 +67,56 @@ export class SharesService {
   ) {}
 
   async createShare(tenantId: string, actorUserId: string, payload: CreateShareRequest) {
-    if (payload.resourceType !== 'product') {
+    let resourceId = payload.resourceId;
+    let productId: string | null = null;
+
+    if (payload.resourceType === 'product') {
+      const product = await this.prisma.product.findFirst({
+        where: {
+          id: payload.resourceId,
+          tenantId
+        },
+        select: {
+          id: true
+        }
+      });
+
+      if (!product) {
+        throw new NotFoundException({
+          message: 'Product not found.',
+          errorCode: ErrorCode.ProductNotFound
+        });
+      }
+
+      resourceId = product.id;
+      productId = product.id;
+    } else if (payload.resourceType === 'tenant_feed') {
+      if (payload.resourceId !== tenantId) {
+        throw new BadRequestException({
+          message: 'tenant_feed resourceId must match current tenant.',
+          errorCode: ErrorCode.InvalidRequestPayload
+        });
+      }
+
+      resourceId = tenantId;
+    } else {
       throw new BadRequestException({
         message: `Unsupported resourceType: ${payload.resourceType}`,
         errorCode: ErrorCode.InvalidRequestPayload
       });
     }
 
-    const product = await this.prisma.product.findFirst({
-      where: {
-        id: payload.resourceId,
-        tenantId
-      },
-      select: {
-        id: true
-      }
-    });
-
-    if (!product) {
-      throw new NotFoundException({
-        message: 'Product not found.',
-        errorCode: ErrorCode.ProductNotFound
-      });
-    }
-
     await this.tenantSubscriptionsService.assertSharePlanAllowsCreate(tenantId);
 
-    const existingShare = await this.prisma.publicShare.findUnique({
-      where: {
-        tenantId_productId: {
-          tenantId,
-          productId: product.id
-        }
-      }
-    });
+    const existingShare = await this.findShareByResource(tenantId, payload.resourceType, resourceId);
 
     if (!existingShare) {
       await this.tenantSubscriptionsService.assertShareQuotaAllowsCreate(tenantId);
     }
 
-    const share = existingShare ?? (await this.getOrCreateProductShare(tenantId, product.id, actorUserId));
+    const share =
+      existingShare ??
+      (await this.getOrCreateShare(tenantId, payload.resourceType, resourceId, productId, actorUserId));
 
     await this.auditLogsService.createLog({
       tenantId,
@@ -97,6 +126,8 @@ export class SharesService {
       resourceId: share.id,
       metadata: {
         shareToken: share.shareToken,
+        resourceType: share.resourceType,
+        resourceId: share.resourceId,
         productId: share.productId
       }
     });
@@ -104,8 +135,8 @@ export class SharesService {
     return {
       id: share.id,
       tenantId: share.tenantId,
-      resourceType: 'product' as const,
-      resourceId: share.productId,
+      resourceType: share.resourceType,
+      resourceId: share.resourceId,
       shareToken: share.shareToken,
       entryUrl: this.buildShareEntryUrl(share.shareToken),
       createdAt: share.createdAt.toISOString(),
@@ -123,9 +154,16 @@ export class SharesService {
       select: {
         id: true,
         tenantId: true,
+        resourceType: true,
+        resourceId: true,
         productId: true,
         createdByUserId: true,
-        shareToken: true
+        shareToken: true,
+        tenant: {
+          select: {
+            slug: true
+          }
+        }
       }
     });
 
@@ -136,13 +174,30 @@ export class SharesService {
       });
     }
 
+    const resourceType = this.parseShareResourceType(share.resourceType);
+
     const { redirectUrl, expiresAt } = this.buildRedirectUrl({
       id: share.id,
       tenantId: share.tenantId,
-      productId: share.productId
+      tenantSlug: share.tenant.slug,
+      resourceType,
+      resourceId: share.resourceId
     });
 
-    await this.writeShareAccessAuditLog(share, expiresAt, 'entry', meta);
+    await this.writeShareAccessAuditLog(
+      {
+        id: share.id,
+        tenantId: share.tenantId,
+        resourceType,
+        resourceId: share.resourceId,
+        productId: share.productId,
+        createdByUserId: share.createdByUserId,
+        shareToken: share.shareToken
+      },
+      expiresAt,
+      'entry',
+      meta
+    );
 
     return {
       statusCode: 302,
@@ -164,21 +219,21 @@ export class SharesService {
       where: {
         id: shareId,
         tenantId: query.tenantId,
-        productId: query.resourceId
+        resourceType: query.resourceType,
+        resourceId: query.resourceId
       },
-      include: {
+      select: {
+        id: true,
+        tenantId: true,
+        resourceType: true,
+        resourceId: true,
+        productId: true,
+        createdByUserId: true,
         tenant: {
           select: {
             id: true,
             slug: true,
             name: true
-          }
-        },
-        product: {
-          include: {
-            images: {
-              orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }]
-            }
           }
         }
       }
@@ -191,8 +246,52 @@ export class SharesService {
       });
     }
 
+    const resourceType = this.parseShareResourceType(share.resourceType);
+
+    const scopedShare: ShareScope = {
+      id: share.id,
+      tenantId: share.tenantId,
+      tenant: share.tenant,
+      resourceType,
+      resourceId: share.resourceId,
+      productId: share.productId,
+      createdByUserId: share.createdByUserId
+    };
+
+    if (resourceType === 'product') {
+      const response = await this.buildProductPublicShare(scopedShare, expiresAt);
+      await this.writeShareAccessAuditLog(scopedShare, expiresAt, 'data', meta);
+      return response;
+    }
+
+    const response = await this.buildTenantFeedPublicShare(scopedShare, query.productId, expiresAt);
+    await this.writeShareAccessAuditLog(scopedShare, expiresAt, 'data', meta, query.productId ?? null);
+
+    return response;
+  }
+
+  private async buildProductPublicShare(share: ShareScope, expiresAt: Date) {
+    const product = await this.prisma.product.findFirst({
+      where: {
+        id: share.resourceId,
+        tenantId: share.tenantId
+      },
+      include: {
+        images: {
+          orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }]
+        }
+      }
+    });
+
+    if (!product) {
+      throw new NotFoundException({
+        message: 'Share content not found.',
+        errorCode: ErrorCode.ShareNotFound
+      });
+    }
+
     const images = await Promise.all(
-      share.product.images.map(async (image) => ({
+      product.images.map(async (image) => ({
         id: image.id,
         tenantId: image.tenantId,
         productId: image.productId,
@@ -209,35 +308,142 @@ export class SharesService {
       }))
     );
 
-    await this.writeShareAccessAuditLog(share, expiresAt, 'data', meta);
+    return {
+      shareId: share.id,
+      tenant: share.tenant,
+      resourceType: 'product' as const,
+      product: {
+        id: product.id,
+        tenantId: product.tenantId,
+        code: product.code,
+        name: product.name,
+        description: product.description,
+        seriesId: product.seriesId,
+        sex: product.sex,
+        offspringUnitPrice: product.offspringUnitPrice?.toNumber() ?? null,
+        sireCode: product.sireCode,
+        damCode: product.damCode,
+        mateCode: product.mateCode,
+        excludeFromBreeding: product.excludeFromBreeding,
+        hasSample: product.hasSample,
+        inStock: product.inStock,
+        popularityScore: product.popularityScore,
+        isFeatured: product.isFeatured,
+        images
+      },
+      expiresAt: expiresAt.toISOString()
+    };
+  }
+
+  private async buildTenantFeedPublicShare(share: ShareScope, detailProductId: string | undefined, expiresAt: Date) {
+    const feedProducts = await this.prisma.product.findMany({
+      where: {
+        tenantId: share.tenantId
+      },
+      include: {
+        images: {
+          orderBy: [{ isMain: 'desc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }],
+          take: 1
+        }
+      },
+      orderBy: [{ isFeatured: 'desc' }, { popularityScore: 'desc' }, { updatedAt: 'desc' }]
+    });
+
+    const items = await Promise.all(
+      feedProducts.map(async (product) => {
+        const coverImage = product.images[0] ?? null;
+        const coverImageUrl = coverImage
+          ? await this.resolvePublicImageUrl({
+              tenantId: share.tenantId,
+              key: coverImage.key,
+              fallbackUrl: coverImage.url,
+              expiresAt
+            })
+          : null;
+
+        return {
+          id: product.id,
+          tenantId: product.tenantId,
+          code: product.code,
+          name: product.name,
+          description: product.description,
+          seriesId: product.seriesId,
+          sex: product.sex,
+          offspringUnitPrice: product.offspringUnitPrice?.toNumber() ?? null,
+          coverImageUrl,
+          popularityScore: product.popularityScore,
+          isFeatured: product.isFeatured
+        };
+      })
+    );
+
+    let product = null;
+
+    if (detailProductId) {
+      const detail = await this.prisma.product.findFirst({
+        where: {
+          id: detailProductId,
+          tenantId: share.tenantId
+        },
+        include: {
+          images: {
+            orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }]
+          }
+        }
+      });
+
+      if (!detail) {
+        throw new NotFoundException({
+          message: 'Product not found in shared tenant feed.',
+          errorCode: ErrorCode.ProductNotFound
+        });
+      }
+
+      const images = await Promise.all(
+        detail.images.map(async (image) => ({
+          id: image.id,
+          tenantId: image.tenantId,
+          productId: image.productId,
+          key: image.key,
+          url: await this.resolvePublicImageUrl({
+            tenantId: share.tenantId,
+            key: image.key,
+            fallbackUrl: image.url,
+            expiresAt
+          }),
+          contentType: image.contentType,
+          sortOrder: image.sortOrder,
+          isMain: image.isMain
+        }))
+      );
+
+      product = {
+        id: detail.id,
+        tenantId: detail.tenantId,
+        code: detail.code,
+        name: detail.name,
+        description: detail.description,
+        seriesId: detail.seriesId,
+        sex: detail.sex,
+        offspringUnitPrice: detail.offspringUnitPrice?.toNumber() ?? null,
+        sireCode: detail.sireCode,
+        damCode: detail.damCode,
+        mateCode: detail.mateCode,
+        excludeFromBreeding: detail.excludeFromBreeding,
+        hasSample: detail.hasSample,
+        inStock: detail.inStock,
+        popularityScore: detail.popularityScore,
+        isFeatured: detail.isFeatured,
+        images
+      };
+    }
 
     return {
       shareId: share.id,
-      tenant: {
-        id: share.tenant.id,
-        slug: share.tenant.slug,
-        name: share.tenant.name
-      },
-      resourceType: 'product' as const,
-      product: {
-        id: share.product.id,
-        tenantId: share.product.tenantId,
-        code: share.product.code,
-        name: share.product.name,
-        description: share.product.description,
-        seriesId: share.product.seriesId,
-        sex: share.product.sex,
-        offspringUnitPrice: share.product.offspringUnitPrice?.toNumber() ?? null,
-        sireCode: share.product.sireCode,
-        damCode: share.product.damCode,
-        mateCode: share.product.mateCode,
-        excludeFromBreeding: share.product.excludeFromBreeding,
-        hasSample: share.product.hasSample,
-        inStock: share.product.inStock,
-        popularityScore: share.product.popularityScore,
-        isFeatured: share.product.isFeatured,
-        images
-      },
+      tenant: share.tenant,
+      resourceType: 'tenant_feed' as const,
+      items,
+      product,
       expiresAt: expiresAt.toISOString()
     };
   }
@@ -256,15 +462,24 @@ export class SharesService {
     return this.storageProvider.getSignedUrl(input.key, ttlSeconds);
   }
 
-  private async getOrCreateProductShare(tenantId: string, productId: string, actorUserId: string) {
-    const existing = await this.prisma.publicShare.findUnique({
+  private async findShareByResource(tenantId: string, resourceType: ShareResourceType, resourceId: string) {
+    return this.prisma.publicShare.findFirst({
       where: {
-        tenantId_productId: {
-          tenantId,
-          productId
-        }
+        tenantId,
+        resourceType,
+        resourceId
       }
     });
+  }
+
+  private async getOrCreateShare(
+    tenantId: string,
+    resourceType: ShareResourceType,
+    resourceId: string,
+    productId: string | null,
+    actorUserId: string
+  ) {
+    const existing = await this.findShareByResource(tenantId, resourceType, resourceId);
 
     if (existing) {
       return existing;
@@ -274,24 +489,19 @@ export class SharesService {
       return await this.prisma.publicShare.create({
         data: {
           tenantId,
+          resourceType,
+          resourceId,
           productId,
           createdByUserId: actorUserId,
           shareToken: this.generateShareToken()
         }
       });
     } catch (error) {
-      if (!this.isProductShareUniqueConflict(error)) {
+      if (!this.isShareResourceUniqueConflict(error)) {
         throw error;
       }
 
-      const conflictShare = await this.prisma.publicShare.findUnique({
-        where: {
-          tenantId_productId: {
-            tenantId,
-            productId
-          }
-        }
-      });
+      const conflictShare = await this.findShareByResource(tenantId, resourceType, resourceId);
 
       if (conflictShare) {
         return conflictShare;
@@ -309,7 +519,9 @@ export class SharesService {
   private buildRedirectUrl(payload: {
     id: string;
     tenantId: string;
-    productId: string;
+    tenantSlug: string;
+    resourceType: ShareResourceType;
+    resourceId: string;
   }): { redirectUrl: string; expiresAt: Date } {
     const ttlSeconds = this.getSignedUrlTtlSeconds();
     const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
@@ -318,17 +530,20 @@ export class SharesService {
     const signature = this.signPayload({
       shareId: payload.id,
       tenantId: payload.tenantId,
-      resourceType: 'product',
-      resourceId: payload.productId,
+      resourceType: payload.resourceType,
+      resourceId: payload.resourceId,
       exp
     });
 
     const webBaseUrl = process.env.WEB_PUBLIC_BASE_URL ?? DEFAULT_WEB_PUBLIC_BASE_URL;
-    const redirectUrl = new URL('/public/share', webBaseUrl);
+    const redirectPath =
+      payload.resourceType === 'tenant_feed' ? `/public/${payload.tenantSlug}` : '/public/share';
+
+    const redirectUrl = new URL(redirectPath, webBaseUrl);
     redirectUrl.searchParams.set('sid', payload.id);
     redirectUrl.searchParams.set('tenantId', payload.tenantId);
-    redirectUrl.searchParams.set('resourceType', 'product');
-    redirectUrl.searchParams.set('resourceId', payload.productId);
+    redirectUrl.searchParams.set('resourceType', payload.resourceType);
+    redirectUrl.searchParams.set('resourceId', payload.resourceId);
     redirectUrl.searchParams.set('exp', exp);
     redirectUrl.searchParams.set('sig', signature);
 
@@ -488,16 +703,11 @@ export class SharesService {
   }
 
   private async writeShareAccessAuditLog(
-    share: {
-      id: string;
-      tenantId: string;
-      productId: string;
-      createdByUserId: string;
-      shareToken?: string;
-    },
+    share: ShareAuditScope,
     expiresAt: Date,
     phase: 'entry' | 'data',
-    meta: ShareAccessMeta
+    meta: ShareAccessMeta,
+    requestedProductId?: string | null
   ) {
     await this.auditLogsService.createLog({
       tenantId: share.tenantId,
@@ -506,7 +716,10 @@ export class SharesService {
       resourceType: 'public_share',
       resourceId: share.id,
       metadata: {
+        resourceType: share.resourceType,
+        resourceId: share.resourceId,
         productId: share.productId,
+        requestedProductId: requestedProductId ?? null,
         phase,
         expiresAt: expiresAt.toISOString(),
         ip: meta.ip,
@@ -516,12 +729,23 @@ export class SharesService {
     });
   }
 
+  private parseShareResourceType(value: string): ShareResourceType {
+    if (value === 'product' || value === 'tenant_feed') {
+      return value;
+    }
+
+    throw new BadRequestException({
+      message: `Unsupported resourceType: ${value}`,
+      errorCode: ErrorCode.InvalidRequestPayload
+    });
+  }
+
   private isManagedStorageKey(tenantId: string, key: string): boolean {
     const normalizedKey = key.replace(/\\/g, '/').replace(/^\/+/, '');
     return normalizedKey.startsWith(`${tenantId}/`);
   }
 
-  private isProductShareUniqueConflict(error: unknown): boolean {
+  private isShareResourceUniqueConflict(error: unknown): boolean {
     if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
       return false;
     }
@@ -531,6 +755,10 @@ export class SharesService {
     }
 
     const target = Array.isArray(error.meta?.target) ? error.meta.target : [];
-    return target.includes('tenant_id') && target.includes('product_id');
+    const byResource =
+      target.includes('tenant_id') && target.includes('resource_type') && target.includes('resource_id');
+    const byProduct = target.includes('tenant_id') && target.includes('product_id');
+
+    return byResource || byProduct;
   }
 }
