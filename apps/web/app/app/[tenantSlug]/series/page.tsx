@@ -334,7 +334,7 @@ export default function SeriesListPage() {
               {series.map((item) => (
                 <article
                   key={item.id}
-                  className="group overflow-hidden rounded-2xl border border-neutral-200/90 bg-white shadow-[0_12px_24px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(15,23,42,0.12)]"
+                  className="group overflow-hidden rounded-2xl border border-neutral-200/90 bg-white shadow-[0_12px_24px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(15,23,42,0.12)] dark:border-white/10 dark:bg-neutral-900/85"
                 >
                   <div className="relative">
                     <SeriesCover item={item} />
@@ -352,18 +352,18 @@ export default function SeriesListPage() {
                   <button type="button" className="block w-full p-4 text-left" onClick={() => openEditor(item)}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="truncate text-base font-semibold text-neutral-900">{item.code}</p>
-                        <p className="truncate text-sm text-neutral-600">{item.name || '未命名系列'}</p>
+                        <p className="truncate text-[15px] font-semibold tracking-tight text-neutral-900 dark:text-neutral-50">{item.code}</p>
+                        <p className="truncate text-sm font-medium text-neutral-800 dark:text-neutral-200">{item.name || '未命名系列'}</p>
                       </div>
                       <Badge variant={item.isActive ? 'success' : 'default'}>{item.isActive ? '启用' : '停用'}</Badge>
                     </div>
-                    <p className="mt-2 line-clamp-2 min-h-10 text-sm leading-relaxed text-neutral-600">{item.description || '暂无描述'}</p>
-                    <div className="mt-3 flex items-center justify-between text-xs text-neutral-500">
+                    <p className="mt-2 line-clamp-2 min-h-10 text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">{item.description || '暂无描述'}</p>
+                    <div className="mt-3 flex items-center justify-between text-xs text-neutral-600 dark:text-neutral-400">
                       <span>排序 #{item.sortOrder}</span>
                       <span className="truncate">ID {item.id.slice(0, 8)}</span>
                     </div>
                   </button>
-                  <div className="flex items-center justify-end border-t border-neutral-100 px-4 py-3">
+                  <div className="flex items-center justify-end border-t border-neutral-100 px-4 py-3 dark:border-white/10">
                     <Button
                       type="button"
                       variant="secondary"

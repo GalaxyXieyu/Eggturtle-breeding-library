@@ -413,18 +413,18 @@ export function BreederEventTimeline({ events, breeder }: { events: BreederEvent
     <div className="mt-8 px-3 sm:px-4 lg:px-5 2xl:px-6">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
-          <h2 className="text-lg font-semibold text-neutral-900">种龟事件</h2>
+          <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">种龟事件</h2>
           {statusBadge(breeder.needMatingStatus || 'normal', breeder.daysSinceEgg)}
         </div>
-        <div className="flex flex-col items-end gap-1 text-xs text-neutral-600 sm:flex-row sm:items-center sm:gap-2">
+        <div className="flex flex-col items-end gap-1 text-xs text-neutral-600 sm:flex-row sm:items-center sm:gap-2 dark:text-neutral-300">
           <span>最近产蛋 {formatShortDate(breeder.lastEggAt)}</span>
-          <span className="hidden text-neutral-300 sm:inline">·</span>
+          <span className="hidden text-neutral-300 sm:inline dark:text-neutral-600">·</span>
           <span>最近交配 {formatShortDate(breeder.lastMatingAt)}</span>
         </div>
       </div>
 
       <div className="relative mb-4">
-        <div className="overflow-x-auto rounded-2xl border border-black/5 bg-white p-3 shadow-[0_6px_18px_rgba(0,0,0,0.05)]">
+        <div className="overflow-x-auto rounded-2xl border border-black/5 bg-white p-3 shadow-[0_6px_18px_rgba(0,0,0,0.05)] dark:border-white/10 dark:bg-neutral-900/75">
           {filtered.length === 0 ? (
             <div className="text-sm text-neutral-500">暂无事件</div>
           ) : (
@@ -433,11 +433,11 @@ export function BreederEventTimeline({ events, breeder }: { events: BreederEvent
                 <button
                   key={event.id}
                   type="button"
-                  className="group flex w-[14vw] min-w-[48px] max-w-[84px] shrink-0 flex-col items-center gap-1 rounded-xl px-1 py-1 hover:bg-neutral-50"
+                  className="group flex w-[14vw] min-w-[54px] max-w-[92px] shrink-0 flex-col items-center gap-1 rounded-xl border border-neutral-200 bg-white px-1.5 py-2 shadow-sm transition hover:bg-neutral-50 dark:border-white/10 dark:bg-neutral-950/40 dark:hover:bg-neutral-950/55"
                 >
                   <span className="text-sm leading-none">{eventIcon(event.eventType)}</span>
-                  <span className="text-[10px] font-medium leading-tight text-neutral-700">{formatShortDate(event.eventDate)}</span>
-                  <span className="text-[10px] font-semibold leading-tight text-neutral-600">{eventLabel(event)}</span>
+                  <span className="text-[10px] font-semibold leading-tight text-neutral-900 dark:text-neutral-100">{formatShortDate(event.eventDate)}</span>
+                  <span className="text-[10px] font-semibold leading-tight text-neutral-700 dark:text-neutral-300">{eventLabel(event)}</span>
                 </button>
               ))}
             </div>
@@ -458,8 +458,8 @@ export function BreederEventTimeline({ events, breeder }: { events: BreederEvent
             onClick={() => setFilter(item.key)}
             className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
               filter === item.key
-                ? 'border-neutral-900 bg-neutral-900 text-white'
-                : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300'
+                ? 'border-neutral-900 bg-neutral-900 text-white dark:border-white/15 dark:bg-neutral-50 dark:text-neutral-950'
+                : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 dark:border-white/10 dark:bg-neutral-950/30 dark:text-neutral-200 dark:hover:border-white/20'
             }`}
           >
             {item.title}
@@ -467,14 +467,14 @@ export function BreederEventTimeline({ events, breeder }: { events: BreederEvent
         ))}
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-black/5 bg-white shadow-[0_8px_24px_rgba(0,0,0,0.06)]">
-        <div className="border-b bg-neutral-50 px-4 py-3">
+      <div className="overflow-hidden rounded-2xl border border-black/5 bg-white shadow-[0_8px_24px_rgba(0,0,0,0.06)] dark:border-white/10 dark:bg-neutral-900/75">
+        <div className="border-b bg-neutral-50 px-4 py-3 dark:border-white/10 dark:bg-neutral-950/35">
           <div className="flex items-center justify-between gap-3">
-            <div className="text-xs font-semibold text-neutral-700">记录（已加载 {filtered.length} 条）</div>
+            <div className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">记录（已加载 {filtered.length} 条）</div>
             <button
               type="button"
               onClick={() => setIsExpanded((current) => !current)}
-              className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-semibold text-neutral-700 hover:border-neutral-300"
+              className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-semibold text-neutral-700 hover:border-neutral-300 dark:border-white/10 dark:bg-neutral-950/30 dark:text-neutral-200 dark:hover:border-white/20"
             >
               {isExpanded ? '收起' : '展开'}
             </button>
@@ -485,26 +485,26 @@ export function BreederEventTimeline({ events, breeder }: { events: BreederEvent
           filtered.length === 0 ? (
             <div className="p-6 text-sm text-neutral-500">暂无记录</div>
           ) : (
-            <div className="divide-y">
+            <div className="divide-y dark:divide-white/10">
               {filtered.map((event) => (
                 <div key={event.id} className="px-4 py-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-sm leading-none">{eventIcon(event.eventType)}</span>
-                        <span className="text-sm font-semibold text-neutral-900">{eventLabel(event)}</span>
-                        <span className="text-xs font-medium text-neutral-500">{formatShortDate(event.eventDate)}</span>
+                        <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{eventLabel(event)}</span>
+                        <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{formatShortDate(event.eventDate)}</span>
                       </div>
                       {event.eventType === 'mating' ? (
-                        <div className="mt-1 text-sm text-neutral-700">公龟 <span className="font-mono">{event.maleCode || '-'}</span></div>
+                        <div className="mt-1 text-sm text-neutral-700 dark:text-neutral-200">公龟 <span className="font-mono">{event.maleCode || '-'}</span></div>
                       ) : null}
                       {event.eventType === 'egg' ? (
-                        <div className="mt-1 text-sm text-neutral-700">数量 {typeof event.eggCount === 'number' ? event.eggCount : '-'}</div>
+                        <div className="mt-1 text-sm text-neutral-700 dark:text-neutral-200">数量 {typeof event.eggCount === 'number' ? event.eggCount : '-'}</div>
                       ) : null}
                       {event.eventType === 'change_mate' ? (
-                        <div className="mt-1 text-sm text-neutral-700">{(event.oldMateCode || '-') + ' → ' + (event.newMateCode || '-')}</div>
+                        <div className="mt-1 text-sm text-neutral-700 dark:text-neutral-200">{(event.oldMateCode || '-') + ' → ' + (event.newMateCode || '-')}</div>
                       ) : null}
-                      {event.note ? <div className="mt-2 whitespace-pre-wrap text-sm text-neutral-600">{event.note}</div> : null}
+                      {event.note ? <div className="mt-2 whitespace-pre-wrap text-sm text-neutral-600 dark:text-neutral-300">{event.note}</div> : null}
                     </div>
                   </div>
                 </div>
