@@ -134,22 +134,37 @@ model TenantMember {
 }
 
 model Product {
-  id               String            @id @default(cuid())
-  tenantId         String            @map("tenant_id")
-  code             String            @db.VarChar(120)
-  name             String?           @db.VarChar(120)
-  description      String?
-  createdAt        DateTime          @default(now()) @map("created_at")
-  updatedAt        DateTime          @updatedAt @map("updated_at")
-  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  images           ProductImage[]
-  featuredProducts FeaturedProduct[]
-  shares           PublicShare[]
+  id                  String            @id @default(cuid())
+  tenantId            String            @map("tenant_id")
+  seriesId            String?           @map("series_id")
+  code                String            @db.VarChar(120)
+  name                String?           @db.VarChar(120)
+  description         String?
+  sex                 String?           @db.VarChar(20)
+  offspringUnitPrice  Decimal?          @map("offspring_unit_price") @db.Decimal(10, 2)
+  sireCode            String?           @map("sire_code") @db.VarChar(120)
+  damCode             String?           @map("dam_code") @db.VarChar(120)
+  mateCode            String?           @map("mate_code") @db.VarChar(120)
+  excludeFromBreeding Boolean           @default(false) @map("exclude_from_breeding")
+  hasSample           Boolean           @default(false) @map("has_sample")
+  inStock             Boolean           @default(true) @map("in_stock")
+  popularityScore     Int               @default(0) @map("popularity_score")
+  // Legacy parity flag; FeaturedProduct relation still drives curated ordering/public display.
+  isFeatured          Boolean           @default(false) @map("is_featured")
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
+  tenant              Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  series              Series?           @relation(fields: [seriesId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  images              ProductImage[]
+  featuredProducts    FeaturedProduct[]
+  shares              PublicShare[]
 
   // Enables composite foreign keys to enforce tenant isolation.
   @@unique([id, tenantId], map: "products_id_tenant_id_key")
   @@unique([tenantId, code], map: "products_tenant_id_code_key")
   @@index([tenantId], map: "products_tenant_id_idx")
+  @@index([tenantId, seriesId], map: "products_tenant_id_series_id_idx")
+  @@index([tenantId, sex], map: "products_tenant_id_sex_idx")
   @@map("products")
 }
 
@@ -164,6 +179,7 @@ model Series {
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
   tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  products    Product[]
   breeders    Breeder[]
 
   // Enables composite foreign keys to enforce tenant isolation.

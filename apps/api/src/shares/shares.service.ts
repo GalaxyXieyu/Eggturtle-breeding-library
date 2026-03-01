@@ -225,6 +225,17 @@ export class SharesService {
         code: share.product.code,
         name: share.product.name,
         description: share.product.description,
+        seriesId: share.product.seriesId,
+        sex: share.product.sex,
+        offspringUnitPrice: share.product.offspringUnitPrice?.toNumber() ?? null,
+        sireCode: share.product.sireCode,
+        damCode: share.product.damCode,
+        mateCode: share.product.mateCode,
+        excludeFromBreeding: share.product.excludeFromBreeding,
+        hasSample: share.product.hasSample,
+        inStock: share.product.inStock,
+        popularityScore: share.product.popularityScore,
+        isFeatured: share.product.isFeatured,
         images
       },
       expiresAt: expiresAt.toISOString()

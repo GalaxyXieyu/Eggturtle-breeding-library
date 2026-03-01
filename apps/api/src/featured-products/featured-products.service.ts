@@ -367,7 +367,18 @@ export class FeaturedProductsService {
       tenantId: product.tenantId,
       code: product.code,
       name: product.name,
-      description: product.description
+      description: product.description,
+      seriesId: product.seriesId,
+      sex: product.sex,
+      offspringUnitPrice: product.offspringUnitPrice?.toNumber() ?? null,
+      sireCode: product.sireCode,
+      damCode: product.damCode,
+      mateCode: product.mateCode,
+      excludeFromBreeding: product.excludeFromBreeding,
+      hasSample: product.hasSample,
+      inStock: product.inStock,
+      popularityScore: product.popularityScore,
+      isFeatured: product.isFeatured
     };
   }
 }
