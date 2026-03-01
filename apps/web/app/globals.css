@@ -1615,6 +1615,38 @@ button.auth-action {
     radial-gradient(circle at 15% 15%, rgba(255, 212, 0, 0.24) 0%, rgba(255, 212, 0, 0) 45%);
 }
 
+/* Light theme: add a subtle scrim behind the showcase copy so white text stays readable
+   even when the hero photo is bright (daytime mode on mobile). */
+:root[data-theme='light'] .login-brand-copy {
+  padding: 10px 14px;
+  border-radius: 24px;
+}
+
+:root[data-theme='light'] .login-brand-copy::before {
+  content: "";
+  position: absolute;
+  inset: -10px -12px;
+  border-radius: 28px;
+  background: linear-gradient(
+    92deg,
+    rgba(0, 0, 0, 0.52) 0%,
+    rgba(0, 0, 0, 0.28) 52%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  z-index: -1;
+  backdrop-filter: blur(10px);
+}
+
+:root[data-theme='light'] .login-showcase h1 {
+  text-shadow:
+    0 18px 56px rgba(0, 0, 0, 0.86),
+    0 6px 18px rgba(0, 0, 0, 0.62);
+}
+
+:root[data-theme='light'] .login-brand-copy .muted {
+  text-shadow: 0 6px 26px rgba(0, 0, 0, 0.72);
+}
+
 :root[data-theme='light'] .login-card {
   border: 1px solid rgba(247, 250, 255, 0.72);
   background: linear-gradient(155deg, rgba(255, 255, 255, 0.9) 0%, rgba(244, 248, 255, 0.86) 100%);
