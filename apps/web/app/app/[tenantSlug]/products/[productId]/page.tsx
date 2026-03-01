@@ -222,8 +222,8 @@ export default function ProductImagesPage() {
           <p className="muted">租户：{tenantSlug}</p>
           <p className="muted">产品 ID：{productId}</p>
         </div>
-        <button type="button" className="secondary" onClick={() => router.push(`/app/${tenantSlug}`)}>
-          返回工作台
+        <button type="button" className="secondary" onClick={() => router.push(`/app/${tenantSlug}/products`)}>
+          返回产品列表
         </button>
       </header>
 

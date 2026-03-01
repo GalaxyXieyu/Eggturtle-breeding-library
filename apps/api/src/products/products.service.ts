@@ -88,27 +88,67 @@ export class ProductsService {
 
   async listProducts(tenantId: string, query: ListProductsQuery) {
     const skip = (query.page - 1) * query.pageSize;
+    const keyword = query.search?.trim();
+
+    const where: Prisma.ProductWhereInput = {
+      tenantId
+    };
+
+    if (keyword) {
+      where.OR = [
+        {
+          code: {
+            contains: keyword,
+            mode: 'insensitive'
+          }
+        },
+        {
+          name: {
+            contains: keyword,
+            mode: 'insensitive'
+          }
+        },
+        {
+          description: {
+            contains: keyword,
+            mode: 'insensitive'
+          }
+        }
+      ];
+    }
 
     const [items, total] = await Promise.all([
       this.prisma.product.findMany({
-        where: {
-          tenantId
+        where,
+        include: {
+          images: {
+            where: {
+              isMain: true
+            },
+            orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+            take: 1,
+            select: {
+              id: true
+            }
+          }
         },
         orderBy: {
-          createdAt: 'desc'
+          updatedAt: 'desc'
         },
         skip,
         take: query.pageSize
       }),
       this.prisma.product.count({
-        where: {
-          tenantId
-        }
+        where
       })
     ]);
 
     return {
-      products: items.map((item) => this.toProduct(item)),
+      products: items.map((item) =>
+        this.toProduct(item, {
+          coverImageUrl: item.images[0] ? this.buildImageAccessPath(item.id, item.images[0].id) : null
+        })
+      ),
       total,
       page: query.page,
       pageSize: query.pageSize,
@@ -521,13 +561,23 @@ export class ProductsService {
     return target.includes('tenant_id') && target.includes('code');
   }
 
-  private toProduct(product: PrismaProduct): Product {
+  private toProduct(
+    product: PrismaProduct,
+    options: {
+      coverImageUrl?: string | null;
+    } = {}
+  ): Product {
     return {
       id: product.id,
       tenantId: product.tenantId,
       code: product.code,
       name: product.name,
-      description: product.description
+      description: product.description,
+      seriesId: null,
+      sex: null,
+      coverImageUrl: options.coverImageUrl ?? null,
+      createdAt: product.createdAt.toISOString(),
+      updatedAt: product.updatedAt.toISOString()
     };
   }
 

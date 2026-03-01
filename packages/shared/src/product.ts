@@ -11,7 +11,13 @@ export const productSchema = z.object({
   tenantId: z.string().min(1),
   code: productCodeSchema,
   name: z.string().nullable(),
-  description: z.string().nullable()
+  description: z.string().nullable(),
+  // Reserved fields for legacy parity and future edit forms.
+  seriesId: z.string().nullable().optional(),
+  sex: z.string().nullable().optional(),
+  coverImageUrl: z.string().nullable().optional(),
+  createdAt: z.string().datetime().optional(),
+  updatedAt: z.string().datetime().optional()
 });
 
 export const createProductRequestSchema = z.object({
@@ -26,7 +32,8 @@ export const createProductResponseSchema = z.object({
 
 export const listProductsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().min(1).max(100).default(20)
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  search: z.string().trim().min(1).max(120).optional()
 });
 
 export const listProductsResponseSchema = z.object({

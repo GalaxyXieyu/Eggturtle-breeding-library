@@ -337,6 +337,74 @@ button.secondary:hover:not(:disabled) {
   border-bottom: none;
 }
 
+.products-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 180px auto auto;
+  gap: 8px;
+}
+
+.products-table-desktop {
+  display: block;
+}
+
+.products-mobile-list {
+  display: none;
+}
+
+.product-list-card {
+  border: 1px solid #ede2c9;
+  border-radius: var(--radius-md);
+  background: #fffefb;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.products-cover-cell {
+  width: 72px;
+  min-width: 72px;
+  height: 54px;
+  border-radius: var(--radius-sm);
+  border: 1px solid #efe3c8;
+  background: #f8f3e4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.products-cover-cell-mobile {
+  width: 88px;
+  min-width: 88px;
+  height: 64px;
+}
+
+.products-cover-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.products-cover-placeholder {
+  font-size: 11px;
+  color: #7b6f58;
+}
+
+.products-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.products-share-url {
+  margin-top: 6px;
+  color: #53504a;
+  overflow-wrap: anywhere;
+}
+
 .product-image-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -461,6 +529,19 @@ button.secondary:hover:not(:disabled) {
 
   .workspace-head .row button {
     flex: 1;
+  }
+
+  .products-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .products-table-desktop {
+    display: none;
+  }
+
+  .products-mobile-list {
+    display: grid;
+    gap: 8px;
   }
 
   .data-table {

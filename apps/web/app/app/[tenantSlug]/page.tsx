@@ -123,6 +123,9 @@ export default function TenantAppPage() {
           <button type="button" onClick={() => router.push(`/app/${tenantSlug}/breeders`)}>
             种龟管理
           </button>
+          <button type="button" onClick={() => router.push(`/app/${tenantSlug}/products`)}>
+            产品管理
+          </button>
           <button type="button" onClick={() => router.push(`/app/${tenantSlug}/featured-products`)}>
             推荐产品
           </button>
@@ -135,14 +138,14 @@ export default function TenantAppPage() {
             type="text"
             value={productIdInput}
             onChange={(event) => setProductIdInput(event.target.value)}
-            placeholder="输入 Product ID 跳转图片管理"
+            placeholder="输入 Product ID 直达图片管理（可选）"
           />
           <button
             type="button"
             disabled={!productIdInput.trim()}
             onClick={() => router.push(`/app/${tenantSlug}/products/${productIdInput.trim()}`)}
           >
-            产品图片管理
+            直达图片页
           </button>
         </div>
       </section>
