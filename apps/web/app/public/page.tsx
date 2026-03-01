@@ -1,0 +1,20 @@
+import { notFound } from 'next/navigation';
+
+import PublicFeedPage from './_legacy/public-feed-page';
+import { getPublicFeedData } from './_legacy/data-source';
+
+export default async function PublicPage({
+  searchParams,
+}: {
+  searchParams?: { demo?: string };
+}) {
+  const demo = searchParams?.demo === '1';
+
+  if (!demo) {
+    notFound();
+  }
+
+  const data = await getPublicFeedData({ demo: true });
+
+  return <PublicFeedPage demo={true} shareToken="demo" series={data.series} breeders={data.breeders} />;
+}
