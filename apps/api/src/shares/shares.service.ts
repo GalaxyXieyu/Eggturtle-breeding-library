@@ -180,6 +180,7 @@ export class SharesService {
       id: share.id,
       tenantId: share.tenantId,
       tenantSlug: share.tenant.slug,
+      shareToken: share.shareToken,
       resourceType,
       resourceId: share.resourceId
     });
@@ -336,22 +337,49 @@ export class SharesService {
   }
 
   private async buildTenantFeedPublicShare(share: ShareScope, detailProductId: string | undefined, expiresAt: Date) {
-    const feedProducts = await this.prisma.product.findMany({
+    // Transitional strategy: tenant_feed is breeder-first for domain correctness,
+    // while product remains the image/share carrier.
+    const breeders = await this.prisma.breeder.findMany({
       where: {
-        tenantId: share.tenantId
+        tenantId: share.tenantId,
+        isActive: true
       },
-      include: {
-        images: {
-          orderBy: [{ isMain: 'desc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }],
-          take: 1
-        }
-      },
-      orderBy: [{ isFeatured: 'desc' }, { popularityScore: 'desc' }, { updatedAt: 'desc' }]
+      orderBy: [{ code: 'asc' }, { createdAt: 'desc' }]
     });
 
+    const breederCodes = [...new Set(breeders.map((item) => item.code.trim()).filter((value) => value.length > 0))];
+
+    const feedProducts =
+      breederCodes.length === 0
+        ? []
+        : await this.prisma.product.findMany({
+            where: {
+              tenantId: share.tenantId,
+              code: {
+                in: breederCodes
+              }
+            },
+            include: {
+              images: {
+                orderBy: [{ isMain: 'desc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }],
+                take: 1
+              }
+            }
+          });
+
+    const productByCode = new Map<string, (typeof feedProducts)[number]>();
+    for (const item of feedProducts) {
+      const codeKey = this.normalizeCodeKey(item.code);
+      if (codeKey) {
+        productByCode.set(codeKey, item);
+      }
+    }
+
     const items = await Promise.all(
-      feedProducts.map(async (product) => {
-        const coverImage = product.images[0] ?? null;
+      breeders.map(async (breeder) => {
+        const codeKey = this.normalizeCodeKey(breeder.code);
+        const linkedProduct = codeKey ? productByCode.get(codeKey) ?? null : null;
+        const coverImage = linkedProduct?.images[0] ?? null;
         const coverImageUrl = coverImage
           ? await this.resolvePublicImageUrl({
               tenantId: share.tenantId,
@@ -362,17 +390,17 @@ export class SharesService {
           : null;
 
         return {
-          id: product.id,
-          tenantId: product.tenantId,
-          code: product.code,
-          name: product.name,
-          description: product.description,
-          seriesId: product.seriesId,
-          sex: product.sex,
-          offspringUnitPrice: product.offspringUnitPrice?.toNumber() ?? null,
+          id: breeder.id,
+          tenantId: breeder.tenantId,
+          code: breeder.code,
+          name: breeder.name,
+          description: breeder.description,
+          seriesId: breeder.seriesId,
+          sex: breeder.sex,
+          offspringUnitPrice: linkedProduct?.offspringUnitPrice?.toNumber() ?? null,
           coverImageUrl,
-          popularityScore: product.popularityScore,
-          isFeatured: product.isFeatured
+          popularityScore: linkedProduct?.popularityScore ?? 0,
+          isFeatured: linkedProduct?.isFeatured ?? false
         };
       })
     );
@@ -380,10 +408,27 @@ export class SharesService {
     let product = null;
 
     if (detailProductId) {
-      const detail = await this.prisma.product.findFirst({
+      const detailBreeder = await this.prisma.breeder.findFirst({
         where: {
           id: detailProductId,
           tenantId: share.tenantId
+        }
+      });
+
+      if (!detailBreeder) {
+        throw new NotFoundException({
+          message: 'Breeder not found in shared tenant feed.',
+          errorCode: ErrorCode.BreederNotFound
+        });
+      }
+
+      const detailProduct = await this.prisma.product.findFirst({
+        where: {
+          tenantId: share.tenantId,
+          code: {
+            equals: detailBreeder.code,
+            mode: 'insensitive'
+          }
         },
         include: {
           images: {
@@ -392,15 +437,8 @@ export class SharesService {
         }
       });
 
-      if (!detail) {
-        throw new NotFoundException({
-          message: 'Product not found in shared tenant feed.',
-          errorCode: ErrorCode.ProductNotFound
-        });
-      }
-
       const images = await Promise.all(
-        detail.images.map(async (image) => ({
+        (detailProduct?.images ?? []).map(async (image) => ({
           id: image.id,
           tenantId: image.tenantId,
           productId: image.productId,
@@ -418,22 +456,22 @@ export class SharesService {
       );
 
       product = {
-        id: detail.id,
-        tenantId: detail.tenantId,
-        code: detail.code,
-        name: detail.name,
-        description: detail.description,
-        seriesId: detail.seriesId,
-        sex: detail.sex,
-        offspringUnitPrice: detail.offspringUnitPrice?.toNumber() ?? null,
-        sireCode: detail.sireCode,
-        damCode: detail.damCode,
-        mateCode: detail.mateCode,
-        excludeFromBreeding: detail.excludeFromBreeding,
-        hasSample: detail.hasSample,
-        inStock: detail.inStock,
-        popularityScore: detail.popularityScore,
-        isFeatured: detail.isFeatured,
+        id: detailBreeder.id,
+        tenantId: detailBreeder.tenantId,
+        code: detailBreeder.code,
+        name: detailBreeder.name,
+        description: detailBreeder.description,
+        seriesId: detailBreeder.seriesId,
+        sex: detailBreeder.sex,
+        offspringUnitPrice: detailProduct?.offspringUnitPrice?.toNumber() ?? null,
+        sireCode: detailBreeder.sireCode,
+        damCode: detailBreeder.damCode,
+        mateCode: detailBreeder.mateCode,
+        excludeFromBreeding: detailProduct?.excludeFromBreeding ?? false,
+        hasSample: detailProduct?.hasSample ?? false,
+        inStock: detailProduct?.inStock ?? true,
+        popularityScore: detailProduct?.popularityScore ?? 0,
+        isFeatured: detailProduct?.isFeatured ?? false,
         images
       };
     }
@@ -446,6 +484,15 @@ export class SharesService {
       product,
       expiresAt: expiresAt.toISOString()
     };
+  }
+
+  private normalizeCodeKey(code: string | null | undefined): string | null {
+    const normalized = code?.trim();
+    if (!normalized) {
+      return null;
+    }
+
+    return normalized.toUpperCase();
   }
 
   private async resolvePublicImageUrl(input: {
@@ -520,6 +567,7 @@ export class SharesService {
     id: string;
     tenantId: string;
     tenantSlug: string;
+    shareToken: string;
     resourceType: ShareResourceType;
     resourceId: string;
   }): { redirectUrl: string; expiresAt: Date } {
@@ -537,7 +585,9 @@ export class SharesService {
 
     const webBaseUrl = process.env.WEB_PUBLIC_BASE_URL ?? DEFAULT_WEB_PUBLIC_BASE_URL;
     const redirectPath =
-      payload.resourceType === 'tenant_feed' ? `/public/${payload.tenantSlug}` : '/public/share';
+      payload.resourceType === 'tenant_feed'
+        ? `/public/s/${payload.shareToken}`
+        : `/public/s/${payload.shareToken}/products/${payload.resourceId}`;
 
     const redirectUrl = new URL(redirectPath, webBaseUrl);
     redirectUrl.searchParams.set('sid', payload.id);

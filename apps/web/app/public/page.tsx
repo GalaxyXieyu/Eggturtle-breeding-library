@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 
-import PublicFeedPage from './_legacy/public-feed-page';
-import { getPublicFeedData } from './_legacy/data-source';
+import PublicFeedPage from './_public-breeder/public-feed-page';
+import { getPublicFeedData } from './_public-breeder/data-source';
 
 export default async function PublicPage({
   searchParams,

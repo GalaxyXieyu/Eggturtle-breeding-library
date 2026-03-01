@@ -28,6 +28,7 @@ type Props = {
   shareToken: string;
   shareQuery?: string;
   breederId: string;
+  homeHref?: string;
 };
 
 export default function PublicBreederDetailPage({
@@ -41,8 +42,10 @@ export default function PublicBreederDetailPage({
   shareToken,
   shareQuery,
   breederId,
+  homeHref,
 }: Props) {
   const isNotFound = !breeder;
+  const resolvedHomeHref = withDemo(homeHref ?? `/public/s/${shareToken}`, demo, shareQuery);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-stone-100 via-white to-amber-50/40 text-black">
@@ -62,7 +65,7 @@ export default function PublicBreederDetailPage({
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <Link href={withDemo(`/public/s/${shareToken}`, demo, shareQuery)} className="rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm text-neutral-800 transition hover:border-neutral-400 hover:shadow-sm">
+                <Link href={resolvedHomeHref} className="rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm text-neutral-800 transition hover:border-neutral-400 hover:shadow-sm">
                   返回首页
                 </Link>
               </div>
@@ -96,7 +99,14 @@ export default function PublicBreederDetailPage({
         {breeder ? (
           <>
             <div className="grid items-stretch gap-4 px-3 sm:px-4 lg:grid-cols-[minmax(340px,420px)_1fr] lg:px-5 xl:gap-5 2xl:px-6">
-              <BreederCarousel breeder={breeder} series={series} demo={demo} shareToken={shareToken} shareQuery={shareQuery} />
+              <BreederCarousel
+                breeder={breeder}
+                series={series}
+                demo={demo}
+                shareToken={shareToken}
+                shareQuery={shareQuery}
+                homeHref={resolvedHomeHref}
+              />
 
               <div className="flex flex-col space-y-4">
                 <div className="flex flex-1 flex-col overflow-hidden rounded-3xl border border-black/5 bg-white/90 shadow-[0_12px_30px_rgba(0,0,0,0.08)]">

@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 
-import PublicBreederDetailPage from '../../_legacy/public-breeder-detail-page';
-import { getPublicBreederDetailData, getPublicFeedData } from '../../_legacy/data-source';
+import PublicBreederDetailPage from '../../_public-breeder/public-breeder-detail-page';
+import { getPublicBreederDetailData, getPublicFeedData } from '../../_public-breeder/data-source';
 
 export default async function PublicBreederDetailRoute({
   params,
