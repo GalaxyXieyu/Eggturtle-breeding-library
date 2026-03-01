@@ -9,9 +9,10 @@ export default async function PublicSharePage({
 }: {
   searchParams: SearchParams;
 }) {
+  const isDemo = firstValue(searchParams.demo) === '1';
   const sid = firstValue(searchParams.sid);
 
-  if (!sid) {
+  if (!sid && !isDemo) {
     return (
       <main className="share-shell">
         <section className="card panel stack">
@@ -22,26 +23,7 @@ export default async function PublicSharePage({
     );
   }
 
-  const parsedQuery = publicShareQuerySchema.safeParse({
-    tenantId: firstValue(searchParams.tenantId),
-    resourceType: firstValue(searchParams.resourceType),
-    resourceId: firstValue(searchParams.resourceId),
-    exp: firstValue(searchParams.exp),
-    sig: firstValue(searchParams.sig)
-  });
-
-  if (!parsedQuery.success) {
-    return (
-      <main className="share-shell">
-        <section className="card panel stack">
-          <h1>分享页不可用</h1>
-          <p className="notice notice-error">分享链接无效或已过期。</p>
-        </section>
-      </main>
-    );
-  }
-
-  const shareResult = await fetchPublicShare(sid, parsedQuery.data);
+  const shareResult = isDemo ? demoShareResult() : await fetchPublicShareFromQuery(searchParams, sid as string);
 
   if (!shareResult.success) {
     return (
@@ -54,7 +36,7 @@ export default async function PublicSharePage({
     );
   }
 
-  const { tenant, product, expiresAt } = shareResult.data;
+  const { tenant, product } = shareResult.data;
 
   return (
     <main className="share-shell">
@@ -64,19 +46,20 @@ export default async function PublicSharePage({
         <p className="muted">
           由租户 <strong>{tenant.name}</strong>（{tenant.slug}）分享
         </p>
-        <p className="muted">链接有效期至：{new Date(expiresAt).toLocaleString('zh-CN')}</p>
       </section>
 
       <section className="card panel stack">
         <h2>产品信息</h2>
         <div className="kv-grid">
+          {product.name ? (
+            <p>
+              <span className="muted">名称</span>
+              <strong>{product.name}</strong>
+            </p>
+          ) : null}
           <p>
             <span className="muted">Code</span>
             <strong>{product.code}</strong>
-          </p>
-          <p>
-            <span className="muted">ID</span>
-            <strong>{product.id}</strong>
           </p>
           <p>
             <span className="muted">描述</span>
@@ -103,6 +86,82 @@ export default async function PublicSharePage({
   );
 }
 
+async function fetchPublicShareFromQuery(searchParams: SearchParams, sid: string): Promise<ShareResult> {
+  const parsedQuery = publicShareQuerySchema.safeParse({
+    tenantId: firstValue(searchParams.tenantId),
+    resourceType: firstValue(searchParams.resourceType),
+    resourceId: firstValue(searchParams.resourceId),
+    exp: firstValue(searchParams.exp),
+    sig: firstValue(searchParams.sig)
+  });
+
+  if (!parsedQuery.success) {
+    return {
+      success: false,
+      message: '分享链接无效或已过期。'
+    };
+  }
+
+  return fetchPublicShare(sid, parsedQuery.data);
+}
+
+type ShareData = ReturnType<typeof publicShareResponseSchema.parse>;
+
+type ShareResult =
+  | {
+      success: true;
+      data: ShareData;
+    }
+  | {
+      success: false;
+      message: string;
+    };
+
+function demoShareResult(): ShareResult {
+  return {
+    success: true,
+    data: {
+      shareId: 'share_demo',
+      resourceType: 'product',
+      tenant: {
+        id: 'tenant_demo',
+        slug: 'demo-tenant',
+        name: '演示租户'
+      },
+      product: {
+        id: 'product_demo',
+        tenantId: 'tenant_demo',
+        code: 'ET-2026-0001',
+        name: '红系观赏龟苗',
+        description: '体态匀称，花纹清晰，适合精品龟苗展示。',
+        images: [
+          {
+            id: 'img_demo_1',
+            tenantId: 'tenant_demo',
+            productId: 'product_demo',
+            key: 'demo/main.jpg',
+            url: 'https://picsum.photos/id/1062/1200/800',
+            contentType: 'image/jpeg',
+            isMain: true,
+            sortOrder: 0
+          },
+          {
+            id: 'img_demo_2',
+            tenantId: 'tenant_demo',
+            productId: 'product_demo',
+            key: 'demo/2.jpg',
+            url: 'https://picsum.photos/id/237/1200/800',
+            contentType: 'image/jpeg',
+            isMain: false,
+            sortOrder: 1
+          }
+        ]
+      },
+      expiresAt: '2099-01-01T00:00:00.000Z'
+    }
+  };
+}
+
 async function fetchPublicShare(
   shareId: string,
   query: {
@@ -112,16 +171,7 @@ async function fetchPublicShare(
     exp: string;
     sig: string;
   }
-): Promise<
-  | {
-      success: true;
-      data: ReturnType<typeof publicShareResponseSchema.parse>;
-    }
-  | {
-      success: false;
-      message: string;
-    }
-> {
+): Promise<ShareResult> {
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE_URL;
   const requestUrl = new URL(`/shares/${shareId}/public`, apiBaseUrl);
   requestUrl.searchParams.set('tenantId', query.tenantId);
