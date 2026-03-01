@@ -4,7 +4,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { dirname, resolve } from 'node:path';
+import { dirname, extname, resolve } from 'node:path';
 
 const require = createRequire(import.meta.url);
 
@@ -16,7 +16,24 @@ function loadPrismaRuntime() {
   }
 }
 
+function loadStorageRuntime() {
+  try {
+    return {
+      LocalDiskStorageProvider: require('../../apps/api/src/storage/local-disk-storage.provider')
+        .LocalDiskStorageProvider,
+      S3StorageProvider: require('../../apps/api/src/storage/s3-storage.provider').S3StorageProvider
+    };
+  } catch {
+    return {
+      LocalDiskStorageProvider: require('../../apps/api/dist/storage/local-disk-storage.provider')
+        .LocalDiskStorageProvider,
+      S3StorageProvider: require('../../apps/api/dist/storage/s3-storage.provider').S3StorageProvider
+    };
+  }
+}
+
 const { PrismaClient, TenantMemberRole } = loadPrismaRuntime();
+const { LocalDiskStorageProvider, S3StorageProvider } = loadStorageRuntime();
 
 type CliArgs = {
   input: string;
@@ -28,6 +45,49 @@ type CliArgs = {
   adminEmail: string;
   skipShares: boolean;
   reportDir: string | null;
+  importImageBinaries: boolean;
+  imageConcurrency: number;
+  imageTimeoutMs: number;
+  maxImages: number | null;
+  maxImageFailures: number;
+  skipImageDownload: boolean;
+  verifyManagedImageObjects: boolean;
+};
+
+type ManagedImageCandidate = {
+  id: string;
+  productId: string;
+  key: string;
+  url: string | null;
+  contentType: string | null;
+};
+
+type ImageBinaryFailure = {
+  imageId: string;
+  productId: string;
+  key: string;
+  url: string | null;
+  reason: string;
+};
+
+type ImageBinaryImportSummary = {
+  enabled: boolean;
+  attempted: number;
+  uploaded: number;
+  dbUpdated: number;
+  skippedManagedExisting: number;
+  skippedNoUrl: number;
+  failed: number;
+  maxFailuresAllowed: number;
+  failures: ImageBinaryFailure[];
+};
+
+type ManagedImageObjectVerification = {
+  enabled: boolean;
+  checked: number;
+  present: number;
+  missing: number;
+  errors: number;
 };
 
 type ExportedSeries = {
@@ -188,6 +248,13 @@ function parseArgs(argv: string[]): CliArgs {
   let adminEmail = process.env.EGGTURTLE_MIGRATION_ADMIN_EMAIL ?? DEFAULT_ADMIN_EMAIL;
   let skipShares = false;
   let reportDir: string | null = null;
+  let importImageBinaries = false;
+  let imageConcurrency = 3;
+  let imageTimeoutMs = 15000;
+  let maxImages: number | null = null;
+  let maxImageFailures = 0;
+  let skipImageDownload = false;
+  let verifyManagedImageObjects = false;
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -237,6 +304,49 @@ function parseArgs(argv: string[]): CliArgs {
       continue;
     }
 
+    if (arg === '--import-image-binaries') {
+      importImageBinaries = true;
+      continue;
+    }
+
+    if (arg === '--skip-image-download') {
+      skipImageDownload = true;
+      continue;
+    }
+
+    if (arg === '--image-concurrency') {
+      const value = requireValue(argv, index, arg);
+      imageConcurrency = parsePositiveIntegerArg(value, arg);
+      index += 1;
+      continue;
+    }
+
+    if (arg === '--image-timeout-ms') {
+      const value = requireValue(argv, index, arg);
+      imageTimeoutMs = parsePositiveIntegerArg(value, arg);
+      index += 1;
+      continue;
+    }
+
+    if (arg === '--max-images') {
+      const value = requireValue(argv, index, arg);
+      maxImages = parsePositiveIntegerArg(value, arg);
+      index += 1;
+      continue;
+    }
+
+    if (arg === '--max-image-failures') {
+      const value = requireValue(argv, index, arg);
+      maxImageFailures = parseNonNegativeIntegerArg(value, arg);
+      index += 1;
+      continue;
+    }
+
+    if (arg === '--verify-managed-image-objects') {
+      verifyManagedImageObjects = true;
+      continue;
+    }
+
     if (arg === '--confirm') {
       confirm = true;
       continue;
@@ -270,6 +380,10 @@ function parseArgs(argv: string[]): CliArgs {
     throw new Error('--admin-email must be a valid email address.');
   }
 
+  if (importImageBinaries && skipImageDownload) {
+    console.warn('--skip-image-download provided; image binary import will remain disabled.');
+  }
+
   return {
     input: input.trim(),
     env,
@@ -279,7 +393,14 @@ function parseArgs(argv: string[]): CliArgs {
     tenantName: tenantName.trim(),
     adminEmail: adminEmail.trim().toLowerCase(),
     skipShares,
-    reportDir: reportDir ? reportDir.trim() : null
+    reportDir: reportDir ? reportDir.trim() : null,
+    importImageBinaries: importImageBinaries && !skipImageDownload,
+    imageConcurrency,
+    imageTimeoutMs,
+    maxImages,
+    maxImageFailures,
+    skipImageDownload,
+    verifyManagedImageObjects
   };
 }
 
@@ -289,6 +410,22 @@ function requireValue(argv: string[], index: number, flag: string): string {
     throw new Error(`${flag} requires a value.`);
   }
   return value;
+}
+
+function parsePositiveIntegerArg(value: string, flag: string): number {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`${flag} must be a positive integer.`);
+  }
+  return parsed;
+}
+
+function parseNonNegativeIntegerArg(value: string, flag: string): number {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new Error(`${flag} must be a non-negative integer.`);
+  }
+  return parsed;
 }
 
 function printHelpAndExit(code: number): never {
@@ -305,6 +442,13 @@ function printHelpAndExit(code: number): never {
     `  --admin-email <email>       Owner user email (default: ${DEFAULT_ADMIN_EMAIL})`,
     '  --skip-shares               Skip synthetic share creation from shareSeeds',
     '  --report-dir <path>         Write import report files to this directory',
+    '  --import-image-binaries     Download legacy image binaries and upload to managed storage',
+    '  --skip-image-download       Force metadata-only mode even if import flag is set',
+    '  --image-concurrency <n>     Concurrent binary downloads/uploads (default: 3)',
+    '  --image-timeout-ms <n>      Per-image download timeout in ms (default: 15000)',
+    '  --max-images <n>            Limit binary migration to first N images (smoke runs)',
+    '  --max-image-failures <n>    Allow up to N binary failures before exiting non-zero (default: 0)',
+    '  --verify-managed-image-objects  Read managed objects after import to verify storage presence',
     '  --confirm                   Execute DB write operations (default is dry-run)',
     '  --confirm-prod              Required when --env=prod or target DB looks production',
     '  -h, --help                  Show help',
@@ -477,6 +621,452 @@ function buildShareToken(tenantSlug: string, productId: string): string {
   return `ta-${digest}`;
 }
 
+const IMAGE_CONTENT_TYPE_TO_EXTENSION: Record<string, string> = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+  'image/gif': '.gif',
+  'image/avif': '.avif',
+  'image/bmp': '.bmp',
+  'image/svg+xml': '.svg'
+};
+
+const IMAGE_EXTENSION_TO_CONTENT_TYPE: Record<string, string> = {
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif',
+  '.avif': 'image/avif',
+  '.bmp': 'image/bmp',
+  '.svg': 'image/svg+xml'
+};
+
+function createStorageProvider() {
+  const provider = (process.env.STORAGE_PROVIDER ?? 'local').toLowerCase();
+  if (provider === 's3') {
+    return new S3StorageProvider();
+  }
+
+  return new LocalDiskStorageProvider();
+}
+
+function isManagedStorageKey(tenantId: string, key: string | null | undefined): boolean {
+  if (!key || typeof key !== 'string') {
+    return false;
+  }
+
+  const normalizedKey = key.replace(/\\/g, '/').replace(/^\/+/, '');
+  return normalizedKey.startsWith(`${tenantId}/`);
+}
+
+function isHttpUrl(value: string): boolean {
+  const normalized = value.trim().toLowerCase();
+  return normalized.startsWith('http://') || normalized.startsWith('https://');
+}
+
+function normalizeContentType(value: string | null | undefined): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) {
+    return null;
+  }
+
+  const [mainType] = normalized.split(';');
+  return mainType?.trim() || null;
+}
+
+function inferExtensionFromContentType(contentType: string | null | undefined): string | null {
+  const normalized = normalizeContentType(contentType);
+  if (!normalized) {
+    return null;
+  }
+
+  return IMAGE_CONTENT_TYPE_TO_EXTENSION[normalized] ?? null;
+}
+
+function inferContentTypeFromExtension(extension: string | null | undefined): string | null {
+  if (!extension) {
+    return null;
+  }
+
+  return IMAGE_EXTENSION_TO_CONTENT_TYPE[extension.toLowerCase()] ?? null;
+}
+
+function normalizeExtension(value: string | null | undefined): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) {
+    return null;
+  }
+
+  const extension = normalized.startsWith('.') ? normalized : `.${normalized}`;
+  return /^\.[a-z0-9]+$/.test(extension) ? extension : null;
+}
+
+function inferExtensionFromUrl(url: string | null | undefined): string | null {
+  if (!url) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(url);
+    return normalizeExtension(extname(parsed.pathname));
+  } catch {
+    return normalizeExtension(extname(url));
+  }
+}
+
+function chooseManagedImageExtension(
+  image: Pick<ManagedImageCandidate, 'key' | 'url' | 'contentType'>,
+  downloadedContentType?: string | null
+): string {
+  const fromManagedKey = normalizeExtension(extname(image.key));
+  if (fromManagedKey) {
+    return fromManagedKey;
+  }
+
+  const fromExistingContentType = inferExtensionFromContentType(image.contentType);
+  if (fromExistingContentType) {
+    return fromExistingContentType;
+  }
+
+  const fromUrl = inferExtensionFromUrl(image.url);
+  if (fromUrl) {
+    return fromUrl;
+  }
+
+  const fromDownloadedContentType = inferExtensionFromContentType(downloadedContentType);
+  if (fromDownloadedContentType) {
+    return fromDownloadedContentType;
+  }
+
+  return '.img';
+}
+
+function buildManagedImageKey(
+  tenantId: string,
+  productId: string,
+  imageId: string,
+  extension: string
+): string {
+  return `${tenantId}/products/${productId}/${imageId}${extension}`;
+}
+
+function isStorageObjectMissingError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const candidate = error as {
+    name?: string;
+    message?: string;
+    status?: number;
+    statusCode?: number;
+    response?: { statusCode?: number };
+  };
+
+  if (candidate.status === 404 || candidate.statusCode === 404 || candidate.response?.statusCode === 404) {
+    return true;
+  }
+
+  const tag = `${candidate.name ?? ''} ${candidate.message ?? ''}`.toLowerCase();
+  return tag.includes('not found') || tag.includes('nosuchkey');
+}
+
+async function storageObjectExists(storageProvider: any, key: string): Promise<boolean> {
+  try {
+    await storageProvider.getObject(key);
+    return true;
+  } catch (error) {
+    if (isStorageObjectMissingError(error)) {
+      return false;
+    }
+
+    throw error;
+  }
+}
+
+async function downloadImageBinary(
+  url: string,
+  timeoutMs: number
+): Promise<{ body: Buffer; contentType: string }> {
+  const controller = new AbortController();
+  const timeoutHandle = setTimeout(() => {
+    controller.abort();
+  }, timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      redirect: 'follow',
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status} ${response.statusText}`.trim());
+    }
+
+    const contentType = normalizeContentType(response.headers.get('content-type'));
+    if (!contentType || !contentType.startsWith('image/')) {
+      throw new Error(`Unsupported content-type: ${contentType ?? '<empty>'}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    if (arrayBuffer.byteLength === 0) {
+      throw new Error('Downloaded image is empty.');
+    }
+
+    return {
+      body: Buffer.from(arrayBuffer),
+      contentType
+    };
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`Download timeout after ${timeoutMs}ms.`);
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeoutHandle);
+  }
+}
+
+async function mapWithConcurrency<T>(
+  items: T[],
+  concurrency: number,
+  worker: (item: T, index: number) => Promise<void>
+): Promise<void> {
+  if (items.length === 0) {
+    return;
+  }
+
+  const workerCount = Math.max(1, Math.min(concurrency, items.length));
+  let cursor = 0;
+
+  const runners = Array.from({ length: workerCount }, async () => {
+    while (cursor < items.length) {
+      const itemIndex = cursor;
+      cursor += 1;
+      await worker(items[itemIndex], itemIndex);
+    }
+  });
+
+  await Promise.all(runners);
+}
+
+function createImageBinaryImportSummary(args: CliArgs): ImageBinaryImportSummary {
+  return {
+    enabled: args.importImageBinaries && !args.skipImageDownload,
+    attempted: 0,
+    uploaded: 0,
+    dbUpdated: 0,
+    skippedManagedExisting: 0,
+    skippedNoUrl: 0,
+    failed: 0,
+    maxFailuresAllowed: args.maxImageFailures,
+    failures: []
+  };
+}
+
+function createManagedImageObjectVerification(enabled: boolean): ManagedImageObjectVerification {
+  return {
+    enabled,
+    checked: 0,
+    present: 0,
+    missing: 0,
+    errors: 0
+  };
+}
+
+async function importImageBinaries(
+  prisma: InstanceType<typeof PrismaClient>,
+  args: CliArgs,
+  tenantId: string,
+  importedProductIds: string[],
+  storageProvider: any
+): Promise<ImageBinaryImportSummary> {
+  const summary = createImageBinaryImportSummary(args);
+
+  if (!summary.enabled || importedProductIds.length === 0) {
+    return summary;
+  }
+
+  const images = await prisma.productImage.findMany({
+    where: {
+      tenantId,
+      productId: { in: importedProductIds }
+    },
+    orderBy: [{ productId: 'asc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }],
+    select: {
+      id: true,
+      productId: true,
+      key: true,
+      url: true,
+      contentType: true
+    }
+  });
+
+  const candidates = args.maxImages ? images.slice(0, args.maxImages) : images;
+
+  await mapWithConcurrency(candidates, args.imageConcurrency, async (image) => {
+    summary.attempted += 1;
+
+    const candidate: ManagedImageCandidate = {
+      id: image.id,
+      productId: image.productId,
+      key: image.key,
+      url: normalizeString(image.url),
+      contentType: normalizeContentType(image.contentType)
+    };
+
+    try {
+      const alreadyManaged = isManagedStorageKey(tenantId, candidate.key);
+      const baseExtension = chooseManagedImageExtension(candidate);
+      const preDownloadTargetKey = alreadyManaged
+        ? candidate.key
+        : buildManagedImageKey(tenantId, candidate.productId, candidate.id, baseExtension);
+
+      if (alreadyManaged) {
+        const exists = await storageObjectExists(storageProvider, candidate.key);
+        if (exists) {
+          summary.skippedManagedExisting += 1;
+          return;
+        }
+      } else {
+        const objectAlreadyExists = await storageObjectExists(storageProvider, preDownloadTargetKey);
+        if (objectAlreadyExists) {
+          await prisma.productImage.update({
+            where: { id: candidate.id },
+            data: {
+              key: preDownloadTargetKey,
+              contentType:
+                normalizeContentType(candidate.contentType) ??
+                inferContentTypeFromExtension(baseExtension)
+            }
+          });
+          summary.dbUpdated += 1;
+          summary.skippedManagedExisting += 1;
+          return;
+        }
+      }
+
+      if (!candidate.url || !isHttpUrl(candidate.url)) {
+        if (alreadyManaged) {
+          throw new Error('Managed key exists in DB but storage object is missing and URL is not downloadable.');
+        }
+
+        summary.skippedNoUrl += 1;
+        return;
+      }
+
+      const downloaded = await downloadImageBinary(candidate.url, args.imageTimeoutMs);
+      const extension = chooseManagedImageExtension(candidate, downloaded.contentType);
+      const targetKey = alreadyManaged
+        ? candidate.key
+        : buildManagedImageKey(tenantId, candidate.productId, candidate.id, extension);
+
+      if (!alreadyManaged && targetKey !== preDownloadTargetKey) {
+        const objectAlreadyExists = await storageObjectExists(storageProvider, targetKey);
+        if (objectAlreadyExists) {
+          await prisma.productImage.update({
+            where: { id: candidate.id },
+            data: {
+              key: targetKey,
+              contentType:
+                normalizeContentType(candidate.contentType) ??
+                inferContentTypeFromExtension(extension) ??
+                downloaded.contentType
+            }
+          });
+          summary.dbUpdated += 1;
+          summary.skippedManagedExisting += 1;
+          return;
+        }
+      }
+
+      await storageProvider.putObject({
+        key: targetKey,
+        body: downloaded.body,
+        contentType: downloaded.contentType
+      });
+
+      await prisma.productImage.update({
+        where: { id: candidate.id },
+        data: {
+          key: targetKey,
+          contentType: downloaded.contentType
+        }
+      });
+
+      summary.uploaded += 1;
+      summary.dbUpdated += 1;
+    } catch (error) {
+      summary.failed += 1;
+      summary.failures.push({
+        imageId: candidate.id,
+        productId: candidate.productId,
+        key: candidate.key,
+        url: candidate.url,
+        reason: error instanceof Error ? error.message : 'Unknown image binary import error.'
+      });
+    }
+  });
+
+  return summary;
+}
+
+async function verifyManagedImageObjects(
+  prisma: InstanceType<typeof PrismaClient>,
+  tenantId: string,
+  importedProductIds: string[],
+  storageProvider: any
+): Promise<ManagedImageObjectVerification> {
+  const verification = createManagedImageObjectVerification(true);
+
+  if (importedProductIds.length === 0) {
+    return verification;
+  }
+
+  const managedImages = await prisma.productImage.findMany({
+    where: {
+      tenantId,
+      productId: { in: importedProductIds },
+      key: {
+        startsWith: `${tenantId}/`
+      }
+    },
+    orderBy: [{ productId: 'asc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }],
+    select: {
+      id: true,
+      key: true
+    }
+  });
+
+  for (const image of managedImages) {
+    verification.checked += 1;
+
+    try {
+      const exists = await storageObjectExists(storageProvider, image.key);
+      if (exists) {
+        verification.present += 1;
+      } else {
+        verification.missing += 1;
+      }
+    } catch {
+      verification.errors += 1;
+    }
+  }
+
+  return verification;
+}
+
 function toIsoOrNull(value: unknown): string | null {
   const candidate = normalizeString(value);
   if (!candidate) {
@@ -616,6 +1206,17 @@ function printPlan(args: CliArgs, payload: ExportPayload, databaseUrl: string): 
   console.info(`- tenant: ${args.tenantSlug} (${args.tenantName})`);
   console.info(`- admin email: ${args.adminEmail}`);
   console.info(`- skip shares: ${args.skipShares ? 'yes' : 'no'}`);
+  console.info(`- import image binaries: ${args.importImageBinaries ? 'yes' : 'no'}`);
+  if (args.importImageBinaries) {
+    console.info(`  - image concurrency: ${args.imageConcurrency}`);
+    console.info(`  - image timeout ms: ${args.imageTimeoutMs}`);
+    console.info(`  - max images: ${args.maxImages ?? 'all'}`);
+    console.info(`  - max image failures: ${args.maxImageFailures}`);
+  }
+  if (args.skipImageDownload) {
+    console.info('  - skip image download: yes');
+  }
+  console.info(`- verify managed image objects: ${args.verifyManagedImageObjects ? 'yes' : 'no'}`);
   console.info(`- database: ${databaseUrl}`);
   console.info('- payload counts:');
   console.info(`  - series: ${payload.series.length}`);
@@ -700,6 +1301,12 @@ async function runDryRun(prisma: InstanceType<typeof PrismaClient>, args: CliArg
   console.info(
     `- shares to process: ${args.skipShares ? 0 : payload.shareSeeds.length || payload.featuredProducts.length}`
   );
+  console.info(
+    `- image binary migration: ${args.importImageBinaries ? 'enabled' : 'disabled'}${
+      args.importImageBinaries ? ` (concurrency=${args.imageConcurrency}, timeoutMs=${args.imageTimeoutMs}, maxImages=${args.maxImages ?? 'all'})` : ''
+    }`
+  );
+  console.info(`- managed image object verification: ${args.verifyManagedImageObjects ? 'enabled' : 'disabled'}`);
   console.info('No data changed. Re-run with --confirm to write.');
 }
 
@@ -1255,7 +1862,9 @@ async function buildReadbackReport(
   prisma: InstanceType<typeof PrismaClient>,
   args: CliArgs,
   payload: ExportPayload,
-  result: ImportResult
+  result: ImportResult,
+  imageBinarySummary: ImageBinaryImportSummary,
+  managedImageObjectVerification: ManagedImageObjectVerification
 ): Promise<Record<string, unknown>> {
   const tenantId = result.tenantId;
 
@@ -1265,6 +1874,7 @@ async function buildReadbackReport(
     tenantBreederCount,
     tenantEventCount,
     tenantImageCount,
+    tenantManagedImageCount,
     tenantFeaturedCount,
     tenantShareCount
   ] = await Promise.all([
@@ -1273,6 +1883,14 @@ async function buildReadbackReport(
     prisma.breeder.count({ where: { tenantId } }),
     prisma.breederEvent.count({ where: { tenantId } }),
     prisma.productImage.count({ where: { tenantId } }),
+    prisma.productImage.count({
+      where: {
+        tenantId,
+        key: {
+          startsWith: `${tenantId}/`
+        }
+      }
+    }),
     prisma.featuredProduct.count({ where: { tenantId } }),
     prisma.publicShare.count({ where: { tenantId } })
   ]);
@@ -1322,6 +1940,18 @@ async function buildReadbackReport(
       })
     : 0;
 
+  const importedManagedImageCount = result.importedProductIds.length
+    ? await prisma.productImage.count({
+        where: {
+          tenantId,
+          productId: { in: result.importedProductIds },
+          key: {
+            startsWith: `${tenantId}/`
+          }
+        }
+      })
+    : 0;
+
   const importedFeaturedCount = result.featuredProductIds.length
     ? await prisma.featuredProduct.count({
         where: {
@@ -1347,7 +1977,11 @@ async function buildReadbackReport(
     importedEventsPresent: importedEventsCount >= result.counters.eventsCreated,
     importedImagesPresent: importedImagesCount >= result.counters.imagesCreated,
     importedFeaturedPresent: importedFeaturedCount >= result.featuredProductIds.length,
-    importedSharesPresent: importedSharesCount >= result.sharedProductIds.length
+    importedSharesPresent: importedSharesCount >= result.sharedProductIds.length,
+    imageBinaryFailuresWithinThreshold: imageBinarySummary.failed <= args.maxImageFailures,
+    managedObjectReadbackHealthy:
+      !managedImageObjectVerification.enabled ||
+      (managedImageObjectVerification.missing === 0 && managedImageObjectVerification.errors === 0)
   };
 
   return {
@@ -1371,12 +2005,15 @@ async function buildReadbackReport(
       shareSeeds: payload.shareSeeds.length
     },
     counters: result.counters,
+    imageBinaryImport: imageBinarySummary,
+    managedObjectVerification: managedImageObjectVerification,
     readbackCounts: {
       tenantSeriesCount,
       tenantProductCount,
       tenantBreederCount,
       tenantEventCount,
       tenantImageCount,
+      tenantManagedImageCount,
       tenantFeaturedCount,
       tenantShareCount,
       importedSeriesCount,
@@ -1384,6 +2021,7 @@ async function buildReadbackReport(
       importedBreederCount,
       importedEventsCount,
       importedImagesCount,
+      importedManagedImageCount,
       importedFeaturedCount,
       importedSharesCount
     },
@@ -1392,7 +2030,7 @@ async function buildReadbackReport(
   };
 }
 
-function printWriteSummary(result: ImportResult, verification: Record<string, unknown>): void {
+function printWriteSummary(result: ImportResult, report: Record<string, unknown>): void {
   const counters = result.counters;
   console.info('Import complete');
   console.info(`- series created/updated/skippedNoCode: ${counters.seriesCreated}/${counters.seriesUpdated}/${counters.seriesSkippedNoCode}`);
@@ -1403,7 +2041,23 @@ function printWriteSummary(result: ImportResult, verification: Record<string, un
   console.info(`- featured created/updated/skippedNoProduct: ${counters.featuredCreated}/${counters.featuredUpdated}/${counters.featuredSkippedNoProduct}`);
   console.info(`- shares created/updated/skippedNoProduct: ${counters.sharesCreated}/${counters.sharesUpdated}/${counters.sharesSkippedNoProduct}`);
 
-  const checks = (verification?.verification ?? {}) as Record<string, boolean>;
+  const imageBinaryImport = (report.imageBinaryImport ?? null) as ImageBinaryImportSummary | null;
+  if (imageBinaryImport?.enabled) {
+    console.info(
+      `- image binaries attempted/uploaded/dbUpdated/skippedManaged/skippedNoUrl/failed: ${imageBinaryImport.attempted}/${imageBinaryImport.uploaded}/${imageBinaryImport.dbUpdated}/${imageBinaryImport.skippedManagedExisting}/${imageBinaryImport.skippedNoUrl}/${imageBinaryImport.failed}`
+    );
+  }
+
+  const managedObjectVerification = (report.managedObjectVerification ?? null) as
+    | ManagedImageObjectVerification
+    | null;
+  if (managedObjectVerification?.enabled) {
+    console.info(
+      `- managed object verification checked/present/missing/errors: ${managedObjectVerification.checked}/${managedObjectVerification.present}/${managedObjectVerification.missing}/${managedObjectVerification.errors}`
+    );
+  }
+
+  const checks = (report.verification ?? {}) as Record<string, boolean>;
   console.info('Readback verification:');
   for (const [key, value] of Object.entries(checks)) {
     console.info(`- ${key}: ${value ? 'PASS' : 'CHECK'}`);
@@ -1429,8 +2083,38 @@ async function main(): Promise<void> {
       return;
     }
 
+    let storageProvider: any = null;
+    if (args.importImageBinaries || args.verifyManagedImageObjects) {
+      storageProvider = createStorageProvider();
+    }
+
     const importResult = await runWrite(prisma, args, payload);
-    const report = await buildReadbackReport(prisma, args, payload, importResult);
+
+    const imageBinarySummary = await importImageBinaries(
+      prisma,
+      args,
+      importResult.tenantId,
+      importResult.importedProductIds,
+      storageProvider
+    );
+
+    const managedObjectVerification = args.verifyManagedImageObjects
+      ? await verifyManagedImageObjects(
+          prisma,
+          importResult.tenantId,
+          importResult.importedProductIds,
+          storageProvider
+        )
+      : createManagedImageObjectVerification(false);
+
+    const report = await buildReadbackReport(
+      prisma,
+      args,
+      payload,
+      importResult,
+      imageBinarySummary,
+      managedObjectVerification
+    );
 
     printWriteSummary(importResult, report);
 
@@ -1463,6 +2147,18 @@ async function main(): Promise<void> {
       JSON.stringify(report.counters ?? {}, null, 2),
       '```',
       '',
+      '## Image Binary Import',
+      '',
+      '```json',
+      JSON.stringify(report.imageBinaryImport ?? {}, null, 2),
+      '```',
+      '',
+      '## Managed Object Verification',
+      '',
+      '```json',
+      JSON.stringify(report.managedObjectVerification ?? {}, null, 2),
+      '```',
+      '',
       '## Readback Verification',
       '',
       ...verificationLines,
@@ -1479,6 +2175,12 @@ async function main(): Promise<void> {
 
     console.info(`- report json: ${reportJsonPath}`);
     console.info(`- report md: ${reportMdPath}`);
+
+    if (imageBinarySummary.enabled && imageBinarySummary.failed > args.maxImageFailures) {
+      throw new Error(
+        `Image binary migration failed for ${imageBinarySummary.failed} images (threshold: ${args.maxImageFailures}).`
+      );
+    }
   } finally {
     await prisma.$disconnect();
   }
