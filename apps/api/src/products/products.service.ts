@@ -89,6 +89,13 @@ export class ProductsService {
   async listProducts(tenantId: string, query: ListProductsQuery) {
     const skip = (query.page - 1) * query.pageSize;
     const keyword = query.search?.trim();
+    const sex = query.sex?.trim();
+    const seriesId = query.seriesId?.trim();
+    const sortDir: Prisma.SortOrder = query.sortDir ?? 'desc';
+    const orderBy =
+      query.sortBy === 'code'
+        ? ({ code: sortDir } satisfies Prisma.ProductOrderByWithRelationInput)
+        : ({ updatedAt: sortDir } satisfies Prisma.ProductOrderByWithRelationInput);
 
     const where: Prisma.ProductWhereInput = {
       tenantId
@@ -117,24 +124,52 @@ export class ProductsService {
       ];
     }
 
+    const include = {
+      images: {
+        where: {
+          isMain: true
+        },
+        orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+        take: 1,
+        select: {
+          id: true
+        }
+      }
+    } satisfies Prisma.ProductInclude;
+
+    const hasLegacyFilters = Boolean(sex || seriesId);
+
+    if (hasLegacyFilters) {
+      const items = await this.prisma.product.findMany({
+        where,
+        include,
+        orderBy
+      });
+
+      const filteredItems = items
+        .map((item) =>
+          this.toProduct(item, {
+            coverImageUrl: item.images[0] ? this.buildImageAccessPath(item.id, item.images[0].id) : null
+          })
+        )
+        .filter((item) => this.matchesLegacyListFilters(item, sex, seriesId));
+
+      const total = filteredItems.length;
+
+      return {
+        products: filteredItems.slice(skip, skip + query.pageSize),
+        total,
+        page: query.page,
+        pageSize: query.pageSize,
+        totalPages: Math.max(1, Math.ceil(total / query.pageSize))
+      };
+    }
+
     const [items, total] = await Promise.all([
       this.prisma.product.findMany({
         where,
-        include: {
-          images: {
-            where: {
-              isMain: true
-            },
-            orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
-            take: 1,
-            select: {
-              id: true
-            }
-          }
-        },
-        orderBy: {
-          updatedAt: 'desc'
-        },
+        include,
+        orderBy,
         skip,
         take: query.pageSize
       }),
@@ -559,6 +594,22 @@ export class ProductsService {
 
     const target = Array.isArray(error.meta?.target) ? error.meta.target : [];
     return target.includes('tenant_id') && target.includes('code');
+  }
+
+  private matchesLegacyListFilters(product: Product, sex?: string, seriesId?: string): boolean {
+    if (sex && !this.matchesOptionalValue(product.sex, sex)) {
+      return false;
+    }
+
+    if (seriesId && !this.matchesOptionalValue(product.seriesId, seriesId)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private matchesOptionalValue(value: string | null | undefined, expected: string): boolean {
+    return (value ?? '').trim().toLowerCase() === expected.trim().toLowerCase();
   }
 
   private toProduct(
