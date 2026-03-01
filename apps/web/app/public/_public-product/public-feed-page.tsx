@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { PublicSharePresentation } from '@eggturtle/shared';
 
+import { UiPreferenceControls } from '../../../components/ui-preferences';
+
 import type { Breeder, NeedMatingStatus, Series } from './types';
 import { BreederCard, DemoHint, PublicEmptyState, SeriesIntroCard, ShareContactCard } from './components';
 import { resolvePublicSharePresentation } from './presentation';
@@ -72,7 +74,7 @@ export default function PublicFeedPage({ demo, shareToken, shareQuery, series, b
   const activeButtonShadow = `0 6px 20px ${hexToRgba(brandPrimary, 0.22)}`;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-stone-100 via-white to-amber-50/40 text-black">
+    <div className="min-h-screen bg-gradient-to-br from-stone-100 via-white to-amber-50/40 text-black dark:from-neutral-950 dark:via-neutral-950 dark:to-neutral-900/40 dark:text-neutral-100">
       <div className="w-full px-1 pb-8 pt-[calc(env(safe-area-inset-top)+8px)] sm:px-3 lg:px-5 2xl:px-6">
         <header className="mb-3 overflow-hidden bg-neutral-900 shadow-[0_18px_50px_rgba(0,0,0,0.22)] sm:rounded-2xl">
           <div className="relative h-[240px] lg:h-[320px]">
@@ -85,6 +87,9 @@ export default function PublicFeedPage({ demo, shareToken, shareQuery, series, b
             <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-black/25 to-black/40" />
             <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${hexToRgba(brandSecondary, 0.18)}, transparent 52%)` }} />
             <div className="absolute inset-0">
+              <div className="absolute right-3 top-3 z-30 rounded-full border border-white/15 bg-black/35 p-1 backdrop-blur-sm">
+                <UiPreferenceControls />
+              </div>
               <div className="flex h-full flex-col justify-end p-5 lg:p-8">
                 <div className="text-xs uppercase tracking-widest text-white/70">public share</div>
                 <h1 className="mt-2 text-[26px] font-semibold leading-tight text-white drop-shadow-sm lg:text-[34px]">{resolvedPresentation.feedTitle}</h1>
@@ -128,7 +133,7 @@ export default function PublicFeedPage({ demo, shareToken, shareQuery, series, b
 
         <DemoHint demo={demo} />
 
-        <div className="sticky z-30 mb-3 border border-black/5 bg-white/95 px-3 py-3 shadow-[0_4px_20px_rgba(0,0,0,0.06)] backdrop-blur-md supports-[backdrop-filter]:bg-white/90 sm:rounded-2xl" style={{ top: 'calc(env(safe-area-inset-top) + 10px)' }}>
+        <div className="sticky z-30 mb-3 border border-black/5 bg-white/95 px-3 py-3 shadow-[0_4px_20px_rgba(0,0,0,0.06)] backdrop-blur-md supports-[backdrop-filter]:bg-white/90 sm:rounded-2xl dark:border-white/10 dark:bg-neutral-900/70 supports-[backdrop-filter]:dark:bg-neutral-900/60" style={{ top: 'calc(env(safe-area-inset-top) + 10px)' }}>
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center gap-2">
               <div className="text-xs font-medium text-neutral-600">系列</div>

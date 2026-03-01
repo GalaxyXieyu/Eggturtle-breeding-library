@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import type { PublicSharePresentation } from '@eggturtle/shared';
 
+import { UiPreferenceControls } from '../../../components/ui-preferences';
+
 import type { Breeder, BreederEventItem, FamilyTree, MaleMateLoadItem, Series } from './types';
 import {
   BreederCarousel,
@@ -55,44 +57,47 @@ export default function PublicProductDetailPage({
   const brandPrimary = resolvedPresentation.theme.brandPrimary;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-stone-100 via-white to-amber-50/40 text-black">
+    <div className="min-h-screen bg-gradient-to-br from-stone-100 via-white to-amber-50/40 text-black dark:from-neutral-950 dark:via-neutral-950 dark:to-neutral-900/40 dark:text-neutral-100">
       <div className="w-full px-0 pb-8 pt-[env(safe-area-inset-top)] sm:px-0 lg:px-0 2xl:px-0">
+        <div className="fixed right-3 top-[calc(env(safe-area-inset-top)+10px)] z-50 rounded-full border border-black/5 bg-white/80 p-1 shadow backdrop-blur-sm dark:border-white/10 dark:bg-neutral-900/70">
+          <UiPreferenceControls />
+        </div>
         <div className="px-3 sm:px-4 lg:px-5 2xl:px-6">
           <DemoHint demo={demo} />
         </div>
 
         {isNotFound ? (
           <div className="px-3 sm:px-4 lg:px-5 2xl:px-6">
-            <div className="space-y-4 rounded-3xl border border-black/5 bg-white/85 p-5 shadow-[0_12px_36px_rgba(0,0,0,0.08)] backdrop-blur sm:p-6">
+            <div className="space-y-4 rounded-3xl border border-black/5 bg-white/85 p-5 shadow-[0_12px_36px_rgba(0,0,0,0.08)] backdrop-blur sm:p-6 dark:border-white/10 dark:bg-neutral-900/75">
               <div>
-                <div className="text-lg font-semibold text-neutral-900">该详情不存在或已迁移</div>
-                <div className="mt-1 text-sm text-neutral-600">
+                <div className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">该详情不存在或已迁移</div>
+                <div className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
                   当前 ID：<span className="font-mono text-xs sm:text-sm">{breederId}</span>
                 </div>
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <Link href={resolvedHomeHref} className="rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm text-neutral-800 transition hover:border-neutral-400 hover:shadow-sm">
+                <Link href={resolvedHomeHref} className="rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm text-neutral-800 transition hover:border-neutral-400 hover:shadow-sm dark:border-white/15 dark:bg-neutral-900/70 dark:text-neutral-100 dark:hover:border-white/25">
                   返回首页
                 </Link>
               </div>
 
               {fallbackBreeders.length > 0 ? (
                 <div>
-                  <div className="mb-2 text-sm font-medium text-neutral-800">你可以先看这些记录：</div>
+                  <div className="mb-2 text-sm font-medium text-neutral-800 dark:text-neutral-200">你可以先看这些记录：</div>
                   <div className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3">
                     {fallbackBreeders.map((item) => (
                       <Link
                         key={item.id}
                         href={withDemo(`/public/s/${shareToken}/products/${item.id}`, demo, shareQuery)}
-                        className="group overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_30px_rgba(0,0,0,0.12)]"
+                        className="group overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_30px_rgba(0,0,0,0.12)] dark:border-white/10 dark:bg-neutral-900/80"
                       >
                         <div className="relative aspect-[4/5] bg-neutral-100">
                           <img src={item.images[0]?.url || '/images/mg_01.jpg'} alt={item.code} className="h-full w-full object-cover" />
                         </div>
                         <div className="p-2.5">
-                          <div className="text-sm font-semibold text-neutral-900">{item.code}</div>
-                          <div className="text-xs text-neutral-500">{item.name}</div>
+                          <div className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{item.code}</div>
+                          <div className="text-xs text-neutral-500 dark:text-neutral-400">{item.name}</div>
                         </div>
                       </Link>
                     ))}
@@ -116,12 +121,12 @@ export default function PublicProductDetailPage({
               />
 
               <div className="flex flex-col space-y-4">
-                <div className="flex flex-1 flex-col overflow-hidden rounded-3xl border border-black/5 bg-white/90 shadow-[0_12px_30px_rgba(0,0,0,0.08)]">
+                <div className="flex flex-1 flex-col overflow-hidden rounded-3xl border border-black/5 bg-white/90 shadow-[0_12px_30px_rgba(0,0,0,0.08)] dark:border-white/10 dark:bg-neutral-900/75">
                   <div className="p-5 sm:p-6">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="truncate text-2xl font-semibold tracking-tight text-neutral-900 sm:text-3xl">{breeder.name}</div>
-                        {breeder.code !== breeder.name ? <div className="mt-1 text-sm text-neutral-500 sm:text-base">{breeder.code}</div> : null}
+                        <div className="truncate text-2xl font-semibold tracking-tight text-neutral-900 sm:text-3xl dark:text-neutral-100">{breeder.name}</div>
+                        {breeder.code !== breeder.name ? <div className="mt-1 text-sm text-neutral-500 sm:text-base dark:text-neutral-400">{breeder.code}</div> : null}
                       </div>
                       {typeof breeder.offspringUnitPrice === 'number' ? (
                         <div
@@ -173,7 +178,7 @@ export default function PublicProductDetailPage({
 
 function ParentPill({ label, code }: { label: string; code?: string }) {
   return (
-    <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-neutral-200 bg-neutral-50/70 px-2 py-0.5 text-[11px] font-semibold text-neutral-700">
+    <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-neutral-200 bg-neutral-50/70 px-2 py-0.5 text-[11px] font-semibold text-neutral-700 dark:border-white/10 dark:bg-neutral-950/40 dark:text-neutral-200">
       <span className="shrink-0 tracking-wide">{label}</span>
       <span className="truncate">{code || '未知'}</span>
     </span>
