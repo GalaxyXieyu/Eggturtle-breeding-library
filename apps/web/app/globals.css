@@ -866,3 +866,84 @@ button.auth-action {
   font-size: 12px;
   color: #665b46;
 }
+
+.public-feed-waterfall {
+  column-count: 1;
+  column-gap: 12px;
+}
+
+@media (min-width: 720px) {
+  .public-feed-waterfall {
+    column-count: 2;
+  }
+}
+
+@media (min-width: 1080px) {
+  .public-feed-waterfall {
+    column-count: 3;
+  }
+}
+
+.public-feed-card {
+  break-inside: avoid;
+  display: block;
+  margin-bottom: 12px;
+  background: #fff;
+  border: 1px solid #ece5d2;
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 18px rgba(50, 42, 18, 0.08);
+  color: inherit;
+  text-decoration: none;
+  overflow: hidden;
+}
+
+.public-feed-cover {
+  width: 100%;
+  min-height: 120px;
+  max-height: 420px;
+  object-fit: cover;
+  background: #fff8e7;
+}
+
+.public-feed-cover-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #7e7158;
+}
+
+.public-feed-body {
+  padding: 12px;
+  gap: 8px;
+}
+
+.public-feed-body h2 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.public-feed-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid #e7ddc5;
+  background: #fff8e7;
+  font-size: 12px;
+  color: #705d2a;
+}
+
+.public-feed-tag-featured {
+  border-color: #edd36f;
+  background: #fff4c2;
+  color: #5d4700;
+}
+
+.public-feed-price {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #835800;
+}

@@ -1,36 +1,32 @@
-import { publicShareQuerySchema, publicShareResponseSchema } from '@eggturtle/shared';
+import { publicShareResponseSchema } from '@eggturtle/shared';
 
-type SearchParams = Record<string, string | string[] | undefined>;
-
-const DEFAULT_API_BASE_URL = 'http://localhost:30011';
+import { fetchPublicShareFromSearchParams, type PublicSearchParams } from '../_shared/public-share-api';
 
 export default async function PublicSharePage({
   searchParams
 }: {
-  searchParams: SearchParams;
+  searchParams: PublicSearchParams;
 }) {
-  const isDemo = firstValue(searchParams.demo) === '1';
-  const sid = firstValue(searchParams.sid);
+  const isDemo = searchParams.demo === '1';
+  const shareResult = isDemo ? demoShareResult() : await fetchPublicShareFromSearchParams(searchParams);
 
-  if (!sid && !isDemo) {
-    return (
-      <main className="share-shell">
-        <section className="card panel stack">
-          <h1>分享页不可用</h1>
-          <p className="notice notice-error">缺少分享标识参数（sid）。</p>
-        </section>
-      </main>
-    );
-  }
-
-  const shareResult = isDemo ? demoShareResult() : await fetchPublicShareFromQuery(searchParams, sid as string);
-
-  if (!shareResult.success) {
+  if (!shareResult.ok) {
     return (
       <main className="share-shell">
         <section className="card panel stack">
           <h1>分享页不可用</h1>
           <p className="notice notice-error">{shareResult.message}</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (shareResult.data.resourceType !== 'product') {
+    return (
+      <main className="share-shell">
+        <section className="card panel stack">
+          <h1>分享页不可用</h1>
+          <p className="notice notice-warning">该链接属于租户图鉴分享，请从入口链接重新打开。</p>
         </section>
       </main>
     );
@@ -86,40 +82,21 @@ export default async function PublicSharePage({
   );
 }
 
-async function fetchPublicShareFromQuery(searchParams: SearchParams, sid: string): Promise<ShareResult> {
-  const parsedQuery = publicShareQuerySchema.safeParse({
-    tenantId: firstValue(searchParams.tenantId),
-    resourceType: firstValue(searchParams.resourceType),
-    resourceId: firstValue(searchParams.resourceId),
-    exp: firstValue(searchParams.exp),
-    sig: firstValue(searchParams.sig)
-  });
-
-  if (!parsedQuery.success) {
-    return {
-      success: false,
-      message: '分享链接无效或已过期。'
-    };
-  }
-
-  return fetchPublicShare(sid, parsedQuery.data);
-}
-
 type ShareData = ReturnType<typeof publicShareResponseSchema.parse>;
 
 type ShareResult =
   | {
-      success: true;
+      ok: true;
       data: ShareData;
     }
   | {
-      success: false;
+      ok: false;
       message: string;
     };
 
 function demoShareResult(): ShareResult {
   return {
-    success: true,
+    ok: true,
     data: {
       shareId: 'share_demo',
       resourceType: 'product',
@@ -160,93 +137,4 @@ function demoShareResult(): ShareResult {
       expiresAt: '2099-01-01T00:00:00.000Z'
     }
   };
-}
-
-async function fetchPublicShare(
-  shareId: string,
-  query: {
-    tenantId: string;
-    resourceType: 'product';
-    resourceId: string;
-    exp: string;
-    sig: string;
-  }
-): Promise<ShareResult> {
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE_URL;
-  const requestUrl = new URL(`/shares/${shareId}/public`, apiBaseUrl);
-  requestUrl.searchParams.set('tenantId', query.tenantId);
-  requestUrl.searchParams.set('resourceType', query.resourceType);
-  requestUrl.searchParams.set('resourceId', query.resourceId);
-  requestUrl.searchParams.set('exp', query.exp);
-  requestUrl.searchParams.set('sig', query.sig);
-
-  const response = await fetch(requestUrl.toString(), {
-    cache: 'no-store'
-  });
-
-  const payload = await safeJson(response);
-
-  if (!response.ok) {
-    return {
-      success: false,
-      message: pickErrorMessage(payload, response.status)
-    };
-  }
-
-  const parsed = publicShareResponseSchema.safeParse(payload);
-  if (!parsed.success) {
-    return {
-      success: false,
-      message: '分享接口返回结构异常。'
-    };
-  }
-
-  return {
-    success: true,
-    data: parsed.data
-  };
-}
-
-async function safeJson(response: Response): Promise<unknown> {
-  const text = await response.text();
-
-  if (!text) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(text) as unknown;
-  } catch {
-    return {
-      message: text
-    };
-  }
-}
-
-function pickErrorMessage(payload: unknown, status: number): string {
-  if (payload && typeof payload === 'object' && 'message' in payload && typeof payload.message === 'string') {
-    return payload.message;
-  }
-
-  if (status === 401) {
-    return '该分享链接已过期，请重新生成。';
-  }
-
-  if (status === 404) {
-    return '未找到分享内容。';
-  }
-
-  return `Request failed with status ${status}`;
-}
-
-function firstValue(value: string | string[] | undefined): string | undefined {
-  if (typeof value === 'string') {
-    return value;
-  }
-
-  if (Array.isArray(value)) {
-    return value[0];
-  }
-
-  return undefined;
 }
