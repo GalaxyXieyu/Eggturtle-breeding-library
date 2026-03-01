@@ -34,6 +34,10 @@ type PublicShareQueryInput = {
   sig: string;
 };
 
+type PublicShareAssetQueryInput = PublicShareQueryInput & {
+  key: string;
+};
+
 type ShareAccessMeta = {
   ip: string | null;
   userAgent: string | null;
@@ -281,6 +285,71 @@ export class SharesService {
     return response;
   }
 
+  async getPublicShareAsset(shareId: string, query: PublicShareAssetQueryInput, meta: ShareAccessMeta) {
+    const expiresAt = this.verifySignature({
+      shareId,
+      tenantId: query.tenantId,
+      resourceType: query.resourceType,
+      resourceId: query.resourceId,
+      exp: query.exp,
+      sig: query.sig
+    });
+
+    const share = await this.prisma.publicShare.findFirst({
+      where: {
+        id: shareId,
+        tenantId: query.tenantId,
+        resourceType: query.resourceType,
+        resourceId: query.resourceId
+      },
+      select: {
+        id: true,
+        tenantId: true,
+        resourceType: true,
+        resourceId: true,
+        productId: true,
+        createdByUserId: true
+      }
+    });
+
+    if (!share) {
+      throw new NotFoundException({
+        message: 'Share content not found.',
+        errorCode: ErrorCode.ShareNotFound
+      });
+    }
+
+    // Only allow managed keys; unmanaged URLs should be served as-is (not proxied).
+    if (!this.isManagedStorageKey(share.tenantId, query.key)) {
+      throw new NotFoundException({
+        message: 'Share asset not found.',
+        errorCode: ErrorCode.ShareNotFound
+      });
+    }
+
+    const object = await this.storageProvider.getObject(query.key);
+
+    await this.writeShareAccessAuditLog(
+      {
+        id: share.id,
+        tenantId: share.tenantId,
+        resourceType: this.parseShareResourceType(share.resourceType),
+        resourceId: share.resourceId,
+        productId: share.productId,
+        createdByUserId: share.createdByUserId
+      },
+      expiresAt,
+      'asset',
+      meta
+    );
+
+    return {
+      content: object.body,
+      contentType: object.contentType,
+      expiresAt
+    };
+  }
+
   private async buildTenantFeedPublicShare(
     share: ShareScope,
     detailProductId: string | undefined,
@@ -306,7 +375,10 @@ export class SharesService {
         const coverImage = product.images[0] ?? null;
         const coverImageUrl = coverImage
           ? await this.resolvePublicImageUrl({
+              shareId: share.id,
               tenantId: share.tenantId,
+              resourceType: share.resourceType,
+              resourceId: share.resourceId,
               key: coverImage.key,
               fallbackUrl: coverImage.url,
               expiresAt
@@ -354,7 +426,10 @@ export class SharesService {
           productId: image.productId,
           key: image.key,
           url: await this.resolvePublicImageUrl({
+            shareId: share.id,
             tenantId: share.tenantId,
+            resourceType: share.resourceType,
+            resourceId: share.resourceId,
             key: image.key,
             fallbackUrl: image.url,
             expiresAt
@@ -396,7 +471,7 @@ export class SharesService {
       const [events, familyTree, maleMateLoad] = await Promise.all([
         this.listPublicProductEvents(share.tenantId, detailProduct.id),
         this.buildPublicProductFamilyTree(share.tenantId, detailProduct),
-        this.buildPublicMaleMateLoad(share.tenantId, detailProduct, expiresAt)
+        this.buildPublicMaleMateLoad(share, detailProduct, expiresAt)
       ]);
 
       detail = {
@@ -694,7 +769,7 @@ export class SharesService {
   }
 
   private async buildPublicMaleMateLoad(
-    tenantId: string,
+    share: ShareScope,
     detailProduct: {
       id: string;
       code: string;
@@ -702,6 +777,7 @@ export class SharesService {
     },
     expiresAt: Date
   ) {
+    const tenantId = share.tenantId;
     if (detailProduct.sex?.trim().toLowerCase() !== 'male') {
       return [];
     }
@@ -775,7 +851,10 @@ export class SharesService {
         const mainImage = female.images[0] ?? null;
         const femaleMainImageUrl = mainImage
           ? await this.resolvePublicImageUrl({
+              shareId: share.id,
               tenantId,
+              resourceType: share.resourceType,
+              resourceId: share.resourceId,
               key: mainImage.key,
               fallbackUrl: mainImage.url,
               expiresAt
@@ -837,8 +916,31 @@ export class SharesService {
     return 'need_mating';
   }
 
-  private async resolvePublicImageUrl(input: {
+  private buildPublicShareAssetPath(input: {
+    shareId: string;
     tenantId: string;
+    resourceType: ShareResourceType;
+    resourceId: string;
+    exp: string;
+    sig: string;
+    key: string;
+  }): string {
+    const params = new URLSearchParams();
+    params.set('tenantId', input.tenantId);
+    params.set('resourceType', input.resourceType);
+    params.set('resourceId', input.resourceId);
+    params.set('exp', input.exp);
+    params.set('sig', input.sig);
+    params.set('key', input.key);
+
+    return `/shares/${input.shareId}/public/assets?${params.toString()}`;
+  }
+
+  private async resolvePublicImageUrl(input: {
+    shareId: string;
+    tenantId: string;
+    resourceType: ShareResourceType;
+    resourceId: string;
     key: string;
     fallbackUrl: string;
     expiresAt: Date;
@@ -847,8 +949,24 @@ export class SharesService {
       return input.fallbackUrl;
     }
 
-    const ttlSeconds = Math.max(1, Math.ceil((input.expiresAt.getTime() - Date.now()) / 1000));
-    return this.storageProvider.getSignedUrl(input.key, ttlSeconds);
+    const exp = Math.floor(input.expiresAt.getTime() / 1000).toString();
+    const sig = this.signPayload({
+      shareId: input.shareId,
+      tenantId: input.tenantId,
+      resourceType: input.resourceType,
+      resourceId: input.resourceId,
+      exp
+    });
+
+    return this.buildPublicShareAssetPath({
+      shareId: input.shareId,
+      tenantId: input.tenantId,
+      resourceType: input.resourceType,
+      resourceId: input.resourceId,
+      exp,
+      sig,
+      key: input.key
+    });
   }
 
   private async findShareByResource(tenantId: string, resourceType: ShareResourceType, resourceId: string) {
@@ -1096,7 +1214,7 @@ export class SharesService {
   private async writeShareAccessAuditLog(
     share: ShareAuditScope,
     expiresAt: Date,
-    phase: 'entry' | 'data',
+    phase: 'entry' | 'data' | 'asset',
     meta: ShareAccessMeta,
     requestedProductId?: string | null
   ) {

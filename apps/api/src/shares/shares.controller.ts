@@ -8,6 +8,7 @@ import {
   Query,
   Req,
   Res,
+  StreamableFile,
   UnauthorizedException,
   UseGuards
 } from '@nestjs/common';
@@ -80,6 +81,50 @@ export class SharesController {
     });
 
     return publicShareResponseSchema.parse(data);
+  }
+
+  @Get('shares/:shareId/public/assets')
+  async getPublicShareAsset(
+    @Param('shareId') shareId: string,
+    @Query() query: unknown,
+    @Req() request: PublicRequest,
+    @Res({ passthrough: true }) response: { setHeader: (key: string, value: string) => void }
+  ) {
+    const parsedQuery = parseOrThrow(publicShareQuerySchema, query) as {
+      tenantId: string;
+      resourceType: 'tenant_feed';
+      resourceId: string;
+      productId?: string;
+      exp: string;
+      sig: string;
+    };
+
+    const rawKey = (query as { key?: unknown }).key;
+    if (typeof rawKey !== 'string' || rawKey.trim().length === 0) {
+      throw new BadRequestException({
+        message: 'Invalid share asset key.',
+        errorCode: ErrorCode.InvalidRequestPayload
+      });
+    }
+
+    const asset = await this.sharesService.getPublicShareAsset(
+      shareId,
+      { ...parsedQuery, key: rawKey.trim() },
+      {
+        ip: this.getRequestIp(request),
+        userAgent: this.getUserAgent(request)
+      }
+    );
+
+    // Cache only until the share signature expires.
+    const maxAge = Math.max(0, Math.min(300, Math.floor((asset.expiresAt.getTime() - Date.now()) / 1000)));
+    response.setHeader('Cache-Control', `public, max-age=${maxAge}, s-maxage=${maxAge}`);
+
+    if (asset.contentType) {
+      response.setHeader('Content-Type', asset.contentType);
+    }
+
+    return new StreamableFile(asset.content);
   }
 
   private requireTenantId(tenantId?: string): string {
