@@ -1,6 +1,23 @@
 import { z } from 'zod';
 
 const nullableText = z.string().trim().max(5000).nullable().optional();
+const nullableCode = z.string().trim().max(120).nullable().optional();
+const nullableSeriesId = z.string().trim().max(120).nullable().optional();
+const nullableSexInput = z.enum(['male', 'female']).nullable().optional();
+const nullableSexResponse = z.string().trim().max(20).nullable().optional();
+const nullableOffspringUnitPrice = z
+  .preprocess((value) => {
+    if (value === '' || value === null || value === undefined) {
+      return null;
+    }
+
+    if (typeof value === 'string') {
+      return Number(value);
+    }
+
+    return value;
+  }, z.number().finite().nonnegative().nullable())
+  .optional();
 
 export const productCodeSchema = z.string().trim().min(1).max(120);
 export const productNameSchema = z.string().trim().min(1).max(120).nullable().optional();
@@ -12,9 +29,17 @@ export const productSchema = z.object({
   code: productCodeSchema,
   name: z.string().nullable(),
   description: z.string().nullable(),
-  // Reserved fields for legacy parity and future edit forms.
-  seriesId: z.string().nullable().optional(),
-  sex: z.string().nullable().optional(),
+  seriesId: nullableSeriesId,
+  sex: nullableSexResponse,
+  offspringUnitPrice: nullableOffspringUnitPrice,
+  sireCode: nullableCode,
+  damCode: nullableCode,
+  mateCode: nullableCode,
+  excludeFromBreeding: z.boolean().optional(),
+  hasSample: z.boolean().optional(),
+  inStock: z.boolean().optional(),
+  popularityScore: z.number().int().min(0).max(100).optional(),
+  isFeatured: z.boolean().optional(),
   coverImageUrl: z.string().nullable().optional(),
   createdAt: z.string().datetime().optional(),
   updatedAt: z.string().datetime().optional()
@@ -23,7 +48,18 @@ export const productSchema = z.object({
 export const createProductRequestSchema = z.object({
   code: productCodeSchema,
   name: productNameSchema,
-  description: productDescriptionSchema
+  description: productDescriptionSchema,
+  seriesId: nullableSeriesId,
+  sex: nullableSexInput,
+  offspringUnitPrice: nullableOffspringUnitPrice,
+  sireCode: nullableCode,
+  damCode: nullableCode,
+  mateCode: nullableCode,
+  excludeFromBreeding: z.boolean().optional(),
+  hasSample: z.boolean().optional(),
+  inStock: z.boolean().optional(),
+  popularityScore: z.number().int().min(0).max(100).optional(),
+  isFeatured: z.boolean().optional()
 });
 
 export const createProductResponseSchema = z.object({

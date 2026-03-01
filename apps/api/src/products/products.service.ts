@@ -59,8 +59,19 @@ export class ProductsService {
         data: {
           tenantId,
           code: payload.code,
-          name: payload.name ?? null,
-          description: payload.description ?? null
+          name: this.normalizeOptionalText(payload.name) ?? payload.code,
+          description: this.normalizeOptionalText(payload.description),
+          seriesId: this.normalizeOptionalText(payload.seriesId),
+          sex: this.normalizeOptionalSex(payload.sex),
+          offspringUnitPrice: payload.offspringUnitPrice ?? null,
+          sireCode: this.normalizeOptionalText(payload.sireCode),
+          damCode: this.normalizeOptionalText(payload.damCode),
+          mateCode: this.normalizeOptionalText(payload.mateCode),
+          excludeFromBreeding: payload.excludeFromBreeding ?? false,
+          hasSample: payload.hasSample ?? false,
+          inStock: payload.inStock ?? true,
+          popularityScore: payload.popularityScore ?? 0,
+          isFeatured: payload.isFeatured ?? false
         }
       });
 
@@ -124,6 +135,20 @@ export class ProductsService {
       ];
     }
 
+    if (sex) {
+      where.sex = {
+        equals: sex,
+        mode: 'insensitive'
+      };
+    }
+
+    if (seriesId) {
+      where.seriesId = {
+        equals: seriesId,
+        mode: 'insensitive'
+      };
+    }
+
     const include = {
       images: {
         where: {
@@ -136,34 +161,6 @@ export class ProductsService {
         }
       }
     } satisfies Prisma.ProductInclude;
-
-    const hasLegacyFilters = Boolean(sex || seriesId);
-
-    if (hasLegacyFilters) {
-      const items = await this.prisma.product.findMany({
-        where,
-        include,
-        orderBy
-      });
-
-      const filteredItems = items
-        .map((item) =>
-          this.toProduct(item, {
-            coverImageUrl: item.images[0] ? this.buildImageAccessPath(item.id, item.images[0].id) : null
-          })
-        )
-        .filter((item) => this.matchesLegacyListFilters(item, sex, seriesId));
-
-      const total = filteredItems.length;
-
-      return {
-        products: filteredItems.slice(skip, skip + query.pageSize),
-        total,
-        page: query.page,
-        pageSize: query.pageSize,
-        totalPages: Math.max(1, Math.ceil(total / query.pageSize))
-      };
-    }
 
     const [items, total] = await Promise.all([
       this.prisma.product.findMany({
@@ -596,20 +593,14 @@ export class ProductsService {
     return target.includes('tenant_id') && target.includes('code');
   }
 
-  private matchesLegacyListFilters(product: Product, sex?: string, seriesId?: string): boolean {
-    if (sex && !this.matchesOptionalValue(product.sex, sex)) {
-      return false;
-    }
-
-    if (seriesId && !this.matchesOptionalValue(product.seriesId, seriesId)) {
-      return false;
-    }
-
-    return true;
+  private normalizeOptionalText(value: string | null | undefined): string | null {
+    const normalizedValue = value?.trim();
+    return normalizedValue ? normalizedValue : null;
   }
 
-  private matchesOptionalValue(value: string | null | undefined, expected: string): boolean {
-    return (value ?? '').trim().toLowerCase() === expected.trim().toLowerCase();
+  private normalizeOptionalSex(value: string | null | undefined): string | null {
+    const normalizedValue = this.normalizeOptionalText(value);
+    return normalizedValue ? normalizedValue.toLowerCase() : null;
   }
 
   private toProduct(
@@ -624,8 +615,17 @@ export class ProductsService {
       code: product.code,
       name: product.name,
       description: product.description,
-      seriesId: null,
-      sex: null,
+      seriesId: product.seriesId,
+      sex: product.sex,
+      offspringUnitPrice: product.offspringUnitPrice?.toNumber() ?? null,
+      sireCode: product.sireCode,
+      damCode: product.damCode,
+      mateCode: product.mateCode,
+      excludeFromBreeding: product.excludeFromBreeding,
+      hasSample: product.hasSample,
+      inStock: product.inStock,
+      popularityScore: product.popularityScore,
+      isFeatured: product.isFeatured,
       coverImageUrl: options.coverImageUrl ?? null,
       createdAt: product.createdAt.toISOString(),
       updatedAt: product.updatedAt.toISOString()
