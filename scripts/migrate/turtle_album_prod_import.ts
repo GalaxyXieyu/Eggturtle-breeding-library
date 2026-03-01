@@ -45,6 +45,7 @@ type CliArgs = {
   adminEmail: string;
   skipShares: boolean;
   reportDir: string | null;
+  legacyImageBaseUrl: string | null;
   importImageBinaries: boolean;
   imageConcurrency: number;
   imageTimeoutMs: number;
@@ -255,6 +256,7 @@ function parseArgs(argv: string[]): CliArgs {
   let maxImageFailures = 0;
   let skipImageDownload = false;
   let verifyManagedImageObjects = false;
+  let legacyImageBaseUrl: string | null = null;
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -295,6 +297,12 @@ function parseArgs(argv: string[]): CliArgs {
 
     if (arg === '--report-dir') {
       reportDir = requireValue(argv, index, arg);
+      index += 1;
+      continue;
+    }
+
+    if (arg === '--legacy-image-base-url') {
+      legacyImageBaseUrl = requireValue(argv, index, arg).trim();
       index += 1;
       continue;
     }
@@ -394,6 +402,7 @@ function parseArgs(argv: string[]): CliArgs {
     adminEmail: adminEmail.trim().toLowerCase(),
     skipShares,
     reportDir: reportDir ? reportDir.trim() : null,
+    legacyImageBaseUrl: legacyImageBaseUrl ? legacyImageBaseUrl.trim() : null,
     importImageBinaries: importImageBinaries && !skipImageDownload,
     imageConcurrency,
     imageTimeoutMs,
@@ -442,6 +451,7 @@ function printHelpAndExit(code: number): never {
     `  --admin-email <email>       Owner user email (default: ${DEFAULT_ADMIN_EMAIL})`,
     '  --skip-shares               Skip synthetic share creation from shareSeeds',
     '  --report-dir <path>         Write import report files to this directory',
+    '  --legacy-image-base-url <url>  Base URL to resolve relative legacy image URLs (defaults to export.source.apiBaseUrl)',
     '  --import-image-binaries     Download legacy image binaries and upload to managed storage',
     '  --skip-image-download       Force metadata-only mode even if import flag is set',
     '  --image-concurrency <n>     Concurrent binary downloads/uploads (default: 3)',
@@ -663,6 +673,30 @@ function isManagedStorageKey(tenantId: string, key: string | null | undefined): 
 function isHttpUrl(value: string): boolean {
   const normalized = value.trim().toLowerCase();
   return normalized.startsWith('http://') || normalized.startsWith('https://');
+}
+
+function resolveLegacyUrl(rawUrl: string | null | undefined, baseUrl: string | null | undefined): string | null {
+  const url = normalizeString(rawUrl);
+  if (!url) {
+    return null;
+  }
+
+  if (isHttpUrl(url)) {
+    return url;
+  }
+
+  const base = normalizeString(baseUrl);
+  if (!base || !isHttpUrl(base)) {
+    return null;
+  }
+
+  // TurtleAlbum export often contains relative paths like "/static/images/...".
+  // Resolve them against the API base URL so the binary import step can download them.
+  try {
+    return new URL(url, base).toString();
+  } catch {
+    return null;
+  }
 }
 
 function normalizeContentType(value: string | null | undefined): string | null {
@@ -890,7 +924,8 @@ async function importImageBinaries(
   args: CliArgs,
   tenantId: string,
   importedProductIds: string[],
-  storageProvider: any
+  storageProvider: any,
+  legacyImageBaseUrl: string | null
 ): Promise<ImageBinaryImportSummary> {
   const summary = createImageBinaryImportSummary(args);
 
@@ -922,7 +957,7 @@ async function importImageBinaries(
       id: image.id,
       productId: image.productId,
       key: image.key,
-      url: normalizeString(image.url),
+      url: resolveLegacyUrl(image.url, legacyImageBaseUrl),
       contentType: normalizeContentType(image.contentType)
     };
 
@@ -1651,7 +1686,8 @@ async function runWrite(
 
       const normalizedImages = images
         .map((image, index) => {
-          const url = normalizeString(image.url);
+          const baseUrl = args.legacyImageBaseUrl ?? normalizeString(payload.source?.apiBaseUrl);
+          const url = resolveLegacyUrl(image.url, baseUrl);
           if (!url) {
             counters.imagesSkippedEmptyUrl += 1;
             return null;
@@ -2090,12 +2126,15 @@ async function main(): Promise<void> {
 
     const importResult = await runWrite(prisma, args, payload);
 
+    const legacyImageBaseUrl = args.legacyImageBaseUrl ?? normalizeString(payload.source?.apiBaseUrl);
+
     const imageBinarySummary = await importImageBinaries(
       prisma,
       args,
       importResult.tenantId,
       importResult.importedProductIds,
-      storageProvider
+      storageProvider,
+      legacyImageBaseUrl
     );
 
     const managedObjectVerification = args.verifyManagedImageObjects
