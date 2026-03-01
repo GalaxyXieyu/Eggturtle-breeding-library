@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 .auth-shell {
   min-height: 100vh;
   min-height: 100svh;
