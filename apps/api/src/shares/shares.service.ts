@@ -24,6 +24,12 @@ import type { StorageProvider } from '../storage/storage.provider';
 import { TenantSubscriptionsService } from '../subscriptions/tenant-subscriptions.service';
 import { TenantSharePresentationService } from '../tenant-share-presentation/tenant-share-presentation.service';
 import { canonicalMateCodeCandidates, parseCurrentMateCode } from '../products/breeding-rules';
+import {
+  calculateDaysSince,
+  normalizeTaggedCode,
+  parseTaggedProductEventNote,
+  resolveNeedMatingStatus
+} from '../products/product-event-utils';
 
 type PublicShareQueryInput = {
   tenantId: string;
@@ -503,7 +509,7 @@ export class SharesService {
     });
 
     return events.map((event) => {
-      const parsedNote = this.parseEventNote(event.note);
+      const parsedNote = parseTaggedProductEventNote(event.note);
       return {
         id: event.id,
         eventType: this.toPublicEventType(event.eventType, parsedNote),
@@ -515,84 +521,6 @@ export class SharesService {
         newMateCode: parsedNote.newMateCode
       };
     });
-  }
-
-  private parseEventNote(note: string | null): {
-    note: string | null;
-    maleCode: string | null;
-    eggCount: number | null;
-    oldMateCode: string | null;
-    newMateCode: string | null;
-  } {
-    if (!note) {
-      return {
-        note: null,
-        maleCode: null,
-        eggCount: null,
-        oldMateCode: null,
-        newMateCode: null
-      };
-    }
-
-    let maleCode: string | null = null;
-    let eggCount: number | null = null;
-    let oldMateCode: string | null = null;
-    let newMateCode: string | null = null;
-    const noteLines: string[] = [];
-
-    for (const rawLine of note.split(/\r?\n/)) {
-      const line = rawLine.trim();
-      if (!line) {
-        continue;
-      }
-
-      if (!line.startsWith('#') || !line.includes('=')) {
-        noteLines.push(line);
-        continue;
-      }
-
-      const [rawKey, ...rest] = line.slice(1).split('=');
-      const key = rawKey.trim().toLowerCase();
-      const value = rest.join('=').trim();
-
-      if (!value) {
-        continue;
-      }
-
-      if (key === 'malecode') {
-        maleCode = this.normalizeTaggedValue(value);
-        continue;
-      }
-
-      if (key === 'eggcount') {
-        const parsed = Number(value);
-        eggCount = Number.isFinite(parsed) && parsed >= 0 ? Math.floor(parsed) : null;
-        continue;
-      }
-
-      if (key === 'oldmatecode') {
-        oldMateCode = this.normalizeTaggedValue(value);
-        continue;
-      }
-
-      if (key === 'newmatecode') {
-        newMateCode = this.normalizeTaggedValue(value);
-        continue;
-      }
-    }
-
-    return {
-      note: noteLines.length > 0 ? noteLines.join('\n') : null,
-      maleCode,
-      eggCount,
-      oldMateCode,
-      newMateCode
-    };
-  }
-
-  private normalizeTaggedValue(value: string | null | undefined): string | null {
-    const normalized = value?.trim();
-    return normalized ? normalized.toUpperCase() : null;
   }
 
   private toPublicEventType(
@@ -712,12 +640,12 @@ export class SharesService {
       description?: string | null;
     }
   ): Promise<string | null> {
-    const explicit = this.normalizeTaggedValue(product.mateCode ?? '');
+    const explicit = normalizeTaggedCode(product.mateCode ?? '');
     if (explicit) {
       return explicit;
     }
 
-    const parsedFromDescription = this.normalizeTaggedValue(parseCurrentMateCode(product.description));
+    const parsedFromDescription = normalizeTaggedCode(parseCurrentMateCode(product.description));
     if (parsedFromDescription) {
       return parsedFromDescription;
     }
@@ -731,8 +659,8 @@ export class SharesService {
       orderBy: [{ eventDate: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }]
     });
 
-    const parsed = this.parseEventNote(latestMatingEvent?.note ?? null);
-    return this.normalizeTaggedValue(parsed.maleCode);
+    const parsed = parseTaggedProductEventNote(latestMatingEvent?.note ?? null);
+    return normalizeTaggedCode(parsed.maleCode);
   }
 
   private toPublicFamilyTreeNode(product: { id: string; code: string; name: string | null; sex: string | null }) {
@@ -845,8 +773,8 @@ export class SharesService {
         const lastEggAt = lastEggEvent?.eventDate ?? null;
         const lastMatingAt = lastMatingEvent?.eventDate ?? null;
         const lastMatingWithThisMaleAt = lastMatingWithMaleEvent?.eventDate ?? null;
-        const daysSinceEgg = this.calculateDaysSince(lastEggAt);
-        const status = this.resolveNeedMatingStatus(lastEggAt, lastMatingAt, female.excludeFromBreeding);
+        const daysSinceEgg = calculateDaysSince(lastEggAt);
+        const status = resolveNeedMatingStatus(lastEggAt, lastMatingAt, female.excludeFromBreeding);
 
         const mainImage = female.images[0] ?? null;
         const femaleMainImageUrl = mainImage
@@ -876,44 +804,6 @@ export class SharesService {
     );
 
     return mapped;
-  }
-
-  private calculateDaysSince(value: Date | null): number | null {
-    if (!value) {
-      return null;
-    }
-
-    const diffMs = Date.now() - value.getTime();
-    if (diffMs < 0) {
-      return 0;
-    }
-
-    return Math.floor(diffMs / (24 * 60 * 60 * 1000));
-  }
-
-  private resolveNeedMatingStatus(
-    lastEggAt: Date | null,
-    lastMatingAt: Date | null,
-    excludeFromBreeding: boolean
-  ): 'normal' | 'need_mating' | 'warning' {
-    if (excludeFromBreeding) {
-      return 'normal';
-    }
-
-    if (!lastEggAt) {
-      return 'normal';
-    }
-
-    if (lastMatingAt && lastMatingAt.getTime() >= lastEggAt.getTime()) {
-      return 'normal';
-    }
-
-    const daysSinceEgg = this.calculateDaysSince(lastEggAt);
-    if (daysSinceEgg !== null && daysSinceEgg >= 25) {
-      return 'warning';
-    }
-
-    return 'need_mating';
   }
 
   private buildPublicShareAssetPath(input: {

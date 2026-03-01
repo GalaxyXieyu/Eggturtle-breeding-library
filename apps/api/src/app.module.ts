@@ -5,6 +5,7 @@ import { AdminModule } from './admin/admin.module';
 import { AuditLogsModule } from './audit-logs/audit-logs.module';
 import { AuthModule } from './auth/auth.module';
 import { FeaturedProductsModule } from './featured-products/featured-products.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 import { HealthController } from './health.controller';
 import { PaymentsModule } from './payments/payments.module';
 import { PrismaModule } from './prisma.module';
@@ -24,6 +25,7 @@ import { TenantSharePresentationModule } from './tenant-share-presentation/tenan
     ProductsModule,
     SeriesModule,
     FeaturedProductsModule,
+    DashboardModule,
     AuditLogsModule,
     SharesModule,
     TenantSharePresentationModule,
