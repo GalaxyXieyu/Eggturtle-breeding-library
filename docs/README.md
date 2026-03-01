@@ -11,7 +11,6 @@
 - [api-views.md](./api-views.md) - 业务能力到 API 映射
 - [task-detail-views.md](./task-detail-views.md) - 关键任务细节
 - [technical-reference.md](./technical-reference.md) - 技术口径与兼容策略
-- [prune-readiness.md](./prune-readiness.md) - 删前对照与收敛策略
 
 ## 需要保留
 

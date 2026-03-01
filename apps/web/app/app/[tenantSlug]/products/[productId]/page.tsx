@@ -11,9 +11,13 @@ import {
   uploadProductImageResponseSchema,
   type ProductImage
 } from '@eggturtle/shared';
+import { ArrowDown, ArrowUp, ImagePlus, Star } from 'lucide-react';
 
-import { ApiError, apiRequest, getAccessToken, getApiBaseUrl } from '../../../../../lib/api-client';
+import { ApiError, apiRequest, getAccessToken, getApiBaseUrl, resolveAuthenticatedAssetUrl } from '../../../../../lib/api-client';
 import { switchTenantBySlug } from '../../../../../lib/tenant-session';
+import { Badge } from '../../../../../components/ui/badge';
+import { Button } from '../../../../../components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../../components/ui/card';
 
 export default function ProductImagesPage() {
   const router = useRouter();
@@ -215,97 +219,141 @@ export default function ProductImagesPage() {
   }
 
   return (
-    <main className="workspace-shell">
-      <header className="workspace-head">
-        <div className="stack">
-          <h1>产品图片管理</h1>
-          <p className="muted">租户：{tenantSlug}</p>
-          <p className="muted">产品 ID：{productId}</p>
-        </div>
-        <button type="button" className="secondary" onClick={() => router.push(`/app/${tenantSlug}/products`)}>
-          返回产品列表
-        </button>
-      </header>
-
-      <section className="card panel stack">
-        <div className="row between">
-          <h2>上传图片</h2>
-          {!loading ? <p className="muted">当前 {images.length} 张</p> : null}
-        </div>
-        <p className="muted">支持 JPG / PNG / WEBP / GIF，单图最大 10MB。</p>
-        {isDemoMode ? <p className="notice notice-info">Demo 模式：用于 UI 预览，不会写入真实数据。</p> : null}
-        <input type="file" accept="image/*" multiple disabled={submitting || loading} onChange={handleUpload} />
-      </section>
-
-      <section className="card panel stack">
-        <h2>已上传图片</h2>
-        {loading ? <p className="notice notice-info">正在加载图片...</p> : null}
-        {!loading && images.length === 0 ? <p className="notice notice-warning">该产品暂无图片，先上传一张吧。</p> : null}
-
-        {!loading && images.length > 0 ? (
-          <div className="product-image-grid">
-            {images.map((image, index) => (
-              <article key={image.id} className="product-image-card">
-                <div className="product-image-preview">
-                  <img src={resolveImageUrl(image.url)} alt={`产品图片 ${index + 1}`} className="product-image-preview-img" />
-                  {image.isMain ? <span className="product-image-main-tag">主图</span> : null}
-                </div>
-
-                <div className="stack">
-                  <p className="muted mono">imageId: {image.id}</p>
-                  <p className="muted">排序：#{index + 1}</p>
-                </div>
-
-                <div className="inline-actions">
-                  <button
-                    type="button"
-                    className="btn-compact secondary"
-                    disabled={submitting || image.isMain}
-                    onClick={() => {
-                      void handleSetMain(image.id);
-                    }}
-                  >
-                    设为主图
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-compact secondary"
-                    disabled={submitting || index === 0}
-                    onClick={() => {
-                      void handleMove(index, -1);
-                    }}
-                  >
-                    上移
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-compact secondary"
-                    disabled={submitting || index === images.length - 1}
-                    onClick={() => {
-                      void handleMove(index, 1);
-                    }}
-                  >
-                    下移
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-compact"
-                    disabled={submitting}
-                    onClick={() => {
-                      void handleDeleteImage(image.id);
-                    }}
-                  >
-                    删除
-                  </button>
-                </div>
-              </article>
-            ))}
+    <main className="space-y-4 pb-10 sm:space-y-6">
+      <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
+        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle className="text-3xl">产品图片管理</CardTitle>
+            <CardDescription>
+              租户：{tenantSlug} · 产品 ID：{productId}
+            </CardDescription>
           </div>
-        ) : null}
-      </section>
+          <Button variant="secondary" onClick={() => router.push(`/app/${tenantSlug}/products`)}>
+            返回产品列表
+          </Button>
+        </CardHeader>
+      </Card>
 
-      {message ? <p className="notice notice-success">{message}</p> : null}
-      {error ? <p className="notice notice-error">{error}</p> : null}
+      <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-2xl">
+              <ImagePlus size={18} />
+              上传图片
+            </CardTitle>
+            <CardDescription>支持 JPG / PNG / WEBP / GIF，单图最大 10MB。</CardDescription>
+          </div>
+          {!loading ? <Badge variant="accent">当前 {images.length} 张</Badge> : null}
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {isDemoMode ? (
+            <Card className="rounded-2xl border-blue-200 bg-blue-50 p-3">
+              <p className="text-sm font-medium text-blue-700">Demo 模式：用于 UI 预览，不会写入真实数据。</p>
+            </Card>
+          ) : null}
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            disabled={submitting || loading}
+            onChange={handleUpload}
+            className="block w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm"
+          />
+        </CardContent>
+      </Card>
+
+      <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
+        <CardHeader>
+          <CardTitle className="text-2xl">已上传图片</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? <p className="text-sm text-neutral-600">正在加载图片...</p> : null}
+          {!loading && images.length === 0 ? <p className="text-sm text-neutral-500">该产品暂无图片，先上传一张吧。</p> : null}
+
+          {!loading && images.length > 0 ? (
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4">
+              {images.map((image, index) => (
+                <article key={image.id} className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
+                  <div className="relative h-44 bg-neutral-100">
+                    <img src={resolveImageUrl(image.url)} alt={`产品图片 ${index + 1}`} className="h-full w-full object-cover" />
+                    {image.isMain ? (
+                      <div className="absolute left-3 top-3">
+                        <Badge variant="accent">主图</Badge>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="space-y-3 p-4">
+                    <p className="text-xs text-neutral-500">排序：#{index + 1}</p>
+                    <p className="truncate text-xs text-neutral-500">imageId: {image.id}</p>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        disabled={submitting || image.isMain}
+                        onClick={() => {
+                          void handleSetMain(image.id);
+                        }}
+                      >
+                        <Star size={14} />
+                        主图
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        disabled={submitting || index === 0}
+                        onClick={() => {
+                          void handleMove(index, -1);
+                        }}
+                      >
+                        <ArrowUp size={14} />
+                        上移
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        disabled={submitting || index === images.length - 1}
+                        onClick={() => {
+                          void handleMove(index, 1);
+                        }}
+                      >
+                        <ArrowDown size={14} />
+                        下移
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={submitting}
+                        onClick={() => {
+                          void handleDeleteImage(image.id);
+                        }}
+                      >
+                        删除
+                      </Button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      {message ? (
+        <Card className="rounded-2xl border-emerald-200 bg-emerald-50 p-4">
+          <p className="text-sm font-semibold text-emerald-700">{message}</p>
+        </Card>
+      ) : null}
+      {error ? (
+        <Card className="rounded-2xl border-red-200 bg-red-50 p-4">
+          <p className="text-sm font-semibold text-red-700">{error}</p>
+        </Card>
+      ) : null}
     </main>
   );
 }
@@ -368,15 +416,7 @@ function pickErrorMessage(payload: unknown, fallback: string) {
 }
 
 function resolveImageUrl(imageUrl: string) {
-  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-    return imageUrl;
-  }
-
-  if (imageUrl.startsWith('/images/')) {
-    return imageUrl;
-  }
-
-  return `${getApiBaseUrl()}${imageUrl}`;
+  return resolveAuthenticatedAssetUrl(imageUrl);
 }
 
 function createDemoImages(productId: string): ProductImage[] {

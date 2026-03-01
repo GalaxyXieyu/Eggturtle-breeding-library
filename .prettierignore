@@ -3,4 +3,4 @@ node_modules
 dist
 pnpm-lock.yaml
 .data
-backend/data
+legacy/backend/data

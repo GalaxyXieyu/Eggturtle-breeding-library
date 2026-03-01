@@ -7,7 +7,13 @@ import {
   NotFoundException,
   UnauthorizedException
 } from '@nestjs/common';
-import { AuditAction, ErrorCode, type CreateShareRequest, type ShareResourceType } from '@eggturtle/shared';
+import {
+  AuditAction,
+  ErrorCode,
+  type CreateShareRequest,
+  type PublicSharePresentation,
+  type ShareResourceType
+} from '@eggturtle/shared';
 import { Prisma } from '@prisma/client';
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 
@@ -16,6 +22,8 @@ import { PrismaService } from '../prisma.service';
 import { STORAGE_PROVIDER_TOKEN } from '../storage/storage.constants';
 import type { StorageProvider } from '../storage/storage.provider';
 import { TenantSubscriptionsService } from '../subscriptions/tenant-subscriptions.service';
+import { TenantSharePresentationService } from '../tenant-share-presentation/tenant-share-presentation.service';
+import { canonicalMateCodeCandidates, parseCurrentMateCode } from '../products/breeding-rules';
 
 type PublicShareQueryInput = {
   tenantId: string;
@@ -63,60 +71,56 @@ export class SharesService {
     private readonly prisma: PrismaService,
     private readonly auditLogsService: AuditLogsService,
     private readonly tenantSubscriptionsService: TenantSubscriptionsService,
+    private readonly tenantSharePresentationService: TenantSharePresentationService,
     @Inject(STORAGE_PROVIDER_TOKEN) private readonly storageProvider: StorageProvider
   ) {}
 
   async createShare(tenantId: string, actorUserId: string, payload: CreateShareRequest) {
-    let resourceId = payload.resourceId;
-    let productId: string | null = null;
-
-    if (payload.resourceType === 'product') {
-      const product = await this.prisma.product.findFirst({
-        where: {
-          id: payload.resourceId,
-          tenantId
-        },
-        select: {
-          id: true
-        }
-      });
-
-      if (!product) {
-        throw new NotFoundException({
-          message: 'Product not found.',
-          errorCode: ErrorCode.ProductNotFound
-        });
-      }
-
-      resourceId = product.id;
-      productId = product.id;
-    } else if (payload.resourceType === 'tenant_feed') {
-      if (payload.resourceId !== tenantId) {
-        throw new BadRequestException({
-          message: 'tenant_feed resourceId must match current tenant.',
-          errorCode: ErrorCode.InvalidRequestPayload
-        });
-      }
-
-      resourceId = tenantId;
-    } else {
+    if (payload.resourceType !== 'tenant_feed') {
       throw new BadRequestException({
         message: `Unsupported resourceType: ${payload.resourceType}`,
         errorCode: ErrorCode.InvalidRequestPayload
       });
     }
 
-    await this.tenantSubscriptionsService.assertSharePlanAllowsCreate(tenantId);
+    if (payload.resourceId !== tenantId) {
+      throw new BadRequestException({
+        message: 'tenant_feed resourceId must match current tenant.',
+        errorCode: ErrorCode.InvalidRequestPayload
+      });
+    }
+
+    const resourceId = tenantId;
+    const presentationOverride =
+      this.tenantSharePresentationService.toSharePresentationOverrideJson(payload.presentationOverride);
+
+    // Share creation no longer depends on subscription plan/quota.
+    // We only require tenant subscription to be writable (ACTIVE).
+    await this.tenantSubscriptionsService.assertTenantWritable(tenantId);
 
     const existingShare = await this.findShareByResource(tenantId, payload.resourceType, resourceId);
 
-    if (!existingShare) {
-      await this.tenantSubscriptionsService.assertShareQuotaAllowsCreate(tenantId);
-    }
-
-    const share =
+    let share =
       existingShare ??
-      (await this.getOrCreateShare(tenantId, payload.resourceType, resourceId, productId, actorUserId));
+      (await this.getOrCreateShare(
+        tenantId,
+        payload.resourceType,
+        resourceId,
+        null,
+        actorUserId,
+        presentationOverride
+      ));
+
+    if (existingShare && typeof presentationOverride !== 'undefined') {
+      share = await this.prisma.publicShare.update({
+        where: {
+          id: existingShare.id
+        },
+        data: {
+          presentationOverride
+        }
+      });
+    }
 
     await this.auditLogsService.createLog({
       tenantId,
@@ -229,6 +233,7 @@ export class SharesService {
         resourceType: true,
         resourceId: true,
         productId: true,
+        presentationOverride: true,
         createdByUserId: true,
         tenant: {
           select: {
@@ -259,127 +264,46 @@ export class SharesService {
       createdByUserId: share.createdByUserId
     };
 
-    if (resourceType === 'product') {
-      const response = await this.buildProductPublicShare(scopedShare, expiresAt);
-      await this.writeShareAccessAuditLog(scopedShare, expiresAt, 'data', meta);
-      return response;
-    }
+    const presentation = await this.tenantSharePresentationService.resolvePublicPresentation({
+      tenantId: share.tenantId,
+      tenantName: share.tenant.name,
+      overrideRaw: share.presentationOverride
+    });
 
-    const response = await this.buildTenantFeedPublicShare(scopedShare, query.productId, expiresAt);
+    const response = await this.buildTenantFeedPublicShare(
+      scopedShare,
+      query.productId,
+      expiresAt,
+      presentation
+    );
     await this.writeShareAccessAuditLog(scopedShare, expiresAt, 'data', meta, query.productId ?? null);
 
     return response;
   }
 
-  private async buildProductPublicShare(share: ShareScope, expiresAt: Date) {
-    const product = await this.prisma.product.findFirst({
+  private async buildTenantFeedPublicShare(
+    share: ShareScope,
+    detailProductId: string | undefined,
+    expiresAt: Date,
+    presentation: PublicSharePresentation
+  ) {
+    const products = await this.prisma.product.findMany({
       where: {
-        id: share.resourceId,
-        tenantId: share.tenantId
+        tenantId: share.tenantId,
+        inStock: true
       },
+      orderBy: [{ code: 'asc' }, { createdAt: 'desc' }],
       include: {
         images: {
-          orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }]
+          orderBy: [{ isMain: 'desc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }],
+          take: 1
         }
       }
     });
 
-    if (!product) {
-      throw new NotFoundException({
-        message: 'Share content not found.',
-        errorCode: ErrorCode.ShareNotFound
-      });
-    }
-
-    const images = await Promise.all(
-      product.images.map(async (image) => ({
-        id: image.id,
-        tenantId: image.tenantId,
-        productId: image.productId,
-        key: image.key,
-        url: await this.resolvePublicImageUrl({
-          tenantId: share.tenantId,
-          key: image.key,
-          fallbackUrl: image.url,
-          expiresAt
-        }),
-        contentType: image.contentType,
-        sortOrder: image.sortOrder,
-        isMain: image.isMain
-      }))
-    );
-
-    return {
-      shareId: share.id,
-      tenant: share.tenant,
-      resourceType: 'product' as const,
-      product: {
-        id: product.id,
-        tenantId: product.tenantId,
-        code: product.code,
-        name: product.name,
-        description: product.description,
-        seriesId: product.seriesId,
-        sex: product.sex,
-        offspringUnitPrice: product.offspringUnitPrice?.toNumber() ?? null,
-        sireCode: product.sireCode,
-        damCode: product.damCode,
-        mateCode: product.mateCode,
-        excludeFromBreeding: product.excludeFromBreeding,
-        hasSample: product.hasSample,
-        inStock: product.inStock,
-        popularityScore: product.popularityScore,
-        isFeatured: product.isFeatured,
-        images
-      },
-      expiresAt: expiresAt.toISOString()
-    };
-  }
-
-  private async buildTenantFeedPublicShare(share: ShareScope, detailProductId: string | undefined, expiresAt: Date) {
-    // Transitional strategy: tenant_feed is breeder-first for domain correctness,
-    // while product remains the image/share carrier.
-    const breeders = await this.prisma.breeder.findMany({
-      where: {
-        tenantId: share.tenantId,
-        isActive: true
-      },
-      orderBy: [{ code: 'asc' }, { createdAt: 'desc' }]
-    });
-
-    const breederCodes = [...new Set(breeders.map((item) => item.code.trim()).filter((value) => value.length > 0))];
-
-    const feedProducts =
-      breederCodes.length === 0
-        ? []
-        : await this.prisma.product.findMany({
-            where: {
-              tenantId: share.tenantId,
-              code: {
-                in: breederCodes
-              }
-            },
-            include: {
-              images: {
-                orderBy: [{ isMain: 'desc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }],
-                take: 1
-              }
-            }
-          });
-
-    const productByCode = new Map<string, (typeof feedProducts)[number]>();
-    for (const item of feedProducts) {
-      const codeKey = this.normalizeCodeKey(item.code);
-      if (codeKey) {
-        productByCode.set(codeKey, item);
-      }
-    }
-
     const items = await Promise.all(
-      breeders.map(async (breeder) => {
-        const codeKey = this.normalizeCodeKey(breeder.code);
-        const linkedProduct = codeKey ? productByCode.get(codeKey) ?? null : null;
-        const coverImage = linkedProduct?.images[0] ?? null;
+      products.map(async (product) => {
+        const coverImage = product.images[0] ?? null;
         const coverImageUrl = coverImage
           ? await this.resolvePublicImageUrl({
               tenantId: share.tenantId,
@@ -390,45 +314,31 @@ export class SharesService {
           : null;
 
         return {
-          id: breeder.id,
-          tenantId: breeder.tenantId,
-          code: breeder.code,
-          name: breeder.name,
-          description: breeder.description,
-          seriesId: breeder.seriesId,
-          sex: breeder.sex,
-          offspringUnitPrice: linkedProduct?.offspringUnitPrice?.toNumber() ?? null,
+          id: product.id,
+          tenantId: product.tenantId,
+          code: product.code,
+          type: product.type?.trim() || 'breeder',
+          name: product.name,
+          description: product.description,
+          seriesId: product.seriesId,
+          sex: product.sex,
+          offspringUnitPrice: product.offspringUnitPrice?.toNumber() ?? null,
           coverImageUrl,
-          popularityScore: linkedProduct?.popularityScore ?? 0,
-          isFeatured: linkedProduct?.isFeatured ?? false
+          popularityScore: product.popularityScore ?? 0,
+          isFeatured: product.isFeatured ?? false
         };
       })
     );
 
     let product = null;
+    let detail = null;
 
     if (detailProductId) {
-      const detailBreeder = await this.prisma.breeder.findFirst({
-        where: {
-          id: detailProductId,
-          tenantId: share.tenantId
-        }
-      });
-
-      if (!detailBreeder) {
-        throw new NotFoundException({
-          message: 'Breeder not found in shared tenant feed.',
-          errorCode: ErrorCode.BreederNotFound
-        });
-      }
-
       const detailProduct = await this.prisma.product.findFirst({
         where: {
+          id: detailProductId,
           tenantId: share.tenantId,
-          code: {
-            equals: detailBreeder.code,
-            mode: 'insensitive'
-          }
+          inStock: true
         },
         include: {
           images: {
@@ -455,18 +365,26 @@ export class SharesService {
         }))
       );
 
+      if (!detailProduct) {
+        throw new NotFoundException({
+          message: 'Product not found in shared tenant feed.',
+          errorCode: ErrorCode.ProductNotFound
+        });
+      }
+
       product = {
-        id: detailBreeder.id,
-        tenantId: detailBreeder.tenantId,
-        code: detailBreeder.code,
-        name: detailBreeder.name,
-        description: detailBreeder.description,
-        seriesId: detailBreeder.seriesId,
-        sex: detailBreeder.sex,
+        id: detailProduct.id,
+        tenantId: detailProduct.tenantId,
+        code: detailProduct.code,
+        type: detailProduct.type?.trim() || 'breeder',
+        name: detailProduct.name,
+        description: detailProduct.description,
+        seriesId: detailProduct.seriesId,
+        sex: detailProduct.sex,
         offspringUnitPrice: detailProduct?.offspringUnitPrice?.toNumber() ?? null,
-        sireCode: detailBreeder.sireCode,
-        damCode: detailBreeder.damCode,
-        mateCode: detailBreeder.mateCode,
+        sireCode: detailProduct.sireCode,
+        damCode: detailProduct.damCode,
+        mateCode: detailProduct.mateCode,
         excludeFromBreeding: detailProduct?.excludeFromBreeding ?? false,
         hasSample: detailProduct?.hasSample ?? false,
         inStock: detailProduct?.inStock ?? true,
@@ -474,25 +392,449 @@ export class SharesService {
         isFeatured: detailProduct?.isFeatured ?? false,
         images
       };
+
+      const [events, familyTree, maleMateLoad] = await Promise.all([
+        this.listPublicProductEvents(share.tenantId, detailProduct.id),
+        this.buildPublicProductFamilyTree(share.tenantId, detailProduct),
+        this.buildPublicMaleMateLoad(share.tenantId, detailProduct, expiresAt)
+      ]);
+
+      detail = {
+        events,
+        familyTree,
+        maleMateLoad
+      };
     }
 
     return {
       shareId: share.id,
       tenant: share.tenant,
       resourceType: 'tenant_feed' as const,
+      presentation,
       items,
       product,
+      detail,
       expiresAt: expiresAt.toISOString()
     };
   }
 
-  private normalizeCodeKey(code: string | null | undefined): string | null {
+  private async listPublicProductEvents(tenantId: string, productId: string) {
+    const events = await this.prisma.productEvent.findMany({
+      where: {
+        tenantId,
+        productId
+      },
+      orderBy: [{ eventDate: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }]
+    });
+
+    return events.map((event) => {
+      const parsedNote = this.parseEventNote(event.note);
+      return {
+        id: event.id,
+        eventType: this.toPublicEventType(event.eventType, parsedNote),
+        eventDate: event.eventDate?.toISOString?.() ?? null,
+        maleCode: parsedNote.maleCode,
+        eggCount: parsedNote.eggCount,
+        note: parsedNote.note,
+        oldMateCode: parsedNote.oldMateCode,
+        newMateCode: parsedNote.newMateCode
+      };
+    });
+  }
+
+  private parseEventNote(note: string | null): {
+    note: string | null;
+    maleCode: string | null;
+    eggCount: number | null;
+    oldMateCode: string | null;
+    newMateCode: string | null;
+  } {
+    if (!note) {
+      return {
+        note: null,
+        maleCode: null,
+        eggCount: null,
+        oldMateCode: null,
+        newMateCode: null
+      };
+    }
+
+    let maleCode: string | null = null;
+    let eggCount: number | null = null;
+    let oldMateCode: string | null = null;
+    let newMateCode: string | null = null;
+    const noteLines: string[] = [];
+
+    for (const rawLine of note.split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (!line) {
+        continue;
+      }
+
+      if (!line.startsWith('#') || !line.includes('=')) {
+        noteLines.push(line);
+        continue;
+      }
+
+      const [rawKey, ...rest] = line.slice(1).split('=');
+      const key = rawKey.trim().toLowerCase();
+      const value = rest.join('=').trim();
+
+      if (!value) {
+        continue;
+      }
+
+      if (key === 'malecode') {
+        maleCode = this.normalizeTaggedValue(value);
+        continue;
+      }
+
+      if (key === 'eggcount') {
+        const parsed = Number(value);
+        eggCount = Number.isFinite(parsed) && parsed >= 0 ? Math.floor(parsed) : null;
+        continue;
+      }
+
+      if (key === 'oldmatecode') {
+        oldMateCode = this.normalizeTaggedValue(value);
+        continue;
+      }
+
+      if (key === 'newmatecode') {
+        newMateCode = this.normalizeTaggedValue(value);
+        continue;
+      }
+    }
+
+    return {
+      note: noteLines.length > 0 ? noteLines.join('\n') : null,
+      maleCode,
+      eggCount,
+      oldMateCode,
+      newMateCode
+    };
+  }
+
+  private normalizeTaggedValue(value: string | null | undefined): string | null {
+    const normalized = value?.trim();
+    return normalized ? normalized.toUpperCase() : null;
+  }
+
+  private toPublicEventType(
+    rawType: string,
+    parsedNote: {
+      oldMateCode: string | null;
+      newMateCode: string | null;
+    }
+  ): 'mating' | 'egg' | 'change_mate' {
+    const eventType = rawType.trim().toLowerCase();
+
+    if (eventType === 'egg') {
+      return 'egg';
+    }
+
+    if (eventType === 'change_mate' || eventType === 'change-mate') {
+      return 'change_mate';
+    }
+
+    if (parsedNote.oldMateCode || parsedNote.newMateCode) {
+      return 'change_mate';
+    }
+
+    return 'mating';
+  }
+
+  private async buildPublicProductFamilyTree(
+    tenantId: string,
+    detailProduct: {
+      id: string;
+      code: string;
+      name: string | null;
+      sex: string | null;
+      sireCode: string | null;
+      damCode: string | null;
+      mateCode: string | null;
+      description?: string | null;
+    }
+  ) {
+    const currentMateCode = await this.resolveCurrentMateCode(tenantId, detailProduct);
+    const [sire, dam, mate, children] = await Promise.all([
+      this.findProductByCodeInsensitive(tenantId, detailProduct.sireCode),
+      this.findProductByCodeInsensitive(tenantId, detailProduct.damCode),
+      this.findProductByCodeCandidates(tenantId, canonicalMateCodeCandidates(currentMateCode)),
+      this.prisma.product.findMany({
+        where: {
+          tenantId,
+          OR: [
+            {
+              sireCode: {
+                equals: detailProduct.code,
+                mode: 'insensitive'
+              }
+            },
+            {
+              damCode: {
+                equals: detailProduct.code,
+                mode: 'insensitive'
+              }
+            }
+          ]
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: 100
+      })
+    ]);
+
+    return {
+      self: this.toPublicFamilyTreeNode(detailProduct),
+      sire: this.toPublicFamilyTreeNodeOrNull(sire),
+      dam: this.toPublicFamilyTreeNodeOrNull(dam),
+      mate: this.toPublicFamilyTreeNodeOrNull(mate),
+      children: children.map((item) => this.toPublicFamilyTreeNode(item)),
+      links: {
+        sire: this.toPublicFamilyTreeLink(detailProduct.sireCode, sire),
+        dam: this.toPublicFamilyTreeLink(detailProduct.damCode, dam),
+        mate: this.toPublicFamilyTreeLink(currentMateCode, mate)
+      },
+      limitations:
+        'Product family-tree currently includes self, immediate sire/dam/mate, and direct children only.'
+    };
+  }
+
+  private async findProductByCodeInsensitive(tenantId: string, code: string | null) {
     const normalized = code?.trim();
     if (!normalized) {
       return null;
     }
 
-    return normalized.toUpperCase();
+    return this.prisma.product.findFirst({
+      where: {
+        tenantId,
+        code: {
+          equals: normalized,
+          mode: 'insensitive'
+        }
+      }
+    });
+  }
+
+  private async findProductByCodeCandidates(tenantId: string, candidates: string[]) {
+    for (const candidate of candidates) {
+      const found = await this.findProductByCodeInsensitive(tenantId, candidate);
+      if (found) {
+        return found;
+      }
+    }
+
+    return null;
+  }
+
+  private async resolveCurrentMateCode(
+    tenantId: string,
+    product: {
+      id: string;
+      mateCode: string | null;
+      description?: string | null;
+    }
+  ): Promise<string | null> {
+    const explicit = this.normalizeTaggedValue(product.mateCode ?? '');
+    if (explicit) {
+      return explicit;
+    }
+
+    const parsedFromDescription = this.normalizeTaggedValue(parseCurrentMateCode(product.description));
+    if (parsedFromDescription) {
+      return parsedFromDescription;
+    }
+
+    const latestMatingEvent = await this.prisma.productEvent.findFirst({
+      where: {
+        tenantId,
+        productId: product.id,
+        eventType: 'mating'
+      },
+      orderBy: [{ eventDate: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }]
+    });
+
+    const parsed = this.parseEventNote(latestMatingEvent?.note ?? null);
+    return this.normalizeTaggedValue(parsed.maleCode);
+  }
+
+  private toPublicFamilyTreeNode(product: { id: string; code: string; name: string | null; sex: string | null }) {
+    return {
+      id: product.id,
+      code: product.code,
+      name: product.name,
+      sex: product.sex
+    };
+  }
+
+  private toPublicFamilyTreeNodeOrNull(
+    product: { id: string; code: string; name: string | null; sex: string | null } | null
+  ) {
+    if (!product) {
+      return null;
+    }
+
+    return this.toPublicFamilyTreeNode(product);
+  }
+
+  private toPublicFamilyTreeLink(
+    code: string | null,
+    product: { id: string; code: string; name: string | null; sex: string | null } | null
+  ) {
+    if (!code || !code.trim()) {
+      return null;
+    }
+
+    return {
+      code: code.trim(),
+      product: this.toPublicFamilyTreeNodeOrNull(product)
+    };
+  }
+
+  private async buildPublicMaleMateLoad(
+    tenantId: string,
+    detailProduct: {
+      id: string;
+      code: string;
+      sex: string | null;
+    },
+    expiresAt: Date
+  ) {
+    if (detailProduct.sex?.trim().toLowerCase() !== 'male') {
+      return [];
+    }
+
+    const mateCodeCandidates = canonicalMateCodeCandidates(detailProduct.code);
+    const femaleProducts = await this.prisma.product.findMany({
+      where: {
+        tenantId,
+        inStock: true,
+        sex: {
+          equals: 'female',
+          mode: 'insensitive'
+        },
+        OR: mateCodeCandidates.map((candidate) => ({
+          mateCode: {
+            equals: candidate,
+            mode: 'insensitive'
+          }
+        }))
+      },
+      include: {
+        images: {
+          orderBy: [{ isMain: 'desc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }],
+          take: 1
+        }
+      },
+      orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }]
+    });
+
+    const mapped = await Promise.all(
+      femaleProducts.map(async (female) => {
+        const [lastEggEvent, lastMatingWithMaleEvent, lastMatingEvent] = await Promise.all([
+          this.prisma.productEvent.findFirst({
+            where: {
+              tenantId,
+              productId: female.id,
+              eventType: 'egg'
+            },
+            orderBy: [{ eventDate: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }]
+          }),
+          this.prisma.productEvent.findFirst({
+            where: {
+              tenantId,
+              productId: female.id,
+              eventType: 'mating',
+              OR: mateCodeCandidates.map((candidate) => ({
+                note: {
+                  contains: `#maleCode=${candidate}`,
+                  mode: 'insensitive'
+                }
+              }))
+            },
+            orderBy: [{ eventDate: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }]
+          }),
+          this.prisma.productEvent.findFirst({
+            where: {
+              tenantId,
+              productId: female.id,
+              eventType: 'mating'
+            },
+            orderBy: [{ eventDate: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }]
+          })
+        ]);
+
+        const lastEggAt = lastEggEvent?.eventDate ?? null;
+        const lastMatingAt = lastMatingEvent?.eventDate ?? null;
+        const lastMatingWithThisMaleAt = lastMatingWithMaleEvent?.eventDate ?? null;
+        const daysSinceEgg = this.calculateDaysSince(lastEggAt);
+        const status = this.resolveNeedMatingStatus(lastEggAt, lastMatingAt, female.excludeFromBreeding);
+
+        const mainImage = female.images[0] ?? null;
+        const femaleMainImageUrl = mainImage
+          ? await this.resolvePublicImageUrl({
+              tenantId,
+              key: mainImage.key,
+              fallbackUrl: mainImage.url,
+              expiresAt
+            })
+          : null;
+
+        return {
+          femaleId: female.id,
+          femaleCode: female.code,
+          femaleMainImageUrl,
+          femaleThumbnailUrl: femaleMainImageUrl,
+          lastEggAt: lastEggAt ? lastEggAt.toISOString() : null,
+          lastMatingWithThisMaleAt: lastMatingWithThisMaleAt ? lastMatingWithThisMaleAt.toISOString() : null,
+          daysSinceEgg,
+          status,
+          excludeFromBreeding: female.excludeFromBreeding
+        };
+      })
+    );
+
+    return mapped;
+  }
+
+  private calculateDaysSince(value: Date | null): number | null {
+    if (!value) {
+      return null;
+    }
+
+    const diffMs = Date.now() - value.getTime();
+    if (diffMs < 0) {
+      return 0;
+    }
+
+    return Math.floor(diffMs / (24 * 60 * 60 * 1000));
+  }
+
+  private resolveNeedMatingStatus(
+    lastEggAt: Date | null,
+    lastMatingAt: Date | null,
+    excludeFromBreeding: boolean
+  ): 'normal' | 'need_mating' | 'warning' {
+    if (excludeFromBreeding) {
+      return 'normal';
+    }
+
+    if (!lastEggAt) {
+      return 'normal';
+    }
+
+    if (lastMatingAt && lastMatingAt.getTime() >= lastEggAt.getTime()) {
+      return 'normal';
+    }
+
+    const daysSinceEgg = this.calculateDaysSince(lastEggAt);
+    if (daysSinceEgg !== null && daysSinceEgg >= 25) {
+      return 'warning';
+    }
+
+    return 'need_mating';
   }
 
   private async resolvePublicImageUrl(input: {
@@ -524,7 +866,8 @@ export class SharesService {
     resourceType: ShareResourceType,
     resourceId: string,
     productId: string | null,
-    actorUserId: string
+    actorUserId: string,
+    presentationOverride: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput | undefined
   ) {
     const existing = await this.findShareByResource(tenantId, resourceType, resourceId);
 
@@ -539,6 +882,7 @@ export class SharesService {
           resourceType,
           resourceId,
           productId,
+          presentationOverride,
           createdByUserId: actorUserId,
           shareToken: this.generateShareToken()
         }
@@ -584,10 +928,7 @@ export class SharesService {
     });
 
     const webBaseUrl = process.env.WEB_PUBLIC_BASE_URL ?? DEFAULT_WEB_PUBLIC_BASE_URL;
-    const redirectPath =
-      payload.resourceType === 'tenant_feed'
-        ? `/public/s/${payload.shareToken}`
-        : `/public/s/${payload.shareToken}/products/${payload.resourceId}`;
+    const redirectPath = `/public/s/${payload.shareToken}`;
 
     const redirectUrl = new URL(redirectPath, webBaseUrl);
     redirectUrl.searchParams.set('sid', payload.id);
@@ -780,7 +1121,7 @@ export class SharesService {
   }
 
   private parseShareResourceType(value: string): ShareResourceType {
-    if (value === 'product' || value === 'tenant_feed') {
+    if (value === 'tenant_feed') {
       return value;
     }
 

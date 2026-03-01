@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 export const AuditAction = {
   ProductCreate: 'product.create',
+  ProductUpdate: 'product.update',
+  ProductEventCreate: 'product.event.create',
   ProductImageUpload: 'product.image.upload',
   ProductImageDelete: 'product.image.delete',
   ProductImageSetMain: 'product.image.set_main',
@@ -13,6 +15,8 @@ export const AuditAction = {
 
 export const auditActionSchema = z.enum([
   AuditAction.ProductCreate,
+  AuditAction.ProductUpdate,
+  AuditAction.ProductEventCreate,
   AuditAction.ProductImageUpload,
   AuditAction.ProductImageDelete,
   AuditAction.ProductImageSetMain,

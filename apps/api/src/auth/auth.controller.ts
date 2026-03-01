@@ -2,6 +2,8 @@ import { Body, Controller, Post, UseGuards } from '@nestjs/common';
 import {
   passwordLoginRequestSchema,
   passwordLoginResponseSchema,
+  registerRequestSchema,
+  registerResponseSchema,
   requestCodeRequestSchema,
   requestCodeResponseSchema,
   switchTenantRequestSchema,
@@ -55,5 +57,13 @@ export class AuthController {
     const response = await this.authService.switchTenant(user, payload);
 
     return switchTenantResponseSchema.parse(response);
+  }
+
+  @Post('register')
+  async register(@Body() body: unknown) {
+    const payload = parseOrThrow(registerRequestSchema, body);
+    const response = await this.authService.register(payload);
+
+    return registerResponseSchema.parse(response);
   }
 }

@@ -1,6 +1,7 @@
 const TOKEN_STORAGE_KEY = 'eggturtle.accessToken';
 const DEFAULT_API_BASE_URL = 'http://localhost:30011';
 const LOGIN_PATH = '/login';
+const PRODUCT_IMAGE_CONTENT_PATH_PATTERN = /^\/products\/[^/]+\/images\/[^/]+\/content$/;
 
 type SchemaParser<T> = {
   parse: (value: unknown) => T;
@@ -45,6 +46,51 @@ export function clearAccessToken() {
   }
 
   window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+}
+
+export function resolveAuthenticatedAssetUrl(rawValue: string) {
+  const value = rawValue.trim();
+
+  if (!value) {
+    return value;
+  }
+
+  if (value.startsWith('/images/')) {
+    return value;
+  }
+
+  const candidate = /^https?:\/\//i.test(value)
+    ? value
+    : value.startsWith('/products/')
+      ? `${getApiBaseUrl()}${value}`
+      : value;
+
+  let parsed: URL;
+  try {
+    parsed = new URL(candidate);
+  } catch {
+    return candidate;
+  }
+
+  const apiOrigin = new URL(getApiBaseUrl()).origin;
+  if (parsed.origin !== apiOrigin) {
+    return candidate;
+  }
+
+  if (!PRODUCT_IMAGE_CONTENT_PATH_PATTERN.test(parsed.pathname)) {
+    return candidate;
+  }
+
+  const token = getAccessToken();
+  if (!token) {
+    return candidate;
+  }
+
+  if (!parsed.searchParams.has('accessToken')) {
+    parsed.searchParams.set('accessToken', token);
+  }
+
+  return parsed.toString();
 }
 
 export class ApiError extends Error {

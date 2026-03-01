@@ -6,6 +6,9 @@ type AuthHeaders = {
 
 export type AuthenticatedRequest = {
   headers: AuthHeaders;
+  method?: string;
+  path?: string;
+  query?: Record<string, string | string[] | undefined>;
   user?: AuthUser;
   tenantId?: string;
   tenantRole?: EffectiveTenantRole;

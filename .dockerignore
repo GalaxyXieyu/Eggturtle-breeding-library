@@ -2,45 +2,29 @@
 .git
 .gitignore
 
-# Node
-frontend/node_modules
-frontend/dist
+# Dependencies and build outputs
+node_modules
+**/node_modules
+**/.next
+**/.next.bak-*
+**/dist
+.data
+out
 
-# Python
-backend/venv
-backend/.venv
-backend/__pycache__
-backend/**/__pycache__
-backend/*.pyc
-backend/.pytest_cache
+# Local env and logs
+.env
+.env.*
+*.log
+pnpm-debug.log*
 
-# Database
-*.db
-backend/backup
-
-# IDE
+# IDE / OS
 .vscode
 .idea
 *.swp
 *.swo
-
-# Logs
-*.log
-backend/nohup.out
-
-# Local env files (will use container env vars)
-backend/.env
-frontend/.env
-frontend/.env.local
-
-# Documentation
-*.md
-!README.md
-
-# Test files
-backend/tests
-backend/http-client
-
-# OS files
 .DS_Store
 Thumbs.db
+
+# Docs and archived code are not required in runtime image
+legacy
+docs

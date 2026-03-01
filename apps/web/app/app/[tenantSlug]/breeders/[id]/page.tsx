@@ -3,27 +3,32 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
-  getBreederFamilyTreeResponseSchema,
-  getBreederResponseSchema,
-  listBreederEventsResponseSchema,
-  type Breeder,
-  type BreederEvent,
-  type BreederFamilyTree
+  getProductFamilyTreeResponseSchema,
+  getProductResponseSchema,
+  listProductEventsResponseSchema,
+  listProductImagesResponseSchema,
+  type Product,
+  type ProductEvent,
+  type ProductFamilyTree,
+  type ProductImage
 } from '@eggturtle/shared';
+import { CalendarClock, Image as ImageIcon, Network, PencilRuler } from 'lucide-react';
 
-import { ApiError, apiRequest, getAccessToken } from '../../../../../lib/api-client';
+import { ApiError, apiRequest, getAccessToken, resolveAuthenticatedAssetUrl } from '../../../../../lib/api-client';
 import { switchTenantBySlug } from '../../../../../lib/tenant-session';
+import { Badge } from '../../../../../components/ui/badge';
+import { Button } from '../../../../../components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../../components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../../../components/ui/table';
 
 type DetailState = {
-  breeder: Breeder | null;
-  events: BreederEvent[];
-  tree: BreederFamilyTree | null;
+  breeder: Product | null;
+  events: ProductEvent[];
+  tree: ProductFamilyTree | null;
+  images: ProductImage[];
 };
 
-type FamilyTreeNode = BreederFamilyTree['self'];
-type RouterLike = {
-  push: (href: string) => void;
-};
+type FamilyTreeNode = ProductFamilyTree['self'];
 
 export default function BreederDetailPage() {
   const router = useRouter();
@@ -33,11 +38,14 @@ export default function BreederDetailPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeImageId, setActiveImageId] = useState<string | null>(null);
   const [data, setData] = useState<DetailState>({
     breeder: null,
     events: [],
-    tree: null
+    tree: null,
+    images: []
   });
+  const currentBreeder = data.breeder;
 
   useEffect(() => {
     if (!getAccessToken()) {
@@ -46,40 +54,47 @@ export default function BreederDetailPage() {
     }
 
     if (!tenantSlug || !breederId) {
-      setError('Missing tenantSlug or breeder id in route.');
+      setError('缺少租户或种龟 ID。');
       setLoading(false);
       return;
     }
 
-    let isCancelled = false;
+    let cancelled = false;
 
     void (async () => {
       try {
         await switchTenantBySlug(tenantSlug);
 
-        const [breederResponse, eventsResponse, treeResponse] = await Promise.all([
-          apiRequest(`/breeders/${breederId}`, {
-            responseSchema: getBreederResponseSchema
+        const [productResponse, eventsResponse, treeResponse] = await Promise.all([
+          apiRequest(`/products/${breederId}`, {
+            responseSchema: getProductResponseSchema
           }),
-          apiRequest(`/breeders/${breederId}/events`, {
-            responseSchema: listBreederEventsResponseSchema
+          apiRequest(`/products/${breederId}/events`, {
+            responseSchema: listProductEventsResponseSchema
           }),
-          apiRequest(`/breeders/${breederId}/family-tree`, {
-            responseSchema: getBreederFamilyTreeResponseSchema
+          apiRequest(`/products/${breederId}/family-tree`, {
+            responseSchema: getProductFamilyTreeResponseSchema
           })
         ]);
 
-        if (!isCancelled) {
+        const imageResponse = await apiRequest(`/products/${productResponse.product.id}/images`, {
+          responseSchema: listProductImagesResponseSchema
+        });
+        const images = imageResponse.images;
+
+        if (!cancelled) {
           setData({
-            breeder: breederResponse.breeder,
+            breeder: productResponse.product,
             events: eventsResponse.events,
-            tree: treeResponse.tree
+            tree: treeResponse.tree,
+            images
           });
+          setActiveImageId(images[0]?.id ?? null);
           setError(null);
           setLoading(false);
         }
       } catch (requestError) {
-        if (!isCancelled) {
+        if (!cancelled) {
           setError(formatError(requestError));
           setLoading(false);
         }
@@ -87,191 +102,236 @@ export default function BreederDetailPage() {
     })();
 
     return () => {
-      isCancelled = true;
+      cancelled = true;
     };
   }, [breederId, router, tenantSlug]);
 
+  const activeImage = data.images.find((image) => image.id === activeImageId) ?? data.images[0] ?? null;
+
   return (
-    <main className="workspace-shell">
-      <header className="workspace-head">
-        <div className="stack">
-          <h1>种龟详情</h1>
-          <p className="muted">租户：{tenantSlug || '(unknown)'}</p>
-        </div>
-        <div className="row">
-          <button
-            type="button"
-            className="secondary"
-            onClick={() => {
-              const nextPath = data.breeder
-                ? `/app/${tenantSlug}/breeders?seriesId=${data.breeder.seriesId}`
-                : `/app/${tenantSlug}/breeders`;
-              router.push(nextPath);
-            }}
-          >
-            返回种龟列表
-          </button>
-          <button type="button" onClick={() => router.push(`/app/${tenantSlug}/series`)}>
-            打开系列管理
-          </button>
-        </div>
-      </header>
-
-      {loading ? <p className="notice notice-info">正在加载种龟、事件和家族树数据...</p> : null}
-
-      {!loading && data.breeder ? (
-        <section className="card panel stack">
-          <h2>{data.breeder.code}</h2>
-          <p className="muted">{data.breeder.name ?? '未命名种龟'}</p>
-
-          <div className="kv-grid">
-            <p>
-              <span className="muted">系列</span>
-              <strong>{data.breeder.series?.code ?? '未关联'} / {data.breeder.series?.name ?? '未关联'}</strong>
-            </p>
-            <p>
-              <span className="muted">性别</span>
-              <strong>{data.breeder.sex ?? '未知'}</strong>
-            </p>
-            <p>
-              <span className="muted">状态</span>
-              <strong>{data.breeder.isActive ? '启用' : '停用'}</strong>
-            </p>
-            <p>
-              <span className="muted">父本 / 母本 / 配偶</span>
-              <strong>
-                {data.breeder.sireCode ?? 'N/A'} / {data.breeder.damCode ?? 'N/A'} / {data.breeder.mateCode ?? 'N/A'}
-              </strong>
-            </p>
+    <main className="space-y-4 pb-10 sm:space-y-6">
+      <Card className="tenant-card-lift overflow-hidden rounded-3xl border-neutral-200/90 bg-white transition-all">
+        <CardContent className="grid gap-6 p-0 lg:grid-cols-[380px_minmax(0,1fr)]">
+          <div className="relative bg-neutral-100">
+            {activeImage ? (
+              <img src={resolveImageUrl(activeImage.url)} alt={`${data.breeder?.code ?? 'breeder'} 图片`} className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full min-h-[280px] items-center justify-center text-neutral-400">
+                <ImageIcon size={42} />
+              </div>
+            )}
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/50 to-transparent p-4">
+              <p className="text-sm font-semibold text-white">{currentBreeder?.code ?? '种龟详情'}</p>
+              <p className="text-xs text-white/85">{currentBreeder?.name ?? '未命名种龟'}</p>
+            </div>
           </div>
 
-          <p>{data.breeder.description ?? '暂无描述'}</p>
-        </section>
+          <div className="space-y-5 p-6">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant={currentBreeder?.inStock ? 'success' : 'default'}>
+                {currentBreeder?.inStock ? '启用中' : '停用'}
+              </Badge>
+              <Badge variant="accent">{formatSex(currentBreeder?.sex)}</Badge>
+              <Badge variant="sky">{currentBreeder?.seriesId ?? '未关联系列'}</Badge>
+            </div>
+            <div>
+              <CardTitle className="text-4xl text-neutral-900">{currentBreeder?.code ?? '种龟详情'}</CardTitle>
+              <CardDescription className="mt-2 text-base text-neutral-600">{currentBreeder?.description ?? '暂无描述'}</CardDescription>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <MetaItem label="父本" value={currentBreeder?.sireCode ?? 'N/A'} />
+              <MetaItem label="母本" value={currentBreeder?.damCode ?? 'N/A'} />
+              <MetaItem label="配偶" value={currentBreeder?.mateCode ?? 'N/A'} />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" onClick={() => router.push(`/app/${tenantSlug}/breeders`)}>
+                返回列表
+              </Button>
+              {currentBreeder ? (
+                <Button variant="primary" onClick={() => router.push(`/app/${tenantSlug}/products/${currentBreeder.id}`)}>
+                  <PencilRuler size={16} />
+                  管理图片
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {loading ? (
+        <Card className="rounded-3xl border-neutral-200/90 bg-white p-6">
+          <p className="text-sm text-neutral-600">正在加载种龟、事件和家族树数据...</p>
+        </Card>
+      ) : null}
+
+      {!loading && data.images.length > 0 ? (
+        <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-2xl">
+              <ImageIcon size={18} />
+              图片预览
+            </CardTitle>
+            <CardDescription>点击缩略图即可切换大图，排序与主图请在产品图片管理页操作。</CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-[repeat(auto-fill,minmax(110px,1fr))] gap-3">
+            {data.images.map((image) => (
+              <button
+                key={image.id}
+                type="button"
+                onClick={() => setActiveImageId(image.id)}
+                className={`overflow-hidden rounded-2xl border transition-all ${
+                  image.id === (activeImage?.id ?? '')
+                    ? 'border-[#FFD400] shadow-[0_6px_20px_rgba(255,212,0,0.25)]'
+                    : 'border-neutral-200 hover:border-neutral-300'
+                }`}
+              >
+                <img src={resolveImageUrl(image.url)} alt="种龟缩略图" className="h-24 w-full object-cover" />
+              </button>
+            ))}
+          </CardContent>
+        </Card>
       ) : null}
 
       {!loading && data.tree ? (
-        <section className="card panel stack">
-          <h2>家族关系</h2>
-          <p className="muted">{data.tree.limitations}</p>
-
-          <div className="form-grid form-grid-2">
-            <div className="card stack">
-              <h3>当前个体</h3>
-              {renderTreeNode(data.tree.self, tenantSlug, router)}
+        <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-2xl">
+              <Network size={18} />
+              家族关系
+            </CardTitle>
+            <CardDescription>{data.tree.limitations}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 gap-3 xl:grid-cols-4">
+              <TreeCard title="当前个体" node={data.tree.self} tenantSlug={tenantSlug} />
+              <TreeCard title="父本" node={data.tree.sire} tenantSlug={tenantSlug} />
+              <TreeCard title="母本" node={data.tree.dam} tenantSlug={tenantSlug} />
+              <TreeCard title="配偶" node={data.tree.mate} tenantSlug={tenantSlug} />
             </div>
 
-            <div className="card stack">
-              <h3>父本</h3>
-              {data.tree.sire ? renderTreeNode(data.tree.sire, tenantSlug, router) : <p className="muted">未关联</p>}
-              {data.tree.links.sire && !data.tree.links.sire.breeder ? (
-                <p className="notice notice-error">记录存在编码，但未找到目标种龟：{data.tree.links.sire.code}</p>
-              ) : null}
-            </div>
-
-            <div className="card stack">
-              <h3>母本</h3>
-              {data.tree.dam ? renderTreeNode(data.tree.dam, tenantSlug, router) : <p className="muted">未关联</p>}
-              {data.tree.links.dam && !data.tree.links.dam.breeder ? (
-                <p className="notice notice-error">记录存在编码，但未找到目标种龟：{data.tree.links.dam.code}</p>
-              ) : null}
-            </div>
-
-            <div className="card stack">
-              <h3>配偶</h3>
-              {data.tree.mate ? renderTreeNode(data.tree.mate, tenantSlug, router) : <p className="muted">未关联</p>}
-              {data.tree.links.mate && !data.tree.links.mate.breeder ? (
-                <p className="notice notice-error">记录存在编码，但未找到目标种龟：{data.tree.links.mate.code}</p>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="stack">
-            <h3>子代</h3>
-            {data.tree.children.length === 0 ? <p className="muted">未找到直系子代。</p> : null}
-            {data.tree.children.length > 0 ? (
-              <div className="table-wrap">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>编码</th>
-                      <th>名称</th>
-                      <th>性别</th>
-                      <th>操作</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+            <div className="rounded-2xl border border-neutral-200 p-4">
+              <h3 className="mb-3 text-base font-semibold text-neutral-900">子代</h3>
+              {data.tree.children.length === 0 ? <p className="text-sm text-neutral-500">未找到直系子代。</p> : null}
+              {data.tree.children.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>编码</TableHead>
+                      <TableHead>名称</TableHead>
+                      <TableHead>性别</TableHead>
+                      <TableHead>操作</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {data.tree.children.map((child) => (
-                      <tr key={child.id}>
-                        <td>{child.code}</td>
-                        <td>{child.name ?? '未命名种龟'}</td>
-                        <td>{child.sex ?? '未知'}</td>
-                        <td>
-                          <button
-                            type="button"
-                            className="btn-compact"
-                            onClick={() => {
-                              router.push(`/app/${tenantSlug}/breeders/${child.id}`);
-                            }}
-                          >
+                      <TableRow key={child.id}>
+                        <TableCell>{child.code}</TableCell>
+                        <TableCell>{child.name ?? '未命名种龟'}</TableCell>
+                        <TableCell>{formatSex(child.sex)}</TableCell>
+                        <TableCell>
+                          <Button size="sm" variant="secondary" onClick={() => router.push(`/app/${tenantSlug}/breeders/${child.id}`)}>
                             打开
-                          </button>
-                        </td>
-                      </tr>
+                          </Button>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : null}
-          </div>
-        </section>
-      ) : null}
-
-      {!loading && !error ? (
-        <section className="card panel stack">
-          <h2>事件记录</h2>
-          {data.events.length === 0 ? <p className="muted">暂无事件记录。</p> : null}
-
-          {data.events.length > 0 ? (
-            <div className="table-wrap">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>事件类型</th>
-                    <th>时间</th>
-                    <th>备注</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.events.map((event) => (
-                    <tr key={event.id}>
-                      <td>{event.eventType}</td>
-                      <td>{new Date(event.eventDate).toLocaleString('zh-CN')}</td>
-                      <td>{event.note ?? '-'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </TableBody>
+                </Table>
+              ) : null}
             </div>
-          ) : null}
-        </section>
+          </CardContent>
+        </Card>
       ) : null}
 
-      {error ? <p className="notice notice-error">{error}</p> : null}
+      {!loading ? (
+        <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-2xl">
+              <CalendarClock size={18} />
+              事件记录
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {data.events.length === 0 ? <p className="text-sm text-neutral-500">暂无事件记录。</p> : null}
+            {data.events.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>事件类型</TableHead>
+                    <TableHead>时间</TableHead>
+                    <TableHead>备注</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data.events.map((event) => (
+                    <TableRow key={event.id}>
+                      <TableCell>{event.eventType}</TableCell>
+                      <TableCell>{new Date(event.eventDate).toLocaleString('zh-CN')}</TableCell>
+                      <TableCell>{event.note ?? '-'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {error ? (
+        <Card className="rounded-2xl border-red-200 bg-red-50 p-4">
+          <p className="text-sm font-semibold text-red-700">{error}</p>
+        </Card>
+      ) : null}
     </main>
   );
 }
 
-function renderTreeNode(node: FamilyTreeNode, tenantSlug: string, router: RouterLike) {
+function MetaItem({ label, value }: { label: string; value: string }) {
   return (
-    <div className="row between">
-      <span>
-        <strong>{node.code}</strong> / {node.name ?? '未命名种龟'} ({node.sex ?? '未知'})
-      </span>
-      <button type="button" className="btn-compact" onClick={() => router.push(`/app/${tenantSlug}/breeders/${node.id}`)}>
-        打开
-      </button>
+    <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+      <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">{label}</p>
+      <p className="mt-1 text-sm font-semibold text-neutral-900">{value}</p>
     </div>
   );
+}
+
+function TreeCard(props: { title: string; node: FamilyTreeNode | null; tenantSlug: string }) {
+  const router = useRouter();
+
+  return (
+    <div className="rounded-2xl border border-neutral-200 p-4">
+      <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">{props.title}</p>
+      {props.node ? (
+        <div className="mt-2 space-y-1">
+          <p className="text-sm font-semibold text-neutral-900">{props.node.code}</p>
+          <p className="text-xs text-neutral-500">{props.node.name ?? '未命名种龟'}</p>
+          <div className="pt-2">
+            <Button size="sm" variant="secondary" onClick={() => router.push(`/app/${props.tenantSlug}/breeders/${props.node?.id}`)}>
+              打开
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <p className="mt-2 text-sm text-neutral-500">未关联</p>
+      )}
+    </div>
+  );
+}
+
+function resolveImageUrl(value: string) {
+  return resolveAuthenticatedAssetUrl(value);
+}
+
+function formatSex(value?: string | null) {
+  if (value === 'male') {
+    return '公';
+  }
+
+  if (value === 'female') {
+    return '母';
+  }
+
+  return value ?? '未知';
 }
 
 function formatError(error: unknown) {

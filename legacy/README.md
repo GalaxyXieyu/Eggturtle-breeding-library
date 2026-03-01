@@ -1,17 +1,14 @@
 # Legacy 参考代码入口
 
-本目录用于统一承接历史实现（Legacy）参考代码与迁移说明。
+本目录用于承接历史实现（Legacy）参考代码。
 
-当前阶段采用“零破坏”策略：
-- 真实代码仍位于仓库根目录 `backend/` 与 `frontend/`
-- 运行脚本、Docker、CI 继续使用现有路径，避免联调中断
+当前状态（2026-03-01）：
+- Legacy 代码已经迁移到本目录：
+  - `legacy/backend`
+  - `legacy/frontend`
+- Legacy 不作为当前运行主线。
+- 默认开发、联调、部署请使用根目录 `apps/*` 与 `packages/*`。
 
-后续（在 refresh 鉴权能力补齐后）可执行目录收纳迁移：
-1. `backend/ -> legacy/backend/`
-2. `frontend/ -> legacy/frontend/`
-3. 为兼容旧脚本，保留根目录软链或同步改写脚本路径
-
-参考：
-- `/backend`
-- `/frontend`
-- `docs/migration/COVERAGE.md`
+使用原则：
+- 仅在历史行为对照、迁移排查时查阅 Legacy。
+- 不在主文档中把 Legacy 接口当成当前接口能力。

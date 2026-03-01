@@ -32,10 +32,10 @@ type ResolvedTenantSubscription = {
   updatedAt: Date | null;
 };
 
-const PLAN_RANK: Record<TenantSubscriptionPlan, number> = {
-  FREE: 0,
-  BASIC: 1,
-  PRO: 2
+const PLAN_PRODUCT_LIMITS: Record<TenantSubscriptionPlan, number | null> = {
+  FREE: 10,
+  BASIC: 30,
+  PRO: 200
 };
 
 @Injectable()
@@ -325,45 +325,6 @@ export class TenantSubscriptionsService {
     return subscription;
   }
 
-  async assertSharePlanAllowsCreate(tenantId: string): Promise<void> {
-    const subscription = await this.assertTenantWritable(tenantId);
-    if (!subscription.isConfigured) {
-      return;
-    }
-
-    if (!this.hasPlanAtLeast(subscription.plan, TenantSubscriptionPlan.PRO)) {
-      throw new ForbiddenException({
-        message: 'Current subscription plan does not allow creating public shares.',
-        errorCode: ErrorCode.TenantSubscriptionPlanInsufficient
-      });
-    }
-  }
-
-  async assertShareQuotaAllowsCreate(tenantId: string): Promise<void> {
-    const subscription = await this.assertTenantWritable(tenantId);
-    if (!subscription.isConfigured || subscription.maxShares === null) {
-      return;
-    }
-
-    const shareCount = await this.prisma.publicShare.count({
-      where: {
-        tenantId
-      }
-    });
-
-    if (shareCount >= subscription.maxShares) {
-      throw new ForbiddenException({
-        message: 'Share quota exceeded for tenant subscription.',
-        errorCode: ErrorCode.TenantSubscriptionQuotaExceeded,
-        data: {
-          quota: 'maxShares',
-          limit: subscription.maxShares,
-          used: shareCount
-        }
-      });
-    }
-  }
-
   async assertImageUploadAllowed(tenantId: string, uploadBytes: number): Promise<void> {
     const subscription = await this.assertTenantWritable(tenantId);
     if (!subscription.isConfigured) {
@@ -414,6 +375,32 @@ export class TenantSubscriptionsService {
           limit: subscription.maxStorageBytes.toString(),
           used: currentStorageBytes.toString(),
           requested: uploadBytes
+        }
+      });
+    }
+  }
+
+  async assertProductCreateAllowed(tenantId: string): Promise<void> {
+    const subscription = await this.assertTenantWritable(tenantId);
+    const maxProducts = this.resolveMaxProductsLimit(subscription);
+    if (maxProducts === null) {
+      return;
+    }
+
+    const productCount = await this.prisma.product.count({
+      where: {
+        tenantId
+      }
+    });
+
+    if (productCount >= maxProducts) {
+      throw new ForbiddenException({
+        message: 'Product count quota exceeded for tenant subscription.',
+        errorCode: ErrorCode.TenantSubscriptionQuotaExceeded,
+        data: {
+          quota: 'maxProducts',
+          limit: maxProducts,
+          used: productCount
         }
       });
     }
@@ -524,8 +511,12 @@ export class TenantSubscriptionsService {
     return new Date(base.getTime() + durationDays * 24 * 60 * 60 * 1000);
   }
 
-  private hasPlanAtLeast(current: TenantSubscriptionPlan, required: TenantSubscriptionPlan): boolean {
-    return PLAN_RANK[current] >= PLAN_RANK[required];
+  private resolveMaxProductsLimit(subscription: ResolvedTenantSubscription): number | null {
+    if (subscription.maxShares !== null) {
+      return subscription.maxShares;
+    }
+
+    return PLAN_PRODUCT_LIMITS[subscription.plan];
   }
 
   private toApiActivationCode(

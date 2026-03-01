@@ -1,39 +1,107 @@
-# business-flows
+# 蛋龟选育库：商业故事版
 
-## 主线 A：多租户访问控制
+## 一句话定位
 
-- 登录：`/auth/password-login` 或验证码流程
-- 绑定租户：`/auth/switch-tenant`
-- 带 tenant 访问业务 API（products/series/breeders/...）
+蛋龟选育库不是“记账工具”，而是繁育者的数字名片：
+让你能记录、能展示、能成交、还能被验证。
 
-状态流：
+## 业务故事：一个繁育者的升级路径
 
-`anonymous -> authenticated(no-tenant) -> authenticated(with-tenant) -> tenant-scoped operations`
+阿杰是个玩家繁育者，最开始只是想把家里的种龟和配对关系记清楚。
 
-锚点：`apps/api/src/auth/auth.controller.ts:40`, `apps/api/src/auth/auth.controller.ts:48`, `apps/api/src/products/products.controller.ts:181`。
+第一阶段，他用免费版把核心个体录入系统，顺手记下交配和产蛋。以前全靠聊天记录和相册翻图，现在一只龟从亲代到子代，一眼就能查。
 
-## 主线 B：产品与图片管理
+第二阶段，他开始稳定出苗，买家会问“这只小龟什么血统”。他把页面直接分享给买家，买家扫码就能看信息，不用反复截图解释。沟通成本明显下降，转化更快。
 
-- 创建产品：`POST /products`
-- 图片上传：`POST /products/:id/images`
-- 主图设置：`PUT /products/:pid/images/:iid/main`
-- 排序：`PUT /products/:pid/images/reorder`
-- 删除：`DELETE /products/:pid/images/:iid`
+第三阶段，他进入品牌化经营，升级高级版。每一批重点子代都能挂上标准化血缘证书，页面统一风格，图片带水印，记录还能用 AI 自动整理。买家看到的不只是“有龟卖”，而是“这家繁育者专业、可信、长期可追溯”。
 
-状态流：
+这就是我们的商业闭环：
+从记录工具出发，走向交易信任，再走向繁育品牌。
 
-`product_created -> image_uploaded -> main_image_selected -> image_ordered -> image_deleted(optional)`
+## 三档套餐（对外口径）
 
-锚点：`apps/api/src/products/products.controller.ts:60`, `apps/api/src/products/products.controller.ts:88`, `apps/api/src/products/products.controller.ts:152`, `apps/api/src/products/products.controller.ts:166`, `apps/api/src/products/products.controller.ts:138`。
+### 免费版（先用起来）
 
-## 主线 C：分享链路
+适合刚起步的玩家。
 
-- 创建分享：`POST /shares`
-- 入口跳转：`GET /s/:shareToken`
-- 公共读取：`GET /shares/:shareId/public`
+- 可管理少量种龟（10 只）
+- 支持交配记录、产蛋记录
+- 支持基础血统查看
+- 支持分享给外部查看
+- AI 自动记录体验额度（10 次/月）
 
-状态流：
+核心价值：零门槛开始数字化，不再靠碎片化记录。
 
-`resource_exists -> share_created -> entry_opened -> public_payload_resolved`
+### 初级繁育者（28/月）
 
-锚点：`apps/api/src/shares/shares.controller.ts:42`, `apps/api/src/shares/shares.controller.ts:55`, `apps/api/src/shares/shares.controller.ts:69`。
+适合开始稳定繁育、需要更强管理和展示的人群。
+
+- 可管理 30 只种龟
+- 血统可完整溯源（父母/祖代/子代）
+- 支持交配记录、产蛋记录
+- 支持图册化展示与二维码能力
+- 支持分享给外部查看
+- AI 自动记录与问数额度（按月限次）
+
+核心价值：把“自己看得懂”升级为“买家也看得懂”。
+
+### 高级繁育者（49/月）
+
+适合做长期口碑和交易转化的核心客户。
+
+- 可管理 200 只种龟
+- 完整溯源 + 证书能力
+- 可生成“蛋龟选育库”血缘证书（电子版）
+- 图片水印能力（防盗图、防搬运）
+- AI 自动记录 + 智能问数高额度（按月限次）
+- 页面与展示能力更完整（用于成交场景）
+
+核心价值：形成“可展示 + 可验证 + 可成交”的商业能力。
+
+## AI 次数与充值策略（简化版）
+
+AI 能力统一采用“套餐月额度 + 充值包叠加”：
+
+- 三个套餐都有各自的 AI 次数上限（不是无限）
+- 免费版用于体验，自动记录默认 10 次/月
+- 达到套餐上限后，可单独购买 AI 次数包
+- 支持多次充值，额度可叠加，不限制充值次数
+- 先消耗套餐内次数，再消耗充值额度
+- 在工作台首页用大数字卡片展示“自动记录剩余次数 / 问数剩余次数”
+
+这样既能保证基础体验，也能给重度用户明确的增购路径。
+
+## 分享机制（简化版口径）
+
+分享本质上是链接，不做复杂的分享次数限制。
+
+我们的控制点很明确：
+
+- 不限制分享链接数量
+- 只按套餐控制“可管理的龟只数量”
+- 链接可通过过期或作废机制失效
+
+这样规则简单、用户容易理解、运营成本更低。
+
+## 证书产品定位（你现在要做的重点）
+
+证书不是装饰图，而是成交信任工具。
+
+目标体验：
+
+- 给一张证书底图模板
+- 前端把业务字段（证书编号、品系、亲本信息、签发信息等）填进去
+- 生成版式稳定的证书图片
+- 附带二维码用于查询与验真
+
+对用户来说，这是“买家愿意下单”的关键证据；
+对平台来说，这是高级版的核心付费价值。
+
+## 对外话术模板（可直接用于介绍）
+
+蛋龟选育库，帮繁育者把“经验”变成“可验证的价值”。
+
+你可以先免费记录和管理，等开始稳定出苗，再用分享页和溯源能力提升成交；
+当你进入品牌化经营，高级版的证书、水印和 AI 自动记录/问数能力，会让你的每一次展示都更专业、更可信。
+
+我们卖的不是一个功能点，而是一条从玩家到专业繁育者的成长路径。

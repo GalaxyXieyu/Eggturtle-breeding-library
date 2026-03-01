@@ -21,7 +21,7 @@
 - 路由：`/dashboard/...`
 
 ### Legacy 参考
-- Legacy frontend 里的完整后台管理 UI（`frontend/src/pages/admin/`）作为「产品设计蓝本」，可参考或直接迁移到 apps/web。
+- Legacy frontend 里的完整后台管理 UI（`legacy/frontend/src/pages/admin/`）作为「产品设计蓝本」，可参考或直接迁移到 apps/web。
 
 ---
 
@@ -94,7 +94,7 @@
 ## UI 风格指南
 
 ### 颜色系统
-- **当前主题**: Beige/Gold/Brown (在 `frontend/src/index.css` 定义)
+- **当前主题**: Beige/Gold/Brown (在 `legacy/frontend/src/index.css` 定义)
 - **未来方向**: Waterfall Feed 黑白黄主题 (accent: `#FFD400`)
 
 ### 核心设计令牌 (HSL)
@@ -120,9 +120,9 @@
 - Serif (headings/brand): `Playfair Display`
 
 ### 关键文件
-- Tailwind theme: `frontend/tailwind.config.ts`
-- CSS variables: `frontend/src/index.css`
-- Admin layout: `frontend/src/components/AdminLayout.tsx`
+- Tailwind theme: `legacy/frontend/tailwind.config.ts`
+- CSS variables: `legacy/frontend/src/index.css`
+- Admin layout: `legacy/frontend/src/components/AdminLayout.tsx`
 
 ### Admin Layout 约定
 - Sidebar surface: `bg-white` + `border-r border-cosmetic-beige-200`
@@ -133,14 +133,14 @@
 
 ## Legacy UI 参考清单
 
-可参考/复用的 legacy 组件（在 `frontend/` 目录）：
-- 产品管理：`frontend/src/pages/admin/AdminProducts.tsx`
-- 图片管理：`frontend/src/pages/admin/products/images/ProductImagesManager.tsx`
-- 批量导入：`frontend/src/components/admin/ProductImportDialog.tsx`
-- 种龟事件：`frontend/src/pages/admin/products/forms/BreederEventsCard.tsx`
-- 系列管理：`frontend/src/pages/admin/AdminSeries.tsx`
-- 轮播管理：`frontend/src/pages/admin/AdminCarouselManager.tsx`
-- 设置：`frontend/src/pages/admin/AdminSettings.tsx`
+可参考/复用的 legacy 组件（在 `legacy/frontend/` 目录）：
+- 产品管理：`legacy/frontend/src/pages/admin/AdminProducts.tsx`
+- 图片管理：`legacy/frontend/src/pages/admin/products/images/ProductImagesManager.tsx`
+- 批量导入：`legacy/frontend/src/components/admin/ProductImportDialog.tsx`
+- 种龟事件：`legacy/frontend/src/pages/admin/products/forms/BreederEventsCard.tsx`
+- 系列管理：`legacy/frontend/src/pages/admin/AdminSeries.tsx`
+- 轮播管理：`legacy/frontend/src/pages/admin/AdminCarouselManager.tsx`
+- 设置：`legacy/frontend/src/pages/admin/AdminSettings.tsx`
 
 这些组件使用 shadcn/ui + Radix UI，与 Node 端技术栈一致，可参考或直接迁移到 apps/web。
 
@@ -216,11 +216,11 @@
   - 当前删除其它租户会影响 smoke/回归样例，默认先不做破坏性清理；如确认清理再执行“只保留 turtle-album”。
 - 2026-02-28 UI_STYLE_GUIDE 对齐优化补充（apps/web）：
   - 登录页重构为“单卡片居中”标准布局，移除冗余说明块，保留中英文切换与双模式登录（密码/验证码）
-  - 批量收口 v0 页面视觉风格（`/app`、`/tenant-select`、`/app/[tenantSlug]/series|breeders|featured-products|tenants|breeders/[id]`、`/public/share`）
+  - 批量收口 v0 页面视觉风格（`/app`、`/tenant-select`、`/app/[tenantSlug]/series|breeders|featured-products|tenants|breeders/[id]`、`/public/s/[shareToken]`）
   - 新增统一样式基座（页面壳层、面板、表格、状态提示、紧凑按钮），并按 Admin Mode 紧凑密度统一
   - 移动端适配已实测（390px 视口）：登录页、工作台、种龟列表、分享页均可用
   - 代码与实测证据：
-    - 主要文件：`apps/web/app/globals.css`、`apps/web/app/login/page.tsx`、`apps/web/app/app/*`、`apps/web/app/public/share/page.tsx`
+    - 主要文件：`apps/web/app/globals.css`、`apps/web/app/login/page.tsx`、`apps/web/app/app/*`、`apps/web/app/public/s/[shareToken]/page.tsx`
     - 验证：`pnpm --filter @eggturtle/web lint` 通过（仅 `next/image` 规则 warning）；Chrome MCP 截图确认桌面/移动端布局
 - 2026-02-28 任务归属调整与收口：
   - `T40`（Milestone1 收口）已由“宇宇”接手并完成，证据：`docs/plan/evidence/milestone1-closeout-20260228.md`

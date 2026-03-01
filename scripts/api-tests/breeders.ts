@@ -11,14 +11,14 @@ import {
   ensureTenantSession,
   readObject,
   readString,
-  uniqueSuffix,
+  uniqueSuffix
 } from './lib';
 
 export const breedersModule: TestModule = {
   name: 'breeders',
-  description: 'Breeders read-only checks with not-found/invalid guards and tenant isolation',
+  description: 'Product breeding-read checks (by-code/events/family-tree) with tenant isolation',
   requiresWrites: true,
-  run,
+  run
 };
 
 async function run(ctx: TestContext): Promise<ModuleResult> {
@@ -28,187 +28,181 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
     email: ctx.options.email,
     tenantId: ctx.options.tenantId,
     tenantSlug: ctx.options.tenantSlug,
-    tenantName: ctx.options.tenantName,
+    tenantName: ctx.options.tenantName
   });
 
   let checks = 0;
-  let validatedBreederId: string | null = null;
+  let validatedProductId: string | null = null;
 
   const listResponse = await ctx.request({
     method: 'GET',
-    path: '/breeders',
+    path: '/products',
     token: session.token,
-    query: { page: 1, pageSize: 10 },
+    query: { page: 1, pageSize: 10 }
   });
 
   if (listResponse.status !== 200) {
-    throw new ApiTestError(`list breeders expected 200, got ${listResponse.status}`);
+    throw new ApiTestError(`list products expected 200, got ${listResponse.status}`);
   }
 
-  const listBody = asObject(listResponse.body, 'breeders.list response');
-  const listItems = asArray(listBody.items, 'breeders.list.items');
-  assertPageEnvelope(listBody, 1, 10, 'breeders.list');
+  const listBody = asObject(listResponse.body, 'products.list response');
+  const listItems = asArray(listBody.products, 'products.list.products');
+  assertPageEnvelope(listBody, 1, 10, 'products.list');
   checks += 1;
 
   const invalidListResponse = await ctx.request({
     method: 'GET',
-    path: '/breeders',
+    path: '/products',
     token: session.token,
-    query: { page: 0, pageSize: 10 },
+    query: { page: 0, pageSize: 10 }
   });
 
   if (invalidListResponse.status !== 400) {
-    throw new ApiTestError(
-      `breeders invalid pagination expected 400, got ${invalidListResponse.status}`,
-    );
+    throw new ApiTestError(`products invalid pagination expected 400, got ${invalidListResponse.status}`);
   }
   assertErrorCode(invalidListResponse, 'INVALID_REQUEST_PAYLOAD');
   checks += 1;
 
   const invalidCodeResponse = await ctx.request({
     method: 'GET',
-    path: '/breeders/by-code/%20%20',
-    token: session.token,
+    path: '/products/by-code/%20%20',
+    token: session.token
   });
 
   if (invalidCodeResponse.status !== 400) {
-    throw new ApiTestError(
-      `breeders by-code invalid param expected 400, got ${invalidCodeResponse.status}`,
-    );
+    throw new ApiTestError(`products by-code invalid param expected 400, got ${invalidCodeResponse.status}`);
   }
   assertErrorCode(invalidCodeResponse, 'INVALID_REQUEST_PAYLOAD');
   checks += 1;
 
-  const missingBreederId = uniqueSuffix('missing-breeder');
+  const missingProductId = uniqueSuffix('missing-product');
 
   const missingDetailResponse = await ctx.request({
     method: 'GET',
-    path: `/breeders/${encodeURIComponent(missingBreederId)}`,
-    token: session.token,
+    path: `/products/${encodeURIComponent(missingProductId)}`,
+    token: session.token
   });
   if (missingDetailResponse.status !== 404) {
-    throw new ApiTestError(`breeder detail not-found expected 404, got ${missingDetailResponse.status}`);
+    throw new ApiTestError(`product detail not-found expected 404, got ${missingDetailResponse.status}`);
   }
-  assertErrorCode(missingDetailResponse, 'BREEDER_NOT_FOUND');
+  assertErrorCode(missingDetailResponse, 'PRODUCT_NOT_FOUND');
   checks += 1;
 
   const missingEventsResponse = await ctx.request({
     method: 'GET',
-    path: `/breeders/${encodeURIComponent(missingBreederId)}/events`,
-    token: session.token,
+    path: `/products/${encodeURIComponent(missingProductId)}/events`,
+    token: session.token
   });
   if (missingEventsResponse.status !== 404) {
-    throw new ApiTestError(`breeder events not-found expected 404, got ${missingEventsResponse.status}`);
+    throw new ApiTestError(`product events not-found expected 404, got ${missingEventsResponse.status}`);
   }
-  assertErrorCode(missingEventsResponse, 'BREEDER_NOT_FOUND');
+  assertErrorCode(missingEventsResponse, 'PRODUCT_NOT_FOUND');
   checks += 1;
 
   const missingTreeResponse = await ctx.request({
     method: 'GET',
-    path: `/breeders/${encodeURIComponent(missingBreederId)}/family-tree`,
-    token: session.token,
+    path: `/products/${encodeURIComponent(missingProductId)}/family-tree`,
+    token: session.token
   });
   if (missingTreeResponse.status !== 404) {
-    throw new ApiTestError(`breeder family-tree not-found expected 404, got ${missingTreeResponse.status}`);
+    throw new ApiTestError(`product family-tree not-found expected 404, got ${missingTreeResponse.status}`);
   }
-  assertErrorCode(missingTreeResponse, 'BREEDER_NOT_FOUND');
+  assertErrorCode(missingTreeResponse, 'PRODUCT_NOT_FOUND');
   checks += 1;
 
   if (listItems.length > 0) {
-    const breederItem = asObject(listItems[0], 'breeders.list.item[0]');
-    const breederId = readString(breederItem, 'id', 'breeders.list.item[0].id');
-    const breederCode = readString(breederItem, 'code', 'breeders.list.item[0].code');
+    const productItem = asObject(listItems[0], 'products.list.item[0]');
+    const productId = readString(productItem, 'id', 'products.list.item[0].id');
+    const productCode = readString(productItem, 'code', 'products.list.item[0].code');
 
     const detailResponse = await ctx.request({
       method: 'GET',
-      path: `/breeders/${encodeURIComponent(breederId)}`,
-      token: session.token,
+      path: `/products/${encodeURIComponent(productId)}`,
+      token: session.token
     });
 
     if (detailResponse.status !== 200) {
-      throw new ApiTestError(`breeder detail expected 200, got ${detailResponse.status}`);
+      throw new ApiTestError(`product detail expected 200, got ${detailResponse.status}`);
     }
 
-    const detailBody = asObject(detailResponse.body, 'breeders.detail response');
-    const breeder = readObject(detailBody, 'breeder', 'breeders.detail.breeder');
-    if (readString(breeder, 'id', 'breeders.detail.breeder.id') !== breederId) {
-      throw new ApiTestError(`breeder detail id mismatch: expected ${breederId}`);
+    const detailBody = asObject(detailResponse.body, 'products.detail response');
+    const product = readObject(detailBody, 'product', 'products.detail.product');
+    if (readString(product, 'id', 'products.detail.product.id') !== productId) {
+      throw new ApiTestError(`product detail id mismatch: expected ${productId}`);
     }
     checks += 1;
 
     const byCodeResponse = await ctx.request({
       method: 'GET',
-      path: `/breeders/by-code/${encodeURIComponent(breederCode)}`,
-      token: session.token,
+      path: `/products/by-code/${encodeURIComponent(productCode)}`,
+      token: session.token
     });
 
     if (byCodeResponse.status !== 200) {
-      throw new ApiTestError(`breeder by-code expected 200, got ${byCodeResponse.status}`);
+      throw new ApiTestError(`product by-code expected 200, got ${byCodeResponse.status}`);
     }
 
-    const byCodeBody = asObject(byCodeResponse.body, 'breeders.by-code response');
-    const breederByCode = readObject(byCodeBody, 'breeder', 'breeders.by-code.breeder');
-    if (readString(breederByCode, 'id', 'breeders.by-code.breeder.id') !== breederId) {
-      throw new ApiTestError(`breeder by-code mismatch: expected id ${breederId}`);
+    const byCodeBody = asObject(byCodeResponse.body, 'products.by-code response');
+    const productByCode = readObject(byCodeBody, 'product', 'products.by-code.product');
+    if (readString(productByCode, 'id', 'products.by-code.product.id') !== productId) {
+      throw new ApiTestError(`product by-code mismatch: expected id ${productId}`);
     }
     checks += 1;
 
     const eventsResponse = await ctx.request({
       method: 'GET',
-      path: `/breeders/${encodeURIComponent(breederId)}/events`,
-      token: session.token,
+      path: `/products/${encodeURIComponent(productId)}/events`,
+      token: session.token
     });
 
     if (eventsResponse.status !== 200) {
-      throw new ApiTestError(`breeder events expected 200, got ${eventsResponse.status}`);
+      throw new ApiTestError(`product events expected 200, got ${eventsResponse.status}`);
     }
 
-    const eventsBody = asObject(eventsResponse.body, 'breeders.events response');
-    const events = asArray(eventsBody.events, 'breeders.events.events');
+    const eventsBody = asObject(eventsResponse.body, 'products.events response');
+    const events = asArray(eventsBody.events, 'products.events.events');
     assertEventsSortedDesc(events);
     checks += 1;
 
     const treeResponse = await ctx.request({
       method: 'GET',
-      path: `/breeders/${encodeURIComponent(breederId)}/family-tree`,
-      token: session.token,
+      path: `/products/${encodeURIComponent(productId)}/family-tree`,
+      token: session.token
     });
 
     if (treeResponse.status !== 200) {
-      throw new ApiTestError(`breeder family-tree expected 200, got ${treeResponse.status}`);
+      throw new ApiTestError(`product family-tree expected 200, got ${treeResponse.status}`);
     }
 
-    const treeBody = asObject(treeResponse.body, 'breeders.family-tree response');
-    const tree = readObject(treeBody, 'tree', 'breeders.family-tree.tree');
+    const treeBody = asObject(treeResponse.body, 'products.family-tree response');
+    const tree = readObject(treeBody, 'tree', 'products.family-tree.tree');
     assertFamilyTreeShape(tree);
-    const treeSelf = readObject(tree, 'self', 'breeders.family-tree.tree.self');
-    if (readString(treeSelf, 'id', 'breeders.family-tree.tree.self.id') !== breederId) {
-      throw new ApiTestError(`breeder family-tree self mismatch: expected id ${breederId}`);
+    const treeSelf = readObject(tree, 'self', 'products.family-tree.tree.self');
+    if (readString(treeSelf, 'id', 'products.family-tree.tree.self.id') !== productId) {
+      throw new ApiTestError(`product family-tree self mismatch: expected id ${productId}`);
     }
     checks += 1;
 
     const crossTenantSession = await ensureTenantSession(ctx, {
-      email: defaultEmail('api-breeders-cross-tenant'),
+      email: defaultEmail('api-products-cross-tenant')
     });
     const crossTenantResponse = await ctx.request({
       method: 'GET',
-      path: `/breeders/${encodeURIComponent(breederId)}`,
-      token: crossTenantSession.token,
+      path: `/products/${encodeURIComponent(productId)}`,
+      token: crossTenantSession.token
     });
 
     if (crossTenantResponse.status !== 404) {
-      throw new ApiTestError(
-        `breeder cross-tenant read expected 404, got ${crossTenantResponse.status}`,
-      );
+      throw new ApiTestError(`product cross-tenant read expected 404, got ${crossTenantResponse.status}`);
     }
-    assertErrorCode(crossTenantResponse, 'BREEDER_NOT_FOUND');
+    assertErrorCode(crossTenantResponse, 'PRODUCT_NOT_FOUND');
     checks += 1;
 
-    validatedBreederId = breederId;
+    validatedProductId = productId;
   } else {
-    ctx.log.warn('breeders.seed.warn', {
+    ctx.log.warn('products.seed.warn', {
       tenantId: session.tenantId,
-      message: 'No breeder rows found in tenant; positive detail/events/family-tree checks skipped.',
+      message: 'No product rows found; positive detail/events/family-tree checks skipped.'
     });
   }
 
@@ -216,7 +210,7 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
     checks,
     tenantId: session.tenantId,
     itemCount: listItems.length,
-    validatedBreederId: validatedBreederId ?? 'none',
+    validatedProductId: validatedProductId ?? 'none'
   });
 
   return {
@@ -224,17 +218,12 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
     details: {
       tenantId: session.tenantId,
       itemCount: listItems.length,
-      validatedBreederId,
-    },
+      validatedProductId
+    }
   };
 }
 
-function assertPageEnvelope(
-  body: Record<string, unknown>,
-  expectedPage: number,
-  expectedPageSize: number,
-  label: string,
-): void {
+function assertPageEnvelope(body: Record<string, unknown>, expectedPage: number, expectedPageSize: number, label: string): void {
   assertInteger(body.page, `${label}.page`);
   assertInteger(body.pageSize, `${label}.pageSize`);
   assertInteger(body.total, `${label}.total`);
@@ -245,9 +234,7 @@ function assertPageEnvelope(
   }
 
   if (body.pageSize !== expectedPageSize) {
-    throw new ApiTestError(
-      `Expected ${label}.pageSize=${expectedPageSize}, got ${String(body.pageSize)}`,
-    );
+    throw new ApiTestError(`Expected ${label}.pageSize=${expectedPageSize}, got ${String(body.pageSize)}`);
   }
 
   if ((body.total as number) < 0) {
@@ -263,21 +250,21 @@ function assertEventsSortedDesc(events: unknown[]): void {
   let previousTs = Number.POSITIVE_INFINITY;
 
   for (let i = 0; i < events.length; i += 1) {
-    const event = asObject(events[i], `breeders.events.events[${i}]`);
+    const event = asObject(events[i], `products.events.events[${i}]`);
     ensureKeys(
       event,
-      ['id', 'tenantId', 'breederId', 'eventType', 'eventDate', 'note', 'createdAt', 'updatedAt'],
-      `breeders.events.events[${i}]`,
+      ['id', 'tenantId', 'productId', 'eventType', 'eventDate', 'note', 'createdAt', 'updatedAt'],
+      `products.events.events[${i}]`
     );
 
-    const eventDate = readString(event, 'eventDate', `breeders.events.events[${i}].eventDate`);
+    const eventDate = readString(event, 'eventDate', `products.events.events[${i}].eventDate`);
     const parsed = Date.parse(eventDate);
     if (Number.isNaN(parsed)) {
       throw new ApiTestError(`Invalid eventDate at index ${i}: ${eventDate}`);
     }
 
     if (parsed > previousTs) {
-      throw new ApiTestError('breeders.events.events is not sorted by eventDate desc');
+      throw new ApiTestError('products.events.events is not sorted by eventDate desc');
     }
 
     previousTs = parsed;
@@ -307,7 +294,7 @@ function validateFamilyTreeLink(
   linkValue: unknown,
   nodeValue: unknown,
   linkLabel: string,
-  nodeLabel: string,
+  nodeLabel: string
 ): void {
   if (linkValue === null) {
     return;
@@ -316,17 +303,17 @@ function validateFamilyTreeLink(
   const link = asObject(linkValue, linkLabel);
   readString(link, 'code', `${linkLabel}.code`);
 
-  const linkBreeder = link.breeder;
-  if (linkBreeder !== null) {
-    const breeder = asObject(linkBreeder, `${linkLabel}.breeder`);
-    ensureKeys(breeder, ['id', 'code', 'name', 'sex'], `${linkLabel}.breeder`);
+  const linkProduct = link.product;
+  if (linkProduct !== null) {
+    const product = asObject(linkProduct, `${linkLabel}.product`);
+    ensureKeys(product, ['id', 'code', 'name', 'sex'], `${linkLabel}.product`);
 
     if (nodeValue !== null) {
       const node = asObject(nodeValue, nodeLabel);
       const nodeId = readString(node, 'id', `${nodeLabel}.id`);
-      const breederId = readString(breeder, 'id', `${linkLabel}.breeder.id`);
-      if (nodeId !== breederId) {
-        throw new ApiTestError(`${linkLabel}.breeder.id does not match ${nodeLabel}.id`);
+      const productId = readString(product, 'id', `${linkLabel}.product.id`);
+      if (nodeId !== productId) {
+        throw new ApiTestError(`${linkLabel}.product.id does not match ${nodeLabel}.id`);
       }
     }
   }
@@ -337,3 +324,4 @@ function assertInteger(value: unknown, label: string): asserts value is number {
     throw new ApiTestError(`Expected ${label} integer, got ${String(value)}`);
   }
 }
+

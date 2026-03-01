@@ -36,14 +36,25 @@ export default async function TenantPublicFeedPage({
     );
   }
 
-  const { tenant, items } = shareResult.data;
+  const { tenant, items, presentation } = shareResult.data;
   const routeQuery = buildPublicShareRouteQuery(shareResult.shareId, shareResult.query).toString();
 
   return (
     <main className="share-shell">
       <section className="card share-hero stack">
-        <p className="share-kicker">TurtleAlbum · Public Feed</p>
-        <h1>{tenant.name}</h1>
+        <div className="relative overflow-hidden rounded-2xl">
+          <img
+            src={presentation.hero.images[0] || '/images/mg_04.jpg'}
+            alt={presentation.feedTitle}
+            className="h-44 w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-black/15 to-black/55" />
+          <div className="absolute inset-0 flex flex-col justify-end p-4 text-white">
+            <p className="share-kicker text-white/75">Public Feed</p>
+            <h1>{presentation.feedTitle}</h1>
+            <p className="text-sm text-white/85">{presentation.feedSubtitle}</p>
+          </div>
+        </div>
         <p className="muted">
           {tenant.slug} · 共 {items.length} 个在库个体
         </p>
@@ -83,6 +94,29 @@ export default async function TenantPublicFeedPage({
           })}
         </section>
       )}
+
+      {presentation.contact.showWechatBlock &&
+      (presentation.contact.wechatQrImageUrl || presentation.contact.wechatId) ? (
+        <section className="card panel stack">
+          <h2>微信联系</h2>
+          <div className="row">
+            {presentation.contact.wechatQrImageUrl ? (
+              <img
+                src={presentation.contact.wechatQrImageUrl}
+                alt="微信二维码"
+                className="h-28 w-28 rounded-xl border border-neutral-200 bg-white object-cover p-1"
+              />
+            ) : null}
+            {presentation.contact.wechatId ? (
+              <p className="muted">
+                微信号：<strong>{presentation.contact.wechatId}</strong>
+              </p>
+            ) : (
+              <p className="muted">请扫码添加微信咨询。</p>
+            )}
+          </div>
+        </section>
+      ) : null}
     </main>
   );
 }

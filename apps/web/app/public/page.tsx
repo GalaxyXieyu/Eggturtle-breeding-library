@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 
-import PublicFeedPage from './_public-breeder/public-feed-page';
-import { getPublicFeedData } from './_public-breeder/data-source';
+import PublicFeedPage from './_public-product/public-feed-page';
+import { getPublicFeedData } from './_public-product/data-source';
 
 export default async function PublicPage({
   searchParams,
@@ -16,5 +16,13 @@ export default async function PublicPage({
 
   const data = await getPublicFeedData({ demo: true });
 
-  return <PublicFeedPage demo={true} shareToken="demo" series={data.series} breeders={data.breeders} />;
+  return (
+    <PublicFeedPage
+      demo={true}
+      shareToken="demo"
+      series={data.series}
+      breeders={data.breeders}
+      presentation={data.presentation}
+    />
+  );
 }

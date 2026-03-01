@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import {
   redeemTenantSubscriptionActivationCodeRequestSchema,
   redeemTenantSubscriptionActivationCodeResponseSchema,
+  registerRequestSchema,
+  registerResponseSchema,
   type RedeemTenantSubscriptionActivationCodeResponse
 } from '@eggturtle/shared';
 import {
@@ -17,10 +19,11 @@ import {
 } from '@eggturtle/shared/auth';
 
 import { ApiError, apiRequest, getAccessToken, setAccessToken } from '../../lib/api-client';
+import { UiPreferenceControls, type UiLocale, useUiPreferences } from '../../components/ui-preferences';
 
-type Locale = 'zh' | 'en';
 type LoginMode = 'password' | 'code';
 type EntryView = 'signin' | 'activation' | 'register';
+type RegisterStep = 'email' | 'verify' | 'complete';
 
 type LoginCopy = {
   title: string;
@@ -79,9 +82,23 @@ type LoginCopy = {
   registerNotReady: string;
   registerPasswordMismatch: string;
   registerWeakPassword: string;
+  registerStep1Title: string;
+  registerStep1Hint: string;
+  registerStep2Title: string;
+  registerStep2Hint: string;
+  registerStep3Title: string;
+  registerStep3Hint: string;
+  registerTenantSlugLabel: string;
+  registerTenantSlugPlaceholder: string;
+  registerTenantSlugHint: string;
+  registerTenantNameLabel: string;
+  registerTenantNamePlaceholder: string;
+  registerCreating: string;
+  registerNext: string;
+  registerBack: string;
 };
 
-const COPY: Record<Locale, LoginCopy> = {
+const COPY: Record<UiLocale, LoginCopy> = {
   zh: {
     title: '蛋龟选育库',
     subtitle: '用数据驱动选育优化，提升繁育决策效率。',
@@ -138,7 +155,21 @@ const COPY: Record<Locale, LoginCopy> = {
     registerSubmit: '提交注册',
     registerNotReady: '注册接口尚未接入（TODO: 对接 /auth/register），当前仅提供表单预览。',
     registerPasswordMismatch: '两次输入的密码不一致，请检查。',
-    registerWeakPassword: '密码至少 8 位。'
+    registerWeakPassword: '密码至少 8 位。',
+    registerStep1Title: '验证邮箱',
+    registerStep1Hint: '请输入您的邮箱地址，我们将发送验证码。',
+    registerStep2Title: '输入验证码',
+    registerStep2Hint: '请输入发送到您邮箱的 6 位验证码。',
+    registerStep3Title: '创建空间',
+    registerStep3Hint: '设置您的用户空间信息，开始使用蛋龟选育库。',
+    registerTenantSlugLabel: '空间网址',
+    registerTenantSlugPlaceholder: 'your-studio',
+    registerTenantSlugHint: '这将成为您空间的网址前缀，仅支持小写字母、数字和连字符。',
+    registerTenantNameLabel: '空间名称',
+    registerTenantNamePlaceholder: '您的龟舍/工作室名称',
+    registerCreating: '创建中...',
+    registerNext: '下一步',
+    registerBack: '返回'
   },
   en: {
     title: 'Eggturtle Breeding Library',
@@ -197,13 +228,27 @@ const COPY: Record<Locale, LoginCopy> = {
     registerSubmit: 'Submit registration',
     registerNotReady: 'Registration API is not integrated yet (TODO: wire /auth/register). Form preview only.',
     registerPasswordMismatch: 'Passwords do not match.',
-    registerWeakPassword: 'Password must be at least 8 characters.'
+    registerWeakPassword: 'Password must be at least 8 characters.',
+    registerStep1Title: 'Verify Email',
+    registerStep1Hint: 'Enter your email address and we will send a verification code.',
+    registerStep2Title: 'Enter Code',
+    registerStep2Hint: 'Enter the 6-digit code sent to your email.',
+    registerStep3Title: 'Create Workspace',
+    registerStep3Hint: 'Set up your workspace information to start using Eggturtle Breeding Library.',
+    registerTenantSlugLabel: 'Workspace URL',
+    registerTenantSlugPlaceholder: 'your-studio',
+    registerTenantSlugHint: 'This will be your workspace URL prefix. Only lowercase letters, numbers, and hyphens are allowed.',
+    registerTenantNameLabel: 'Workspace Name',
+    registerTenantNamePlaceholder: 'Your turtle studio name',
+    registerCreating: 'Creating...',
+    registerNext: 'Next',
+    registerBack: 'Back'
   }
 };
 
 export default function LoginPage() {
   const router = useRouter();
-  const [locale, setLocale] = useState<Locale>('zh');
+  const { locale } = useUiPreferences();
   const [entryView, setEntryView] = useState<EntryView>('signin');
   const [mode, setMode] = useState<LoginMode>('password');
   const [email, setEmail] = useState('');
@@ -216,10 +261,14 @@ export default function LoginPage() {
   const [activationResult, setActivationResult] = useState<RedeemTenantSubscriptionActivationCodeResponse | null>(
     null
   );
+  const [registerStep, setRegisterStep] = useState<RegisterStep>('email');
   const [registerEmail, setRegisterEmail] = useState('');
+  const [registerCode, setRegisterCode] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
   const [registerConfirmPassword, setRegisterConfirmPassword] = useState('');
-  const [registerNotice, setRegisterNotice] = useState<string | null>(null);
+  const [registerTenantSlug, setRegisterTenantSlug] = useState('');
+  const [registerTenantName, setRegisterTenantName] = useState('');
+  const [registerDevCode, setRegisterDevCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [activationLoading, setActivationLoading] = useState(false);
   const [registerLoading, setRegisterLoading] = useState(false);
@@ -260,7 +309,6 @@ export default function LoginPage() {
 
     setEntryView(nextView);
     setError(null);
-    setRegisterNotice(null);
 
     if (nextView === 'signin') {
       setActivationResult(null);
@@ -272,9 +320,99 @@ export default function LoginPage() {
       return;
     }
 
+    resetRegisterFlow();
+  }
+
+  function resetRegisterFlow() {
+    setRegisterStep('email');
     setRegisterEmail('');
+    setRegisterCode('');
     setRegisterPassword('');
     setRegisterConfirmPassword('');
+    setRegisterTenantSlug('');
+    setRegisterTenantName('');
+    setRegisterDevCode(null);
+  }
+
+  async function handleRegisterRequestCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      const payload = requestCodeRequestSchema.parse({ email: registerEmail });
+      const response = await apiRequest('/auth/request-code', {
+        method: 'POST',
+        auth: false,
+        body: payload,
+        requestSchema: requestCodeRequestSchema,
+        responseSchema: requestCodeResponseSchema
+      });
+
+      setRegisterDevCode(response.devCode ?? null);
+      setRegisterCode('');
+      setRegisterStep('verify');
+    } catch (requestError) {
+      setError(formatError(requestError));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleRegisterVerifyCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      // We just verify the code format here, actual verification happens in register step
+      setRegisterStep('complete');
+    } catch (requestError) {
+      setError(formatError(requestError));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleRegisterSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setRegisterLoading(true);
+    setError(null);
+
+    try {
+      if (registerPassword.length < 8) {
+        setError(copy.registerWeakPassword);
+        return;
+      }
+
+      if (registerPassword !== registerConfirmPassword) {
+        setError(copy.registerPasswordMismatch);
+        return;
+      }
+
+      const payload = registerRequestSchema.parse({
+        email: registerEmail,
+        code: registerCode,
+        password: registerPassword,
+        tenantSlug: registerTenantSlug,
+        tenantName: registerTenantName
+      });
+
+      const response = await apiRequest('/auth/register', {
+        method: 'POST',
+        auth: false,
+        body: payload,
+        requestSchema: registerRequestSchema,
+        responseSchema: registerResponseSchema
+      });
+
+      setAccessToken(response.accessToken);
+      router.replace(`/app/${response.tenant.slug}`);
+    } catch (requestError) {
+      setError(formatError(requestError));
+    } finally {
+      setRegisterLoading(false);
+    }
   }
 
   function switchMode(nextMode: LoginMode) {
@@ -406,29 +544,6 @@ export default function LoginPage() {
     }
   }
 
-  async function handleRegisterSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setRegisterLoading(true);
-    setError(null);
-    setRegisterNotice(null);
-
-    try {
-      if (registerPassword.length < 8) {
-        setError(copy.registerWeakPassword);
-        return;
-      }
-
-      if (registerPassword !== registerConfirmPassword) {
-        setError(copy.registerPasswordMismatch);
-        return;
-      }
-
-      setRegisterNotice(copy.registerNotReady);
-    } finally {
-      setRegisterLoading(false);
-    }
-  }
-
   return (
     <main className="auth-shell auth-shell-login">
       <section className="login-layout">
@@ -456,22 +571,7 @@ export default function LoginPage() {
                     ? copy.activationCardTitle
                     : copy.registerCardTitle}
               </h2>
-              <div className="locale-toggle" role="group" aria-label={copy.localeLabel}>
-                <button
-                  type="button"
-                  className={locale === 'zh' ? 'locale-btn active' : 'locale-btn'}
-                  onClick={() => setLocale('zh')}
-                >
-                  {copy.localeZh}
-                </button>
-                <button
-                  type="button"
-                  className={locale === 'en' ? 'locale-btn active' : 'locale-btn'}
-                  onClick={() => setLocale('en')}
-                >
-                  {copy.localeEn}
-                </button>
-              </div>
+              <UiPreferenceControls className="login-preference-controls" />
             </div>
           </div>
 
@@ -650,50 +750,144 @@ export default function LoginPage() {
             ) : null}
 
             {entryView === 'register' ? (
-              <form className="stack login-panel" onSubmit={handleRegisterSubmit}>
-                <h2>{copy.registerTitle}</h2>
-                <p>{copy.registerHint}</p>
-                <label htmlFor="register-email">{copy.registerEmailLabel}</label>
-                <input
-                  id="register-email"
-                  type="email"
-                  autoComplete="email"
-                  value={registerEmail}
-                  placeholder={copy.emailPlaceholder}
-                  onChange={(event) => setRegisterEmail(event.target.value)}
-                  required
-                />
-                <label htmlFor="register-password">{copy.registerPasswordLabel}</label>
-                <input
-                  id="register-password"
-                  type="password"
-                  autoComplete="new-password"
-                  minLength={8}
-                  value={registerPassword}
-                  placeholder={copy.setPasswordPlaceholder}
-                  onChange={(event) => setRegisterPassword(event.target.value)}
-                  required
-                />
-                <label htmlFor="register-confirm-password">{copy.registerConfirmPasswordLabel}</label>
-                <input
-                  id="register-confirm-password"
-                  type="password"
-                  autoComplete="new-password"
-                  minLength={8}
-                  value={registerConfirmPassword}
-                  placeholder={copy.passwordPlaceholder}
-                  onChange={(event) => setRegisterConfirmPassword(event.target.value)}
-                  required
-                />
-                <button type="submit" disabled={registerLoading}>
-                  {registerLoading ? copy.verifying : copy.registerSubmit}
-                </button>
-                {registerNotice ? <p className="login-todo-note">{registerNotice}</p> : null}
+              <div className="stack login-panel">
+                {registerStep === 'email' ? (
+                  <form className="stack" onSubmit={handleRegisterRequestCode}>
+                    <h2>{copy.registerStep1Title}</h2>
+                    <p>{copy.registerStep1Hint}</p>
+                    <label htmlFor="register-email">{copy.registerEmailLabel}</label>
+                    <input
+                      id="register-email"
+                      type="email"
+                      autoComplete="email"
+                      value={registerEmail}
+                      placeholder={copy.emailPlaceholder}
+                      onChange={(event) => setRegisterEmail(event.target.value)}
+                      required
+                    />
+                    <div className="row">
+                      <button type="submit" disabled={loading}>
+                        {loading ? copy.sending : copy.registerNext}
+                      </button>
+                      <button type="button" className="secondary" onClick={() => switchEntryView('signin')}>
+                        {copy.backToLogin}
+                      </button>
+                    </div>
+                  </form>
+                ) : null}
 
-                <button type="button" className="login-text-link login-text-link-start" onClick={() => switchEntryView('signin')}>
-                  {copy.backToLogin}
-                </button>
-              </form>
+                {registerStep === 'verify' ? (
+                  <form className="stack" onSubmit={handleRegisterVerifyCode}>
+                    <h2>{copy.registerStep2Title}</h2>
+                    <p>
+                      {copy.codeSentTo}: <strong>{registerEmail}</strong>
+                    </p>
+                    {registerDevCode ? (
+                      <p className="login-dev-code">
+                        {copy.devCode}: <code>{registerDevCode}</code>
+                      </p>
+                    ) : null}
+                    <label htmlFor="register-code">{copy.verificationCode}</label>
+                    <input
+                      id="register-code"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]{6}"
+                      maxLength={6}
+                      value={registerCode}
+                      placeholder={copy.codePlaceholder}
+                      onChange={(event) => setRegisterCode(event.target.value)}
+                      required
+                    />
+                    <div className="row">
+                      <button type="submit" disabled={loading}>
+                        {loading ? copy.verifying : copy.registerNext}
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => setRegisterStep('email')}
+                      >
+                        {copy.registerBack}
+                      </button>
+                    </div>
+                  </form>
+                ) : null}
+
+                {registerStep === 'complete' ? (
+                  <form className="stack" onSubmit={handleRegisterSubmit}>
+                    <h2>{copy.registerStep3Title}</h2>
+                    <p>{copy.registerStep3Hint}</p>
+
+                    <label htmlFor="register-tenant-slug">{copy.registerTenantSlugLabel}</label>
+                    <input
+                      id="register-tenant-slug"
+                      type="text"
+                      autoComplete="off"
+                      value={registerTenantSlug}
+                      placeholder={copy.registerTenantSlugPlaceholder}
+                      onChange={(event) => setRegisterTenantSlug(event.target.value.toLowerCase())}
+                      required
+                      minLength={3}
+                      maxLength={80}
+                      pattern="^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+                    />
+                    <p className="muted">{copy.registerTenantSlugHint}</p>
+
+                    <label htmlFor="register-tenant-name">{copy.registerTenantNameLabel}</label>
+                    <input
+                      id="register-tenant-name"
+                      type="text"
+                      autoComplete="organization"
+                      value={registerTenantName}
+                      placeholder={copy.registerTenantNamePlaceholder}
+                      onChange={(event) => setRegisterTenantName(event.target.value)}
+                      required
+                      minLength={1}
+                      maxLength={120}
+                    />
+
+                    <label htmlFor="register-password-step3">{copy.registerPasswordLabel}</label>
+                    <input
+                      id="register-password-step3"
+                      type="password"
+                      autoComplete="new-password"
+                      minLength={8}
+                      value={registerPassword}
+                      placeholder={copy.setPasswordPlaceholder}
+                      onChange={(event) => setRegisterPassword(event.target.value)}
+                      required
+                    />
+
+                    <label htmlFor="register-confirm-password-step3">{copy.registerConfirmPasswordLabel}</label>
+                    <input
+                      id="register-confirm-password-step3"
+                      type="password"
+                      autoComplete="new-password"
+                      minLength={8}
+                      value={registerConfirmPassword}
+                      placeholder={copy.passwordPlaceholder}
+                      onChange={(event) => setRegisterConfirmPassword(event.target.value)}
+                      required
+                    />
+
+                    <div className="row">
+                      <button type="submit" disabled={registerLoading}>
+                        {registerLoading ? copy.registerCreating : copy.registerSubmit}
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => setRegisterStep('verify')}
+                      >
+                        {copy.registerBack}
+                      </button>
+                    </div>
+                  </form>
+                ) : null}
+
+                {error ? <p className="error login-error">{error}</p> : null}
+              </div>
             ) : null}
 
             {error ? <p className="error login-error">{error}</p> : null}

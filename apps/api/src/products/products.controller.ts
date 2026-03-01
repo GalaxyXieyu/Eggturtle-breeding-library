@@ -17,16 +17,30 @@ import {
   UseInterceptors
 } from '@nestjs/common';
 import {
+  createEggRecordRequestSchema,
+  createMatingRecordRequestSchema,
+  createProductEventRequestSchema,
+  createProductEventResponseSchema,
   ErrorCode,
   createProductRequestSchema,
   createProductResponseSchema,
   deleteProductImageResponseSchema,
+  getProductFamilyTreeResponseSchema,
+  getProductPublicClicksResponseSchema,
+  getProductResponseSchema,
   listProductImagesResponseSchema,
+  listProductsPublicClicksQuerySchema,
+  listProductsPublicClicksResponseSchema,
+  listProductEventsResponseSchema,
   listProductsQuerySchema,
   listProductsResponseSchema,
+  productCodeSchema,
+  productIdParamSchema,
+  productPublicClicksQuerySchema,
   reorderProductImagesRequestSchema,
   reorderProductImagesResponseSchema,
   setMainProductImageResponseSchema,
+  updateProductRequestSchema,
   uploadProductImageResponseSchema
 } from '@eggturtle/shared';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -75,6 +89,119 @@ export class ProductsController {
     const response = await this.productsService.listProducts(tenantId, parsedQuery);
 
     return listProductsResponseSchema.parse(response);
+  }
+
+  @Get('by-code/:code')
+  async getProductByCode(@Req() request: AuthenticatedRequest, @Param('code') code: string) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const parsedCode = parseOrThrow(productCodeSchema, code);
+    const product = await this.productsService.getProductByCode(tenantId, parsedCode);
+
+    return getProductResponseSchema.parse({ product });
+  }
+
+  @Get('public-clicks')
+  async listProductPublicClicks(@Req() request: AuthenticatedRequest, @Query() query: unknown) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const parsedQuery = parseOrThrow(listProductsPublicClicksQuerySchema, query);
+    const response = await this.productsService.listProductPublicClicks(tenantId, parsedQuery);
+
+    return listProductsPublicClicksResponseSchema.parse(response);
+  }
+
+  @Post('mating-records')
+  @RequireTenantRole('EDITOR')
+  async createMatingRecord(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const actorUserId = this.requireUserId(request.user?.id);
+    const payload = parseOrThrow(createMatingRecordRequestSchema, body);
+    const event = await this.productsService.createMatingRecord(tenantId, actorUserId, payload);
+
+    return createProductEventResponseSchema.parse({ event });
+  }
+
+  @Post('egg-records')
+  @RequireTenantRole('EDITOR')
+  async createEggRecord(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const actorUserId = this.requireUserId(request.user?.id);
+    const payload = parseOrThrow(createEggRecordRequestSchema, body);
+    const event = await this.productsService.createEggRecord(tenantId, actorUserId, payload);
+
+    return createProductEventResponseSchema.parse({ event });
+  }
+
+  @Get(':id')
+  async getProductById(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const productId = parseOrThrow(productIdParamSchema, id);
+    const product = await this.productsService.getProductById(tenantId, productId);
+
+    return getProductResponseSchema.parse({ product });
+  }
+
+  @Put(':id')
+  @RequireTenantRole('EDITOR')
+  async updateProduct(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() body: unknown
+  ) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const actorUserId = this.requireUserId(request.user?.id);
+    const productId = parseOrThrow(productIdParamSchema, id);
+    const payload = parseOrThrow(updateProductRequestSchema, body);
+    const product = await this.productsService.updateProduct(tenantId, actorUserId, productId, payload);
+
+    return getProductResponseSchema.parse({ product });
+  }
+
+  @Get(':id/public-clicks')
+  async getProductPublicClicks(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Query() query: unknown
+  ) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const productId = parseOrThrow(productIdParamSchema, id);
+    const parsedQuery = parseOrThrow(productPublicClicksQuerySchema, query);
+    const stats = await this.productsService.getProductPublicClicks(tenantId, productId, parsedQuery.days);
+
+    return getProductPublicClicksResponseSchema.parse({ stats });
+  }
+
+  @Get(':id/events')
+  async listProductEvents(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const productId = parseOrThrow(productIdParamSchema, id);
+    const events = await this.productsService.listProductEvents(tenantId, productId);
+
+    return listProductEventsResponseSchema.parse({ events });
+  }
+
+  @Post(':id/events')
+  @RequireTenantRole('EDITOR')
+  async createProductEvent(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() body: unknown
+  ) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const actorUserId = this.requireUserId(request.user?.id);
+    const productId = parseOrThrow(productIdParamSchema, id);
+    const payload = parseOrThrow(createProductEventRequestSchema, body);
+    const event = await this.productsService.createProductEvent(tenantId, actorUserId, productId, payload);
+
+    return createProductEventResponseSchema.parse({ event });
+  }
+
+  @Get(':id/family-tree')
+  async getProductFamilyTree(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const productId = parseOrThrow(productIdParamSchema, id);
+    const tree = await this.productsService.getProductFamilyTree(tenantId, productId);
+
+    return getProductFamilyTreeResponseSchema.parse({ tree });
   }
 
   @Get(':id/images')

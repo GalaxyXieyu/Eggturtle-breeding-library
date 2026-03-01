@@ -21,7 +21,7 @@
 - 路由：`/dashboard/...`
 
 ### Legacy 参考
-- Legacy frontend 里的完整后台管理 UI（`frontend/src/pages/admin/`）作为「产品设计蓝本」，可参考或直接迁移到 apps/web。
+- Legacy frontend 里的完整后台管理 UI（`legacy/frontend/src/pages/admin/`）作为「产品设计蓝本」，可参考或直接迁移到 apps/web。
 
 ---
 
@@ -94,7 +94,7 @@
 ## UI 风格指南
 
 ### 颜色系统
-- **当前主题**: Beige/Gold/Brown (在 `frontend/src/index.css` 定义)
+- **当前主题**: Beige/Gold/Brown (在 `legacy/frontend/src/index.css` 定义)
 - **未来方向**: Waterfall Feed 黑白黄主题 (accent: `#FFD400`)
 
 ### 核心设计令牌 (HSL)
@@ -120,9 +120,9 @@
 - Serif (headings/brand): `Playfair Display`
 
 ### 关键文件
-- Tailwind theme: `frontend/tailwind.config.ts`
-- CSS variables: `frontend/src/index.css`
-- Admin layout: `frontend/src/components/AdminLayout.tsx`
+- Tailwind theme: `legacy/frontend/tailwind.config.ts`
+- CSS variables: `legacy/frontend/src/index.css`
+- Admin layout: `legacy/frontend/src/components/AdminLayout.tsx`
 
 ### Admin Layout 约定
 - Sidebar surface: `bg-white` + `border-r border-cosmetic-beige-200`
@@ -133,14 +133,14 @@
 
 ## Legacy UI 参考清单
 
-可参考/复用的 legacy 组件（在 `frontend/` 目录）：
-- 产品管理：`frontend/src/pages/admin/AdminProducts.tsx`
-- 图片管理：`frontend/src/pages/admin/products/images/ProductImagesManager.tsx`
-- 批量导入：`frontend/src/components/admin/ProductImportDialog.tsx`
-- 种龟事件：`frontend/src/pages/admin/products/forms/BreederEventsCard.tsx`
-- 系列管理：`frontend/src/pages/admin/AdminSeries.tsx`
-- 轮播管理：`frontend/src/pages/admin/AdminCarouselManager.tsx`
-- 设置：`frontend/src/pages/admin/AdminSettings.tsx`
+可参考/复用的 legacy 组件（在 `legacy/frontend/` 目录）：
+- 产品管理：`legacy/frontend/src/pages/admin/AdminProducts.tsx`
+- 图片管理：`legacy/frontend/src/pages/admin/products/images/ProductImagesManager.tsx`
+- 批量导入：`legacy/frontend/src/components/admin/ProductImportDialog.tsx`
+- 种龟事件：`legacy/frontend/src/pages/admin/products/forms/BreederEventsCard.tsx`
+- 系列管理：`legacy/frontend/src/pages/admin/AdminSeries.tsx`
+- 轮播管理：`legacy/frontend/src/pages/admin/AdminCarouselManager.tsx`
+- 设置：`legacy/frontend/src/pages/admin/AdminSettings.tsx`
 
 这些组件使用 shadcn/ui + Radix UI，与 Node 端技术栈一致，可参考或直接迁移到 apps/web。
 

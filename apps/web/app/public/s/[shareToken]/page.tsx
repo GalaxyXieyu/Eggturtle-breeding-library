@@ -1,5 +1,5 @@
-import PublicFeedPage from '../../_public-breeder/public-feed-page';
-import { mapTenantFeedToLegacy } from '../../_public-breeder/public-share-adapter';
+import PublicFeedPage from '../../_public-product/public-feed-page';
+import { mapTenantFeedToLegacy } from '../../_public-product/public-share-adapter';
 import {
   buildPublicShareRouteQuery,
   fetchPublicShareFromSearchParams,
@@ -47,6 +47,7 @@ export default async function PublicShareFeedPage({
       shareQuery={shareQuery}
       series={legacyData.series}
       breeders={legacyData.breeders}
+      presentation={shareResult.data.presentation}
     />
   );
 }

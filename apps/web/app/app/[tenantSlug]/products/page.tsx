@@ -5,14 +5,19 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   createProductRequestSchema,
   createProductResponseSchema,
-  createShareRequestSchema,
-  createShareResponseSchema,
   listProductsResponseSchema,
   type Product
 } from '@eggturtle/shared';
+import { Filter, Plus, Search as SearchIcon, SlidersHorizontal, X } from 'lucide-react';
 
-import { ApiError, apiRequest, getAccessToken, getApiBaseUrl } from '../../../../lib/api-client';
+import { ApiError, apiRequest, getAccessToken, resolveAuthenticatedAssetUrl } from '../../../../lib/api-client';
 import { switchTenantBySlug } from '../../../../lib/tenant-session';
+import { Badge } from '../../../../components/ui/badge';
+import { Button } from '../../../../components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../components/ui/card';
+import { Input } from '../../../../components/ui/input';
+import { NativeSelect } from '../../../../components/ui/native-select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../../components/ui/table';
 
 type ListMeta = {
   page: number;
@@ -37,19 +42,7 @@ type ProductsListQuery = {
   sortDir: ProductSortDir;
 };
 
-type ProductDraft = {
-  code: string;
-  name: string;
-  description: string;
-};
-
 const PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
-
-const DEFAULT_DRAFT: ProductDraft = {
-  code: '',
-  name: '',
-  description: ''
-};
 
 const DEFAULT_LIST_QUERY: ProductsListQuery = {
   page: 1,
@@ -66,6 +59,7 @@ const DEMO_PRODUCTS: Product[] = [
     id: 'demo-prod-01',
     tenantId: 'demo-tenant',
     code: 'ET-MG-01',
+    type: 'breeder',
     name: '曼谷金头 01',
     description: '展示用示例产品',
     seriesId: 'MG',
@@ -78,6 +72,7 @@ const DEMO_PRODUCTS: Product[] = [
     id: 'demo-prod-02',
     tenantId: 'demo-tenant',
     code: 'ET-MG-02',
+    type: 'breeder',
     name: '曼谷金头 02',
     description: '展示用示例产品',
     seriesId: 'MG',
@@ -90,6 +85,7 @@ const DEMO_PRODUCTS: Product[] = [
     id: 'demo-prod-03',
     tenantId: 'demo-tenant',
     code: 'ET-MIX-03',
+    type: 'breeder',
     name: '混系示例 03',
     description: '无封面示例',
     seriesId: null,
@@ -114,7 +110,9 @@ export default function TenantProductsPage() {
   const [loading, setLoading] = useState(true);
   const [tenantReady, setTenantReady] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [sharingProductId, setSharingProductId] = useState<string | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [createCode, setCreateCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState(listQuery.search);
@@ -122,8 +120,6 @@ export default function TenantProductsPage() {
   const [seriesFilter, setSeriesFilter] = useState(listQuery.seriesId);
   const [sortFilter, setSortFilter] = useState<SortSelection>(toSortSelection(listQuery.sortBy, listQuery.sortDir));
   const [coverFilter, setCoverFilter] = useState<CoverFilter>('all');
-  const [draft, setDraft] = useState<ProductDraft>(DEFAULT_DRAFT);
-  const [shareLinks, setShareLinks] = useState<Record<string, string>>({});
   const [meta, setMeta] = useState<ListMeta>({
     page: 1,
     pageSize: 20,
@@ -342,8 +338,7 @@ export default function TenantProductsPage() {
     };
   }, [listQuery, loadProducts, tenantReady]);
 
-  function handleSearch(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function applyFilters() {
     setError(null);
     setMessage(null);
 
@@ -360,6 +355,12 @@ export default function TenantProductsPage() {
     });
   }
 
+  function handleSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    applyFilters();
+    setIsFilterModalOpen(false);
+  }
+
   function handleResetSearch() {
     setSearchInput('');
     setSexFilter('');
@@ -372,6 +373,7 @@ export default function TenantProductsPage() {
       ...DEFAULT_LIST_QUERY,
       pageSize: listQuery.pageSize
     });
+    setIsFilterModalOpen(false);
   }
 
   function goToPage(nextPage: number) {
@@ -399,15 +401,19 @@ export default function TenantProductsPage() {
 
   async function handleCreateProduct(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const code = createCode.trim();
+    if (!code) {
+      setError('产品编码不能为空。');
+      return;
+    }
+
     setError(null);
     setMessage(null);
     setSubmitting(true);
 
     try {
       const payload = createProductRequestSchema.parse({
-        code: draft.code,
-        name: draft.name.trim() ? draft.name : undefined,
-        description: draft.description.trim() ? draft.description : undefined
+        code
       });
 
       if (isDemoMode) {
@@ -416,6 +422,7 @@ export default function TenantProductsPage() {
           id: `demo-${Date.now()}`,
           tenantId: tenantSlug,
           code: payload.code,
+          type: 'breeder',
           name: payload.name ?? null,
           description: payload.description ?? null,
           seriesId: null,
@@ -434,8 +441,9 @@ export default function TenantProductsPage() {
             totalPages: Math.max(1, Math.ceil(total / currentMeta.pageSize))
           };
         });
-        setDraft(DEFAULT_DRAFT);
         setMessage(`Demo 模式：已创建产品 ${demoProduct.code}`);
+        setCreateCode('');
+        setIsCreateModalOpen(false);
         setSubmitting(false);
         return;
       }
@@ -447,8 +455,9 @@ export default function TenantProductsPage() {
         responseSchema: createProductResponseSchema
       });
 
-      setDraft(DEFAULT_DRAFT);
       setMessage(`产品 ${response.product.code} 创建成功。`);
+      setCreateCode('');
+      setIsCreateModalOpen(false);
       await loadProducts(listQuery);
     } catch (requestError) {
       setError(formatError(requestError));
@@ -457,379 +466,392 @@ export default function TenantProductsPage() {
     }
   }
 
-  async function handleGenerateShare(productId: string, openAfterGenerate: boolean) {
-    setError(null);
-    setMessage(null);
-    setSharingProductId(productId);
-
-    try {
-      let entryUrl = shareLinks[productId];
-
-      if (!entryUrl) {
-        if (isDemoMode) {
-          entryUrl = `${getApiBaseUrl()}/s/demo-${productId}`;
-        } else {
-          const payload = createShareRequestSchema.parse({
-            resourceType: 'product',
-            resourceId: productId
-          });
-
-          const response = await apiRequest('/shares', {
-            method: 'POST',
-            body: payload,
-            requestSchema: createShareRequestSchema,
-            responseSchema: createShareResponseSchema
-          });
-
-          entryUrl = response.share.entryUrl;
-        }
-
-        setShareLinks((currentLinks) => ({
-          ...currentLinks,
-          [productId]: entryUrl as string
-        }));
-      }
-
-      if (entryUrl && typeof window !== 'undefined' && window.navigator?.clipboard) {
-        await window.navigator.clipboard.writeText(entryUrl);
-      }
-
-      if (entryUrl && openAfterGenerate && typeof window !== 'undefined') {
-        window.open(entryUrl, '_blank', 'noopener,noreferrer');
-      }
-
-      if (entryUrl) {
-        setMessage(`分享链接已生成并复制：${entryUrl}`);
-      }
-    } catch (requestError) {
-      setError(formatError(requestError));
-    } finally {
-      setSharingProductId(null);
-    }
-  }
-
   function openEdit(productId: string) {
     const demoSuffix = isDemoMode ? '?demo=1' : '';
     router.push(`/app/${tenantSlug}/products/${productId}${demoSuffix}`);
   }
 
+  function openCreateModal() {
+    setError(null);
+    setMessage(null);
+    setIsFilterModalOpen(false);
+    setCreateCode('');
+    setIsCreateModalOpen(true);
+  }
+
+  function closeCreateModal() {
+    if (submitting) {
+      return;
+    }
+
+    setIsCreateModalOpen(false);
+  }
+
+  function renderFilterForm(scope: 'desktop' | 'mobile') {
+    const searchId = `products-search-${scope}`;
+    const sexId = `products-sex-filter-${scope}`;
+    const seriesId = `products-series-filter-${scope}`;
+    const sortId = `products-sort-${scope}`;
+    const coverId = `products-cover-filter-${scope}`;
+
+    return (
+      <form className="grid gap-3" onSubmit={handleSearch}>
+      <div className="grid grid-cols-1 gap-2 lg:grid-cols-3">
+        <div className="grid gap-1.5">
+          <label htmlFor={searchId} className="text-xs font-semibold text-neutral-600">
+            关键词
+          </label>
+          <Input
+            id={searchId}
+            type="text"
+            placeholder="按 code / name / 描述搜索"
+            value={searchInput}
+            className="h-9"
+            onChange={(event) => setSearchInput(event.target.value)}
+          />
+        </div>
+        <div className="grid gap-1.5">
+          <label htmlFor={sexId} className="text-xs font-semibold text-neutral-600">
+            性别
+          </label>
+          <NativeSelect
+            id={sexId}
+            value={sexFilter}
+            className="h-9"
+            onChange={(event) => setSexFilter(event.target.value)}
+            aria-label="性别筛选"
+          >
+            <option value="">全部性别</option>
+            <option value="male">公</option>
+            <option value="female">母</option>
+            <option value="unknown">未知</option>
+          </NativeSelect>
+        </div>
+        <div className="grid gap-1.5">
+          <label htmlFor={seriesId} className="text-xs font-semibold text-neutral-600">
+            系列
+          </label>
+          <Input
+            id={seriesId}
+            type="text"
+            placeholder="输入系列 ID"
+            value={seriesFilter}
+            className="h-9"
+            onChange={(event) => setSeriesFilter(event.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-2 lg:grid-cols-3">
+        <div className="grid gap-1.5">
+          <label htmlFor={sortId} className="text-xs font-semibold text-neutral-600">
+            排序
+          </label>
+          <NativeSelect id={sortId} value={sortFilter} className="h-9" onChange={(event) => setSortFilter(event.target.value as SortSelection)}>
+            <option value="updatedAt-desc">更新时间（新到旧）</option>
+            <option value="updatedAt-asc">更新时间（旧到新）</option>
+            <option value="code-asc">编码（A-Z）</option>
+            <option value="code-desc">编码（Z-A）</option>
+          </NativeSelect>
+        </div>
+
+        <div className="grid gap-1.5">
+          <label htmlFor={coverId} className="text-xs font-semibold text-neutral-600">
+            封面筛选（当前页）
+          </label>
+          <NativeSelect
+            id={coverId}
+            value={coverFilter}
+            className="h-9"
+            onChange={(event) => setCoverFilter(event.target.value as CoverFilter)}
+            aria-label="封面筛选"
+          >
+            <option value="all">全部封面状态</option>
+            <option value="with-cover">仅有封面</option>
+            <option value="without-cover">仅无封面</option>
+          </NativeSelect>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" size="sm" disabled={loading}>
+          <SearchIcon size={14} />
+          {loading ? '加载中...' : '应用筛选'}
+        </Button>
+        <Button type="button" size="sm" variant="secondary" onClick={handleResetSearch} disabled={loading}>
+          重置
+        </Button>
+      </div>
+      </form>
+    );
+  }
+
   return (
-    <main className="workspace-shell">
-      <header className="workspace-head">
-        <div className="stack">
-          <h1>产品管理</h1>
-          <p className="muted">租户：{tenantSlug || '(unknown)'}</p>
-        </div>
-        <div className="row">
-          <button type="button" className="secondary" onClick={() => router.push(`/app/${tenantSlug}`)}>
-            返回工作台
-          </button>
-        </div>
-      </header>
-
-      <section className="card panel stack">
-        <div className="row between">
-          <h2>新建产品</h2>
-          {isDemoMode ? <p className="notice notice-info">Demo 模式：仅演示 UI，不写入真实数据。</p> : null}
-        </div>
-        <form className="form-grid" onSubmit={handleCreateProduct}>
-          <div className="form-grid form-grid-3">
-            <input
-              type="text"
-              required
-              placeholder="产品编码（必填）"
-              value={draft.code}
-              onChange={(event) => setDraft((currentDraft) => ({ ...currentDraft, code: event.target.value }))}
-            />
-            <input
-              type="text"
-              placeholder="产品名称（选填）"
-              value={draft.name}
-              onChange={(event) => setDraft((currentDraft) => ({ ...currentDraft, name: event.target.value }))}
-            />
-            <input
-              type="text"
-              placeholder="备注（选填）"
-              value={draft.description}
-              onChange={(event) =>
-                setDraft((currentDraft) => ({
-                  ...currentDraft,
-                  description: event.target.value
-                }))
-              }
-            />
+    <main className="space-y-4 pb-10 sm:space-y-6">
+      <Card className="tenant-card-lift hidden rounded-3xl border-neutral-200/90 bg-white transition-all lg:block">
+        <CardHeader className="flex flex-col gap-2 pb-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-xl">
+              <Filter size={16} />
+              筛选工具
+            </CardTitle>
+            <CardDescription>
+              紧凑模式，减少筛选区对产品列表的占用。
+              {isDemoMode ? '（Demo 模式：仅演示 UI，不写入真实数据）' : ''}
+            </CardDescription>
           </div>
-          <div className="row">
-            <button type="submit" disabled={submitting}>
-              {submitting ? '提交中...' : '创建产品'}
-            </button>
+          <Button type="button" size="sm" disabled={submitting} onClick={openCreateModal}>
+            <Plus size={14} />
+            新建产品
+          </Button>
+        </CardHeader>
+        <CardContent className="pt-0">{renderFilterForm('desktop')}</CardContent>
+      </Card>
+
+      <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all lg:hidden">
+        <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
+          <div>
+            <CardTitle className="text-xl">产品列表</CardTitle>
+            <CardDescription>筛选在右下角悬浮按钮中打开。</CardDescription>
           </div>
-        </form>
-      </section>
+          <Button type="button" size="sm" disabled={submitting} onClick={openCreateModal}>
+            <Plus size={14} />
+            新建
+          </Button>
+        </CardHeader>
+      </Card>
 
-      <section className="card panel stack">
-        <h2>搜索与筛选</h2>
-        <form className="stack" onSubmit={handleSearch}>
-          <div className="form-grid form-grid-3">
-            <div className="stack">
-              <label htmlFor="products-search">关键词</label>
-              <input
-                id="products-search"
-                type="text"
-                placeholder="按 code / name / 描述搜索"
-                value={searchInput}
-                onChange={(event) => setSearchInput(event.target.value)}
-              />
-            </div>
-
-            <div className="stack">
-              <label htmlFor="products-sex-filter">性别</label>
-              <select
-                id="products-sex-filter"
-                value={sexFilter}
-                onChange={(event) => setSexFilter(event.target.value)}
-                aria-label="性别筛选"
+      <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle className="text-2xl">产品列表</CardTitle>
+            {!loading ? (
+              <CardDescription>
+                共 {meta.total} 条，当前第 {meta.page}/{meta.totalPages} 页，筛选后 {filteredItems.length} 条
+                {listQuery.search ? `（关键词：${listQuery.search}）` : ''}
+              </CardDescription>
+            ) : null}
+          </div>
+          <Badge variant="accent">COVER READY</Badge>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={loading || meta.page <= 1}
+                onClick={() => {
+                  goToPage(meta.page - 1);
+                }}
               >
-                <option value="">全部性别</option>
-                <option value="male">公</option>
-                <option value="female">母</option>
-                <option value="unknown">未知</option>
-              </select>
-            </div>
-
-            <div className="stack">
-              <label htmlFor="products-series-filter">系列</label>
-              <input
-                id="products-series-filter"
-                type="text"
-                placeholder="输入系列 ID"
-                value={seriesFilter}
-                onChange={(event) => setSeriesFilter(event.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="form-grid form-grid-3">
-            <div className="stack">
-              <label htmlFor="products-sort">排序</label>
-              <select
-                id="products-sort"
-                value={sortFilter}
-                onChange={(event) => setSortFilter(event.target.value as SortSelection)}
+                上一页
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={loading || meta.page >= meta.totalPages}
+                onClick={() => {
+                  goToPage(meta.page + 1);
+                }}
               >
-                <option value="updatedAt-desc">更新时间（新到旧）</option>
-                <option value="updatedAt-asc">更新时间（旧到新）</option>
-                <option value="code-asc">编码（A-Z）</option>
-                <option value="code-desc">编码（Z-A）</option>
-              </select>
+                下一页
+              </Button>
             </div>
-
-            <div className="stack">
-              <label htmlFor="products-cover-filter">封面筛选（当前页）</label>
-              <select
-                id="products-cover-filter"
-                value={coverFilter}
-                onChange={(event) => setCoverFilter(event.target.value as CoverFilter)}
-                aria-label="封面筛选"
+            <div className="flex items-center gap-2">
+              <label htmlFor="products-page-size" className="text-sm text-neutral-600">
+                每页
+              </label>
+              <NativeSelect
+                id="products-page-size"
+                value={String(listQuery.pageSize)}
+                disabled={loading}
+                className="w-24"
+                onChange={(event) => {
+                  changePageSize(Number(event.target.value));
+                }}
               >
-                <option value="all">全部封面状态</option>
-                <option value="with-cover">仅有封面</option>
-                <option value="without-cover">仅无封面</option>
-              </select>
+                {PAGE_SIZE_OPTIONS.map((option) => (
+                  <option key={option} value={String(option)}>
+                    {option}
+                  </option>
+                ))}
+              </NativeSelect>
             </div>
           </div>
 
-          <div className="row">
-            <button type="submit" disabled={loading}>
-              {loading ? '加载中...' : '应用'}
-            </button>
-            <button type="button" className="secondary" onClick={handleResetSearch} disabled={loading}>
-              重置
-            </button>
-          </div>
-        </form>
-      </section>
+          {loading ? <p className="text-sm text-neutral-600">正在加载产品列表...</p> : null}
+          {!loading && filteredItems.length === 0 ? <p className="text-sm text-neutral-500">暂无产品，或当前筛选条件未命中结果。</p> : null}
 
-      <section className="card panel stack">
-        <div className="row between">
-          <h2>产品列表</h2>
-          {!loading ? (
-            <p className="muted">
-              共 {meta.total} 条，当前第 {meta.page}/{meta.totalPages} 页，筛选后 {filteredItems.length} 条
-              {listQuery.search ? `（关键词：${listQuery.search}）` : ''}
-            </p>
-          ) : null}
-        </div>
-
-        <div className="row between">
-          <div className="row">
-            <button
-              type="button"
-              className="secondary"
-              disabled={loading || meta.page <= 1}
-              onClick={() => {
-                goToPage(meta.page - 1);
-              }}
-            >
-              上一页
-            </button>
-            <button
-              type="button"
-              className="secondary"
-              disabled={loading || meta.page >= meta.totalPages}
-              onClick={() => {
-                goToPage(meta.page + 1);
-              }}
-            >
-              下一页
-            </button>
-          </div>
-
-          <div className="row">
-            <label htmlFor="products-page-size">每页</label>
-            <select
-              id="products-page-size"
-              value={String(listQuery.pageSize)}
-              disabled={loading}
-              onChange={(event) => {
-                changePageSize(Number(event.target.value));
-              }}
-            >
-              {PAGE_SIZE_OPTIONS.map((option) => (
-                <option key={option} value={String(option)}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {loading ? <p className="notice notice-info">正在加载产品列表...</p> : null}
-        {!loading && filteredItems.length === 0 ? (
-          <p className="notice notice-warning">暂无产品，或当前筛选条件未命中结果。</p>
-        ) : null}
-
-        {!loading && filteredItems.length > 0 ? (
-          <>
-            <div className="table-wrap products-table-desktop">
-              <table className="data-table products-table">
-                <thead>
-                  <tr>
-                    <th>封面</th>
-                    <th>Code</th>
-                    <th>Series</th>
-                    <th>Sex</th>
-                    <th>更新时间</th>
-                    <th>操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredItems.map((item) => (
-                    <tr key={item.id}>
-                      <td>
-                        <div className="products-cover-cell">{renderCover(item)}</div>
-                      </td>
-                      <td>
-                        <strong>{item.code}</strong>
-                      </td>
-                      <td>{item.seriesId || '-'}</td>
-                      <td>{formatSex(item.sex)}</td>
-                      <td>{formatDateTime(item.updatedAt)}</td>
-                      <td>
-                        <div className="products-actions">
-                          <button
+          {!loading && filteredItems.length > 0 ? (
+            <>
+              <div className="hidden lg:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>封面</TableHead>
+                      <TableHead>Code</TableHead>
+                      <TableHead>Series</TableHead>
+                      <TableHead>Sex</TableHead>
+                      <TableHead>更新时间</TableHead>
+                      <TableHead>操作</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredItems.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell>
+                          <div className="h-14 w-14 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100">
+                            {renderCover(item)}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <strong>{item.code}</strong>
+                        </TableCell>
+                        <TableCell>{item.seriesId || '-'}</TableCell>
+                        <TableCell>{formatSex(item.sex)}</TableCell>
+                        <TableCell>{formatDateTime(item.updatedAt)}</TableCell>
+                        <TableCell>
+                          <Button
                             type="button"
-                            className="btn-compact secondary"
+                            size="sm"
+                            variant="secondary"
                             onClick={() => {
                               openEdit(item.id);
                             }}
                           >
                             编辑
-                          </button>
-                          <button
-                            type="button"
-                            className="btn-compact secondary"
-                            disabled={sharingProductId === item.id}
-                            onClick={() => {
-                              void handleGenerateShare(item.id, false);
-                            }}
-                          >
-                            {sharingProductId === item.id ? '生成中...' : '生成分享'}
-                          </button>
-                          <button
-                            type="button"
-                            className="btn-compact"
-                            disabled={sharingProductId === item.id}
-                            onClick={() => {
-                              void handleGenerateShare(item.id, true);
-                            }}
-                          >
-                            打开分享
-                          </button>
-                        </div>
-                        {shareLinks[item.id] ? <p className="mono products-share-url">{shareLinks[item.id]}</p> : null}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
 
-            <div className="products-mobile-list">
-              {filteredItems.map((item) => (
-                <article key={`${item.id}-mobile`} className="product-list-card">
-                  <div className="row between">
-                    <strong>{item.code}</strong>
-                    <span className="muted">{formatDateTime(item.updatedAt)}</span>
-                  </div>
-                  <div className="row">
-                    <div className="products-cover-cell products-cover-cell-mobile">{renderCover(item)}</div>
-                    <div className="stack">
-                      <p className="muted">Series：{item.seriesId || '-'}</p>
-                      <p className="muted">Sex：{formatSex(item.sex)}</p>
+              <div className="grid gap-3 lg:hidden">
+                {filteredItems.map((item) => (
+                  <article key={`${item.id}-mobile`} className="rounded-2xl border border-neutral-200 bg-white p-3">
+                    <div className="flex items-start gap-3">
+                      <div className="h-16 w-16 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100">{renderCover(item)}</div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-neutral-900">{item.code}</p>
+                        <p className="truncate text-xs text-neutral-500">Series：{item.seriesId || '-'}</p>
+                        <p className="truncate text-xs text-neutral-500">Sex：{formatSex(item.sex)}</p>
+                        <p className="mt-1 text-xs text-neutral-400">{formatDateTime(item.updatedAt)}</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="products-actions">
-                    <button
-                      type="button"
-                      className="btn-compact secondary"
-                      onClick={() => {
-                        openEdit(item.id);
-                      }}
-                    >
-                      编辑
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-compact secondary"
-                      disabled={sharingProductId === item.id}
-                      onClick={() => {
-                        void handleGenerateShare(item.id, false);
-                      }}
-                    >
-                      {sharingProductId === item.id ? '生成中...' : '分享'}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-compact"
-                      disabled={sharingProductId === item.id}
-                      onClick={() => {
-                        void handleGenerateShare(item.id, true);
-                      }}
-                    >
-                      打开
-                    </button>
-                  </div>
-                  {shareLinks[item.id] ? <p className="mono products-share-url">{shareLinks[item.id]}</p> : null}
-                </article>
-              ))}
-            </div>
-          </>
-        ) : null}
-      </section>
+                    <div className="mt-3">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => {
+                          openEdit(item.id);
+                        }}
+                      >
+                        编辑
+                      </Button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </>
+          ) : null}
+        </CardContent>
+      </Card>
 
-      {message ? <p className="notice notice-success">{message}</p> : null}
-      {error ? <p className="notice notice-error">{error}</p> : null}
+      {message ? (
+        <Card className="rounded-2xl border-emerald-200 bg-emerald-50 p-4">
+          <p className="text-sm font-semibold text-emerald-700">{message}</p>
+        </Card>
+      ) : null}
+      {error ? (
+        <Card className="rounded-2xl border-red-200 bg-red-50 p-4">
+          <p className="text-sm font-semibold text-red-700">{error}</p>
+        </Card>
+      ) : null}
+
+      <Button
+        type="button"
+        size="icon"
+        className="fixed bottom-6 right-5 z-40 h-12 w-12 rounded-full shadow-[0_10px_24px_rgba(0,0,0,0.22)] lg:hidden"
+        aria-label="打开筛选弹窗"
+        onClick={() => setIsFilterModalOpen(true)}
+      >
+        <SlidersHorizontal size={18} />
+      </Button>
+
+      {isFilterModalOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-end bg-black/35 p-3 sm:items-center sm:justify-center sm:p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="筛选产品"
+          onClick={() => setIsFilterModalOpen(false)}
+        >
+          <Card
+            className="w-full max-h-[86vh] overflow-y-auto rounded-3xl border-neutral-200 bg-white shadow-2xl sm:max-w-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <CardHeader className="sticky top-0 z-10 border-b border-neutral-200/80 bg-white/95 backdrop-blur">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <CardTitle className="text-xl">筛选产品</CardTitle>
+                  <CardDescription>设置筛选后立即回到产品列表查看结果。</CardDescription>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="icon"
+                  className="h-9 w-9 rounded-full"
+                  onClick={() => setIsFilterModalOpen(false)}
+                >
+                  <X size={16} />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4">{renderFilterForm('mobile')}</CardContent>
+          </Card>
+        </div>
+      ) : null}
+
+      {isCreateModalOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="新建产品"
+          onClick={closeCreateModal}
+        >
+          <Card className="w-full max-w-md rounded-2xl border-neutral-200 bg-white shadow-2xl" onClick={(event) => event.stopPropagation()}>
+            <CardHeader>
+              <CardTitle className="text-xl">新建产品</CardTitle>
+              <CardDescription>请输入产品编码。名称和备注后续可在详情维护。</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form className="space-y-4" onSubmit={handleCreateProduct}>
+                <Input
+                  autoFocus
+                  type="text"
+                  required
+                  placeholder="产品编码（必填）"
+                  value={createCode}
+                  onChange={(event) => setCreateCode(event.target.value)}
+                />
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="secondary" onClick={closeCreateModal} disabled={submitting}>
+                    取消
+                  </Button>
+                  <Button type="submit" disabled={submitting}>
+                    {submitting ? '创建中...' : '创建'}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
     </main>
   );
 }
@@ -897,18 +919,14 @@ function normalizeText(value: string | null | undefined) {
 
 function renderCover(item: Product) {
   if (!item.coverImageUrl) {
-    return <div className="products-cover-placeholder">无封面</div>;
+    return <div className="flex h-full w-full items-center justify-center text-xs text-neutral-500">无封面</div>;
   }
 
-  return <img src={resolveImageUrl(item.coverImageUrl)} alt={`${item.code} cover`} className="products-cover-thumb" />;
+  return <img src={resolveImageUrl(item.coverImageUrl)} alt={`${item.code} cover`} className="h-full w-full object-cover" />;
 }
 
 function resolveImageUrl(value: string) {
-  if (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('/images/')) {
-    return value;
-  }
-
-  return `${getApiBaseUrl()}${value}`;
+  return resolveAuthenticatedAssetUrl(value);
 }
 
 function formatDateTime(value?: string | null) {

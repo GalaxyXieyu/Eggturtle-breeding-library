@@ -1,8 +1,8 @@
 # Logs
 logs
 *.log
-backend/nohup.out
-backend/backend.pid
+legacy/backend/nohup.out
+legacy/backend/backend.pid
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -28,7 +28,8 @@ dist-ssr
 *.sw?
 
 # Python virtual environments
-backend/venv
+legacy/backend/venv
+legacy/backend/.venv
 
 # Local env files (secrets)
 .env
@@ -41,15 +42,15 @@ backend/venv
 *.db.bak_*
 *.db-shm
 *.db-wal
-backend/data/*.sqlite
-backend/data/*.sqlite3
-backend/data/archive/*.sqlite
-backend/data/archive/*.sqlite3
-backend/backup/
+legacy/backend/data/*.sqlite
+legacy/backend/data/*.sqlite3
+legacy/backend/data/archive/*.sqlite
+legacy/backend/data/archive/*.sqlite3
+legacy/backend/backup/
 
 # Image assets
-backend/static/images/
-frontend/public/images/
+legacy/backend/static/images/
+legacy/frontend/public/images/
 kubeconfig.yaml
 kubeconfig-*.yaml
 turtle_album.yaml
@@ -73,7 +74,8 @@ packages/shared/src/*.d.ts
 packages/shared/src/*.js.map
 
 # Legacy test reports (often contain tokens/logs)
-backend/tests/reports/
+legacy/backend/tests/reports/
+apps/web/.next.bak-*/
 
 # Local/generated artifacts from review/verification runs
 out/

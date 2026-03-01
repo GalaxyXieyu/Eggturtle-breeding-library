@@ -2,6 +2,7 @@ import { Inter, Playfair_Display } from 'next/font/google';
 
 import '../../../packages/shared/styles/ui-foundation.css';
 import './globals.css';
+import { UiPreferencesProvider } from '../components/ui-preferences';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -23,7 +24,9 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="zh-CN">
-      <body className={`${inter.variable} ${playfairDisplay.variable}`}>{children}</body>
+      <body className={`${inter.variable} ${playfairDisplay.variable}`}>
+        <UiPreferencesProvider>{children}</UiPreferencesProvider>
+      </body>
     </html>
   );
 }

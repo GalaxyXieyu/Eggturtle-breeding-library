@@ -17,6 +17,8 @@ export const breederSchema = z.object({
   damCode: z.string().nullable(),
   mateCode: z.string().nullable(),
   isActive: z.boolean(),
+  linkedProductId: z.string().nullable().optional(),
+  coverImageUrl: z.string().nullable().optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
   series: seriesSummarySchema.optional()

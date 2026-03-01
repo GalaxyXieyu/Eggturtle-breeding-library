@@ -68,8 +68,8 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
     path: '/shares',
     token: session.token,
     json: {
-      resourceType: 'product',
-      resourceId: productId,
+      resourceType: 'tenant_feed',
+      resourceId: session.tenantId,
     },
   });
   if (createShareResponse.status !== 201) {
@@ -95,8 +95,8 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
     throw new ApiTestError('share redirect missing location header');
   }
 
-  if (!location.includes('/public/share')) {
-    throw new ApiTestError(`share redirect target mismatch, expected /public/share, got: ${location}`);
+  if (!location.includes('/public/s/')) {
+    throw new ApiTestError(`share redirect target mismatch, expected /public/s/, got: ${location}`);
   }
 
   const signed = parseShareRedirect(location);
@@ -111,6 +111,7 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
       resourceId: signed.resourceId,
       exp: signed.exp,
       sig: signed.sig,
+      productId,
     },
   });
   if (publicResponse.status !== 200) {
@@ -150,6 +151,7 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
       resourceId: signed.resourceId,
       exp: signed.exp,
       sig: `${signed.sig}x`,
+      productId,
     },
   });
   if (tamperedPublicResponse.status !== 401) {
@@ -169,16 +171,16 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
     path: '/shares',
     token: foreignSession.token,
     json: {
-      resourceType: 'product',
-      resourceId: productId,
+      resourceType: 'tenant_feed',
+      resourceId: session.tenantId,
     },
   });
-  if (foreignCreateShareResponse.status !== 404) {
+  if (foreignCreateShareResponse.status !== 400) {
     throw new ApiTestError(
-      `cross-tenant create share expected 404, got ${foreignCreateShareResponse.status}`,
+      `cross-tenant create share expected 400, got ${foreignCreateShareResponse.status}`,
     );
   }
-  assertErrorCode(foreignCreateShareResponse, 'PRODUCT_NOT_FOUND');
+  assertErrorCode(foreignCreateShareResponse, 'INVALID_REQUEST_PAYLOAD');
   checks += 1;
 
   ctx.log.ok('shares.done', {

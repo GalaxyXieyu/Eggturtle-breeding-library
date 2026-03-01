@@ -151,16 +151,6 @@ export default function FeaturedProductsPage() {
 
   return (
     <main className="workspace-shell">
-      <header className="workspace-head">
-        <div className="stack">
-          <h1>推荐产品管理</h1>
-          <p className="muted">租户：{tenantSlug || '(unknown)'}</p>
-        </div>
-        <button type="button" className="secondary" onClick={() => router.push(`/app/${tenantSlug}`)}>
-          返回工作台
-        </button>
-      </header>
-
       <section className="card panel stack">
         <h2>新增推荐产品</h2>
         <form className="row" onSubmit={handleAdd}>

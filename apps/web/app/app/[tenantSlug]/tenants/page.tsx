@@ -113,16 +113,6 @@ export default function TenantManagementPage() {
 
   return (
     <main className="workspace-shell">
-      <header className="workspace-head">
-        <div className="stack">
-          <h1>租户管理</h1>
-          <p className="muted">当前路由租户：{tenantSlug || '(unknown)'}</p>
-        </div>
-        <button type="button" className="secondary" onClick={() => router.push(`/app/${tenantSlug}`)}>
-          返回工作台
-        </button>
-      </header>
-
       <section className="card panel stack">
         <div className="row between">
           <h2>我的租户</h2>

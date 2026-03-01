@@ -199,12 +199,12 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
     checks += 1;
   }
 
-  const ownerShare = await createShareExpectAllowed(ctx, roleTokens.OWNER, ownerProductId, 'OWNER');
-  const adminShare = await createShareExpectAllowed(ctx, roleTokens.ADMIN, adminProductId, 'ADMIN');
+  const ownerShare = await createShareExpectAllowed(ctx, roleTokens.OWNER, tenantId, 'OWNER');
+  const adminShare = await createShareExpectAllowed(ctx, roleTokens.ADMIN, tenantId, 'ADMIN');
   const editorShare = await createShareExpectAllowed(
     ctx,
     roleTokens.EDITOR,
-    editorProductId,
+    tenantId,
     'EDITOR',
   );
   checks += 3;
@@ -214,8 +214,8 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
     path: '/shares',
     token: roleTokens.VIEWER,
     json: {
-      resourceType: 'product',
-      resourceId: ownerProductId,
+      resourceType: 'tenant_feed',
+      resourceId: tenantId,
     },
   });
   assertStatus(viewerCreateShare, 403, 'viewer.shares.create');
@@ -244,6 +244,7 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
       resourceId: signedParams.resourceId,
       exp: signedParams.exp,
       sig: signedParams.sig,
+      productId: ownerProductId,
     },
   });
   assertStatus(publicShare, 200, 'share.public');
@@ -467,7 +468,7 @@ async function createFeaturedExpectAllowed(
 async function createShareExpectAllowed(
   ctx: TestContext,
   token: string,
-  productId: string,
+  tenantId: string,
   role: RoleLabel,
 ): Promise<{ shareId: string; shareToken: string }> {
   const response = await ctx.request({
@@ -475,8 +476,8 @@ async function createShareExpectAllowed(
     path: '/shares',
     token,
     json: {
-      resourceType: 'product',
-      resourceId: productId,
+      resourceType: 'tenant_feed',
+      resourceId: tenantId,
     },
   });
 

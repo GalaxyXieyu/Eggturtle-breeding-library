@@ -13,6 +13,7 @@ import {
   AdminPanel,
   AdminTableFrame
 } from '../../../components/dashboard/polish-primitives';
+import { useUiPreferences } from '../../../components/ui-preferences';
 import { ApiError, apiRequest } from '../../../lib/api-client';
 
 type PageState = {
@@ -20,7 +21,60 @@ type PageState = {
   error: string | null;
 };
 
+const COPY = {
+  zh: {
+    eyebrow: 'Tenant Directory',
+    title: '租户目录',
+    description: '统一查看平台租户，支持按名称或 slug 快速检索。',
+    metricTenant: '租户总数',
+    metricTenantMeta: '覆盖当前可访问的全部租户空间',
+    metricMember: '成员关系总数',
+    metricMemberMeta: '按当前筛选条件统计',
+    searchTitle: '搜索条件',
+    searchDesc: '支持租户名称与 slug 模糊检索。',
+    searchPlaceholder: '按租户 slug 或名称搜索',
+    apply: '应用',
+    reset: '重置',
+    tableTitle: '租户列表',
+    tableDesc: '点击详情可进入 Subscription、配额与成员信息视图。',
+    loading: '加载租户中...',
+    empty: '当前筛选下未找到租户。',
+    thName: '名称',
+    thSlug: 'Slug',
+    thMembers: '成员数',
+    thCreatedAt: '创建时间',
+    viewDetail: '查看详情',
+    unknownError: '未知错误'
+  },
+  en: {
+    eyebrow: 'Tenant Directory',
+    title: 'Tenant Directory',
+    description: 'View all tenants with quick search by name or slug.',
+    metricTenant: 'Total Tenants',
+    metricTenantMeta: 'All accessible tenant workspaces',
+    metricMember: 'Total Memberships',
+    metricMemberMeta: 'Count under current filter',
+    searchTitle: 'Search Filters',
+    searchDesc: 'Fuzzy search by tenant name or slug.',
+    searchPlaceholder: 'Search by tenant slug or name',
+    apply: 'Apply',
+    reset: 'Reset',
+    tableTitle: 'Tenant List',
+    tableDesc: 'Open details to manage subscription, quota and members.',
+    loading: 'Loading tenants...',
+    empty: 'No tenants found under current filter.',
+    thName: 'Name',
+    thSlug: 'Slug',
+    thMembers: 'Members',
+    thCreatedAt: 'Created At',
+    viewDetail: 'View Details',
+    unknownError: 'Unknown error'
+  }
+} as const;
+
 export default function DashboardTenantsPage() {
+  const { locale } = useUiPreferences();
+  const copy = COPY[locale];
   const [status, setStatus] = useState<PageState>({
     loading: true,
     error: null
@@ -53,7 +107,7 @@ export default function DashboardTenantsPage() {
         setStatus({ loading: false, error: null });
       } catch (error) {
         if (!cancelled) {
-          setStatus({ loading: false, error: formatError(error) });
+          setStatus({ loading: false, error: formatError(error, copy.unknownError) });
           setTenants([]);
         }
       }
@@ -64,7 +118,7 @@ export default function DashboardTenantsPage() {
     return () => {
       cancelled = true;
     };
-  }, [appliedSearch]);
+  }, [appliedSearch, copy.unknownError]);
 
   const totalMembers = useMemo(
     () => tenants.reduce((sum, tenant) => sum + tenant.memberCount, 0),
@@ -79,38 +133,38 @@ export default function DashboardTenantsPage() {
   return (
     <section className="page admin-page">
       <AdminPageHeader
-        eyebrow="Tenant Directory"
-        title="租户目录"
-        description="统一查看平台租户，支持按名称或 slug 快速检索。"
+        eyebrow={copy.eyebrow}
+        title={copy.title}
+        description={copy.description}
       />
 
       <div className="admin-metrics-grid">
         <AdminMetricCard
-          label="租户总数"
+          label={copy.metricTenant}
           value={tenants.length}
-          meta="覆盖当前可访问的全部租户空间"
+          meta={copy.metricTenantMeta}
         />
         <AdminMetricCard
-          label="成员关系总数"
+          label={copy.metricMember}
           value={totalMembers}
-          meta="按当前筛选条件统计"
+          meta={copy.metricMemberMeta}
         />
       </div>
 
       <AdminPanel className="stack admin-filter-panel">
         <div className="admin-section-head">
-          <h3>搜索条件</h3>
-          <p>支持租户名称与 slug 模糊检索。</p>
+          <h3>{copy.searchTitle}</h3>
+          <p>{copy.searchDesc}</p>
         </div>
 
         <form className="inline-actions admin-inline-form" onSubmit={handleSearchSubmit}>
           <input
             type="search"
             value={searchInput}
-            placeholder="按租户 slug 或名称搜索"
+            placeholder={copy.searchPlaceholder}
             onChange={(event) => setSearchInput(event.target.value)}
           />
-          <button type="submit">应用</button>
+          <button type="submit">{copy.apply}</button>
           <button
             className="secondary"
             type="button"
@@ -119,30 +173,30 @@ export default function DashboardTenantsPage() {
               setAppliedSearch('');
             }}
           >
-            重置
+            {copy.reset}
           </button>
         </form>
       </AdminPanel>
 
       <AdminPanel className="stack">
         <div className="admin-section-head">
-          <h3>租户列表</h3>
-          <p>点击详情可进入 Subscription、配额与成员信息视图。</p>
+          <h3>{copy.tableTitle}</h3>
+          <p>{copy.tableDesc}</p>
         </div>
 
-        {status.loading ? <p className="muted">加载租户中...</p> : null}
+        {status.loading ? <p className="muted">{copy.loading}</p> : null}
         {!status.loading && tenants.length === 0 ? (
-          <p className="muted">当前筛选下未找到租户。</p>
+          <p className="muted">{copy.empty}</p>
         ) : null}
 
         {tenants.length > 0 ? (
           <AdminTableFrame>
             <thead>
               <tr>
-                <th>名称</th>
-                <th>Slug</th>
-                <th>成员数</th>
-                <th>创建时间</th>
+                <th>{copy.thName}</th>
+                <th>{copy.thSlug}</th>
+                <th>{copy.thMembers}</th>
+                <th>{copy.thCreatedAt}</th>
                 <th />
               </tr>
             </thead>
@@ -154,7 +208,7 @@ export default function DashboardTenantsPage() {
                   <td>{tenant.memberCount}</td>
                   <td>{formatDate(tenant.createdAt)}</td>
                   <td>
-                    <AdminActionLink href={`/dashboard/tenants/${tenant.id}`}>查看详情</AdminActionLink>
+                    <AdminActionLink href={`/dashboard/tenants/${tenant.id}`}>{copy.viewDetail}</AdminActionLink>
                   </td>
                 </tr>
               ))}
@@ -177,7 +231,7 @@ function formatDate(value: string) {
   return date.toLocaleString();
 }
 
-function formatError(error: unknown) {
+function formatError(error: unknown, fallback: string) {
   if (error instanceof ApiError) {
     return error.message;
   }
@@ -186,5 +240,5 @@ function formatError(error: unknown) {
     return error.message;
   }
 
-  return '未知错误';
+  return fallback;
 }

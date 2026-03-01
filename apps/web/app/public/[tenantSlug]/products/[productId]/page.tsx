@@ -50,15 +50,16 @@ export default async function TenantPublicDetailPage({
     );
   }
 
-  const { tenant, product } = shareResult.data;
+  const { tenant, product, presentation } = shareResult.data;
   const routeQuery = buildPublicShareRouteQuery(shareResult.shareId, shareResult.query).toString();
   const feedHref = `/public/${encodeURIComponent(tenant.slug)}?${routeQuery}`;
 
   return (
     <main className="share-shell">
       <section className="card share-hero stack">
-        <p className="share-kicker">TurtleAlbum · Public Detail</p>
+        <p className="share-kicker">Public Detail</p>
         <h1>{product.name || product.code}</h1>
+        <p className="muted">{presentation.feedTitle}</p>
         <p className="muted">
           租户 <strong>{tenant.name}</strong>（{tenant.slug}）
         </p>
@@ -119,6 +120,29 @@ export default async function TenantPublicDetailPage({
           </div>
         ) : null}
       </section>
+
+      {presentation.contact.showWechatBlock &&
+      (presentation.contact.wechatQrImageUrl || presentation.contact.wechatId) ? (
+        <section className="card panel stack">
+          <h2>微信联系</h2>
+          <div className="row">
+            {presentation.contact.wechatQrImageUrl ? (
+              <img
+                src={presentation.contact.wechatQrImageUrl}
+                alt="微信二维码"
+                className="h-28 w-28 rounded-xl border border-neutral-200 bg-white object-cover p-1"
+              />
+            ) : null}
+            {presentation.contact.wechatId ? (
+              <p className="muted">
+                微信号：<strong>{presentation.contact.wechatId}</strong>
+              </p>
+            ) : (
+              <p className="muted">请扫码添加微信咨询。</p>
+            )}
+          </div>
+        </section>
+      ) : null}
     </main>
   );
 }

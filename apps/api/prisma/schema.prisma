@@ -60,10 +60,10 @@ model Tenant {
   members             TenantMember[]
   products            Product[]
   series              Series[]
-  breeders            Breeder[]
-  breederEvents       BreederEvent[]
+  productEvents       ProductEvent[]
   featuredProducts    FeaturedProduct[]
   shares              PublicShare[]
+  sharePresentationConfig TenantSharePresentationConfig?
   auditLogs           AuditLog[]
   targetedSubscriptionActivationCodes SubscriptionActivationCode[] @relation("SubscriptionActivationCodeTargetTenant")
   superAdminAuditLogs SuperAdminAuditLog[] @relation("SuperAdminAuditLogTenant")
@@ -137,7 +137,9 @@ model Product {
   id                  String            @id @default(cuid())
   tenantId            String            @map("tenant_id")
   seriesId            String?           @map("series_id")
+  legacyBreederId     String?           @map("legacy_breeder_id")
   code                String            @db.VarChar(120)
+  type                String            @default("breeder") @db.VarChar(80)
   name                String?           @db.VarChar(120)
   description         String?
   sex                 String?           @db.VarChar(20)
@@ -156,15 +158,18 @@ model Product {
   tenant              Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   series              Series?           @relation(fields: [seriesId, tenantId], references: [id, tenantId], onDelete: Restrict)
   images              ProductImage[]
+  events              ProductEvent[]
   featuredProducts    FeaturedProduct[]
   shares              PublicShare[]
 
   // Enables composite foreign keys to enforce tenant isolation.
   @@unique([id, tenantId], map: "products_id_tenant_id_key")
   @@unique([tenantId, code], map: "products_tenant_id_code_key")
+  @@unique([tenantId, legacyBreederId], map: "products_tenant_id_legacy_breeder_id_key")
   @@index([tenantId], map: "products_tenant_id_idx")
   @@index([tenantId, seriesId], map: "products_tenant_id_series_id_idx")
   @@index([tenantId, sex], map: "products_tenant_id_sex_idx")
+  @@index([tenantId, type], map: "products_tenant_id_type_idx")
   @@map("products")
 }
 
@@ -180,7 +185,6 @@ model Series {
   updatedAt   DateTime  @updatedAt @map("updated_at")
   tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   products    Product[]
-  breeders    Breeder[]
 
   // Enables composite foreign keys to enforce tenant isolation.
   @@unique([id, tenantId], map: "series_id_tenant_id_key")
@@ -190,48 +194,22 @@ model Series {
   @@map("series")
 }
 
-model Breeder {
-  id          String         @id @default(cuid())
-  tenantId    String         @map("tenant_id")
-  seriesId    String         @map("series_id")
-  code        String         @db.VarChar(120)
-  name        String?        @db.VarChar(120)
-  sex         String?        @db.VarChar(20)
-  description String?
-  sireCode    String?        @map("sire_code") @db.VarChar(120)
-  damCode     String?        @map("dam_code") @db.VarChar(120)
-  mateCode    String?        @map("mate_code") @db.VarChar(120)
-  isActive    Boolean        @default(true) @map("is_active")
-  createdAt   DateTime       @default(now()) @map("created_at")
-  updatedAt   DateTime       @updatedAt @map("updated_at")
-  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  series      Series         @relation(fields: [seriesId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  events      BreederEvent[]
-
-  // Enables composite foreign keys to enforce tenant isolation.
-  @@unique([id, tenantId], map: "breeders_id_tenant_id_key")
-  @@unique([tenantId, code], map: "breeders_tenant_id_code_key")
-  @@index([tenantId], map: "breeders_tenant_id_idx")
-  @@index([tenantId, seriesId], map: "breeders_tenant_id_series_id_idx")
-  @@map("breeders")
-}
-
-model BreederEvent {
+model ProductEvent {
   id        String   @id @default(cuid())
   tenantId  String   @map("tenant_id")
-  breederId String   @map("breeder_id")
+  productId String   @map("product_id")
   eventType String   @map("event_type") @db.VarChar(40)
   eventDate DateTime @map("event_date")
   note      String?
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  breeder   Breeder  @relation(fields: [breederId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  product   Product  @relation(fields: [productId, tenantId], references: [id, tenantId], onDelete: Cascade)
 
-  @@index([tenantId], map: "breeder_events_tenant_id_idx")
-  @@index([tenantId, breederId], map: "breeder_events_tenant_id_breeder_id_idx")
-  @@index([tenantId, breederId, eventDate], map: "breeder_events_tenant_id_breeder_id_event_date_idx")
-  @@map("breeder_events")
+  @@index([tenantId], map: "product_events_tenant_id_idx")
+  @@index([tenantId, productId], map: "product_events_tenant_id_product_id_idx")
+  @@index([tenantId, productId, eventDate], map: "product_events_tenant_id_product_id_event_date_idx")
+  @@map("product_events")
 }
 
 model FeaturedProduct {
@@ -275,6 +253,7 @@ model PublicShare {
   resourceType    String   @map("resource_type") @db.VarChar(40)
   resourceId      String   @map("resource_id")
   productId       String?  @map("product_id")
+  presentationOverride Json? @map("presentation_override")
   shareToken      String   @unique @map("share_token") @db.VarChar(120)
   createdByUserId String   @map("created_by_user_id")
   createdAt       DateTime @default(now()) @map("created_at")
@@ -291,6 +270,25 @@ model PublicShare {
   @@index([productId], map: "public_shares_product_id_idx")
   @@index([createdByUserId], map: "public_shares_created_by_user_id_idx")
   @@map("public_shares")
+}
+
+model TenantSharePresentationConfig {
+  id              String   @id @default(cuid())
+  tenantId        String   @unique @map("tenant_id")
+  feedTitle       String?  @map("feed_title") @db.VarChar(120)
+  feedSubtitle    String?  @map("feed_subtitle") @db.VarChar(240)
+  brandPrimary    String?  @map("brand_primary") @db.VarChar(20)
+  brandSecondary  String?  @map("brand_secondary") @db.VarChar(20)
+  heroImages      Json?    @map("hero_images")
+  showWechatBlock Boolean  @default(false) @map("show_wechat_block")
+  wechatQrImageUrl String? @map("wechat_qr_image_url") @db.VarChar(1000)
+  wechatId        String?  @map("wechat_id") @db.VarChar(64)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId], map: "tenant_share_presentation_configs_tenant_id_idx")
+  @@map("tenant_share_presentation_configs")
 }
 
 model AuditLog {

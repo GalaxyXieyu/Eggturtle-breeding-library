@@ -9,6 +9,7 @@ import {
   type SuperAdminAuditLog
 } from '@eggturtle/shared';
 
+import { useUiPreferences } from '../../components/ui-preferences';
 import { ApiError, apiRequest } from '../../lib/api-client';
 
 type OverviewState = {
@@ -18,7 +19,44 @@ type OverviewState = {
   logs: SuperAdminAuditLog[];
 };
 
+const COPY = {
+  zh: {
+    pageTitle: '后台总览',
+    pageDesc: '这里展示平台级租户与审计概况，仅白名单超级管理员可访问。',
+    tenantTotal: '租户总数',
+    openTenants: '打开租户管理',
+    recentOps: '近期平台操作',
+    openAudit: '打开审计日志',
+    latestAudit: '最新审计记录',
+    noAudit: '当前暂无审计记录。',
+    thAction: '动作',
+    thActor: '操作者',
+    thTenant: '目标租户',
+    thTime: '时间',
+    loading: '加载总览中...',
+    unknownError: '未知错误'
+  },
+  en: {
+    pageTitle: 'Admin Overview',
+    pageDesc: 'Platform-level tenant and audit summary for allowlisted super admins.',
+    tenantTotal: 'Tenants',
+    openTenants: 'Open tenant management',
+    recentOps: 'Recent platform actions',
+    openAudit: 'Open audit logs',
+    latestAudit: 'Latest audit records',
+    noAudit: 'No audit records yet.',
+    thAction: 'Action',
+    thActor: 'Actor',
+    thTenant: 'Tenant',
+    thTime: 'Time',
+    loading: 'Loading overview...',
+    unknownError: 'Unknown error'
+  }
+} as const;
+
 export default function DashboardOverviewPage() {
+  const { locale } = useUiPreferences();
+  const copy = COPY[locale];
   const [state, setState] = useState<OverviewState>({
     loading: true,
     error: null,
@@ -52,7 +90,7 @@ export default function DashboardOverviewPage() {
         });
       } catch (error) {
         if (!cancelled) {
-          setState((previous) => ({ ...previous, loading: false, error: formatError(error) }));
+          setState((previous) => ({ ...previous, loading: false, error: formatError(error, copy.unknownError) }));
         }
       }
     }
@@ -62,48 +100,48 @@ export default function DashboardOverviewPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [copy.unknownError]);
 
   return (
     <section className="page">
       <header className="page-header">
-        <h2>后台总览</h2>
-        <p>这里展示平台级租户与审计概况，仅白名单超级管理员可访问。</p>
+        <h2>{copy.pageTitle}</h2>
+        <p>{copy.pageDesc}</p>
       </header>
 
       <div className="grid">
         <article className="card stack">
-          <h3>租户总数</h3>
+          <h3>{copy.tenantTotal}</h3>
           <p>
             <span className="badge">{state.tenants.length}</span>
           </p>
           <Link className="nav-link" href="/dashboard/tenants">
-            打开租户管理
+            {copy.openTenants}
           </Link>
         </article>
 
         <article className="card stack">
-          <h3>近期平台操作</h3>
+          <h3>{copy.recentOps}</h3>
           <p>
             <span className="badge">{state.logs.length}</span>
           </p>
           <Link className="nav-link" href="/dashboard/audit-logs">
-            打开审计日志
+            {copy.openAudit}
           </Link>
         </article>
       </div>
 
       <article className="card stack">
-        <h3>最新审计记录</h3>
-        {state.logs.length === 0 ? <p className="muted">当前暂无审计记录。</p> : null}
+        <h3>{copy.latestAudit}</h3>
+        {state.logs.length === 0 ? <p className="muted">{copy.noAudit}</p> : null}
         {state.logs.length > 0 ? (
           <table className="data-table">
             <thead>
               <tr>
-                <th>动作</th>
-                <th>操作者</th>
-                <th>目标租户</th>
-                <th>时间</th>
+                <th>{copy.thAction}</th>
+                <th>{copy.thActor}</th>
+                <th>{copy.thTenant}</th>
+                <th>{copy.thTime}</th>
               </tr>
             </thead>
             <tbody>
@@ -130,7 +168,7 @@ export default function DashboardOverviewPage() {
         ) : null}
       </article>
 
-      {state.loading ? <p className="muted">加载总览中...</p> : null}
+      {state.loading ? <p className="muted">{copy.loading}</p> : null}
       {state.error ? <p className="error">{state.error}</p> : null}
     </section>
   );
@@ -145,7 +183,7 @@ function formatDate(value: string) {
   return date.toLocaleString();
 }
 
-function formatError(error: unknown) {
+function formatError(error: unknown, fallback: string) {
   if (error instanceof ApiError) {
     return error.message;
   }
@@ -154,5 +192,5 @@ function formatError(error: unknown) {
     return error.message;
   }
 
-  return '未知错误';
+  return fallback;
 }

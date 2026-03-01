@@ -24,7 +24,7 @@ import {
 export const subscriptionModule: TestModule = {
   name: 'subscription',
   description:
-    'Admin subscription + activation-code generate/redeem and tenant share/image quota enforcement checks',
+    'Admin subscription + activation-code generate/redeem and tenant image/storage quota enforcement checks',
   requiresWrites: true,
   run,
 };
@@ -126,17 +126,16 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
   const productId = readString(product, 'id', 'subscription.product.id');
   checks += 1;
 
-  const createShareDenied = await ctx.request({
+  const createShareOnFree = await ctx.request({
     method: 'POST',
     path: '/shares',
     token: session.token,
     json: {
-      resourceType: 'product',
-      resourceId: productId,
+      resourceType: 'tenant_feed',
+      resourceId: session.tenantId,
     },
   });
-  assertStatus(createShareDenied, 403, 'subscription.share.denied-free-plan');
-  assertErrorCode(createShareDenied, 'TENANT_SUBSCRIPTION_PLAN_INSUFFICIENT');
+  assertStatus(createShareOnFree, 201, 'subscription.share.allowed-free-plan');
   checks += 1;
 
   const firstUpload = await ctx.request({
@@ -222,11 +221,11 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
     path: '/shares',
     token: session.token,
     json: {
-      resourceType: 'product',
-      resourceId: productId,
+      resourceType: 'tenant_feed',
+      resourceId: session.tenantId,
     },
   });
-  assertStatus(createShareAllowed, 201, 'subscription.share.allowed-pro-plan');
+  assertStatus(createShareAllowed, 201, 'subscription.share.allowed-after-upgrade');
   checks += 1;
 
   const storageDeniedUpload = await ctx.request({

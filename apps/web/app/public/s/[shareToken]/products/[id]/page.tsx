@@ -1,5 +1,9 @@
-import PublicBreederDetailPage from '../../../../_public-breeder/public-breeder-detail-page';
-import { mapPublicProductToLegacyBreeder } from '../../../../_public-breeder/public-share-adapter';
+import PublicProductDetailPage from '../../../../_public-product/public-product-detail-page';
+import {
+  mapPublicShareDetail,
+  mapPublicProductToLegacyBreeder,
+  mapTenantFeedToLegacy
+} from '../../../../_public-product/public-share-adapter';
 import {
   buildPublicShareRouteQuery,
   fetchPublicShareFromSearchParams,
@@ -13,60 +17,56 @@ export default async function PublicShareProductDetailPage({
   params: { shareToken: string; id: string };
   searchParams: PublicSearchParams;
 }) {
-  const shareResult = await fetchPublicShareFromSearchParams(searchParams);
+  const shareResult = await fetchPublicShareFromSearchParams(searchParams, {
+    productId: params.id
+  });
 
   if (!shareResult.ok) {
     return (
       <main className="share-shell">
         <section className="card panel stack">
-          <h1>分享页不可用</h1>
+          <h1>公开详情不可用</h1>
           <p className="notice notice-error">{shareResult.message}</p>
         </section>
       </main>
     );
   }
 
-  if (shareResult.data.resourceType !== 'product') {
+  if (shareResult.data.resourceType !== 'tenant_feed') {
     return (
       <main className="share-shell">
         <section className="card panel stack">
-          <h1>分享页不可用</h1>
-          <p className="notice notice-warning">该链接不是产品分享链接。</p>
+          <h1>公开详情不可用</h1>
+          <p className="notice notice-warning">该链接不是租户图鉴分享链接。</p>
         </section>
       </main>
     );
   }
 
-  const { tenant, product } = shareResult.data;
-  if (product.id !== params.id) {
-    return (
-      <main className="share-shell">
-        <section className="card panel stack">
-          <h1>分享页不可用</h1>
-          <p className="notice notice-warning">链接中的产品标识与分享内容不匹配。</p>
-        </section>
-      </main>
-    );
-  }
-
-  const breeder = mapPublicProductToLegacyBreeder(product);
   const shareQuery = buildPublicShareRouteQuery(shareResult.shareId, shareResult.query).toString();
-  const homeHref = `/public/s/${params.shareToken}/products/${params.id}?${shareQuery}`;
-  const series = breeder.seriesId ? { id: breeder.seriesId, name: breeder.seriesId } : null;
+  const legacyFeedData = mapTenantFeedToLegacy(shareResult.data);
+  const detailData = mapPublicShareDetail(shareResult.data);
+  const detailBreeder = shareResult.data.product
+    ? mapPublicProductToLegacyBreeder(shareResult.data.product)
+    : null;
+
+  const series = detailBreeder
+    ? legacyFeedData.series.find((item) => item.id === detailBreeder.seriesId) || null
+    : null;
 
   return (
-    <PublicBreederDetailPage
-      breeder={breeder}
+    <PublicProductDetailPage
+      breeder={detailBreeder}
       breederId={params.id}
       series={series}
-      events={[]}
-      familyTree={null}
-      maleMateLoad={[]}
-      fallbackBreeders={[]}
+      events={detailData.events}
+      familyTree={detailData.familyTree}
+      maleMateLoad={detailData.maleMateLoad}
+      fallbackBreeders={legacyFeedData.breeders.slice(0, 4)}
       demo={false}
       shareToken={params.shareToken}
       shareQuery={shareQuery}
-      homeHref={homeHref}
+      presentation={shareResult.data.presentation}
     />
   );
 }

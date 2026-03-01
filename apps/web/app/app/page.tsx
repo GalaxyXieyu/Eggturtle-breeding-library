@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+import { useUiPreferences } from '../../components/ui-preferences';
 import { ApiError, getAccessToken } from '../../lib/api-client';
 import { resolveCurrentTenantSlug } from '../../lib/tenant-session';
 
@@ -11,8 +12,29 @@ type PageState = {
   loading: boolean;
 };
 
+const COPY = {
+  zh: {
+    title: '正在进入工作台',
+    subtitle: '正在解析租户上下文。',
+    loading: '正在解析租户信息...',
+    openTenantSelect: '打开租户选择',
+    backToLogin: '返回登录',
+    unknownError: '未知错误'
+  },
+  en: {
+    title: 'Entering Workspace',
+    subtitle: 'Resolving tenant context.',
+    loading: 'Resolving tenant information...',
+    openTenantSelect: 'Open tenant selector',
+    backToLogin: 'Back to login',
+    unknownError: 'Unknown error'
+  }
+} as const;
+
 export default function AppEntryPage() {
   const router = useRouter();
+  const { locale } = useUiPreferences();
+  const copy = COPY[locale];
   const [state, setState] = useState<PageState>({
     loading: true,
     error: null
@@ -36,7 +58,7 @@ export default function AppEntryPage() {
         }
       } catch (error) {
         if (!isCancelled) {
-          setState({ loading: false, error: formatError(error) });
+          setState({ loading: false, error: formatError(error, copy.unknownError) });
         }
       }
     }
@@ -46,28 +68,28 @@ export default function AppEntryPage() {
     return () => {
       isCancelled = true;
     };
-  }, [router]);
+  }, [copy.unknownError, router]);
 
   return (
     <main className="workspace-shell">
       <header className="workspace-head">
         <div className="stack">
-          <h1>正在进入工作台</h1>
-          <p className="muted">正在解析租户上下文。</p>
+          <h1>{copy.title}</h1>
+          <p className="muted">{copy.subtitle}</p>
         </div>
       </header>
 
       <section className="card panel stack">
-        {state.loading ? <p className="notice notice-info">正在解析租户信息...</p> : null}
+        {state.loading ? <p className="notice notice-info">{copy.loading}</p> : null}
         {state.error ? <p className="notice notice-error">{state.error}</p> : null}
 
         {!state.loading && state.error ? (
           <div className="row">
             <button type="button" onClick={() => router.push('/tenant-select')}>
-              打开租户选择
+              {copy.openTenantSelect}
             </button>
             <button type="button" className="secondary" onClick={() => router.push('/login')}>
-              返回登录
+              {copy.backToLogin}
             </button>
           </div>
         ) : null}
@@ -76,7 +98,7 @@ export default function AppEntryPage() {
   );
 }
 
-function formatError(error: unknown) {
+function formatError(error: unknown, fallback: string) {
   if (error instanceof ApiError) {
     return error.message;
   }
@@ -85,5 +107,5 @@ function formatError(error: unknown) {
     return error.message;
   }
 
-  return 'Unknown error';
+  return fallback;
 }

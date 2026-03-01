@@ -366,6 +366,7 @@ export class FeaturedProductsService {
       id: product.id,
       tenantId: product.tenantId,
       code: product.code,
+      type: product.type?.trim() || 'breeder',
       name: product.name,
       description: product.description,
       seriesId: product.seriesId,
