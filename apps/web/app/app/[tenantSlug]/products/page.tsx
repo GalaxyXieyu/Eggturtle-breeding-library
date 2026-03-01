@@ -740,12 +740,11 @@ export default function TenantProductsPage() {
                         <p className="truncate text-xs text-neutral-500">Sex：{formatSex(item.sex)}</p>
                         <p className="mt-1 text-xs text-neutral-400">{formatDateTime(item.updatedAt)}</p>
                       </div>
-                    </div>
-                    <div className="mt-3">
                       <Button
                         type="button"
                         size="sm"
                         variant="secondary"
+                        className="shrink-0"
                         onClick={() => {
                           openEdit(item.id);
                         }}
@@ -753,6 +752,17 @@ export default function TenantProductsPage() {
                         编辑
                       </Button>
                     </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      className="shrink-0"
+                      onClick={() => {
+                        openEdit(item.id);
+                      }}
+                    >
+                      编辑
+                    </Button>
                   </article>
                 ))}
               </div>
