@@ -3,78 +3,80 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
-  aiAssistantQuotaStatusResponseSchema,
   createShareRequestSchema,
   createShareResponseSchema,
-  listProductsResponseSchema,
-  listSeriesResponseSchema,
+  dashboardOverviewResponseSchema,
   meResponseSchema,
-  meSubscriptionResponseSchema,
-  type AiAssistantQuotaStatusResponse,
-  type MeResponse,
-  type Product,
-  type TenantSubscription
+  type DashboardOverviewResponse,
+  type DashboardOverviewWindow
 } from '@eggturtle/shared';
-import { listFeaturedProductsResponseSchema } from '@eggturtle/shared/featured';
-import { Boxes, Image as ImageIcon, Layers, Star, Turtle, ArrowRight, Copy, Link2 } from 'lucide-react';
+import {
+  AlertTriangle,
+  CalendarDays,
+  Copy,
+  ExternalLink,
+  HeartHandshake,
+  Link2,
+  Plus,
+  QrCode,
+  Share2,
+  Shell,
+  Workflow
+} from 'lucide-react';
 
-import { ApiError, apiRequest, getAccessToken, resolveAuthenticatedAssetUrl } from '../../../lib/api-client';
+import { ApiError, apiRequest, getAccessToken } from '../../../lib/api-client';
 import { formatTenantDisplayName } from '../../../lib/tenant-display';
 import { switchTenantBySlug } from '../../../lib/tenant-session';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
 
-type DashboardData = {
-  me: MeResponse | null;
-  subscription: TenantSubscription | null;
-  aiQuota: AiAssistantQuotaStatusResponse | null;
-  breedersTotal: number;
-  productsTotal: number;
-  seriesTotal: number;
-  activeSeriesTotal: number;
-  featuredTotal: number;
-  coverSampleTotal: number;
-  coverSampleWithImage: number;
-  recentBreeders: Product[];
-  recentProducts: Product[];
+type ShareLinks = {
+  shareToken: string;
+  entryUrl: string;
+  permanentUrl: string;
 };
 
-type DashboardState = {
-  loading: boolean;
-  error: string | null;
-  data: DashboardData | null;
-};
+const WINDOW_OPTIONS: Array<{ key: DashboardOverviewWindow; label: string; shortLabel: string }> = [
+  { key: 'today', label: '今日', shortLabel: 'Today' },
+  { key: '7d', label: '近 7 天', shortLabel: '7d' },
+  { key: '30d', label: '近 30 天', shortLabel: '30d' }
+];
 
-const EMPTY_DASHBOARD: DashboardData = {
-  me: null,
-  subscription: null,
-  aiQuota: null,
-  breedersTotal: 0,
-  productsTotal: 0,
-  seriesTotal: 0,
-  activeSeriesTotal: 0,
-  featuredTotal: 0,
-  coverSampleTotal: 0,
-  coverSampleWithImage: 0,
-  recentBreeders: [],
-  recentProducts: []
-};
+const NEED_MATING_CARDS = [
+  {
+    key: 'need' as const,
+    title: '待配对',
+    hint: '已产蛋且暂无新配对'
+  },
+  {
+    key: 'warning' as const,
+    title: '预警',
+    hint: '待配对天数超过阈值'
+  }
+];
 
 export default function TenantAppPage() {
   const router = useRouter();
   const params = useParams<{ tenantSlug: string }>();
   const tenantSlug = useMemo(() => params.tenantSlug ?? '', [params.tenantSlug]);
   const displayTenantName = useMemo(() => formatTenantDisplayName(tenantSlug, '蛋龟选育库'), [tenantSlug]);
-  const [state, setState] = useState<DashboardState>({
-    loading: true,
-    error: null,
-    data: null
-  });
-  const [shareLink, setShareLink] = useState<string | null>(null);
+
+  const [tenantReady, setTenantReady] = useState(false);
+  const [tenantId, setTenantId] = useState<string | null>(null);
+  const [activeWindow, setActiveWindow] = useState<DashboardOverviewWindow>('today');
+  const [activeNeedMatingCard, setActiveNeedMatingCard] = useState<'need' | 'warning'>('need');
+  const [overviewByWindow, setOverviewByWindow] = useState<Partial<Record<DashboardOverviewWindow, DashboardOverviewResponse>>>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [shareLinks, setShareLinks] = useState<ShareLinks | null>(null);
   const [shareLoading, setShareLoading] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
   const [shareMessage, setShareMessage] = useState<string | null>(null);
+
+  const [isActionSheetOpen, setIsActionSheetOpen] = useState(false);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
 
   useEffect(() => {
     if (!getAccessToken()) {
@@ -83,53 +85,34 @@ export default function TenantAppPage() {
     }
 
     if (!tenantSlug) {
-      setState({ loading: false, error: '缺少 tenantSlug。', data: null });
+      setError('缺少 tenantSlug。');
+      setLoading(false);
       return;
     }
 
     let cancelled = false;
-    setState({ loading: true, error: null, data: null });
+    setTenantReady(false);
+    setTenantId(null);
+    setOverviewByWindow({});
+    setActiveWindow('today');
+    setLoading(true);
+    setError(null);
 
     void (async () => {
       try {
         await switchTenantBySlug(tenantSlug);
+        const me = await apiRequest('/me', { responseSchema: meResponseSchema });
 
-        const [me, subscription, products, series, featured] = await Promise.all([
-          apiRequest('/me', { responseSchema: meResponseSchema }),
-          apiRequest('/me/subscription', {
-            responseSchema: meSubscriptionResponseSchema
-          }),
-          apiRequest('/products?page=1&pageSize=24&sortBy=updatedAt&sortDir=desc', {
-            responseSchema: listProductsResponseSchema
-          }),
-          apiRequest('/series?page=1&pageSize=100', { responseSchema: listSeriesResponseSchema }),
-          apiRequest('/featured-products', { responseSchema: listFeaturedProductsResponseSchema })
-        ]);
-        const aiQuota = await apiRequest('/ai-assistant/quota', {
-          responseSchema: aiAssistantQuotaStatusResponseSchema
-        }).catch(() => null);
-
-        const nextData: DashboardData = {
-          me,
-          subscription: subscription.subscription,
-          aiQuota,
-          breedersTotal: products.total,
-          productsTotal: products.total,
-          seriesTotal: series.total,
-          activeSeriesTotal: series.items.filter((item) => item.isActive).length,
-          featuredTotal: featured.items.length,
-          coverSampleTotal: products.products.length,
-          coverSampleWithImage: products.products.filter((item) => Boolean(item.coverImageUrl)).length,
-          recentBreeders: products.products.slice(0, 6),
-          recentProducts: products.products.slice(0, 6)
-        };
-
-        if (!cancelled) {
-          setState({ loading: false, error: null, data: nextData });
+        if (cancelled) {
+          return;
         }
-      } catch (error) {
+
+        setTenantId(me.tenantId ?? null);
+        setTenantReady(true);
+      } catch (nextError) {
         if (!cancelled) {
-          setState({ loading: false, error: formatError(error), data: null });
+          setError(formatError(nextError));
+          setLoading(false);
         }
       }
     })();
@@ -139,18 +122,63 @@ export default function TenantAppPage() {
     };
   }, [router, tenantSlug]);
 
-  const data = state.data ?? EMPTY_DASHBOARD;
-  const coverRatio = data.coverSampleTotal > 0 ? Math.round((data.coverSampleWithImage / data.coverSampleTotal) * 100) : 0;
-  const tenantId = data.me?.tenantId ?? null;
-  const autoRecordQuota = data.aiQuota?.highlights.autoRecord ?? null;
-  const queryOnlyQuota = data.aiQuota?.highlights.queryOnly ?? null;
-  const autoRecordTotal = autoRecordQuota ? autoRecordQuota.baseLimit + autoRecordQuota.topUpBalance : null;
-  const queryOnlyTotal = queryOnlyQuota ? queryOnlyQuota.baseLimit + queryOnlyQuota.topUpBalance : null;
+  useEffect(() => {
+    if (!tenantReady) {
+      return;
+    }
 
-  async function handleGenerateShareLink() {
+    if (overviewByWindow[activeWindow]) {
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    void (async () => {
+      try {
+        const nextOverview = await apiRequest(`/dashboard/overview?window=${activeWindow}`, {
+          responseSchema: dashboardOverviewResponseSchema
+        });
+
+        if (cancelled) {
+          return;
+        }
+
+        setOverviewByWindow((current) => ({
+          ...current,
+          [activeWindow]: nextOverview
+        }));
+        setLoading(false);
+      } catch (nextError) {
+        if (!cancelled) {
+          setError(formatError(nextError));
+          setLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeWindow, overviewByWindow, tenantReady]);
+
+  const overview = overviewByWindow[activeWindow] ?? null;
+  const needMatingValue = overview
+    ? activeNeedMatingCard === 'need'
+      ? overview.needMating.needMatingCount
+      : overview.needMating.warningCount
+    : 0;
+
+  async function ensureShareLinks() {
+    if (shareLinks) {
+      return shareLinks;
+    }
+
     if (!tenantId) {
       setShareError('当前会话没有 tenantId，无法生成分享链接。');
-      return;
+      return null;
     }
 
     setShareLoading(true);
@@ -170,258 +198,443 @@ export default function TenantAppPage() {
         responseSchema: createShareResponseSchema
       });
 
-      setShareLink(response.share.entryUrl);
-      setShareMessage('分享链接已生成，可直接复制给访客。');
-    } catch (error) {
-      setShareError(formatError(error));
+      const nextLinks: ShareLinks = {
+        shareToken: response.share.shareToken,
+        entryUrl: response.share.entryUrl,
+        permanentUrl: buildPermanentShareLink(response.share.shareToken)
+      };
+
+      setShareLinks(nextLinks);
+      return nextLinks;
+    } catch (nextError) {
+      setShareError(formatError(nextError));
+      return null;
     } finally {
       setShareLoading(false);
     }
   }
 
-  async function handleCopyShareLink() {
-    if (!shareLink) {
+  async function handleGenerateShareLink() {
+    const links = await ensureShareLinks();
+    if (!links) {
       return;
     }
 
+    setShareMessage('分享入口已准备好，可复制给访客。');
+    setShareError(null);
+  }
+
+  async function handleCopyPermanentShareLink() {
+    const links = await ensureShareLinks();
+    if (!links) {
+      return;
+    }
+
+    const fallback = links.permanentUrl || links.entryUrl;
+
     try {
-      await navigator.clipboard.writeText(shareLink);
-      setShareMessage('已复制分享链接。');
+      await navigator.clipboard.writeText(fallback);
+      setShareMessage(`已复制：${fallback}`);
       setShareError(null);
-    } catch (error) {
-      setShareError(formatError(error));
+    } catch (nextError) {
+      setShareError(formatError(nextError));
     }
   }
 
   return (
-    <main className="space-y-4 pb-8 sm:space-y-6">
-      {state.loading ? (
+    <main className="space-y-4 pb-28 sm:space-y-6 sm:pb-8">
+      {loading ? (
         <Card className="rounded-3xl border-neutral-200/90 bg-white/90 p-8">
-          <p className="text-sm text-neutral-600">正在加载租户核心指标...</p>
+          <p className="text-sm text-neutral-600">正在加载租户仪表盘...</p>
         </Card>
       ) : null}
 
-      {state.error ? (
+      {error ? (
         <Card className="rounded-3xl border-red-200 bg-red-50 p-6">
-          <p className="text-sm font-semibold text-red-700">{state.error}</p>
+          <p className="text-sm font-semibold text-red-700">{error}</p>
         </Card>
       ) : null}
 
-      {!state.loading && !state.error ? (
+      {!loading && !error && overview ? (
         <>
-          <section className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(340px,1fr)] 2xl:grid-cols-[minmax(0,3.4fr)_minmax(360px,1fr)]">
-            <Card className="tenant-card-lift relative overflow-hidden rounded-3xl border-neutral-200/90 bg-white p-6 transition-all">
-              <div className="pointer-events-none absolute -right-14 -top-16 h-52 w-52 rounded-full bg-[#FFD400]/20 blur-3xl" />
-              <CardHeader className="relative z-10 p-0">
-                <Badge variant="accent" className="w-fit">
-                  BREEDING REPORT
-                </Badge>
-                <CardTitle className="mt-4 text-4xl text-neutral-900 sm:text-5xl">{displayTenantName}</CardTitle>
-                <CardDescription className="text-neutral-600">
-                  工作台已接入真实租户数据，你可以直接从这里进入核心链路。
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="relative z-10 mt-8 p-0">
-                <p className="text-xs uppercase tracking-[0.3em] text-neutral-500">Total Pets</p>
-                <p className="mt-3 text-6xl font-black leading-none text-neutral-900 sm:text-7xl">{data.breedersTotal}</p>
-                <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-3 py-2">
-                    <p className="text-[10px] uppercase tracking-[0.14em] text-neutral-500">产品档案</p>
-                    <p className="mt-1 text-lg font-bold leading-none text-neutral-900">{data.productsTotal}</p>
-                  </div>
-                  <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-3 py-2">
-                    <p className="text-[10px] uppercase tracking-[0.14em] text-neutral-500">系列数量</p>
-                    <p className="mt-1 text-lg font-bold leading-none text-neutral-900">{data.seriesTotal}</p>
-                  </div>
-                  <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-3 py-2">
-                    <p className="text-[10px] uppercase tracking-[0.14em] text-neutral-500">活动推荐</p>
-                    <p className="mt-1 text-lg font-bold leading-none text-neutral-900">{data.featuredTotal}</p>
-                  </div>
-                  <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-3 py-2">
-                    <p className="text-[10px] uppercase tracking-[0.14em] text-neutral-500">封面覆盖</p>
-                    <p className="mt-1 text-lg font-bold leading-none text-neutral-900">{coverRatio}%</p>
-                  </div>
+          <Card className="tenant-card-lift relative overflow-hidden rounded-3xl border-neutral-200/90 bg-white p-6 transition-all sm:p-7">
+            <div className="pointer-events-none absolute -right-14 -top-16 h-52 w-52 rounded-full bg-[#FFD400]/20 blur-3xl" />
+            <CardHeader className="relative z-10 p-0">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="space-y-3">
+                  <Badge variant="accent" className="w-fit">
+                    DASHBOARD V2
+                  </Badge>
+                  <CardTitle className="text-3xl text-neutral-900 sm:text-4xl">{displayTenantName}</CardTitle>
+                  <CardDescription className="text-neutral-600">核心指标统一到一个面板，切换时间窗即可对比趋势。</CardDescription>
                 </div>
-                <div className="mt-8 flex flex-wrap gap-3">
-                  <Button variant="primary" onClick={() => router.push(`/app/${tenantSlug}/products`)}>
-                    宠物管理
-                    <ArrowRight size={16} />
-                  </Button>
-                  <Button variant="secondary" onClick={() => router.push(`/app/${tenantSlug}/share-presentation`)}>
-                    分享展示
-                  </Button>
-                  <Button variant="secondary" onClick={() => router.push(`/app/${tenantSlug}/series`)}>
-                    系列管理
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white p-6 transition-all">
-              <CardHeader className="p-0">
-                <CardTitle className="text-2xl">账户与套餐</CardTitle>
-                <CardDescription>身份、套餐状态与公开分享入口</CardDescription>
-              </CardHeader>
-              <CardContent className="mt-5 space-y-3 p-0 text-sm text-neutral-700">
-                <div className="space-y-1 rounded-2xl bg-neutral-50 p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">User</p>
-                  <p className="font-semibold text-neutral-900">{data.me?.user.name ?? data.me?.user.email ?? '-'}</p>
-                </div>
-                <div className="space-y-1 rounded-2xl bg-neutral-50 p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">Plan</p>
-                  <p className="font-semibold text-neutral-900">
-                    {data.subscription ? `${data.subscription.plan} · ${data.subscription.status}` : '-'}
-                  </p>
-                </div>
-                <div className="space-y-3 rounded-2xl border-2 border-[#FFD400]/60 bg-[#FFF9D6] p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-neutral-600">AI 次数剩余</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="rounded-xl border border-neutral-200 bg-white p-3">
-                      <p className="text-[11px] text-neutral-500">自动记录</p>
-                      <p className="mt-1 text-3xl font-black leading-none text-neutral-900">
-                        {autoRecordQuota ? autoRecordQuota.remaining : '-'}
-                      </p>
-                      <p className="mt-1 text-[11px] text-neutral-500">
-                        / {autoRecordTotal ?? '-'} 次
-                        {autoRecordQuota && autoRecordQuota.topUpBalance > 0 ? `（含充值 ${autoRecordQuota.topUpBalance}）` : ''}
-                      </p>
-                    </div>
-                    <div className="rounded-xl border border-neutral-200 bg-white p-3">
-                      <p className="text-[11px] text-neutral-500">智能问数</p>
-                      <p className="mt-1 text-3xl font-black leading-none text-neutral-900">
-                        {queryOnlyQuota ? queryOnlyQuota.remaining : '-'}
-                      </p>
-                      <p className="mt-1 text-[11px] text-neutral-500">
-                        / {queryOnlyTotal ?? '-'} 次
-                        {queryOnlyQuota && queryOnlyQuota.topUpBalance > 0 ? `（含充值 ${queryOnlyQuota.topUpBalance}）` : ''}
-                      </p>
-                    </div>
-                  </div>
-                  <p className="text-xs font-medium text-neutral-700">达到上限后可单独充值，支持多次叠加。</p>
-                </div>
-                <div className="space-y-2 rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">Public Share</p>
-                  <p className="break-all text-xs text-neutral-700">{shareLink ?? '还未生成分享链接'}</p>
-                  <div className="flex flex-wrap gap-2">
-                    <Button variant="primary" size="sm" disabled={shareLoading} onClick={() => void handleGenerateShareLink()}>
-                      <Link2 size={14} />
-                      {shareLoading ? '生成中...' : '生成分享链接'}
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      disabled={!shareLink || shareLoading}
-                      onClick={() => void handleCopyShareLink()}
+                <div className="hidden shrink-0 items-center gap-2 rounded-2xl border border-neutral-200 bg-neutral-50 p-1 sm:flex">
+                  {WINDOW_OPTIONS.map((item) => (
+                    <button
+                      key={item.key}
+                      type="button"
+                      className={`rounded-xl px-3 py-1.5 text-sm font-medium transition ${
+                        activeWindow === item.key
+                          ? 'bg-neutral-900 text-white shadow-sm'
+                          : 'text-neutral-600 hover:bg-neutral-200/70'
+                      }`}
+                      onClick={() => setActiveWindow(item.key)}
                     >
-                      <Copy size={14} />
-                      复制
-                    </Button>
-                    <Button variant="secondary" size="sm" onClick={() => router.push(`/app/${tenantSlug}/account`)}>
-                      个人设置
-                    </Button>
-                  </div>
-                  {shareMessage ? <p className="text-xs font-medium text-emerald-700">{shareMessage}</p> : null}
-                  {shareError ? <p className="text-xs font-medium text-red-700">{shareError}</p> : null}
+                      {item.label}
+                    </button>
+                  ))}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </CardHeader>
+          </Card>
+
+          <section className="sm:hidden">
+            <div className="flex snap-x gap-3 overflow-x-auto pb-1">
+              {WINDOW_OPTIONS.map((item) => {
+                const itemData = overviewByWindow[item.key];
+                const eggs = itemData?.eggs.totalEggCount ?? 0;
+                const mating = itemData?.matings.eventCount ?? 0;
+                return (
+                  <button
+                    key={`window-mobile-${item.key}`}
+                    type="button"
+                    className={`min-w-[76%] snap-start rounded-2xl border p-4 text-left transition ${
+                      activeWindow === item.key
+                        ? 'border-neutral-900 bg-neutral-900 text-white'
+                        : 'border-neutral-200 bg-white text-neutral-900'
+                    }`}
+                    onClick={() => setActiveWindow(item.key)}
+                  >
+                    <p className="text-xs uppercase tracking-[0.15em] opacity-75">{item.shortLabel}</p>
+                    <p className="mt-2 text-xl font-black leading-none">{item.label}</p>
+                    <p className="mt-2 text-xs opacity-80">产蛋数 {eggs} · 配对事件 {mating}</p>
+                  </button>
+                );
+              })}
+            </div>
           </section>
 
-          <section className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-            <MetricCard label="产品档案" value={data.productsTotal} hint="PRODUCTS" icon={<Boxes size={18} />} />
-            <MetricCard label="系列数量" value={data.seriesTotal} hint={`ACTIVE ${data.activeSeriesTotal}`} icon={<Layers size={18} />} />
-            <MetricCard label="活动推荐" value={data.featuredTotal} hint="FEATURED" icon={<Star size={18} />} />
-            <MetricCard label="封面覆盖" value={`${coverRatio}%`} hint={`SAMPLE ${data.coverSampleTotal}`} icon={<ImageIcon size={18} />} />
+          <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            <KpiCard label="产蛋总数" value={overview.eggs.totalEggCount} hint="Egg Count" icon={<Shell size={16} />} />
+            <KpiCard label="产蛋事件" value={overview.eggs.eventCount} hint="Egg Events" icon={<CalendarDays size={16} />} />
+            <KpiCard label="配对事件" value={overview.matings.eventCount} hint="Mating Events" icon={<Workflow size={16} />} />
+            <KpiCard label="需配对" value={overview.needMating.needMatingCount} hint="Need Mating" icon={<HeartHandshake size={16} />} />
+            <KpiCard label="预警" value={overview.needMating.warningCount} hint="Warning" icon={<AlertTriangle size={16} />} />
+            <KpiCard label="分享 UV" value={overview.share.uv} hint={`PV ${overview.share.pv}`} icon={<Share2 size={16} />} />
+          </section>
+
+          <section className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)]">
+            <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
+              <CardHeader>
+                <CardTitle className="text-2xl">产蛋/配对趋势</CardTitle>
+                <CardDescription>无图表依赖，按窗口展示每日柱状对比。</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <SimpleBarChart chart={overview.chart} />
+              </CardContent>
+            </Card>
+
+            <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
+              <CardHeader>
+                <CardTitle className="text-2xl">待配对看板</CardTitle>
+                <CardDescription>卡片切换关注重点，先处理风险更高项。</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex snap-x gap-3 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 sm:overflow-visible">
+                  {NEED_MATING_CARDS.map((item) => {
+                    const value = item.key === 'need' ? overview.needMating.needMatingCount : overview.needMating.warningCount;
+                    const active = activeNeedMatingCard === item.key;
+                    return (
+                      <button
+                        key={item.key}
+                        type="button"
+                        className={`min-w-[76%] snap-start rounded-2xl border px-4 py-3 text-left transition sm:min-w-0 ${
+                          active ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-200 bg-neutral-50'
+                        }`}
+                        onClick={() => setActiveNeedMatingCard(item.key)}
+                      >
+                        <p className="text-xs uppercase tracking-[0.16em] opacity-75">{item.title}</p>
+                        <p className="mt-1 text-3xl font-black leading-none">{value}</p>
+                        <p className="mt-1 text-xs opacity-80">{item.hint}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3 text-sm text-neutral-600">
+                  当前关注：
+                  <span className="ml-1 font-semibold text-neutral-900">
+                    {activeNeedMatingCard === 'need' ? '待配对' : '预警'} {needMatingValue} 项
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
           </section>
 
           <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
               <CardHeader>
-                <CardTitle className="text-3xl">最新宠物</CardTitle>
-                <CardDescription>按创建时间最新 6 条</CardDescription>
+                <CardTitle className="text-2xl">分享入口</CardTitle>
+                <CardDescription>优先复制稳定短链，不再暴露 exp/sig 参数。</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {data.recentBreeders.length === 0 ? <p className="text-sm text-neutral-500">暂无种龟数据。</p> : null}
-                {data.recentBreeders.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className="flex w-full items-center gap-3 rounded-2xl border border-neutral-200 bg-white p-3 text-left transition-colors hover:bg-neutral-50"
-                    onClick={() => router.push(`/app/${tenantSlug}/products/${item.id}`)}
+              <CardContent className="space-y-3 text-sm text-neutral-700">
+                <div className="space-y-1 rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+                  <p className="text-xs uppercase tracking-[0.15em] text-neutral-500">Permanent Link</p>
+                  <p className="break-all text-xs text-neutral-800">{shareLinks?.permanentUrl ?? '点击「生成分享链接」后可复制稳定短链。'}</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="primary" size="sm" disabled={shareLoading} onClick={() => void handleGenerateShareLink()}>
+                    <Link2 size={14} />
+                    {shareLoading ? '生成中...' : '生成分享链接'}
+                  </Button>
+                  <Button variant="secondary" size="sm" disabled={shareLoading} onClick={() => void handleCopyPermanentShareLink()}>
+                    <Copy size={14} />
+                    复制永久链接
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={!shareLinks?.permanentUrl}
+                    onClick={() => {
+                      if (!shareLinks?.permanentUrl) {
+                        return;
+                      }
+                      window.open(shareLinks.permanentUrl, '_blank', 'noopener,noreferrer');
+                    }}
                   >
-                    <BreederPreviewImage url={item.coverImageUrl} code={item.code} className="h-14 w-14 rounded-xl" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-neutral-900">{item.code}</p>
-                      <p className="truncate text-xs text-neutral-500">{item.name ?? '未命名种龟'}</p>
-                    </div>
-                    <Badge variant={item.inStock ? 'success' : 'default'}>{item.inStock ? '启用' : '停用'}</Badge>
-                  </button>
-                ))}
+                    <ExternalLink size={14} />
+                    打开预览
+                  </Button>
+                </div>
+                {shareMessage ? <p className="text-xs font-medium text-emerald-700">{shareMessage}</p> : null}
+                {shareError ? <p className="text-xs font-medium text-red-700">{shareError}</p> : null}
               </CardContent>
             </Card>
 
             <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
               <CardHeader>
-                <CardTitle className="text-3xl">最近更新图片档案</CardTitle>
-                <CardDescription>进入产品页可上传/调整主图</CardDescription>
+                <CardTitle className="text-2xl">热门点击 TOP</CardTitle>
+                <CardDescription>取分享访问日志中的产品点击统计（窗口内）。</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {data.recentProducts.length === 0 ? <p className="text-sm text-neutral-500">暂无产品数据。</p> : null}
-                {data.recentProducts.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className="flex w-full items-center gap-3 rounded-2xl border border-neutral-200 bg-white p-3 text-left transition-colors hover:bg-neutral-50"
-                    onClick={() => router.push(`/app/${tenantSlug}/products/${item.id}`)}
-                  >
-                    <BreederPreviewImage url={item.coverImageUrl ?? null} code={item.code} className="h-14 w-14 rounded-xl" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-neutral-900">{item.code}</p>
-                      <p className="truncate text-xs text-neutral-500">{item.description ?? '暂无描述'}</p>
+              <CardContent className="space-y-2">
+                {overview.share.productClicksTop.length === 0 ? (
+                  <p className="text-sm text-neutral-500">当前窗口暂无点击数据。</p>
+                ) : null}
+                {overview.share.productClicksTop.map((item, index) => (
+                  <div key={item.productId} className="flex items-center justify-between rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2">
+                    <div>
+                      <p className="text-sm font-semibold text-neutral-900">#{index + 1} · {item.code}</p>
+                      <p className="text-xs text-neutral-500">Product ID: {item.productId}</p>
                     </div>
-                    <Turtle size={18} className="text-neutral-400" />
-                  </button>
+                    <p className="text-lg font-bold text-neutral-900">{item.clicks}</p>
+                  </div>
                 ))}
               </CardContent>
             </Card>
           </section>
         </>
       ) : null}
+
+      <Button
+        type="button"
+        size="icon"
+        className="fixed bottom-6 right-5 z-40 h-12 w-12 rounded-full shadow-[0_10px_24px_rgba(0,0,0,0.22)] lg:hidden"
+        aria-label="打开快捷操作"
+        onClick={() => setIsActionSheetOpen(true)}
+      >
+        <Plus size={18} />
+      </Button>
+
+      {isActionSheetOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-end bg-black/35 p-3"
+          role="dialog"
+          aria-modal="true"
+          aria-label="快捷操作"
+          onClick={() => setIsActionSheetOpen(false)}
+        >
+          <Card className="w-full rounded-3xl border-neutral-200 bg-white" onClick={(event) => event.stopPropagation()}>
+            <CardHeader>
+              <CardTitle className="text-xl">快捷操作</CardTitle>
+              <CardDescription>面向移动端：分享、二维码、快速记录。</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <ActionButton
+                icon={<Link2 size={16} />}
+                label="生成分享链接"
+                onClick={() => {
+                  void handleGenerateShareLink();
+                  setIsActionSheetOpen(false);
+                }}
+              />
+              <ActionButton
+                icon={<Copy size={16} />}
+                label="复制永久分享链接"
+                onClick={() => {
+                  void handleCopyPermanentShareLink();
+                  setIsActionSheetOpen(false);
+                }}
+              />
+              <ActionButton
+                icon={<QrCode size={16} />}
+                label="生成二维码卡片（M1 占位）"
+                onClick={() => {
+                  setIsQrModalOpen(true);
+                  setIsActionSheetOpen(false);
+                }}
+              />
+              <ActionButton
+                icon={<Shell size={16} />}
+                label="记录产蛋（跳转产品页）"
+                onClick={() => {
+                  router.push(`/app/${tenantSlug}/products?intent=egg`);
+                  setIsActionSheetOpen(false);
+                }}
+              />
+              <ActionButton
+                icon={<Workflow size={16} />}
+                label="记录配对（跳转产品页）"
+                onClick={() => {
+                  router.push(`/app/${tenantSlug}/products?intent=mating`);
+                  setIsActionSheetOpen(false);
+                }}
+              />
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
+
+      {isQrModalOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="二维码卡片"
+          onClick={() => setIsQrModalOpen(false)}
+        >
+          <Card className="w-full max-w-sm rounded-2xl border-neutral-200 bg-white shadow-2xl" onClick={(event) => event.stopPropagation()}>
+            <CardHeader>
+              <CardTitle className="text-xl">二维码卡片</CardTitle>
+              <CardDescription>M1 先提供占位与可复制链接，M2 接入本地二维码渲染。</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex h-44 items-center justify-center rounded-2xl border border-dashed border-neutral-300 bg-neutral-50">
+                <div className="text-center text-sm text-neutral-500">
+                  <QrCode size={24} className="mx-auto mb-2" />
+                  QR 卡片占位（M1）
+                </div>
+              </div>
+              <p className="break-all rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs text-neutral-700">
+                {shareLinks?.permanentUrl ?? '先点击「生成分享链接」获得永久链接。'}
+              </p>
+              <div className="flex justify-end gap-2">
+                <Button variant="secondary" onClick={() => setIsQrModalOpen(false)}>
+                  关闭
+                </Button>
+                <Button onClick={() => void handleCopyPermanentShareLink()}>复制链接</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
     </main>
   );
 }
 
-function MetricCard(props: { label: string; value: number | string; hint: string; icon: ReactNode }) {
+function KpiCard(props: { label: string; value: number | string; hint: string; icon: ReactNode }) {
   return (
-    <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white p-4 transition-all sm:p-5">
+    <Card className="tenant-card-lift rounded-2xl border-neutral-200/90 bg-white p-4 transition-all">
       <CardHeader className="p-0">
         <div className="flex items-center justify-between">
-          <p className="text-xs uppercase tracking-[0.22em] text-neutral-500">{props.hint}</p>
-          <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[#FFD400]/15 text-neutral-800">{props.icon}</span>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-neutral-500">{props.hint}</p>
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#FFD400]/15 text-neutral-800">{props.icon}</span>
         </div>
       </CardHeader>
-      <CardContent className="mt-6 p-0">
-        <p className="text-4xl font-bold leading-none text-neutral-900 sm:text-5xl">{props.value}</p>
-        <p className="mt-2 text-sm text-neutral-600">{props.label}</p>
+      <CardContent className="mt-4 p-0">
+        <p className="text-3xl font-black leading-none text-neutral-900">{props.value}</p>
+        <p className="mt-1 text-xs text-neutral-600">{props.label}</p>
       </CardContent>
     </Card>
   );
 }
 
-function BreederPreviewImage(props: { url: string | null | undefined; code: string; className?: string }) {
-  if (!props.url) {
-    return (
-      <div className={`flex items-center justify-center bg-neutral-100 text-xs text-neutral-500 ${props.className ?? ''}`}>
-        无图
-      </div>
-    );
-  }
+function SimpleBarChart(props: { chart: DashboardOverviewResponse['chart'] }) {
+  const maxValue = Math.max(
+    1,
+    ...props.chart.flatMap((item) => [item.eggCount, item.matingCount])
+  );
 
-  return <img src={resolveImageUrl(props.url)} alt={`${props.code} 封面`} className={`object-cover ${props.className ?? ''}`} />;
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-4 text-xs text-neutral-500">
+        <span className="inline-flex items-center gap-1">
+          <span className="h-2.5 w-2.5 rounded-sm bg-[#FFD400]" /> 产蛋数
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="h-2.5 w-2.5 rounded-sm bg-neutral-900" /> 配对事件
+        </span>
+      </div>
+
+      <div className="flex min-h-[200px] items-end gap-2 overflow-x-auto rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+        {props.chart.map((item) => {
+          const eggHeight = `${Math.max((item.eggCount / maxValue) * 100, item.eggCount > 0 ? 6 : 0)}%`;
+          const matingHeight = `${Math.max((item.matingCount / maxValue) * 100, item.matingCount > 0 ? 6 : 0)}%`;
+          const label = formatChartDate(item.date, props.chart.length === 1);
+
+          return (
+            <div key={item.date} className="min-w-[56px] flex-1">
+              <div className="flex h-36 items-end justify-center gap-1.5">
+                <div
+                  className="w-4 rounded-md bg-[#FFD400]"
+                  style={{ height: eggHeight }}
+                  title={`产蛋数 ${item.eggCount}`}
+                />
+                <div
+                  className="w-4 rounded-md bg-neutral-900"
+                  style={{ height: matingHeight }}
+                  title={`配对事件 ${item.matingCount}`}
+                />
+              </div>
+              <p className="mt-2 text-center text-[11px] text-neutral-500">{label}</p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
-function resolveImageUrl(value: string) {
-  return resolveAuthenticatedAssetUrl(value);
+function ActionButton(props: { icon: ReactNode; label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      className="flex w-full items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-left text-sm text-neutral-800 transition hover:bg-neutral-100"
+      onClick={props.onClick}
+    >
+      <span className="text-neutral-500">{props.icon}</span>
+      <span>{props.label}</span>
+    </button>
+  );
+}
+
+function formatChartDate(value: string, isSingle: boolean) {
+  if (isSingle) {
+    return '今日';
+  }
+
+  const segments = value.split('-');
+  if (segments.length !== 3) {
+    return value;
+  }
+
+  return `${segments[1]}-${segments[2]}`;
+}
+
+function buildPermanentShareLink(shareToken: string) {
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return `${window.location.origin}/public/s/${shareToken}`;
+  }
+
+  return `/public/s/${shareToken}`;
 }
 
 function formatError(error: unknown) {

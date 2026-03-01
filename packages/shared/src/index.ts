@@ -240,6 +240,20 @@ export type {
   ShareResourceType
 } from './share';
 export {
+  dashboardOverviewChartItemSchema,
+  dashboardOverviewProductClicksTopItemSchema,
+  dashboardOverviewQuerySchema,
+  dashboardOverviewResponseSchema,
+  dashboardOverviewWindowSchema
+} from './dashboard';
+export type {
+  DashboardOverviewChartItem,
+  DashboardOverviewProductClicksTopItem,
+  DashboardOverviewQuery,
+  DashboardOverviewResponse,
+  DashboardOverviewWindow
+} from './dashboard';
+export {
   createTenantSubscriptionActivationCodeRequestSchema,
   createTenantSubscriptionActivationCodeResponseSchema,
   getAdminTenantSubscriptionResponseSchema,
