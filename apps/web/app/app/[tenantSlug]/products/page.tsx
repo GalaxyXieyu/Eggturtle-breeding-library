@@ -23,16 +23,42 @@ type ListMeta = {
 
 type CoverFilter = 'all' | 'with-cover' | 'without-cover';
 
+type ProductSortBy = 'updatedAt' | 'code';
+type ProductSortDir = 'asc' | 'desc';
+type SortSelection = `${ProductSortBy}-${ProductSortDir}`;
+
+type ProductsListQuery = {
+  page: number;
+  pageSize: number;
+  search: string;
+  sex: string;
+  seriesId: string;
+  sortBy: ProductSortBy;
+  sortDir: ProductSortDir;
+};
+
 type ProductDraft = {
   code: string;
   name: string;
   description: string;
 };
 
+const PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
+
 const DEFAULT_DRAFT: ProductDraft = {
   code: '',
   name: '',
   description: ''
+};
+
+const DEFAULT_LIST_QUERY: ProductsListQuery = {
+  page: 1,
+  pageSize: 20,
+  search: '',
+  sex: '',
+  seriesId: '',
+  sortBy: 'updatedAt',
+  sortDir: 'desc'
 };
 
 const DEMO_PRODUCTS: Product[] = [
@@ -81,14 +107,20 @@ export default function TenantProductsPage() {
   const tenantSlug = useMemo(() => params.tenantSlug ?? '', [params.tenantSlug]);
   const isDemoMode = searchParams.get('demo') === '1';
 
+  const filterQueryKey = searchParams.toString();
+  const listQuery = useMemo(() => parseListQuery(filterQueryKey), [filterQueryKey]);
+
   const [items, setItems] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tenantReady, setTenantReady] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [sharingProductId, setSharingProductId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [searchInput, setSearchInput] = useState('');
-  const [appliedSearch, setAppliedSearch] = useState('');
+  const [searchInput, setSearchInput] = useState(listQuery.search);
+  const [sexFilter, setSexFilter] = useState(listQuery.sex);
+  const [seriesFilter, setSeriesFilter] = useState(listQuery.seriesId);
+  const [sortFilter, setSortFilter] = useState<SortSelection>(toSortSelection(listQuery.sortBy, listQuery.sortDir));
   const [coverFilter, setCoverFilter] = useState<CoverFilter>('all');
   const [draft, setDraft] = useState<ProductDraft>(DEFAULT_DRAFT);
   const [shareLinks, setShareLinks] = useState<Record<string, string>>({});
@@ -98,6 +130,13 @@ export default function TenantProductsPage() {
     total: 0,
     totalPages: 1
   });
+
+  useEffect(() => {
+    setSearchInput(listQuery.search);
+    setSexFilter(listQuery.sex);
+    setSeriesFilter(listQuery.seriesId);
+    setSortFilter(toSortSelection(listQuery.sortBy, listQuery.sortDir));
+  }, [listQuery]);
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
@@ -113,42 +152,112 @@ export default function TenantProductsPage() {
     });
   }, [coverFilter, items]);
 
+  const replaceListQuery = useCallback(
+    (nextQuery: ProductsListQuery) => {
+      const nextParams = new URLSearchParams();
+
+      if (isDemoMode) {
+        nextParams.set('demo', '1');
+      }
+
+      if (nextQuery.page !== DEFAULT_LIST_QUERY.page) {
+        nextParams.set('page', String(nextQuery.page));
+      }
+
+      if (nextQuery.pageSize !== DEFAULT_LIST_QUERY.pageSize) {
+        nextParams.set('pageSize', String(nextQuery.pageSize));
+      }
+
+      if (nextQuery.search) {
+        nextParams.set('search', nextQuery.search);
+      }
+
+      if (nextQuery.sex) {
+        nextParams.set('sex', nextQuery.sex);
+      }
+
+      if (nextQuery.seriesId) {
+        nextParams.set('seriesId', nextQuery.seriesId);
+      }
+
+      if (nextQuery.sortBy !== DEFAULT_LIST_QUERY.sortBy || nextQuery.sortDir !== DEFAULT_LIST_QUERY.sortDir) {
+        nextParams.set('sortBy', nextQuery.sortBy);
+        nextParams.set('sortDir', nextQuery.sortDir);
+      }
+
+      const queryString = nextParams.toString();
+      router.replace(queryString ? `/app/${tenantSlug}/products?${queryString}` : `/app/${tenantSlug}/products`);
+    },
+    [isDemoMode, router, tenantSlug]
+  );
+
   const loadProducts = useCallback(
-    async (search: string) => {
+    async (query: ProductsListQuery) => {
       setLoading(true);
 
       if (isDemoMode) {
-        const keyword = search.trim().toLowerCase();
-        const demoItems = keyword
-          ? DEMO_PRODUCTS.filter((item) => {
-              const haystack = [item.code, item.name ?? '', item.description ?? '', item.seriesId ?? '', item.sex ?? '']
-                .join(' ')
-                .toLowerCase();
-              return haystack.includes(keyword);
-            })
-          : DEMO_PRODUCTS;
+        const keyword = query.search.toLowerCase();
 
-        setItems(demoItems);
+        let demoItems = DEMO_PRODUCTS.filter((item) => {
+          if (!keyword) {
+            return true;
+          }
+
+          const haystack = [item.code, item.name ?? '', item.description ?? '', item.seriesId ?? '', item.sex ?? '']
+            .join(' ')
+            .toLowerCase();
+          return haystack.includes(keyword);
+        });
+
+        if (query.sex) {
+          demoItems = demoItems.filter((item) => normalizeText(item.sex) === normalizeText(query.sex));
+        }
+
+        if (query.seriesId) {
+          demoItems = demoItems.filter((item) => normalizeText(item.seriesId) === normalizeText(query.seriesId));
+        }
+
+        demoItems = [...demoItems].sort((left, right) => compareProducts(left, right, query.sortBy, query.sortDir));
+
+        const total = demoItems.length;
+        const totalPages = Math.max(1, Math.ceil(total / query.pageSize));
+        const page = Math.min(query.page, totalPages);
+        const skip = (page - 1) * query.pageSize;
+
+        setItems(demoItems.slice(skip, skip + query.pageSize));
         setMeta({
-          page: 1,
-          pageSize: demoItems.length,
-          total: demoItems.length,
-          totalPages: 1
+          page,
+          pageSize: query.pageSize,
+          total,
+          totalPages
         });
         setError(null);
         setLoading(false);
         return;
       }
 
-      const query = new URLSearchParams();
-      query.set('page', '1');
-      query.set('pageSize', '100');
+      const requestQuery = new URLSearchParams();
+      requestQuery.set('page', String(query.page));
+      requestQuery.set('pageSize', String(query.pageSize));
 
-      if (search.trim()) {
-        query.set('search', search.trim());
+      if (query.search) {
+        requestQuery.set('search', query.search);
       }
 
-      const response = await apiRequest(`/products?${query.toString()}`, {
+      if (query.sex) {
+        requestQuery.set('sex', query.sex);
+      }
+
+      if (query.seriesId) {
+        requestQuery.set('seriesId', query.seriesId);
+      }
+
+      if (query.sortBy !== DEFAULT_LIST_QUERY.sortBy || query.sortDir !== DEFAULT_LIST_QUERY.sortDir) {
+        requestQuery.set('sortBy', query.sortBy);
+        requestQuery.set('sortDir', query.sortDir);
+      }
+
+      const response = await apiRequest(`/products?${requestQuery.toString()}`, {
         responseSchema: listProductsResponseSchema
       });
 
@@ -168,57 +277,124 @@ export default function TenantProductsPage() {
   useEffect(() => {
     if (!tenantSlug) {
       setLoading(false);
+      setTenantReady(false);
       setError('缺少 tenantSlug。');
       return;
     }
 
     if (isDemoMode) {
-      void loadProducts('');
+      setTenantReady(true);
       return;
     }
 
     if (!getAccessToken()) {
+      setTenantReady(false);
       router.replace('/login');
       return;
     }
 
+    let isCancelled = false;
+
+    setLoading(true);
+    setTenantReady(false);
+    setError(null);
+
     void (async () => {
       try {
         await switchTenantBySlug(tenantSlug);
-        await loadProducts('');
+
+        if (!isCancelled) {
+          setTenantReady(true);
+        }
       } catch (requestError) {
-        setError(formatError(requestError));
-        setLoading(false);
+        if (!isCancelled) {
+          setError(formatError(requestError));
+          setLoading(false);
+        }
       }
     })();
-  }, [isDemoMode, loadProducts, router, tenantSlug]);
 
-  async function handleSearch(event: FormEvent<HTMLFormElement>) {
+    return () => {
+      isCancelled = true;
+    };
+  }, [isDemoMode, router, tenantSlug]);
+
+  useEffect(() => {
+    if (!tenantReady) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    void (async () => {
+      try {
+        await loadProducts(listQuery);
+      } catch (requestError) {
+        if (!isCancelled) {
+          setError(formatError(requestError));
+          setLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [listQuery, loadProducts, tenantReady]);
+
+  function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
     setMessage(null);
-    setAppliedSearch(searchInput.trim());
 
-    try {
-      await loadProducts(searchInput.trim());
-    } catch (requestError) {
-      setError(formatError(requestError));
-      setLoading(false);
-    }
+    const [sortBy, sortDir] = parseSortSelection(sortFilter);
+
+    replaceListQuery({
+      ...listQuery,
+      page: 1,
+      search: searchInput.trim(),
+      sex: sexFilter.trim(),
+      seriesId: seriesFilter.trim(),
+      sortBy,
+      sortDir
+    });
   }
 
-  async function handleResetSearch() {
+  function handleResetSearch() {
     setSearchInput('');
-    setAppliedSearch('');
+    setSexFilter('');
+    setSeriesFilter('');
+    setSortFilter(toSortSelection(DEFAULT_LIST_QUERY.sortBy, DEFAULT_LIST_QUERY.sortDir));
     setError(null);
     setMessage(null);
 
-    try {
-      await loadProducts('');
-    } catch (requestError) {
-      setError(formatError(requestError));
-      setLoading(false);
+    replaceListQuery({
+      ...DEFAULT_LIST_QUERY,
+      pageSize: listQuery.pageSize
+    });
+  }
+
+  function goToPage(nextPage: number) {
+    if (nextPage < 1 || nextPage > meta.totalPages || nextPage === meta.page) {
+      return;
     }
+
+    replaceListQuery({
+      ...listQuery,
+      page: nextPage
+    });
+  }
+
+  function changePageSize(nextPageSize: number) {
+    if (nextPageSize === listQuery.pageSize) {
+      return;
+    }
+
+    replaceListQuery({
+      ...listQuery,
+      page: 1,
+      pageSize: nextPageSize
+    });
   }
 
   async function handleCreateProduct(event: FormEvent<HTMLFormElement>) {
@@ -249,12 +425,15 @@ export default function TenantProductsPage() {
           updatedAt: now
         };
 
-        setItems((currentItems) => [demoProduct, ...currentItems]);
-        setMeta((currentMeta) => ({
-          ...currentMeta,
-          total: currentMeta.total + 1,
-          pageSize: Math.max(currentMeta.pageSize, currentMeta.total + 1)
-        }));
+        setItems((currentItems) => [demoProduct, ...currentItems].slice(0, meta.pageSize));
+        setMeta((currentMeta) => {
+          const total = currentMeta.total + 1;
+          return {
+            ...currentMeta,
+            total,
+            totalPages: Math.max(1, Math.ceil(total / currentMeta.pageSize))
+          };
+        });
         setDraft(DEFAULT_DRAFT);
         setMessage(`Demo 模式：已创建产品 ${demoProduct.code}`);
         setSubmitting(false);
@@ -270,7 +449,7 @@ export default function TenantProductsPage() {
 
       setDraft(DEFAULT_DRAFT);
       setMessage(`产品 ${response.product.code} 创建成功。`);
-      await loadProducts(appliedSearch);
+      await loadProducts(listQuery);
     } catch (requestError) {
       setError(formatError(requestError));
     } finally {
@@ -390,35 +569,84 @@ export default function TenantProductsPage() {
 
       <section className="card panel stack">
         <h2>搜索与筛选</h2>
-        <form className="products-filters" onSubmit={handleSearch}>
-          <input
-            type="text"
-            placeholder="按 code / name / 描述搜索"
-            value={searchInput}
-            onChange={(event) => setSearchInput(event.target.value)}
-          />
-          <select
-            value={coverFilter}
-            onChange={(event) => setCoverFilter(event.target.value as CoverFilter)}
-            aria-label="封面筛选"
-          >
-            <option value="all">全部封面状态</option>
-            <option value="with-cover">仅有封面</option>
-            <option value="without-cover">仅无封面</option>
-          </select>
-          <button type="submit" disabled={loading}>
-            {loading ? '加载中...' : '应用'}
-          </button>
-          <button
-            type="button"
-            className="secondary"
-            onClick={() => {
-              void handleResetSearch();
-            }}
-            disabled={loading && searchInput.length === 0}
-          >
-            重置
-          </button>
+        <form className="stack" onSubmit={handleSearch}>
+          <div className="form-grid form-grid-3">
+            <div className="stack">
+              <label htmlFor="products-search">关键词</label>
+              <input
+                id="products-search"
+                type="text"
+                placeholder="按 code / name / 描述搜索"
+                value={searchInput}
+                onChange={(event) => setSearchInput(event.target.value)}
+              />
+            </div>
+
+            <div className="stack">
+              <label htmlFor="products-sex-filter">性别</label>
+              <select
+                id="products-sex-filter"
+                value={sexFilter}
+                onChange={(event) => setSexFilter(event.target.value)}
+                aria-label="性别筛选"
+              >
+                <option value="">全部性别</option>
+                <option value="male">公</option>
+                <option value="female">母</option>
+                <option value="unknown">未知</option>
+              </select>
+            </div>
+
+            <div className="stack">
+              <label htmlFor="products-series-filter">系列</label>
+              <input
+                id="products-series-filter"
+                type="text"
+                placeholder="输入系列 ID"
+                value={seriesFilter}
+                onChange={(event) => setSeriesFilter(event.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="form-grid form-grid-3">
+            <div className="stack">
+              <label htmlFor="products-sort">排序</label>
+              <select
+                id="products-sort"
+                value={sortFilter}
+                onChange={(event) => setSortFilter(event.target.value as SortSelection)}
+              >
+                <option value="updatedAt-desc">更新时间（新到旧）</option>
+                <option value="updatedAt-asc">更新时间（旧到新）</option>
+                <option value="code-asc">编码（A-Z）</option>
+                <option value="code-desc">编码（Z-A）</option>
+              </select>
+            </div>
+
+            <div className="stack">
+              <label htmlFor="products-cover-filter">封面筛选（当前页）</label>
+              <select
+                id="products-cover-filter"
+                value={coverFilter}
+                onChange={(event) => setCoverFilter(event.target.value as CoverFilter)}
+                aria-label="封面筛选"
+              >
+                <option value="all">全部封面状态</option>
+                <option value="with-cover">仅有封面</option>
+                <option value="without-cover">仅无封面</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="row">
+            <button type="submit" disabled={loading}>
+              {loading ? '加载中...' : '应用'}
+            </button>
+            <button type="button" className="secondary" onClick={handleResetSearch} disabled={loading}>
+              重置
+            </button>
+          </div>
         </form>
       </section>
 
@@ -428,9 +656,52 @@ export default function TenantProductsPage() {
           {!loading ? (
             <p className="muted">
               共 {meta.total} 条，当前第 {meta.page}/{meta.totalPages} 页，筛选后 {filteredItems.length} 条
-              {appliedSearch ? `（关键词：${appliedSearch}）` : ''}
+              {listQuery.search ? `（关键词：${listQuery.search}）` : ''}
             </p>
           ) : null}
+        </div>
+
+        <div className="row between">
+          <div className="row">
+            <button
+              type="button"
+              className="secondary"
+              disabled={loading || meta.page <= 1}
+              onClick={() => {
+                goToPage(meta.page - 1);
+              }}
+            >
+              上一页
+            </button>
+            <button
+              type="button"
+              className="secondary"
+              disabled={loading || meta.page >= meta.totalPages}
+              onClick={() => {
+                goToPage(meta.page + 1);
+              }}
+            >
+              下一页
+            </button>
+          </div>
+
+          <div className="row">
+            <label htmlFor="products-page-size">每页</label>
+            <select
+              id="products-page-size"
+              value={String(listQuery.pageSize)}
+              disabled={loading}
+              onChange={(event) => {
+                changePageSize(Number(event.target.value));
+              }}
+            >
+              {PAGE_SIZE_OPTIONS.map((option) => (
+                <option key={option} value={String(option)}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {loading ? <p className="notice notice-info">正在加载产品列表...</p> : null}
@@ -496,9 +767,7 @@ export default function TenantProductsPage() {
                             打开分享
                           </button>
                         </div>
-                        {shareLinks[item.id] ? (
-                          <p className="mono products-share-url">{shareLinks[item.id]}</p>
-                        ) : null}
+                        {shareLinks[item.id] ? <p className="mono products-share-url">{shareLinks[item.id]}</p> : null}
                       </td>
                     </tr>
                   ))}
@@ -563,6 +832,67 @@ export default function TenantProductsPage() {
       {error ? <p className="notice notice-error">{error}</p> : null}
     </main>
   );
+}
+
+function parseListQuery(queryString: string): ProductsListQuery {
+  const query = new URLSearchParams(queryString);
+  const page = parsePositiveInt(query.get('page'), DEFAULT_LIST_QUERY.page);
+  const pageSize = parsePageSize(query.get('pageSize'));
+
+  const sortBy = query.get('sortBy') === 'code' ? 'code' : 'updatedAt';
+  const sortDir = query.get('sortDir') === 'asc' ? 'asc' : 'desc';
+
+  return {
+    page,
+    pageSize,
+    search: (query.get('search') ?? '').trim(),
+    sex: (query.get('sex') ?? '').trim(),
+    seriesId: (query.get('seriesId') ?? '').trim(),
+    sortBy,
+    sortDir
+  };
+}
+
+function parsePositiveInt(value: string | null, fallback: number): number {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    return fallback;
+  }
+
+  return parsed;
+}
+
+function parsePageSize(value: string | null): number {
+  const parsed = Number(value);
+  if (PAGE_SIZE_OPTIONS.some((option) => option === parsed)) {
+    return parsed;
+  }
+
+  return DEFAULT_LIST_QUERY.pageSize;
+}
+
+function toSortSelection(sortBy: ProductSortBy, sortDir: ProductSortDir): SortSelection {
+  return `${sortBy}-${sortDir}`;
+}
+
+function parseSortSelection(value: SortSelection): [ProductSortBy, ProductSortDir] {
+  return value.split('-') as [ProductSortBy, ProductSortDir];
+}
+
+function compareProducts(left: Product, right: Product, sortBy: ProductSortBy, sortDir: ProductSortDir): number {
+  const factor = sortDir === 'asc' ? 1 : -1;
+
+  if (sortBy === 'code') {
+    return left.code.localeCompare(right.code, 'zh-CN') * factor;
+  }
+
+  const leftValue = Date.parse(left.updatedAt ?? '');
+  const rightValue = Date.parse(right.updatedAt ?? '');
+  return (leftValue - rightValue) * factor;
+}
+
+function normalizeText(value: string | null | undefined) {
+  return (value ?? '').trim().toLowerCase();
 }
 
 function renderCover(item: Product) {

@@ -33,7 +33,11 @@ export const createProductResponseSchema = z.object({
 export const listProductsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
-  search: z.string().trim().min(1).max(120).optional()
+  search: z.string().trim().min(1).max(120).optional(),
+  sex: z.string().trim().min(1).max(20).optional(),
+  seriesId: z.string().trim().min(1).max(120).optional(),
+  sortBy: z.enum(['updatedAt', 'code']).optional(),
+  sortDir: z.enum(['asc', 'desc']).optional()
 });
 
 export const listProductsResponseSchema = z.object({
