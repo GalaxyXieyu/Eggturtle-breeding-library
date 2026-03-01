@@ -3,7 +3,8 @@ import { NextResponse } from 'next/server';
 import { ErrorCode, healthResponseSchema } from '@eggturtle/shared';
 
 export async function GET() {
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:30011';
+  const apiBaseUrl =
+    process.env.INTERNAL_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:30011';
 
   try {
     const response = await fetch(`${apiBaseUrl}/health`, {

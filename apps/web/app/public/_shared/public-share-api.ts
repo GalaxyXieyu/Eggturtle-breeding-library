@@ -35,7 +35,8 @@ type PublicShareFetchResult =
       message: string;
     };
 
-const DEFAULT_API_BASE_URL = 'http://localhost:30011';
+// Server-side fetch needs an absolute URL. Prefer INTERNAL_API_BASE_URL for deployments.
+const DEFAULT_API_BASE_URL = 'http://127.0.0.1:30011';
 
 export async function fetchPublicShareFromSearchParams(
   searchParams: PublicSearchParams,
@@ -121,7 +122,8 @@ async function fetchPublicShare(
     productId?: string;
   }
 ): Promise<PublicShareFetchResult> {
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE_URL;
+  const apiBaseUrl =
+    process.env.INTERNAL_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE_URL;
   const requestUrl = new URL(`/shares/${shareId}/public`, apiBaseUrl);
   requestUrl.searchParams.set('tenantId', query.tenantId);
   requestUrl.searchParams.set('resourceType', query.resourceType);

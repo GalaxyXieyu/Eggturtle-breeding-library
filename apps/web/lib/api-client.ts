@@ -1,5 +1,9 @@
 const TOKEN_STORAGE_KEY = 'eggturtle.accessToken';
-const DEFAULT_API_BASE_URL = 'http://localhost:30011';
+
+// Default to same-origin (relative paths) so production doesn't accidentally call
+// the *device* localhost when NEXT_PUBLIC_API_BASE_URL is missing.
+const DEFAULT_API_BASE_URL = '';
+
 const LOGIN_PATH = '/login';
 const PRODUCT_IMAGE_CONTENT_PATH_PATTERN = /^\/products\/[^/]+\/images\/[^/]+\/content$/;
 
@@ -59,22 +63,34 @@ export function resolveAuthenticatedAssetUrl(rawValue: string) {
     return value;
   }
 
+  const apiBaseUrl = getApiBaseUrl();
   const candidate = /^https?:\/\//i.test(value)
     ? value
     : value.startsWith('/products/')
-      ? `${getApiBaseUrl()}${value}`
+      ? `${apiBaseUrl}${value}`
       : value;
+
+  const isHttpCandidate = /^https?:\/\//i.test(candidate);
 
   let parsed: URL;
   try {
-    parsed = new URL(candidate);
+    if (isHttpCandidate) {
+      parsed = new URL(candidate);
+    } else if (typeof window !== 'undefined') {
+      parsed = new URL(candidate, window.location.origin);
+    } else {
+      return candidate;
+    }
   } catch {
     return candidate;
   }
 
-  const apiOrigin = new URL(getApiBaseUrl()).origin;
-  if (parsed.origin !== apiOrigin) {
-    return candidate;
+  // If the API base is absolute, enforce same-origin before attaching accessToken.
+  if (/^https?:\/\//i.test(apiBaseUrl)) {
+    const apiOrigin = new URL(apiBaseUrl).origin;
+    if (parsed.origin !== apiOrigin) {
+      return candidate;
+    }
   }
 
   if (!PRODUCT_IMAGE_CONTENT_PATH_PATTERN.test(parsed.pathname)) {
@@ -88,6 +104,11 @@ export function resolveAuthenticatedAssetUrl(rawValue: string) {
 
   if (!parsed.searchParams.has('accessToken')) {
     parsed.searchParams.set('accessToken', token);
+  }
+
+  // Preserve relative URLs when the input was relative.
+  if (!isHttpCandidate) {
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
   }
 
   return parsed.toString();
