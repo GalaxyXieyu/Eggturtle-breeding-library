@@ -106,7 +106,7 @@ jobs:
           WORKLOAD_NAME="${K8S_WORKLOAD_NAME}"
           NAMESPACE="${K8S_NAMESPACE}"
           CONTAINER_NAME="${K8S_CONTAINER_NAME}"
-          IMAGE_REF="${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest"
+          IMAGE_REF="${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${GITHUB_SHA}"
 
           echo "Deploy context: $(kubectl config current-context)"
           echo "Deploy namespace: ${NAMESPACE}"
