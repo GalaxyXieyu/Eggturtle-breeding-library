@@ -142,13 +142,16 @@
   min-height: 26px;
   padding: 0 12px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 212, 0, 0.42);
-  background: rgba(255, 212, 0, 0.14);
-  color: rgba(255, 242, 204, 0.96);
+  border: 1px solid rgba(255, 212, 0, 0.76);
+  background: linear-gradient(132deg, rgba(255, 221, 92, 0.94) 0%, rgba(243, 183, 18, 0.9) 100%);
+  color: #3b2400;
   font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-weight: 800;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
+  box-shadow:
+    0 10px 22px -14px rgba(255, 212, 0, 0.92),
+    0 0 0 1px rgba(255, 244, 200, 0.42) inset;
 }
 
 .heroCopy h1 {
@@ -204,9 +207,9 @@
 }
 
 .secondaryAction {
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 250, 235, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  background: rgba(7, 12, 20, 0.54);
+  color: #fff8e6;
 }
 
 .secondaryAction:hover {
@@ -237,8 +240,9 @@
 }
 
 .heroMeta span {
-  color: rgba(230, 235, 245, 0.8);
+  color: rgba(241, 245, 253, 0.92);
   font-size: 11px;
+  font-weight: 600;
 }
 
 .heroVisual {
@@ -504,6 +508,12 @@
     0 0 0 1px rgba(255, 255, 255, 0.35) inset;
 }
 
+:global(:root[data-theme='light']) .kicker {
+  border: 1px solid rgba(120, 53, 15, 0.34);
+  background: linear-gradient(132deg, rgba(255, 228, 129, 0.96) 0%, rgba(244, 191, 40, 0.94) 100%);
+  color: #512c03;
+}
+
 :global(:root[data-theme='light']) .subtitle,
 :global(:root[data-theme='light']) .featureCard p,
 :global(:root[data-theme='light']) .statCard p,
@@ -526,7 +536,18 @@
 
 :global(:root[data-theme='light']) .heroMeta span,
 :global(:root[data-theme='light']) .floatingCard p {
-  color: rgba(30, 41, 59, 0.84);
+  color: rgba(30, 41, 59, 0.92);
+}
+
+:global(:root[data-theme='light']) .secondaryAction {
+  border: 1px solid rgba(15, 23, 42, 0.28);
+  background: rgba(255, 255, 255, 0.88);
+  color: #0f172a;
+}
+
+:global(:root[data-theme='light']) .secondaryAction:hover {
+  border-color: rgba(120, 53, 15, 0.48);
+  background: rgba(255, 228, 129, 0.42);
 }
 
 :global(:root[data-theme='light']) .footer {
