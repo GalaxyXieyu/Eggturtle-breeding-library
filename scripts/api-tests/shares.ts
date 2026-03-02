@@ -156,6 +156,41 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
   if (firstImageUrl.startsWith('s3://')) {
     throw new ApiTestError('public share image URL should be browser-accessible, got s3:// URL');
   }
+
+  // Regression guard: public assets endpoint supports maxEdge resize and serves webp.
+  let parsedImageUrl: URL;
+  try {
+    parsedImageUrl = new URL(firstImageUrl);
+  } catch {
+    throw new ApiTestError(`public share image URL is not a valid absolute URL: ${firstImageUrl}`);
+  }
+
+  if (parsedImageUrl.pathname !== `/shares/${signed.sid}/public/assets`) {
+    throw new ApiTestError(
+      `public share image URL path mismatch: expected /shares/${signed.sid}/public/assets, got ${parsedImageUrl.pathname}`,
+    );
+  }
+
+  const assetQuery: Record<string, string | number> = {};
+  parsedImageUrl.searchParams.forEach((value, key) => {
+    assetQuery[key] = value;
+  });
+  assetQuery.maxEdge = 480;
+
+  const assetResponse = await ctx.request({
+    method: 'GET',
+    path: parsedImageUrl.pathname,
+    query: assetQuery,
+    redirect: 'manual',
+  });
+  if (assetResponse.status !== 200) {
+    throw new ApiTestError(`public share asset expected 200, got ${assetResponse.status}`);
+  }
+  const assetContentType = assetResponse.headers.get('content-type') ?? '';
+  if (!assetContentType.includes('image/webp')) {
+    throw new ApiTestError(`public share asset expected image/webp, got ${assetContentType}`);
+  }
+
   checks += 1;
 
   const tamperedPublicResponse = await ctx.request({
