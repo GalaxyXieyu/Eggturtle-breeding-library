@@ -1,14 +1,29 @@
-import Link from 'next/link';
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-const defaultAdminOrigin = 'http://localhost:30020';
+const LOCAL_ADMIN_ORIGIN = 'http://localhost:30020';
+
+export const dynamic = 'force-dynamic';
+
+function normalizeOrigin(rawValue: string | undefined) {
+  return (rawValue ?? '').trim().replace(/\/+$/, '');
+}
+
+function isLoopbackOrigin(origin: string) {
+  return /^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/i.test(origin);
+}
 
 export default function DeprecatedWebAdminEntry() {
-  const adminOrigin = (process.env.NEXT_PUBLIC_ADMIN_APP_ORIGIN ?? defaultAdminOrigin).replace(/\/+$/, '');
+  const configuredAdminOrigin = normalizeOrigin(process.env.NEXT_PUBLIC_ADMIN_APP_ORIGIN);
 
-  if (adminOrigin) {
-    redirect(`${adminOrigin}/dashboard`);
+  if (configuredAdminOrigin) {
+    const blockLoopbackRedirect = process.env.NODE_ENV === 'production' && isLoopbackOrigin(configuredAdminOrigin);
+    if (!blockLoopbackRedirect) {
+      redirect(`${configuredAdminOrigin}/dashboard`);
+    }
   }
+
+  const requestHost = headers().get('host') ?? '当前域名';
 
   return (
     <main className="workspace-shell">
@@ -16,10 +31,14 @@ export default function DeprecatedWebAdminEntry() {
         <p className="super-admin-banner">已迁移</p>
         <h1>后台入口已迁移到 apps/admin</h1>
         <p className="muted">
-          请启动 <code>apps/admin</code>（端口 <code>30020</code>），并访问：
+          当前未配置可用的 <code>NEXT_PUBLIC_ADMIN_APP_ORIGIN</code>，或配置为本地地址（
+          <code>{LOCAL_ADMIN_ORIGIN}</code>），生产环境已阻止跳转。
         </p>
         <p>
-          <Link href={`${defaultAdminOrigin}/dashboard`}>{defaultAdminOrigin}/dashboard</Link>
+          请将 <code>NEXT_PUBLIC_ADMIN_APP_ORIGIN</code> 设置为可公网访问的后台地址，然后重新部署。
+        </p>
+        <p className="muted">
+          当前访问域名：<code>{requestHost}</code>
         </p>
       </section>
     </main>
