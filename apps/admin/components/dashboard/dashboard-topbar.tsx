@@ -127,8 +127,10 @@ function toTitleCase(segment: string, locale: UiLocale) {
     billing: { zh: '计费', en: 'Billing' }
   };
 
-  return segment
+  const words = segment
     .split('-')
-    .map((word) => labelMap[word]?.[locale] ?? word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
+    .map((word) => labelMap[word]?.[locale] ?? word.charAt(0).toUpperCase() + word.slice(1));
+
+  // Chinese labels should not be joined with spaces (e.g. "审计" + "日志" -> "审计日志").
+  return words.join(locale === 'zh' ? '' : ' ');
 }

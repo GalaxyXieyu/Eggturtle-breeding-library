@@ -6,7 +6,7 @@ export default function DashboardAnalyticsActivityPage() {
       title={{ zh: '活跃度分析', en: 'Activity Analytics' }}
       description={{
         zh: '用于展示租户、成员与关键操作的活跃趋势。',
-        en: 'For tenant, membership and key-operation activity trends.'
+        en: 'For tenant, membership, and key operation activity trends.'
       }}
       panelTitle={{ zh: '活跃度报表占位', en: 'Activity Report Placeholder' }}
       emptyState={{

@@ -66,7 +66,7 @@ export const dashboardNavGroups: DashboardNavGroup[] = [
     items: [
       {
         href: '/dashboard/audit-logs',
-        label: { zh: '操作日志', en: 'Audit Logs' },
+        label: { zh: '审计日志', en: 'Audit Logs' },
         description: {
           zh: '按条件追踪平台级操作。',
           en: 'Trace platform operations with filters.'
