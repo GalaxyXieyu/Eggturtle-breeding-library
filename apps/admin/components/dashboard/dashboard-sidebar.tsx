@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { useUiPreferences } from '../ui-preferences';
-import { dashboardNavItems } from './nav-config';
+import { dashboardNavGroups, type DashboardNavItem } from './nav-config';
 
 const webSuperAdminEnabled = process.env.NEXT_PUBLIC_SUPER_ADMIN_ENABLED === 'true';
 
@@ -45,22 +45,28 @@ export function DashboardSidebar({ collapsed }: DashboardSidebarProps) {
       </div>
 
       <nav className="sidebar-nav" aria-label={copy.navAriaLabel}>
-        {dashboardNavItems.map((item) => {
-          const isActive =
-            pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(`${item.href}/`));
+        {dashboardNavGroups.map((group) => (
+          <section key={group.id} className="sidebar-nav-group" aria-label={group.title[locale]}>
+            <p className="sidebar-nav-group-title">{group.title[locale]}</p>
+            <div className="sidebar-nav-group-items">
+              {group.items.map((item) => {
+                const isActive = isNavItemActive(pathname, item);
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`sidebar-nav-link${isActive ? ' active' : ''}`}
-              title={collapsed ? item.label[locale] : item.description[locale]}
-            >
-              <span className="sidebar-nav-marker" aria-hidden="true" />
-              <span className="sidebar-nav-label">{item.label[locale]}</span>
-            </Link>
-          );
-        })}
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`sidebar-nav-link${isActive ? ' active' : ''}`}
+                    title={collapsed ? item.label[locale] : item.description[locale]}
+                  >
+                    <span className="sidebar-nav-marker" aria-hidden="true" />
+                    <span className="sidebar-nav-label">{item.label[locale]}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        ))}
       </nav>
 
       <div className="sidebar-footer">
@@ -68,4 +74,12 @@ export function DashboardSidebar({ collapsed }: DashboardSidebarProps) {
       </div>
     </aside>
   );
+}
+
+function isNavItemActive(pathname: string, item: DashboardNavItem) {
+  if (item.matchStrategy === 'exact') {
+    return pathname === item.href;
+  }
+
+  return pathname === item.href || pathname.startsWith(`${item.href}/`);
 }

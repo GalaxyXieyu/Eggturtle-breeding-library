@@ -119,7 +119,12 @@ function toTitleCase(segment: string, locale: UiLocale) {
     tenants: { zh: '租户', en: 'Tenants' },
     memberships: { zh: '成员', en: 'Memberships' },
     audit: { zh: '审计', en: 'Audit' },
-    logs: { zh: '日志', en: 'Logs' }
+    logs: { zh: '日志', en: 'Logs' },
+    analytics: { zh: '分析', en: 'Analytics' },
+    activity: { zh: '活跃度', en: 'Activity' },
+    revenue: { zh: '营收', en: 'Revenue' },
+    usage: { zh: '用量', en: 'Usage' },
+    billing: { zh: '计费', en: 'Billing' }
   };
 
   return segment

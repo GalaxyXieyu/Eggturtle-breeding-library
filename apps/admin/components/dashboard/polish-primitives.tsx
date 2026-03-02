@@ -32,6 +32,20 @@ type AdminActionLinkProps = {
   children: ReactNode;
 };
 
+type BilingualCopy = {
+  zh: string;
+  en: string;
+};
+
+type AdminPlaceholderRouteProps = {
+  title: BilingualCopy;
+  description: BilingualCopy;
+  panelTitle?: BilingualCopy;
+  panelDescription?: BilingualCopy;
+  emptyState: BilingualCopy;
+  milestone?: string;
+};
+
 function cx(...parts: Array<string | null | undefined | false>) {
   return parts.filter(Boolean).join(' ');
 }
@@ -86,4 +100,44 @@ export function AdminTableFrame({ children, className }: AdminPanelProps) {
       <table className="data-table">{children}</table>
     </div>
   );
+}
+
+export function AdminPlaceholderRoute({
+  title,
+  description,
+  panelTitle,
+  panelDescription,
+  emptyState,
+  milestone = 'T6x'
+}: AdminPlaceholderRouteProps) {
+  const defaultPanelTitle: BilingualCopy = { zh: '功能占位', en: 'Feature Placeholder' };
+  const defaultPanelDescription: BilingualCopy = {
+    zh: '该治理域页面正在建设中，将在后续迭代补齐。',
+    en: 'This governance-domain page is under construction and will be completed in a follow-up iteration.'
+  };
+
+  return (
+    <section className="page admin-page">
+      <AdminPageHeader
+        eyebrow="EggTurtle Admin / 治理域占位"
+        title={formatBilingualCopy(title)}
+        description={formatBilingualCopy(description)}
+      />
+
+      <AdminPanel className="stack">
+        <div className="admin-section-head">
+          <h3>{formatBilingualCopy(panelTitle ?? defaultPanelTitle)}</h3>
+          <p>{formatBilingualCopy(panelDescription ?? defaultPanelDescription)}</p>
+        </div>
+        <p className="muted">{formatBilingualCopy(emptyState)}</p>
+        <p className="muted">
+          {`尚未实现，后续在 ${milestone} 补齐。 / Not implemented yet, planned for completion in ${milestone}.`}
+        </p>
+      </AdminPanel>
+    </section>
+  );
+}
+
+function formatBilingualCopy(copy: BilingualCopy) {
+  return `${copy.zh} / ${copy.en}`;
 }
