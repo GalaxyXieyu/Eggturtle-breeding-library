@@ -1,9 +1,12 @@
+import { redirect } from 'next/navigation';
+
 import PublicFeedPage from '../../_public-product/public-feed-page';
 import { mapTenantFeedToLegacy } from '../../_public-product/public-share-adapter';
 import PublicShareErrorPanel from '../../_shared/public-share-error-panel';
 import {
   buildPublicShareRouteQuery,
   fetchPublicShareFromSearchParams,
+  refreshPublicShareEntryLocation,
   shouldAutoRefreshShareSignature,
   type PublicSearchParams
 } from '../../_shared/public-share-api';
@@ -15,17 +18,31 @@ export default async function PublicShareFeedPage({
   params: { shareToken: string };
   searchParams: PublicSearchParams;
 }) {
-  const shareResult = await fetchPublicShareFromSearchParams(searchParams);
   const sidValue = firstValue(searchParams.sid);
   const hasSidParam = typeof sidValue === 'string' && sidValue.trim().length > 0;
+  if (!hasSidParam) {
+    const location = await refreshPublicShareEntryLocation(params.shareToken);
+    if (location) {
+      redirect(location);
+    }
+  }
+
+  const shareResult = await fetchPublicShareFromSearchParams(searchParams);
 
   if (!shareResult.ok) {
+    if (shouldAutoRefreshShareSignature(shareResult.status, shareResult.errorCode)) {
+      const location = await refreshPublicShareEntryLocation(params.shareToken);
+      if (location) {
+        redirect(location);
+      }
+    }
+
     return (
       <PublicShareErrorPanel
         title="公开图鉴不可用"
         message={shareResult.message}
         shareToken={params.shareToken}
-        canAutoRefresh={!hasSidParam || shouldAutoRefreshShareSignature(shareResult.status, shareResult.errorCode)}
+        canAutoRefresh={false}
       />
     );
   }

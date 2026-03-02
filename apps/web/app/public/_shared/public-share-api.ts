@@ -220,6 +220,33 @@ export function shouldAutoRefreshShareSignature(status?: number, errorCode?: str
   return errorCode === 'SHARE_SIGNATURE_EXPIRED' || errorCode === 'SHARE_SIGNATURE_INVALID';
 }
 
+export async function refreshPublicShareEntryLocation(shareToken: string): Promise<string | null> {
+  const normalizedShareToken = shareToken.trim();
+  if (!normalizedShareToken) {
+    return null;
+  }
+
+  const apiBaseUrl =
+    process.env.INTERNAL_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE_URL;
+  const requestUrl = new URL(`/s/${normalizedShareToken}`, apiBaseUrl);
+
+  try {
+    const response = await fetch(requestUrl.toString(), {
+      cache: 'no-store',
+      redirect: 'manual'
+    });
+
+    const location = response.headers.get('location');
+    if (!location) {
+      return null;
+    }
+
+    return location;
+  } catch {
+    return null;
+  }
+}
+
 function firstValue(value: string | string[] | undefined): string | undefined {
   if (typeof value === 'string') {
     return value;

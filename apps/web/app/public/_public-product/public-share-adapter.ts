@@ -52,6 +52,7 @@ export function mapPublicShareDetail(data: TenantFeedShare): {
   maleMateLoad: MaleMateLoadItem[];
 } {
   const detail = data.detail;
+  const coverImageByProductId = buildCoverImageLookup(data.items);
 
   if (!detail) {
     return {
@@ -63,7 +64,7 @@ export function mapPublicShareDetail(data: TenantFeedShare): {
 
   return {
     events: detail.events.map((event) => mapDetailEvent(event)),
-    familyTree: mapDetailFamilyTree(detail),
+    familyTree: mapDetailFamilyTree(detail, coverImageByProductId),
     maleMateLoad: detail.maleMateLoad.map((item) => ({
       femaleId: item.femaleId,
       femaleCode: item.femaleCode,
@@ -164,26 +165,39 @@ function mapDetailEvent(event: PublicShareDetailEvent): BreederEventItem {
   };
 }
 
-function mapDetailFamilyTree(detail: PublicShareDetail): FamilyTree | null {
+function buildCoverImageLookup(items: PublicShareFeedItem[]): Map<string, string | undefined> {
+  const lookup = new Map<string, string | undefined>();
+
+  for (const item of items) {
+    lookup.set(item.id, item.coverImageUrl ?? undefined);
+  }
+
+  return lookup;
+}
+
+function mapDetailFamilyTree(
+  detail: PublicShareDetail,
+  coverImageByProductId: Map<string, string | undefined>
+): FamilyTree | null {
   const tree = detail.familyTree;
   if (!tree) {
     return null;
   }
 
-  const self = toFamilyTreeNode(tree.self);
+  const self = toFamilyTreeNode(tree.self, coverImageByProductId);
 
   return {
     current: self,
     currentMate: tree.mate ? { id: tree.mate.id, code: tree.mate.code } : null,
     ancestors: {
-      father: toFamilyTreeNodeOrUndefined(tree.sire),
-      mother: toFamilyTreeNodeOrUndefined(tree.dam),
+      father: toFamilyTreeNodeOrUndefined(tree.sire, coverImageByProductId),
+      mother: toFamilyTreeNodeOrUndefined(tree.dam, coverImageByProductId),
       paternalGrandfather: undefined,
       paternalGrandmother: undefined,
       maternalGrandfather: undefined,
       maternalGrandmother: undefined
     },
-    offspring: tree.children.map((item) => toFamilyTreeNode(item)),
+    offspring: tree.children.map((item) => toFamilyTreeNode(item, coverImageByProductId)),
     siblings: []
   };
 }
@@ -193,13 +207,13 @@ function toFamilyTreeNode(node: {
   code: string;
   name: string | null;
   sex: string | null;
-}) {
+}, coverImageByProductId: Map<string, string | undefined>) {
   return {
     id: node.id,
     code: node.code,
     name: node.name ?? node.code,
     sex: normalizeSex(node.sex),
-    thumbnailUrl: undefined
+    thumbnailUrl: coverImageByProductId.get(node.id)
   };
 }
 
@@ -211,11 +225,12 @@ function toFamilyTreeNodeOrUndefined(
         name: string | null;
         sex: string | null;
       }
-    | null
+    | null,
+  coverImageByProductId: Map<string, string | undefined>
 ): ReturnType<typeof toFamilyTreeNode> | undefined {
   if (!node) {
     return undefined;
   }
 
-  return toFamilyTreeNode(node);
+  return toFamilyTreeNode(node, coverImageByProductId);
 }
