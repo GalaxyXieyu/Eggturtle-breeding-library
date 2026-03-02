@@ -87,6 +87,7 @@ export default async function PublicShareProductDetailPage({
       demo={false}
       shareToken={params.shareToken}
       shareQuery={shareQuery}
+      homeHref={`/app/${shareResult.data.tenant.slug}`}
       presentation={shareResult.data.presentation}
     />
   );

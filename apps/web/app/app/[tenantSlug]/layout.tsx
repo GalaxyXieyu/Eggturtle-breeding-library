@@ -84,14 +84,14 @@ const SHELL_COPY = {
     controlCenter: '控制中心',
     upgradePlan: '升级套餐',
     createShare: '创建并复制分享链接',
+    openSharePage: '打开分享页',
     logout: '退出登录',
     defaultTenant: '蛋龟选育库',
     openMenu: '打开导航菜单',
     closeMenu: '关闭导航菜单',
     closeSidebar: '关闭侧边栏',
-    quickSharePending: '正在生成链接...',
-    quickShareSuccess: '分享链接已复制',
-    quickShareFallback: '复制失败，请手动复制：',
+    quickSharePending: '正在打开分享页...',
+    quickShareSuccess: '已打开分享页',
     quickShareMissingTenant: '当前租户上下文未就绪，暂时无法生成链接。',
     quickShareErrorFallback: '创建分享链接失败。',
     planLoading: '加载套餐中...'
@@ -101,14 +101,14 @@ const SHELL_COPY = {
     controlCenter: 'Control Center',
     upgradePlan: 'Upgrade Plan',
     createShare: 'Create & Copy Share Link',
+    openSharePage: 'Open share page',
     logout: 'Sign out',
     defaultTenant: 'Eggturtle Workspace',
     openMenu: 'Open navigation menu',
     closeMenu: 'Close navigation menu',
     closeSidebar: 'Close sidebar',
-    quickSharePending: 'Creating share link...',
-    quickShareSuccess: 'Share link copied',
-    quickShareFallback: 'Copy failed, please copy manually:',
+    quickSharePending: 'Opening share page...',
+    quickShareSuccess: 'Share page opened',
     quickShareMissingTenant: 'Tenant context is not ready yet.',
     quickShareErrorFallback: 'Failed to create share link.',
     planLoading: 'Loading plan...'
@@ -122,7 +122,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
   const router = useRouter();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [quickSharePending, setQuickSharePending] = useState(false);
-  const [quickShareMessage, setQuickShareMessage] = useState<string | null>(null);
+  const [quickShareNotice, setQuickShareNotice] = useState<string | null>(null);
   const [quickShareError, setQuickShareError] = useState<string | null>(null);
   const [currentPlan, setCurrentPlan] = useState<PlanTier>('FREE');
   const [planLoading, setPlanLoading] = useState(true);
@@ -172,13 +172,13 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
     };
   }, [tenantSlug]);
 
-  async function handleQuickShareCopy() {
+  async function handleQuickShareOpen() {
     if (quickSharePending) {
       return;
     }
 
     setQuickSharePending(true);
-    setQuickShareMessage(null);
+    setQuickShareNotice(null);
     setQuickShareError(null);
 
     try {
@@ -204,13 +204,11 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
       });
 
       const permanentLink = buildPermanentShareLink(createShareResponse.share.shareToken);
-
-      try {
-        await navigator.clipboard.writeText(permanentLink);
-        setQuickShareMessage(`${copy.quickShareSuccess}：${permanentLink}`);
-      } catch {
-        setQuickShareError(`${copy.quickShareFallback} ${permanentLink}`);
+      const popupWindow = window.open(permanentLink, '_blank', 'noopener');
+      if (!popupWindow) {
+        window.location.href = permanentLink;
       }
+      setQuickShareNotice(copy.quickShareSuccess);
     } catch (error) {
       setQuickShareError(formatActionError(error, copy.quickShareErrorFallback));
     } finally {
@@ -277,7 +275,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
               type="button"
               variant="outline"
               className="w-full justify-start rounded-xl border-neutral-200 !bg-neutral-50 !text-neutral-800 shadow-none hover:!bg-neutral-100 hover:!text-neutral-900 [&_svg]:text-neutral-500 hover:[&_svg]:text-neutral-700 dark:border-neutral-700 dark:!bg-neutral-900 dark:!text-neutral-100 dark:hover:!bg-neutral-800 dark:[&_svg]:text-neutral-300 dark:hover:[&_svg]:text-neutral-100"
-              onClick={() => void handleQuickShareCopy()}
+              onClick={() => void handleQuickShareOpen()}
               disabled={quickSharePending}
             >
               <Link2 size={16} />
@@ -289,9 +287,9 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
                 {quickShareError}
               </p>
             ) : null}
-            {quickShareMessage ? (
+            {quickShareNotice ? (
               <p className="mt-2 break-all rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
-                {quickShareMessage}
+                {quickShareNotice}
               </p>
             ) : null}
 
@@ -327,16 +325,30 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
                   </h1>
                   <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">{activeLabel}</p>
                 </div>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="icon"
-                  aria-label={mobileNavOpen ? copy.closeMenu : copy.openMenu}
-                  className="h-9 w-9 rounded-xl border border-white/90 bg-white/85 shadow-[0_4px_14px_rgba(0,0,0,0.1)] dark:border-neutral-700 dark:bg-neutral-900"
-                  onClick={() => setMobileNavOpen((open) => !open)}
-                >
-                  {mobileNavOpen ? <X size={18} /> : <Menu size={18} />}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="icon"
+                    title={copy.openSharePage}
+                    aria-label={copy.openSharePage}
+                    className="h-9 w-9 rounded-xl border border-white/90 bg-white/85 shadow-[0_4px_14px_rgba(0,0,0,0.1)] dark:border-neutral-700 dark:bg-neutral-900"
+                    onClick={() => void handleQuickShareOpen()}
+                    disabled={quickSharePending}
+                  >
+                    <Link2 size={16} />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="icon"
+                    aria-label={mobileNavOpen ? copy.closeMenu : copy.openMenu}
+                    className="h-9 w-9 rounded-xl border border-white/90 bg-white/85 shadow-[0_4px_14px_rgba(0,0,0,0.1)] dark:border-neutral-700 dark:bg-neutral-900"
+                    onClick={() => setMobileNavOpen((open) => !open)}
+                  >
+                    {mobileNavOpen ? <X size={18} /> : <Menu size={18} />}
+                  </Button>
+                </div>
               </div>
               <div className="relative z-10 mt-3 flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center rounded-full bg-[#FFD400]/24 px-2.5 py-1 text-[11px] font-semibold text-neutral-800 dark:bg-[#FFD400]/22 dark:text-[#ffe9a3]">
@@ -358,16 +370,29 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
                 </h1>
                 <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">{activeLabel}</p>
               </div>
-              <Button
-                type="button"
-                variant="secondary"
-                size="icon"
-                aria-label={mobileNavOpen ? copy.closeMenu : copy.openMenu}
-                className="lg:hidden"
-                onClick={() => setMobileNavOpen((open) => !open)}
-              >
-                {mobileNavOpen ? <X size={18} /> : <Menu size={18} />}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="icon"
+                  title={copy.openSharePage}
+                  aria-label={copy.openSharePage}
+                  onClick={() => void handleQuickShareOpen()}
+                  disabled={quickSharePending}
+                >
+                  <Link2 size={16} />
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="icon"
+                  aria-label={mobileNavOpen ? copy.closeMenu : copy.openMenu}
+                  className="lg:hidden"
+                  onClick={() => setMobileNavOpen((open) => !open)}
+                >
+                  {mobileNavOpen ? <X size={18} /> : <Menu size={18} />}
+                </Button>
+              </div>
             </div>
           </header>
           <div className="min-h-0 flex-1 overflow-y-auto pr-1">
