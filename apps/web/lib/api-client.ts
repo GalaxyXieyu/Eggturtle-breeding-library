@@ -3,6 +3,7 @@ const TOKEN_STORAGE_KEY = 'eggturtle.accessToken';
 // Default to same-origin (relative paths) so production doesn't accidentally call
 // the *device* localhost when NEXT_PUBLIC_API_BASE_URL is missing.
 const DEFAULT_API_BASE_URL = '';
+const INTERNAL_PROXY_PREFIX = '/api/proxy';
 
 const LOGIN_PATH = '/login';
 const PRODUCT_IMAGE_CONTENT_PATH_PATTERN = /^\/products\/[^/]+\/images\/[^/]+\/content$/;
@@ -27,6 +28,29 @@ function canUseStorage() {
 
 export function getApiBaseUrl() {
   return process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE_URL;
+}
+
+function normalizePath(path: string) {
+  if (path.startsWith('/')) {
+    return path;
+  }
+
+  return `/${path}`;
+}
+
+function resolveRequestPath(path: string) {
+  const normalizedPath = normalizePath(path);
+
+  if (normalizedPath.startsWith('/api/')) {
+    return normalizedPath;
+  }
+
+  const apiBaseUrl = getApiBaseUrl();
+  if (apiBaseUrl) {
+    return `${apiBaseUrl}${normalizedPath}`;
+  }
+
+  return `${INTERNAL_PROXY_PREFIX}${normalizedPath}`;
 }
 
 export function getAccessToken() {
@@ -216,7 +240,7 @@ export async function apiRequest<RequestPayload = never, ResponsePayload = unkno
     }
   }
 
-  const response = await fetch(`${getApiBaseUrl()}${path}`, {
+  const response = await fetch(resolveRequestPath(path), {
     method: options.method ?? 'GET',
     headers,
     body: typeof parsedBody === 'undefined' ? undefined : JSON.stringify(parsedBody),
