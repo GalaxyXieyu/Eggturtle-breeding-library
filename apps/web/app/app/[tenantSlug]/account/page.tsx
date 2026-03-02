@@ -317,11 +317,11 @@ export default function AccountPage() {
             </CardContent>
           </Card>
 
-          <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
+          <Card id="share-link" className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-2xl">
                 <Link2 size={18} />
-                分享链接
+                创建分享链接
               </CardTitle>
               <CardDescription>一键生成租户公开图鉴入口。</CardDescription>
             </CardHeader>

@@ -14,7 +14,6 @@ import {
   AlertTriangle,
   CalendarDays,
   Copy,
-  ExternalLink,
   HeartHandshake,
   Link2,
   Plus,
@@ -38,9 +37,9 @@ type ShareLinks = {
 };
 
 const WINDOW_OPTIONS: Array<{ key: DashboardOverviewWindow; label: string; shortLabel: string }> = [
-  { key: 'today', label: '今日', shortLabel: 'Today' },
-  { key: '7d', label: '近 7 天', shortLabel: '7d' },
-  { key: '30d', label: '近 30 天', shortLabel: '30d' }
+  { key: 'today', label: '今日', shortLabel: '今日' },
+  { key: '7d', label: '近 7 天', shortLabel: '近 7 天' },
+  { key: '30d', label: '近 30 天', shortLabel: '近 30 天' }
 ];
 
 const NEED_MATING_CARDS = [
@@ -274,6 +273,24 @@ export default function TenantAppPage() {
         </Card>
       ) : null}
 
+      {shareLoading ? (
+        <Card className="rounded-3xl border-neutral-200 bg-neutral-50 p-4">
+          <p className="text-sm text-neutral-700">正在准备分享链接...</p>
+        </Card>
+      ) : null}
+
+      {shareMessage ? (
+        <Card className="rounded-3xl border-emerald-200 bg-emerald-50 p-4">
+          <p className="text-sm font-semibold text-emerald-700">{shareMessage}</p>
+        </Card>
+      ) : null}
+
+      {shareError ? (
+        <Card className="rounded-3xl border-red-200 bg-red-50 p-4">
+          <p className="text-sm font-semibold text-red-700">{shareError}</p>
+        </Card>
+      ) : null}
+
       {!loading && !error && overview ? (
         <>
           <Card className="tenant-card-lift relative overflow-hidden rounded-3xl border-neutral-200/90 bg-white p-6 transition-all sm:p-7">
@@ -282,7 +299,7 @@ export default function TenantAppPage() {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="space-y-3">
                   <Badge variant="accent" className="w-fit">
-                    DASHBOARD V2
+                    租户工作台
                   </Badge>
                   <CardTitle className="text-3xl text-neutral-900 sm:text-4xl">{displayTenantName}</CardTitle>
                   <CardDescription className="text-neutral-600">核心指标统一到一个面板，切换时间窗即可对比趋势。</CardDescription>
@@ -307,49 +324,10 @@ export default function TenantAppPage() {
             </CardHeader>
           </Card>
 
-          <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <section className="grid grid-cols-1 gap-4">
             <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
               <CardHeader>
-                <CardTitle className="text-2xl">分享入口</CardTitle>
-                <CardDescription>优先复制稳定短链，不再暴露 exp/sig 参数。</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-neutral-700">
-                <div className="space-y-1 rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
-                  <p className="text-xs uppercase tracking-[0.15em] text-neutral-500">Permanent Link</p>
-                  <p className="break-all text-xs text-neutral-800">{shareLinks?.permanentUrl ?? '点击「生成分享链接」后可复制稳定短链。'}</p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="primary" size="sm" disabled={shareLoading} onClick={() => void handleGenerateShareLink()}>
-                    <Link2 size={14} />
-                    {shareLoading ? '生成中...' : '生成分享链接'}
-                  </Button>
-                  <Button variant="secondary" size="sm" disabled={shareLoading} onClick={() => void handleCopyPermanentShareLink()}>
-                    <Copy size={14} />
-                    复制永久链接
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    disabled={!shareLinks?.permanentUrl}
-                    onClick={() => {
-                      if (!shareLinks?.permanentUrl) {
-                        return;
-                      }
-                      window.open(shareLinks.permanentUrl, '_blank', 'noopener,noreferrer');
-                    }}
-                  >
-                    <ExternalLink size={14} />
-                    打开预览
-                  </Button>
-                </div>
-                {shareMessage ? <p className="text-xs font-medium text-emerald-700">{shareMessage}</p> : null}
-                {shareError ? <p className="text-xs font-medium text-red-700">{shareError}</p> : null}
-              </CardContent>
-            </Card>
-
-            <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
-              <CardHeader>
-                <CardTitle className="text-2xl">热门点击 TOP</CardTitle>
+                <CardTitle className="text-2xl">热门点击榜</CardTitle>
                 <CardDescription>取分享访问日志中的产品点击统计（窗口内）。</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
@@ -360,7 +338,7 @@ export default function TenantAppPage() {
                   <div key={item.productId} className="flex items-center justify-between rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2">
                     <div>
                       <p className="text-sm font-semibold text-neutral-900">#{index + 1} · {item.code}</p>
-                      <p className="text-xs text-neutral-500">Product ID: {item.productId}</p>
+                      <p className="text-xs text-neutral-500">产品 ID：{item.productId}</p>
                     </div>
                     <p className="text-lg font-bold text-neutral-900">{item.clicks}</p>
                   </div>
@@ -394,12 +372,12 @@ export default function TenantAppPage() {
           </section>
 
           <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            <KpiCard label="产蛋总数" value={overview.eggs.totalEggCount} hint="Egg Count" icon={<Shell size={16} />} />
-            <KpiCard label="产蛋事件" value={overview.eggs.eventCount} hint="Egg Events" icon={<CalendarDays size={16} />} />
-            <KpiCard label="配对事件" value={overview.matings.eventCount} hint="Mating Events" icon={<Workflow size={16} />} />
-            <KpiCard label="需配对" value={overview.needMating.needMatingCount} hint="Need Mating" icon={<HeartHandshake size={16} />} />
-            <KpiCard label="预警" value={overview.needMating.warningCount} hint="Warning" icon={<AlertTriangle size={16} />} />
-            <KpiCard label="分享 UV" value={overview.share.uv} hint={`PV ${overview.share.pv}`} icon={<Share2 size={16} />} />
+            <KpiCard label="产蛋总数" value={overview.eggs.totalEggCount} hint="产蛋总量" icon={<Shell size={16} />} />
+            <KpiCard label="产蛋事件" value={overview.eggs.eventCount} hint="产蛋次数" icon={<CalendarDays size={16} />} />
+            <KpiCard label="配对事件" value={overview.matings.eventCount} hint="配对次数" icon={<Workflow size={16} />} />
+            <KpiCard label="需配对" value={overview.needMating.needMatingCount} hint="待配对数量" icon={<HeartHandshake size={16} />} />
+            <KpiCard label="预警" value={overview.needMating.warningCount} hint="预警数量" icon={<AlertTriangle size={16} />} />
+            <KpiCard label="分享 UV" value={overview.share.uv} hint={`页面访问 ${overview.share.pv}`} icon={<Share2 size={16} />} />
           </section>
 
           <section className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)]">

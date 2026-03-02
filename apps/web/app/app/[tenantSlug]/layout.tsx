@@ -9,6 +9,7 @@ import {
   Package,
   Layers,
   QrCode,
+  Link2,
   LogOut,
   Menu,
   X,
@@ -66,6 +67,7 @@ const SHELL_COPY = {
   zh: {
     workspace: '租户工作台',
     controlCenter: '控制中心',
+    createShare: '创建分享链接',
     logout: '退出登录',
     defaultTenant: '蛋龟选育库',
     openMenu: '打开导航菜单',
@@ -75,6 +77,7 @@ const SHELL_COPY = {
   en: {
     workspace: 'Tenant Workspace',
     controlCenter: 'Control Center',
+    createShare: 'Create Share Link',
     logout: 'Sign out',
     defaultTenant: 'Eggturtle Workspace',
     openMenu: 'Open navigation menu',
@@ -150,6 +153,18 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
           </nav>
 
           <div className="border-t border-neutral-200 p-3 dark:border-neutral-800">
+            <Button
+              type="button"
+              variant="secondary"
+              className="mb-3 hidden w-full justify-start border border-neutral-200 bg-neutral-50 text-neutral-800 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800 lg:flex"
+              onClick={() => {
+                setMobileNavOpen(false);
+                router.push(`/app/${tenantSlug}/account#share-link`);
+              }}
+            >
+              <Link2 size={16} />
+              <span>{copy.createShare}</span>
+            </Button>
             <div className="mb-3">
               <UiPreferenceControls className="tenant-sidebar-pref" />
             </div>
@@ -224,7 +239,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
               </Button>
             </div>
           </header>
-          <div className="tenant-reveal min-h-0 flex-1 overflow-y-auto pr-1" style={{ animationDelay: '0.06s' }}>
+          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
             <div className="min-h-full pb-4">{children}</div>
           </div>
         </section>
