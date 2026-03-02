@@ -17,6 +17,7 @@ import {
   assertErrorCode,
   assertStatus,
   defaultEmail,
+  ensureTenantSession,
   loginWithDevCode,
   uniqueSuffix,
 } from './lib';
