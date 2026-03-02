@@ -79,6 +79,22 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
   const share = readObject(asObject(createShareResponse.body), 'share');
   const shareId = readString(share, 'id');
   const shareToken = readString(share, 'shareToken');
+
+  // Regression guard: API must return an absolute entryUrl for the share.
+  const entryUrl = readString(share, 'entryUrl', 'share.entryUrl');
+  let parsedEntryUrl: URL;
+  try {
+    parsedEntryUrl = new URL(entryUrl);
+  } catch {
+    throw new ApiTestError(`share.entryUrl is not a valid absolute URL: ${entryUrl}`);
+  }
+
+  if (parsedEntryUrl.pathname !== `/s/${shareToken}`) {
+    throw new ApiTestError(
+      `share.entryUrl path mismatch: expected /s/${shareToken}, got ${parsedEntryUrl.pathname}`,
+    );
+  }
+
   checks += 1;
 
   const redirectResponse = await ctx.request({
