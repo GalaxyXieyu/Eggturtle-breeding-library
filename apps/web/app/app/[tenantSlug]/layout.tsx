@@ -238,7 +238,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
             </div>
           </div>
 
-          <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+          <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-4">
             {NAV_ITEMS.map((item) => {
               const href = item.href(tenantSlug);
               const active = isActive(pathname, href);
@@ -272,7 +272,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
             })}
           </nav>
 
-          <div className="mt-auto border-t border-neutral-200 px-3 py-3 dark:border-neutral-800">
+          <div className="shrink-0 border-t border-neutral-200 px-3 pb-2 pt-3 dark:border-neutral-800">
             <Button
               type="button"
               variant="outline"
