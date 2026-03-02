@@ -307,40 +307,14 @@ export default function SeriesListPage() {
         </Card>
       ) : null}
 
-      <Card className="tenant-card-lift relative overflow-hidden rounded-3xl border-neutral-200/90 bg-white transition-all">
-        <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-[#FFD400]/20 blur-3xl" />
-        <CardHeader className="relative z-10">
-          <div>
-            <CardTitle className="flex items-center gap-2 text-3xl">
-              <Layers3 size={24} />
-              系列管理
-            </CardTitle>
-            <CardDescription className="mt-2">按系列编码或名称快速定位，卡片点击后在抽屉中编辑。</CardDescription>
-            <p className="mt-3 inline-flex items-center rounded-full border border-[#FFD400]/55 bg-[#FFF7D0] px-3 py-1 text-xs font-semibold text-neutral-800">
-              主题焦点：系列封面、状态、排序一体管理
-            </p>
-          </div>
-        </CardHeader>
-        <CardContent className="relative z-10 pt-0">
-          {renderFilterForm('desktop')}
-          <p className="rounded-2xl border border-neutral-200 bg-neutral-50/90 px-3 py-2 text-xs text-neutral-600 lg:hidden">
-            移动端筛选已收纳到右下角悬浮按钮，点击可打开筛选弹窗。
-          </p>
-          <div className="mt-4 flex flex-wrap gap-2 text-xs text-neutral-600">
-            <span className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5">
-              当前第 {meta.page}/{meta.totalPages} 页
-            </span>
-            <span className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5">每页 {meta.pageSize} 条</span>
-            {hasSearch ? <span className="rounded-full border border-[#FFD400]/40 bg-[#FFF9D8] px-3 py-1.5">关键词：{search.trim()}</span> : null}
-          </div>
-        </CardContent>
-      </Card>
-
       <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
         <CardHeader className="pb-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <CardTitle className="text-3xl">系列卡片</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-3xl">
+                <Layers3 size={24} />
+                系列列表
+              </CardTitle>
               <CardDescription className="mt-1">共 {meta.total} 条记录，卡片右上角可快速编辑。</CardDescription>
             </div>
             <Button
@@ -359,18 +333,31 @@ export default function SeriesListPage() {
           </div>
         </CardHeader>
         <CardContent className="pt-0">
-          {loading ? (
-            <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-8 text-center text-sm text-neutral-600">
-              正在加载系列数据...
-            </div>
-          ) : null}
+          {renderFilterForm('desktop')}
+          <p className="mt-3 rounded-2xl border border-neutral-200 bg-neutral-50/90 px-3 py-2 text-xs text-neutral-600 lg:hidden">
+            移动端筛选已收纳到右下角悬浮按钮，点击可打开筛选弹窗。
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2 text-xs text-neutral-600">
+            <span className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5">
+              当前第 {meta.page}/{meta.totalPages} 页
+            </span>
+            <span className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5">每页 {meta.pageSize} 条</span>
+            {hasSearch ? <span className="rounded-full border border-[#FFD400]/40 bg-[#FFF9D8] px-3 py-1.5">关键词：{search.trim()}</span> : null}
+          </div>
 
-          {!loading && series.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50/80 px-4 py-8 text-center">
-              <p className="text-sm font-medium text-neutral-700">暂无系列数据</p>
-              <p className="mt-2 text-xs text-neutral-500">可先在宠物管理里创建数据，系统会自动关联系列信息。</p>
-            </div>
-          ) : null}
+          <div className="mt-6">
+            {loading ? (
+              <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-8 text-center text-sm text-neutral-600">
+                正在加载系列数据...
+              </div>
+            ) : null}
+
+            {!loading && series.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50/80 px-4 py-8 text-center">
+                <p className="text-sm font-medium text-neutral-700">暂无系列数据</p>
+                <p className="mt-2 text-xs text-neutral-500">可先在宠物管理里创建数据，系统会自动关联系列信息。</p>
+              </div>
+            ) : null}
 
           {!loading && series.length > 0 ? (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -426,6 +413,7 @@ export default function SeriesListPage() {
               ))}
             </div>
           ) : null}
+          </div>
         </CardContent>
       </Card>
 
