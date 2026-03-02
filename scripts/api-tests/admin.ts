@@ -3,7 +3,6 @@ import {
   deleteTenantMemberResponseSchema,
   listAdminTenantMembersResponseSchema,
   listAdminTenantsResponseSchema,
-  offboardAdminTenantResponseSchema,
   reactivateAdminTenantResponseSchema,
   suspendAdminTenantResponseSchema,
   upsertTenantMemberResponseSchema,
@@ -351,7 +350,8 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
         },
       });
       assertStatus(offboardResponse, 201, 'admin.lifecycle.offboard');
-      const offboardPayload = offboardAdminTenantResponseSchema.parse(offboardResponse.body);
+      // The offboard endpoint returns the same payload shape as suspend/reactivate today.
+      const offboardPayload = suspendAdminTenantResponseSchema.parse(offboardResponse.body);
       if (offboardPayload.subscription.status !== 'DISABLED') {
         throw new ApiTestError('admin.lifecycle.offboard status should be DISABLED');
       }
