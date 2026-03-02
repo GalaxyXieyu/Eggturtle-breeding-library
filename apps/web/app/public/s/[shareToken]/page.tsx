@@ -16,7 +16,8 @@ export default async function PublicShareFeedPage({
   searchParams: PublicSearchParams;
 }) {
   const shareResult = await fetchPublicShareFromSearchParams(searchParams);
-  const hasSidParam = firstValue(searchParams.sid)?.trim().length > 0;
+  const sidValue = firstValue(searchParams.sid);
+  const hasSidParam = typeof sidValue === 'string' && sidValue.trim().length > 0;
 
   if (!shareResult.ok) {
     return (
