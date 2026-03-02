@@ -54,7 +54,8 @@ pnpm api-tests -- --confirm-writes --clear-token-cache --json \
 - JSONL 证据：`docs/plan/evidence/t60-api-tests-admin-20260302.jsonl`
 
 ## PR
-- PR：待创建（补充链接）
+- PR：`https://github.com/GalaxyXieyu/Eggturtle-breeding-library/pull/47`
+- Commit：`59c61c62aded844ed9720b6c86317fd0d30b4bd7`
 
 ## 备注
 - PR 合并后，请回填 SSOT：`docs/plan/EggsTask.csv` 的 T60 Evidence 字段。
