@@ -99,7 +99,16 @@ export const publicShareQuerySchema = z.object({
   resourceId: z.string().trim().min(1),
   productId: z.string().trim().min(1).optional(),
   exp: z.string().trim().min(1),
-  sig: z.string().trim().min(1)
+  sig: z.string().trim().min(1),
+
+  // Optional: request a fixed, token-safe resized image variant from `/shares/:shareId/public/assets`.
+  // Keep the allowlist strict to prevent arbitrary resize abuse.
+  maxEdge: z
+    .coerce
+    .number()
+    .int()
+    .refine((value) => value === 480 || value === 960, { message: 'maxEdge must be 480 or 960.' })
+    .optional()
 });
 
 export const publicShareTenantSchema = z.object({

@@ -243,10 +243,14 @@ export class ProductsController {
     @Req() request: AuthenticatedRequest,
     @Param('pid') productId: string,
     @Param('iid') imageId: string,
+    @Query('maxEdge') maxEdge: string | undefined,
     @Res({ passthrough: true }) response: PassthroughResponse
   ) {
     const tenantId = this.requireTenantId(request.tenantId);
-    const imageContent = await this.productsService.getProductImageContent(tenantId, productId, imageId);
+    const parsedMaxEdge = maxEdge ? Number(maxEdge) : undefined;
+    const imageContent = await this.productsService.getProductImageContent(tenantId, productId, imageId, {
+      maxEdge: parsedMaxEdge
+    });
 
     response.setHeader('Cache-Control', 'private, no-store');
 
