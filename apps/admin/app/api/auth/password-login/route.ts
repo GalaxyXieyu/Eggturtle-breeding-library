@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { passwordLoginRequestSchema, passwordLoginResponseSchema } from '@eggturtle/shared/auth';
 
-import { isSuperAdminEmailAllowlisted } from '../../../../lib/admin-auth';
+import { isSuperAdminEmailAllowlisted, isSuperAdminIdentifierAllowlisted } from '../../../../lib/admin-auth';
 import {
   applySessionCookie,
   clearSessionCookie,
@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   try {
     const payload = passwordLoginRequestSchema.parse(await request.json());
 
-    if (!isSuperAdminEmailAllowlisted(payload.email)) {
+    if (!isSuperAdminIdentifierAllowlisted(payload.email)) {
       return withClearedSessionCookie(
         NextResponse.json(
           {

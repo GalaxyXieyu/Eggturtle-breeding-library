@@ -17,8 +17,8 @@ const fontDisplay = Playfair_Display({
 });
 
 export const metadata = {
-  title: 'Eggturtle Node Rebuild',
-  description: 'Next.js app for the new Node.js stack.'
+  title: '蛋龟选育库',
+  description: '蛋龟选育库多租户选育管理平台'
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -17,8 +17,8 @@ const playfairDisplay = Playfair_Display({
 });
 
 export const metadata = {
-  title: 'Eggturtle 平台后台',
-  description: '平台超级管理员后台'
+  title: '蛋龟选育库 平台后台',
+  description: '蛋龟选育库平台超级管理员后台'
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

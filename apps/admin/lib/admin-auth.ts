@@ -53,7 +53,7 @@ function getSuperAdminAllowlist() {
   }
 
   if (process.env.NODE_ENV !== 'production') {
-    return new Set(['synthetic.superadmin@local.test']);
+    return new Set(['admin@local.test', 'synthetic.superadmin@local.test']);
   }
 
   return configuredAllowlist;
@@ -61,6 +61,31 @@ function getSuperAdminAllowlist() {
 
 export function isSuperAdminEmailAllowlisted(email: string) {
   return getSuperAdminAllowlist().has(email.trim().toLowerCase());
+}
+
+export function isSuperAdminIdentifierAllowlisted(identifier: string) {
+  const normalized = identifier.trim().toLowerCase();
+  const allowlist = getSuperAdminAllowlist();
+
+  if (!normalized) {
+    return false;
+  }
+
+  if (allowlist.has(normalized)) {
+    return true;
+  }
+
+  if (normalized.includes('@')) {
+    return false;
+  }
+
+  for (const email of allowlist) {
+    if (email.startsWith(`${normalized}@`)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 export function getAdminSessionCookieOptions() {
