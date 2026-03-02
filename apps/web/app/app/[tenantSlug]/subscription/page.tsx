@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import {
   meSubscriptionResponseSchema,
@@ -78,6 +78,8 @@ export default function SubscriptionPage() {
   const [activationCode, setActivationCode] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [activeMobilePlanIndex, setActiveMobilePlanIndex] = useState(0);
+  const mobilePlansRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!tenantSlug) {
@@ -157,10 +159,59 @@ export default function SubscriptionPage() {
   const currentPlan = normalizePlan(subscription?.plan);
   const effectiveProductLimit = resolveEffectiveProductLimit(subscription);
   const upgradeTracks = buildUpgradeTracks(currentPlan);
+  const currentPlanIndex = useMemo(() => {
+    const index = PLAN_PACKAGES.findIndex((item) => item.tier === currentPlan);
+    return index >= 0 ? index : 0;
+  }, [currentPlan]);
+
+  useEffect(() => {
+    setActiveMobilePlanIndex(currentPlanIndex);
+  }, [currentPlanIndex]);
 
   function focusUpgradeSection() {
     const target = document.getElementById('upgrade-now');
     target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function scrollToMobilePlan(index: number) {
+    const container = mobilePlansRef.current;
+    if (!container) {
+      return;
+    }
+
+    const target = container.children.item(index) as HTMLElement | null;
+    if (!target) {
+      return;
+    }
+
+    container.scrollTo({ left: target.offsetLeft, behavior: 'smooth' });
+    setActiveMobilePlanIndex(index);
+  }
+
+  function handleMobilePlanScroll() {
+    const container = mobilePlansRef.current;
+    if (!container) {
+      return;
+    }
+
+    const children = Array.from(container.children) as HTMLElement[];
+    if (children.length === 0) {
+      return;
+    }
+
+    let nextIndex = 0;
+    let smallestDistance = Number.POSITIVE_INFINITY;
+    for (let index = 0; index < children.length; index += 1) {
+      const distance = Math.abs(children[index].offsetLeft - container.scrollLeft);
+      if (distance < smallestDistance) {
+        smallestDistance = distance;
+        nextIndex = index;
+      }
+    }
+
+    if (nextIndex !== activeMobilePlanIndex) {
+      setActiveMobilePlanIndex(nextIndex);
+    }
   }
 
   return (
@@ -215,55 +266,93 @@ export default function SubscriptionPage() {
             <CardDescription>依据当前文档口径整理，价格与能力一页看清。</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="grid gap-3 md:hidden">
-              {PLAN_PACKAGES.map((item) => {
-                const isCurrent = item.tier === currentPlan;
-                return (
-                  <section
-                    key={`mobile-${item.tier}`}
-                    className={`relative overflow-hidden rounded-2xl border p-4 shadow-[0_8px_20px_rgba(15,23,42,0.08)] ${
-                      isCurrent ? 'border-[#FFD400]/70 bg-gradient-to-b from-[#FFF6CF] to-white' : 'border-neutral-200 bg-white'
+            <div className="space-y-3 md:hidden">
+              <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                {PLAN_PACKAGES.map((item, index) => (
+                  <button
+                    key={`mobile-plan-tab-${item.tier}`}
+                    type="button"
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition ${
+                      activeMobilePlanIndex === index
+                        ? 'border-neutral-900 bg-neutral-900 text-white'
+                        : 'border-neutral-200 bg-white text-neutral-700'
                     }`}
+                    onClick={() => scrollToMobilePlan(index)}
                   >
-                    <div className="pointer-events-none absolute -right-6 -top-8 h-20 w-20 rounded-full bg-[#FFD400]/30 blur-2xl" />
-                    <div className="relative z-10">
-                      <div className="flex items-center justify-between">
-                        <p className="text-lg font-bold text-neutral-900">{item.name}</p>
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                            isCurrent ? 'bg-neutral-900 text-white' : 'bg-neutral-100 text-neutral-700'
-                          }`}
-                        >
-                          {isCurrent ? '当前' : '可升级'}
-                        </span>
-                      </div>
-                      <p className="mt-2 text-2xl font-black text-neutral-900">{item.price}</p>
-                      <div className="mt-3 grid grid-cols-2 gap-2">
-                        <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-2 py-1.5">
-                          <p className="text-[11px] text-neutral-500">种龟上限</p>
-                          <p className="text-sm font-semibold text-neutral-900">{item.productLimit}</p>
+                    {item.name}
+                  </button>
+                ))}
+              </div>
+              <div
+                ref={mobilePlansRef}
+                className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                onScroll={handleMobilePlanScroll}
+              >
+                {PLAN_PACKAGES.map((item, index) => {
+                  const isCurrent = item.tier === currentPlan;
+                  return (
+                    <section
+                      key={`mobile-${item.tier}`}
+                      className={`relative min-w-[86%] snap-center overflow-hidden rounded-2xl border p-4 shadow-[0_8px_20px_rgba(15,23,42,0.08)] ${
+                        isCurrent ? 'border-[#FFD400]/70 bg-gradient-to-b from-[#FFF6CF] to-white' : 'border-neutral-200 bg-white'
+                      }`}
+                    >
+                      <div className="pointer-events-none absolute -right-6 -top-8 h-20 w-20 rounded-full bg-[#FFD400]/30 blur-2xl" />
+                      <div className="relative z-10">
+                        <div className="flex items-center justify-between">
+                          <p className="text-lg font-bold text-neutral-900">{item.name}</p>
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                              isCurrent ? 'bg-neutral-900 text-white' : 'bg-neutral-100 text-neutral-700'
+                            }`}
+                          >
+                            {isCurrent ? '当前' : '可升级'}
+                          </span>
                         </div>
-                        <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-2 py-1.5">
-                          <p className="text-[11px] text-neutral-500">AI 额度</p>
-                          <p className="text-xs font-semibold text-neutral-900">{item.aiQuota}</p>
+                        <p className="mt-2 text-2xl font-black text-neutral-900">{item.price}</p>
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-2 py-1.5">
+                            <p className="text-[11px] text-neutral-500">种龟上限</p>
+                            <p className="text-sm font-semibold text-neutral-900">{item.productLimit}</p>
+                          </div>
+                          <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-2 py-1.5">
+                            <p className="text-[11px] text-neutral-500">AI 额度</p>
+                            <p className="text-xs font-semibold text-neutral-900">{item.aiQuota}</p>
+                          </div>
                         </div>
+                        <details className="mt-3 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2">
+                          <summary className="cursor-pointer text-xs font-semibold text-neutral-700">展开核心福利</summary>
+                          <div className="mt-2 space-y-1">
+                            {item.perks.map((perk) => (
+                              <p key={`mobile-perk-${item.tier}-${perk}`} className="text-sm text-neutral-800">
+                                • {perk}
+                              </p>
+                            ))}
+                          </div>
+                        </details>
+                        {!isCurrent ? (
+                          <Button type="button" variant="secondary" className="mt-3 w-full" onClick={focusUpgradeSection}>
+                            立刻升级到{item.name}
+                          </Button>
+                        ) : null}
+                        <p className="mt-2 text-center text-[11px] text-neutral-500">
+                          {index + 1} / {PLAN_PACKAGES.length}
+                        </p>
                       </div>
-                      <div className="mt-3 space-y-1">
-                        {item.perks.map((perk) => (
-                          <p key={`mobile-perk-${item.tier}-${perk}`} className="text-sm text-neutral-800">
-                            • {perk}
-                          </p>
-                        ))}
-                      </div>
-                      {!isCurrent ? (
-                        <Button type="button" variant="secondary" className="mt-3 w-full" onClick={focusUpgradeSection}>
-                          立刻升级到{item.name}
-                        </Button>
-                      ) : null}
-                    </div>
-                  </section>
-                );
-              })}
+                    </section>
+                  );
+                })}
+              </div>
+              <div className="flex items-center justify-center gap-1.5">
+                {PLAN_PACKAGES.map((item, index) => (
+                  <span
+                    key={`mobile-dot-${item.tier}`}
+                    className={`h-1.5 rounded-full transition-all ${
+                      activeMobilePlanIndex === index ? 'w-4 bg-neutral-900' : 'w-1.5 bg-neutral-300'
+                    }`}
+                  />
+                ))}
+              </div>
             </div>
 
             <div className="hidden overflow-x-auto rounded-2xl border border-neutral-200 md:block">

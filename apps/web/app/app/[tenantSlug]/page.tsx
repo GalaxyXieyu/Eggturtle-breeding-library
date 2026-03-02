@@ -219,7 +219,7 @@ export default function TenantAppPage() {
   }
 
   return (
-    <main className="space-y-4 pb-28 sm:space-y-6 sm:pb-8">
+    <main className="space-y-4 pb-16 sm:space-y-6 sm:pb-8">
       {loading ? (
         <Card className="rounded-3xl border-neutral-200/90 bg-white/90 p-8">
           <p className="text-sm text-neutral-600">正在加载租户仪表盘...</p>

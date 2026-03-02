@@ -272,7 +272,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
             })}
           </nav>
 
-          <div className="mt-auto border-t border-neutral-200 p-3 dark:border-neutral-800">
+          <div className="mt-auto border-t border-neutral-200 px-3 pb-2 pt-2.5 sm:p-3 dark:border-neutral-800">
             <Button
               type="button"
               variant="outline"
@@ -298,7 +298,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
             <Button
               type="button"
               variant="ghost"
-              className="mt-3 w-full justify-start text-neutral-600 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-neutral-100"
+              className="mt-2 w-full justify-start text-neutral-600 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-neutral-100"
               onClick={() => {
                 clearAccessToken();
                 router.replace('/login');
@@ -308,7 +308,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
               <span>{copy.logout}</span>
             </Button>
 
-            <div className="mt-3">
+            <div className="mt-2 hidden sm:block">
               <UiPreferenceControls className="tenant-sidebar-pref" />
             </div>
           </div>
@@ -371,7 +371,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
             </div>
           </header>
           <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-            <div className="min-h-full pb-4">{children}</div>
+            <div className="pb-3 sm:pb-4">{children}</div>
           </div>
         </section>
       </div>
