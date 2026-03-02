@@ -44,11 +44,28 @@ async function proxyRequest(request: NextRequest, context: RouteContext) {
     });
 
     const responseBody = await upstreamResponse.text();
+    const responseHeaders: Record<string, string> = {
+      'Content-Type': upstreamResponse.headers.get('Content-Type') ?? 'application/json'
+    };
+
+    const contentDisposition = upstreamResponse.headers.get('Content-Disposition');
+    if (contentDisposition) {
+      responseHeaders['Content-Disposition'] = contentDisposition;
+    }
+
+    const exportRowCount = upstreamResponse.headers.get('X-Export-Row-Count');
+    if (exportRowCount) {
+      responseHeaders['X-Export-Row-Count'] = exportRowCount;
+    }
+
+    const exportTruncated = upstreamResponse.headers.get('X-Export-Truncated');
+    if (exportTruncated) {
+      responseHeaders['X-Export-Truncated'] = exportTruncated;
+    }
+
     const response = new NextResponse(responseBody, {
       status: upstreamResponse.status,
-      headers: {
-        'Content-Type': upstreamResponse.headers.get('Content-Type') ?? 'application/json'
-      }
+      headers: responseHeaders
     });
 
     if (upstreamResponse.status === 401) {
