@@ -3,6 +3,7 @@ import {
   deleteTenantMemberResponseSchema,
   listAdminTenantMembersResponseSchema,
   listAdminTenantsResponseSchema,
+  offboardAdminTenantResponseSchema,
   reactivateAdminTenantResponseSchema,
   suspendAdminTenantResponseSchema,
   upsertTenantMemberResponseSchema,
@@ -141,20 +142,7 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
       }
       checks += 1;
 
-      const afterLifecycleResponse = await ctx.request({
-        method: 'GET',
-        path: `/admin/tenants/${tenantId}/subscription`,
-        token: superAdminLogin.token,
-      });
-      assertStatus(afterLifecycleResponse, 200, 'admin.lifecycle.subscription.after');
-      const afterLifecyclePayload = getAdminTenantSubscriptionResponseSchema.parse(afterLifecycleResponse.body);
-      if (afterLifecyclePayload.subscription.disabledAt !== null) {
-        throw new ApiTestError('admin.lifecycle.subscription.after disabledAt should be null');
-      }
-      if (afterLifecyclePayload.subscription.disabledReason !== null) {
-        throw new ApiTestError('admin.lifecycle.subscription.after disabledReason should be null');
-      }
-      checks += 1;
+      const offboardReason = `offboard-review-${Date.now()}`;
 
       const memberEmail = defaultEmail('api-admin-remove-member');
       const upsertMemberResponse = await ctx.request({
@@ -350,6 +338,43 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
         throw new ApiTestError(
           `admin.audit-export.csv.limit message should guide filter narrowing, got ${overLimitMessage}`,
         );
+      }
+      checks += 1;
+
+      const offboardResponse = await ctx.request({
+        method: 'POST',
+        path: `/admin/tenants/${tenantId}/lifecycle/offboard`,
+        token: superAdminLogin.token,
+        json: {
+          reason: offboardReason,
+          confirmTenantSlug: tenantSlug,
+        },
+      });
+      assertStatus(offboardResponse, 201, 'admin.lifecycle.offboard');
+      const offboardPayload = offboardAdminTenantResponseSchema.parse(offboardResponse.body);
+      if (offboardPayload.subscription.status !== 'DISABLED') {
+        throw new ApiTestError('admin.lifecycle.offboard status should be DISABLED');
+      }
+      if (offboardPayload.subscription.disabledAt === null) {
+        throw new ApiTestError('admin.lifecycle.offboard disabledAt should not be null');
+      }
+      if (!offboardPayload.subscription.disabledReason?.includes(offboardReason)) {
+        throw new ApiTestError('admin.lifecycle.offboard disabledReason mismatch');
+      }
+      checks += 1;
+
+      const afterLifecycleResponse = await ctx.request({
+        method: 'GET',
+        path: `/admin/tenants/${tenantId}/subscription`,
+        token: superAdminLogin.token,
+      });
+      assertStatus(afterLifecycleResponse, 200, 'admin.lifecycle.subscription.after');
+      const afterLifecyclePayload = getAdminTenantSubscriptionResponseSchema.parse(afterLifecycleResponse.body);
+      if (afterLifecyclePayload.subscription.disabledAt === null) {
+        throw new ApiTestError('admin.lifecycle.subscription.after disabledAt should not be null after offboard');
+      }
+      if (!afterLifecyclePayload.subscription.disabledReason?.includes(offboardReason)) {
+        throw new ApiTestError('admin.lifecycle.subscription.after disabledReason should include offboard reason');
       }
       checks += 1;
 
