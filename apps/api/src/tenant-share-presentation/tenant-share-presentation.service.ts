@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import {
   publicSharePresentationSchema,
   sharePresentationOverrideSchema,
@@ -8,8 +8,25 @@ import {
   type TenantSharePresentation
 } from '@eggturtle/shared';
 import { Prisma } from '@prisma/client';
+import { randomUUID } from 'node:crypto';
+import path from 'node:path';
 
 import { PrismaService } from '../prisma.service';
+import { STORAGE_PROVIDER_TOKEN } from '../storage/storage.constants';
+import type { StorageProvider } from '../storage/storage.provider';
+
+type UploadedBinaryFile = {
+  originalname: string;
+  mimetype: string;
+  buffer: Buffer;
+};
+
+type UploadedSharePresentationAsset = {
+  key: string;
+  url: string;
+  contentType: string | null;
+  sizeBytes: string;
+};
 
 const DEFAULT_BRAND_PRIMARY = '#FFD400';
 const DEFAULT_BRAND_SECONDARY = '#1f2937';
@@ -18,7 +35,10 @@ const DEFAULT_WECHAT_BLOCK_VISIBLE = false;
 
 @Injectable()
 export class TenantSharePresentationService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(STORAGE_PROVIDER_TOKEN) private readonly storageProvider: StorageProvider
+  ) {}
 
   async getTenantTemplate(tenantId: string): Promise<TenantSharePresentation> {
     const config = await this.prisma.tenantSharePresentationConfig.findUnique({
@@ -82,6 +102,38 @@ export class TenantSharePresentationService {
       showWechatBlock: config.showWechatBlock,
       wechatQrImageUrl: this.normalizeNullableAssetUrl(config.wechatQrImageUrl),
       wechatId: this.normalizeNullableWechatId(config.wechatId)
+    };
+  }
+
+  async uploadImage(
+    tenantId: string,
+    actorUserId: string,
+    file: UploadedBinaryFile
+  ): Promise<UploadedSharePresentationAsset> {
+    const contentType = file.mimetype?.trim() || 'application/octet-stream';
+    if (!contentType.startsWith('image/')) {
+      throw new BadRequestException('Only image files are supported.');
+    }
+
+    const extension = this.resolveImageExtension(file.originalname, contentType);
+    const key = `${tenantId}/tenant-share-presentation/${Date.now()}-${randomUUID()}${extension}`;
+
+    const uploadResult = await this.storageProvider.putObject({
+      key,
+      body: file.buffer,
+      contentType,
+      metadata: {
+        tenantId,
+        uploadedBy: actorUserId,
+        source: 'tenant-share-presentation.upload'
+      }
+    });
+
+    return {
+      key: uploadResult.key,
+      url: uploadResult.url,
+      contentType: uploadResult.contentType,
+      sizeBytes: String(file.buffer.length)
     };
   }
 
@@ -399,6 +451,23 @@ export class TenantSharePresentationService {
     }
 
     return parsed.data;
+  }
+
+  private resolveImageExtension(originalName: string, mimeType: string): string {
+    const extensionFromName = path.extname(originalName).trim();
+    if (extensionFromName) {
+      return extensionFromName.toLowerCase();
+    }
+
+    const extensionMap: Record<string, string> = {
+      'image/jpeg': '.jpg',
+      'image/png': '.png',
+      'image/webp': '.webp',
+      'image/gif': '.gif',
+      'image/svg+xml': '.svg'
+    };
+
+    return extensionMap[mimeType] ?? '';
   }
 
   private hasOwn<Key extends string>(

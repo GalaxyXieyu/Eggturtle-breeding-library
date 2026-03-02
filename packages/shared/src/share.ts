@@ -70,6 +70,15 @@ export const updateTenantSharePresentationResponseSchema = z.object({
   presentation: tenantSharePresentationSchema
 });
 
+export const uploadTenantSharePresentationImageResponseSchema = z.object({
+  asset: z.object({
+    key: z.string().min(1),
+    url: shareAssetUrlSchema,
+    contentType: z.string().min(1).nullable(),
+    sizeBytes: z.string().regex(/^\d+$/)
+  })
+});
+
 export const shareResourceTypeSchema = z.enum(['tenant_feed']);
 
 export const createShareRequestSchema = z.object({
@@ -198,3 +207,4 @@ export type PublicShareDetail = z.infer<typeof publicShareDetailSchema>;
 export type PublicShareDetailEvent = z.infer<typeof publicShareDetailEventSchema>;
 export type PublicShareMateLoadItem = z.infer<typeof publicShareMateLoadItemSchema>;
 export type UpdateTenantSharePresentationRequest = z.infer<typeof updateTenantSharePresentationRequestSchema>;
+export type UploadTenantSharePresentationImageResponse = z.infer<typeof uploadTenantSharePresentationImageResponseSchema>;

@@ -1,16 +1,17 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
   getTenantSharePresentationResponseSchema,
+  uploadTenantSharePresentationImageResponseSchema,
   updateTenantSharePresentationRequestSchema,
   updateTenantSharePresentationResponseSchema,
   type TenantSharePresentation
 } from '@eggturtle/shared';
 
-import { ApiError, apiRequest, getAccessToken } from '../../../../lib/api-client';
+import { ApiError, apiRequest, getAccessToken, getApiBaseUrl, resolveAuthenticatedAssetUrl } from '../../../../lib/api-client';
 import { switchTenantBySlug } from '../../../../lib/tenant-session';
 import { Button } from '../../../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../components/ui/card';
@@ -74,6 +75,9 @@ export default function SharePresentationPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingPreviewImage, setUploadingPreviewImage] = useState(false);
+  const [uploadingHeroImages, setUploadingHeroImages] = useState(false);
+  const [uploadingWechatImage, setUploadingWechatImage] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
@@ -85,6 +89,12 @@ export default function SharePresentationPage() {
     () => withCurrentColorOption(SECONDARY_COLOR_OPTIONS, normalizeColor(form.brandSecondary)),
     [form.brandSecondary]
   );
+  const heroImageUrls = useMemo(
+    () => normalizeHeroImageList(form.heroImagesText, form.previewImageUrl),
+    [form.heroImagesText, form.previewImageUrl]
+  );
+  const maxHeroImages = normalizeNullableString(form.previewImageUrl) ? 9 : 10;
+  const isUploadingAsset = uploadingPreviewImage || uploadingHeroImages || uploadingWechatImage;
 
   const loadPresentation = useCallback(async () => {
     const response = await apiRequest('/tenant-share-presentation', {
@@ -181,6 +191,102 @@ export default function SharePresentationPage() {
     }
   }
 
+  async function handleUploadPreviewImage(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    setUploadingPreviewImage(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const uploaded = await uploadSharePresentationImage(file);
+      setForm((prev) => ({
+        ...prev,
+        previewImageUrl: uploaded.url,
+        heroImagesText: normalizeHeroImageList(prev.heroImagesText, uploaded.url).join('\n')
+      }));
+      setMessage('封面图上传成功。');
+    } catch (requestError) {
+      setError(formatError(requestError));
+    } finally {
+      setUploadingPreviewImage(false);
+      event.target.value = '';
+    }
+  }
+
+  async function handleUploadHeroImages(event: ChangeEvent<HTMLInputElement>) {
+    const files = event.target.files ? Array.from(event.target.files) : [];
+    if (files.length === 0) {
+      return;
+    }
+
+    setUploadingHeroImages(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const availableSlots = Math.max(0, maxHeroImages - heroImageUrls.length);
+      if (availableSlots === 0) {
+        setMessage(`轮播图最多 ${maxHeroImages} 张，请先删除后再上传。`);
+        return;
+      }
+
+      const uploadQueue = files.slice(0, availableSlots);
+      const uploadedUrls: string[] = [];
+      for (const file of uploadQueue) {
+        const uploaded = await uploadSharePresentationImage(file);
+        uploadedUrls.push(uploaded.url);
+      }
+
+      setForm((prev) => ({
+        ...prev,
+        heroImagesText: normalizeHeroImageList(
+          [...normalizeHeroImageList(prev.heroImagesText, prev.previewImageUrl), ...uploadedUrls].join('\n'),
+          prev.previewImageUrl
+        ).join('\n')
+      }));
+
+      if (files.length > uploadQueue.length) {
+        setMessage(`已上传 ${uploadQueue.length} 张，超出上限的 ${files.length - uploadQueue.length} 张已忽略。`);
+      } else {
+        setMessage(`已上传 ${uploadQueue.length} 张轮播图。`);
+      }
+    } catch (requestError) {
+      setError(formatError(requestError));
+    } finally {
+      setUploadingHeroImages(false);
+      event.target.value = '';
+    }
+  }
+
+  async function handleUploadWechatImage(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    setUploadingWechatImage(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const uploaded = await uploadSharePresentationImage(file);
+      setForm((prev) => ({
+        ...prev,
+        wechatQrImageUrl: uploaded.url
+      }));
+      setMessage('微信二维码上传成功。');
+    } catch (requestError) {
+      setError(formatError(requestError));
+    } finally {
+      setUploadingWechatImage(false);
+      event.target.value = '';
+    }
+  }
+
   return (
     <main className="space-y-4 pb-8 sm:space-y-6">
       {loading ? (
@@ -245,24 +351,109 @@ export default function SharePresentationPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="preview-image">预览封面图 URL（将作为轮播第一张）</Label>
-                  <Input
-                    id="preview-image"
-                    value={form.previewImageUrl}
-                    placeholder="/images/mg_04.jpg 或 https://example.com/cover.jpg"
-                    onChange={(event) => setForm((prev) => ({ ...prev, previewImageUrl: event.target.value }))}
-                  />
+                  <Label htmlFor="preview-image-upload">预览封面图（将作为轮播第一张）</Label>
+                  <div className="space-y-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+                    <input
+                      id="preview-image-upload"
+                      type="file"
+                      accept="image/*"
+                      disabled={saving || isUploadingAsset}
+                      onChange={handleUploadPreviewImage}
+                      className="block w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700"
+                    />
+                    <p className="text-xs text-neutral-600">建议上传横图，系统会自动作为轮播第一张。</p>
+
+                    {form.previewImageUrl ? (
+                      <div className="flex items-start gap-3 rounded-xl border border-neutral-200 bg-white p-2.5">
+                        <img
+                          src={resolveAuthenticatedAssetUrl(form.previewImageUrl)}
+                          alt="封面图预览"
+                          className="h-16 w-16 rounded-lg border border-neutral-200 object-cover"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-neutral-800">当前封面图</p>
+                          <p className="truncate font-mono text-[11px] text-neutral-500">{form.previewImageUrl}</p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          disabled={saving || isUploadingAsset}
+                          onClick={() =>
+                            setForm((prev) => ({
+                              ...prev,
+                              previewImageUrl: '',
+                              heroImagesText: normalizeHeroImageList(prev.heroImagesText, '').join('\n')
+                            }))
+                          }
+                        >
+                          移除
+                        </Button>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-neutral-500">未设置封面图时，将使用轮播图第一张作为封面。</p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="hero-images">顶部轮播图（每行一个 URL 或 /images 路径）</Label>
-                  <Textarea
-                    id="hero-images"
-                    rows={4}
-                    value={form.heroImagesText}
-                    placeholder={'/images/mg_04.jpg\nhttps://example.com/hero-2.jpg'}
-                    onChange={(event) => setForm((prev) => ({ ...prev, heroImagesText: event.target.value }))}
-                  />
+                  <Label htmlFor="hero-images-upload">顶部轮播图</Label>
+                  <div className="space-y-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-600">
+                      <span>支持多图上传，按上传顺序展示。</span>
+                      <span>
+                        已上传 {heroImageUrls.length}/{maxHeroImages}
+                      </span>
+                    </div>
+                    <input
+                      id="hero-images-upload"
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      disabled={saving || isUploadingAsset || heroImageUrls.length >= maxHeroImages}
+                      onChange={handleUploadHeroImages}
+                      className="block w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700"
+                    />
+
+                    {heroImageUrls.length > 0 ? (
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {heroImageUrls.map((imageUrl, index) => (
+                          <div
+                            key={`${imageUrl}-${index}`}
+                            className="overflow-hidden rounded-xl border border-neutral-200 bg-white"
+                          >
+                            <img
+                              src={resolveAuthenticatedAssetUrl(imageUrl)}
+                              alt={`轮播图 ${index + 1}`}
+                              className="h-28 w-full object-cover"
+                            />
+                            <div className="flex items-center justify-between gap-2 px-2.5 py-2">
+                              <p className="truncate text-xs text-neutral-600">第 {index + 1} 张</p>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                disabled={saving || isUploadingAsset}
+                                onClick={() =>
+                                  setForm((prev) => ({
+                                    ...prev,
+                                    heroImagesText: normalizeHeroImageList(
+                                      prev.heroImagesText,
+                                      prev.previewImageUrl
+                                    )
+                                      .filter((item) => item !== imageUrl)
+                                      .join('\n')
+                                  }))
+                                }
+                              >
+                                删除
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-neutral-500">暂未上传轮播图。</p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
@@ -286,13 +477,41 @@ export default function SharePresentationPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="wechat-qr">微信二维码图片 URL</Label>
-                  <Input
-                    id="wechat-qr"
-                    value={form.wechatQrImageUrl}
-                    placeholder="用户自己上传后的图片地址"
-                    onChange={(event) => setForm((prev) => ({ ...prev, wechatQrImageUrl: event.target.value }))}
-                  />
+                  <Label htmlFor="wechat-qr-upload">微信二维码图片</Label>
+                  <div className="space-y-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+                    <input
+                      id="wechat-qr-upload"
+                      type="file"
+                      accept="image/*"
+                      disabled={saving || isUploadingAsset}
+                      onChange={handleUploadWechatImage}
+                      className="block w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700"
+                    />
+
+                    {form.wechatQrImageUrl ? (
+                      <div className="flex items-start gap-3 rounded-xl border border-neutral-200 bg-white p-2.5">
+                        <img
+                          src={resolveAuthenticatedAssetUrl(form.wechatQrImageUrl)}
+                          alt="微信二维码预览"
+                          className="h-16 w-16 rounded-lg border border-neutral-200 object-cover"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-neutral-800">当前二维码</p>
+                          <p className="truncate font-mono text-[11px] text-neutral-500">{form.wechatQrImageUrl}</p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          disabled={saving || isUploadingAsset}
+                          onClick={() => setForm((prev) => ({ ...prev, wechatQrImageUrl: '' }))}
+                        >
+                          移除
+                        </Button>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-neutral-500">未上传时公开页不会展示二维码图片。</p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -306,13 +525,13 @@ export default function SharePresentationPage() {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <Button type="submit" disabled={saving}>
+                  <Button type="submit" disabled={saving || isUploadingAsset}>
                     {saving ? '保存中...' : '保存并立即生效'}
                   </Button>
                   <Button
                     type="button"
                     variant="secondary"
-                    disabled={saving}
+                    disabled={saving || isUploadingAsset}
                     onClick={() => {
                       setForm(DEFAULT_FORM);
                       setMessage(null);
@@ -334,7 +553,11 @@ export default function SharePresentationPage() {
             <CardContent className="space-y-4">
               <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-900 shadow-[0_10px_24px_rgba(0,0,0,0.16)]">
                 <div className="relative h-44">
-                  <img src={preview.heroImages[0]} alt="分享封面预览" className="h-full w-full object-cover" />
+                  <img
+                    src={resolveAuthenticatedAssetUrl(preview.heroImages[0])}
+                    alt="分享封面预览"
+                    className="h-full w-full object-cover"
+                  />
                   <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-black/50" />
                   <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
                     <p className="text-xs uppercase tracking-[0.22em] text-white/75">preview</p>
@@ -385,7 +608,7 @@ export default function SharePresentationPage() {
                   <div className="mt-3 flex items-start gap-3">
                     {preview.wechatQrImageUrl ? (
                       <img
-                        src={preview.wechatQrImageUrl}
+                        src={resolveAuthenticatedAssetUrl(preview.wechatQrImageUrl)}
                         alt="微信二维码预览"
                         className="h-20 w-20 rounded-xl border border-neutral-200 bg-white object-cover p-1"
                       />
@@ -514,13 +737,29 @@ function toFormState(presentation: TenantSharePresentation): FormState {
 
 function buildHeroImages(previewImageUrl: string, heroImagesText: string): string[] {
   const previewImage = normalizeNullableString(previewImageUrl);
-  const heroImages = splitLines(heroImagesText);
+  const heroImages = normalizeHeroImageList(heroImagesText, previewImageUrl);
 
   if (!previewImage) {
     return heroImages;
   }
 
   return [previewImage, ...heroImages.filter((item) => item !== previewImage)];
+}
+
+function normalizeHeroImageList(heroImagesText: string, previewImageUrl: string): string[] {
+  const previewImage = normalizeNullableString(previewImageUrl);
+  const maxHeroImages = previewImage ? 9 : 10;
+  const deduped = new Set<string>();
+
+  for (const imageUrl of splitLines(heroImagesText)) {
+    if (previewImage && imageUrl === previewImage) {
+      continue;
+    }
+
+    deduped.add(imageUrl);
+  }
+
+  return [...deduped].slice(0, maxHeroImages);
 }
 
 function splitLines(value: string): string[] {
@@ -548,6 +787,62 @@ function normalizeColor(value: string): string | null {
   }
 
   return normalized;
+}
+
+async function uploadSharePresentationImage(file: File) {
+  const token = getAccessToken();
+  const headers = new Headers();
+
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${getApiBaseUrl()}/tenant-share-presentation/images`, {
+    method: 'POST',
+    headers,
+    body: formData,
+    cache: 'no-store'
+  });
+
+  const payload = await parseJsonBody(response);
+  if (!response.ok) {
+    throw new ApiError(pickErrorMessage(payload, `Request failed with status ${response.status}`), response.status);
+  }
+
+  const parsed = uploadTenantSharePresentationImageResponseSchema.parse(payload);
+  return parsed.asset;
+}
+
+async function parseJsonBody(response: Response) {
+  const text = await response.text();
+  if (!text) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return { message: text };
+  }
+}
+
+function pickErrorMessage(payload: unknown, fallback: string) {
+  if (!payload || typeof payload !== 'object') {
+    return fallback;
+  }
+
+  if ('message' in payload && typeof payload.message === 'string') {
+    return payload.message;
+  }
+
+  if ('error' in payload && typeof payload.error === 'string') {
+    return payload.error;
+  }
+
+  return fallback;
 }
 
 function getContrastTextColor(color: string): '#111827' | '#ffffff' {

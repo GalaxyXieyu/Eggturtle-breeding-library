@@ -221,6 +221,7 @@ export {
   tenantSharePresentationSchema,
   updateTenantSharePresentationRequestSchema,
   updateTenantSharePresentationResponseSchema,
+  uploadTenantSharePresentationImageResponseSchema,
   shareResourceTypeSchema,
   shareSchema
 } from './share';
@@ -237,6 +238,7 @@ export type {
   Share,
   TenantSharePresentation,
   UpdateTenantSharePresentationRequest,
+  UploadTenantSharePresentationImageResponse,
   ShareResourceType
 } from './share';
 export {
