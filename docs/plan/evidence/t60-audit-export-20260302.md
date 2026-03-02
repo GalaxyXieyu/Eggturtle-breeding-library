@@ -55,7 +55,8 @@ pnpm api-tests -- --confirm-writes --clear-token-cache --json \
 
 ## PR
 - PR：`https://github.com/GalaxyXieyu/Eggturtle-breeding-library/pull/47`
-- Commit：`59c61c62aded844ed9720b6c86317fd0d30b4bd7`
+- Commit（API+tests）：`59c61c62aded844ed9720b6c86317fd0d30b4bd7`
+- Commit（evidence update）：`3a6489c433d41362ba1f5a1776d9b5e1a53d3819`
 
 ## 备注
 - PR 合并后，请回填 SSOT：`docs/plan/EggsTask.csv` 的 T60 Evidence 字段。
