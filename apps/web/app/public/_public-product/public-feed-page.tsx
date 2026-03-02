@@ -5,7 +5,6 @@ import type { PublicSharePresentation } from '@eggturtle/shared';
 
 import { UiPreferenceControls } from '../../../components/ui-preferences';
 
-import PublicPermalinkBar from '../_shared/public-permalink-bar';
 import type { Breeder, NeedMatingStatus, Series } from './types';
 import { BreederCard, DemoHint, PublicEmptyState, SeriesIntroCard, ShareContactCard } from './components';
 import { resolvePublicSharePresentation } from './presentation';
@@ -133,8 +132,6 @@ export default function PublicFeedPage({ demo, shareToken, shareQuery, series, b
         </header>
 
         <DemoHint demo={demo} />
-
-        <PublicPermalinkBar shareToken={shareToken} className="mb-3" />
 
         <div className="sticky z-30 mb-3 border border-black/5 bg-white/95 px-3 py-3 shadow-[0_4px_20px_rgba(0,0,0,0.06)] backdrop-blur-md supports-[backdrop-filter]:bg-white/90 sm:rounded-2xl dark:border-white/10 dark:bg-neutral-900/70 supports-[backdrop-filter]:dark:bg-neutral-900/60" style={{ top: 'calc(env(safe-area-inset-top) + 10px)' }}>
           <div className="flex flex-col gap-3">

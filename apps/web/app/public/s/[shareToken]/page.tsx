@@ -16,6 +16,7 @@ export default async function PublicShareFeedPage({
   searchParams: PublicSearchParams;
 }) {
   const shareResult = await fetchPublicShareFromSearchParams(searchParams);
+  const hasSidParam = firstValue(searchParams.sid)?.trim().length > 0;
 
   if (!shareResult.ok) {
     return (
@@ -23,7 +24,7 @@ export default async function PublicShareFeedPage({
         title="公开图鉴不可用"
         message={shareResult.message}
         shareToken={params.shareToken}
-        canAutoRefresh={shouldAutoRefreshShareSignature(shareResult.status, shareResult.errorCode)}
+        canAutoRefresh={!hasSidParam || shouldAutoRefreshShareSignature(shareResult.status, shareResult.errorCode)}
       />
     );
   }
@@ -52,4 +53,16 @@ export default async function PublicShareFeedPage({
       presentation={shareResult.data.presentation}
     />
   );
+}
+
+function firstValue(value: string | string[] | undefined): string | undefined {
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value[0];
+  }
+
+  return undefined;
 }

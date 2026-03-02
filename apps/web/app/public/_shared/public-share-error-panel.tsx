@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 type Props = {
   title: string;
@@ -9,13 +9,11 @@ type Props = {
   canAutoRefresh?: boolean;
 };
 
-const MAX_AUTO_REFRESH = 1;
-
 export default function PublicShareErrorPanel({ title, message, shareToken, canAutoRefresh = false }: Props) {
   const [toast, setToast] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
-  const storageKey = useMemo(() => `public-share-refresh-attempt:${shareToken}`, [shareToken]);
+  const hasAutoRefreshTriggeredRef = useRef(false);
 
   useEffect(() => {
     if (!toast) {
@@ -63,33 +61,21 @@ export default function PublicShareErrorPanel({ title, message, shareToken, canA
       return;
     }
 
-    const attemptedCount = Number(window.sessionStorage.getItem(storageKey) || '0');
-    if (attemptedCount >= MAX_AUTO_REFRESH) {
+    if (hasAutoRefreshTriggeredRef.current) {
       return;
     }
 
-    window.sessionStorage.setItem(storageKey, String(attemptedCount + 1));
+    hasAutoRefreshTriggeredRef.current = true;
     void refreshShareLink();
-  }, [canAutoRefresh, refreshShareLink, storageKey]);
+  }, [canAutoRefresh, refreshShareLink]);
 
   return (
     <main className="share-shell">
       <section className="card panel stack">
         <h1>{title}</h1>
         <p className="notice notice-error">{message}</p>
+        {canAutoRefresh && refreshing ? <p className="notice">正在自动刷新永久链接，请稍候...</p> : null}
         {refreshError ? <p className="notice notice-warning">{refreshError}</p> : null}
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              void refreshShareLink();
-            }}
-            className="rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm text-neutral-800 transition hover:border-neutral-400 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={refreshing}
-          >
-            {refreshing ? '刷新中...' : '点击刷新'}
-          </button>
-        </div>
       </section>
 
       {toast ? (
