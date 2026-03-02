@@ -41,6 +41,27 @@ type NavItem = {
   icon: typeof LayoutDashboard;
 };
 
+type PlanTier = 'FREE' | 'BASIC' | 'PRO';
+
+type PlanComparisonRow = {
+  metric: string;
+  free: string;
+  basic: string;
+  pro: string;
+};
+
+type PlanComparisonConfig = {
+  metricHeader: string;
+  intro: string;
+  note: string;
+  guideLabel: string;
+  guides: Array<{
+    plan: PlanTier;
+    text: string;
+  }>;
+  rows: PlanComparisonRow[];
+};
+
 const NAV_ITEMS: NavItem[] = [
   {
     label: { zh: '控制台', en: 'Dashboard' },
@@ -86,7 +107,7 @@ const SHELL_COPY = {
     quickShareMissingTenant: '当前租户上下文未就绪，暂时无法生成链接。',
     quickShareErrorFallback: '创建分享链接失败。',
     planModalTitle: '套餐对比',
-    planModalSubtitle: '先看差异，再决定是否升级。',
+    planModalSubtitle: '按关键维度看差异，再决定是否升级。',
     planModalClose: '稍后再看',
     planModalUpgradeNow: '去升级套餐'
   },
@@ -106,47 +127,87 @@ const SHELL_COPY = {
     quickShareMissingTenant: 'Tenant context is not ready yet.',
     quickShareErrorFallback: 'Failed to create share link.',
     planModalTitle: 'Plan Comparison',
-    planModalSubtitle: 'Check differences before upgrading.',
+    planModalSubtitle: 'Compare key dimensions before upgrading.',
     planModalClose: 'Later',
     planModalUpgradeNow: 'Upgrade now'
   }
 } as const;
 
-const PLAN_COMPARISON = {
-  zh: [
-    {
-      plan: 'FREE',
-      tagline: '适合试运行',
-      details: ['基础数据管理', '标准分享能力', '适合个人或早期验证']
-    },
-    {
-      plan: 'BASIC',
-      tagline: '适合稳定运营',
-      details: ['更高资源配额', '更长周期数据沉淀', '适合小团队持续使用']
-    },
-    {
-      plan: 'PRO',
-      tagline: '适合规模化经营',
-      details: ['最高配额与弹性扩展', '复杂场景长期使用', '适合多角色协作与增长期']
-    }
-  ],
-  en: [
-    {
-      plan: 'FREE',
-      tagline: 'For trial usage',
-      details: ['Core data management', 'Standard sharing features', 'Great for early validation']
-    },
-    {
-      plan: 'BASIC',
-      tagline: 'For steady operation',
-      details: ['Higher quota', 'Longer-term data usage', 'Good for small teams']
-    },
-    {
-      plan: 'PRO',
-      tagline: 'For scale-up',
-      details: ['Largest quota and flexibility', 'Built for advanced workflows', 'Best for multi-role growth']
-    }
-  ]
+const PLAN_COMPARISON: Record<'zh' | 'en', PlanComparisonConfig> = {
+  zh: {
+    metricHeader: '对比维度',
+    intro: '下面用同一张表横向展示 FREE / BASIC / PRO 的核心差异。',
+    note: '具体数值配额请以“个人设置 > 套餐状态”页面中的实时数据为准。',
+    guideLabel: '如何选择',
+    guides: [
+      { plan: 'FREE', text: '先验证流程与数据录入，适合起步阶段。' },
+      { plan: 'BASIC', text: '已有稳定业务后升级，兼顾成本与容量。' },
+      { plan: 'PRO', text: '适合多角色协作和持续增长场景。' }
+    ],
+    rows: [
+      {
+        metric: '适用阶段',
+        free: '个人或小规模试运行',
+        basic: '稳定运营中的小团队',
+        pro: '规模化经营与增长期'
+      },
+      {
+        metric: '数据与配额',
+        free: '基础配额，满足早期验证',
+        basic: '更高配额，覆盖日常运营',
+        pro: '最高配额，支持弹性扩展'
+      },
+      {
+        metric: '能力侧重点',
+        free: '基础管理 + 标准分享',
+        basic: '增强沉淀能力与持续使用',
+        pro: '复杂业务场景与长期高频使用'
+      },
+      {
+        metric: '协作规模',
+        free: '1-2 人为主',
+        basic: '小团队协作',
+        pro: '多角色协作'
+      }
+    ]
+  },
+  en: {
+    metricHeader: 'Dimension',
+    intro: 'A side-by-side matrix of FREE / BASIC / PRO key differences.',
+    note: 'For exact quota numbers, check real-time data in "Account > Subscription Status".',
+    guideLabel: 'How to choose',
+    guides: [
+      { plan: 'FREE', text: 'Start here for workflow validation and early setup.' },
+      { plan: 'BASIC', text: 'Best next step for stable daily operations.' },
+      { plan: 'PRO', text: 'Ideal for multi-role collaboration and scaling.' }
+    ],
+    rows: [
+      {
+        metric: 'Best for',
+        free: 'Individual or early trial',
+        basic: 'Steady small-team operation',
+        pro: 'Scale and growth stage'
+      },
+      {
+        metric: 'Data & quota',
+        free: 'Baseline quota for validation',
+        basic: 'Higher quota for daily workload',
+        pro: 'Top quota with flexible expansion'
+      },
+      {
+        metric: 'Capability focus',
+        free: 'Core management + standard sharing',
+        basic: 'Stronger retention for steady usage',
+        pro: 'Built for complex long-term workflows'
+      },
+      {
+        metric: 'Collaboration size',
+        free: 'Mainly 1-2 people',
+        basic: 'Small team collaboration',
+        pro: 'Multi-role collaboration'
+      }
+    ]
+  }
 } as const;
 
 export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) {
@@ -161,6 +222,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
   const [quickShareError, setQuickShareError] = useState<string | null>(null);
   const { locale } = useUiPreferences();
   const copy = SHELL_COPY[locale];
+  const planComparison = PLAN_COMPARISON[locale];
   const displayTenantName = useMemo(() => formatTenantDisplayName(tenantSlug, copy.defaultTenant), [tenantSlug, copy.defaultTenant]);
 
   const activeLabel = useMemo(() => {
@@ -390,31 +452,68 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
           onClick={() => setIsPlanModalOpen(false)}
         >
           <div
-            className="w-full max-w-2xl rounded-3xl border border-neutral-200 bg-white p-5 shadow-[0_24px_60px_rgba(0,0,0,0.2)] dark:border-neutral-800 dark:bg-neutral-950"
+            className="w-full max-w-4xl rounded-3xl border border-neutral-200 bg-white p-5 shadow-[0_24px_60px_rgba(0,0,0,0.2)] dark:border-neutral-800 dark:bg-neutral-950"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="mb-4">
               <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">{copy.planModalTitle}</h2>
               <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">{copy.planModalSubtitle}</p>
+              <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{planComparison.intro}</p>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
-              {PLAN_COMPARISON[locale].map((plan) => (
-                <section
-                  key={plan.plan}
-                  className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-900"
-                >
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500 dark:text-neutral-400">
-                    {plan.plan}
+            <div className="overflow-x-auto rounded-2xl border border-neutral-200 dark:border-neutral-800">
+              <table className="w-full min-w-[680px] border-separate border-spacing-0 text-left">
+                <thead>
+                  <tr className="bg-neutral-50 dark:bg-neutral-900">
+                    <th className="border-b border-neutral-200 px-3 py-2 text-xs font-semibold text-neutral-600 dark:border-neutral-800 dark:text-neutral-300 sm:px-4 sm:text-sm">
+                      {planComparison.metricHeader}
+                    </th>
+                    <th className="border-b border-neutral-200 px-3 py-2 text-xs font-semibold text-neutral-900 dark:border-neutral-800 dark:text-neutral-100 sm:px-4 sm:text-sm">
+                      FREE
+                    </th>
+                    <th className="border-b border-neutral-200 px-3 py-2 text-xs font-semibold text-neutral-900 dark:border-neutral-800 dark:text-neutral-100 sm:px-4 sm:text-sm">
+                      BASIC
+                    </th>
+                    <th className="border-b border-neutral-200 px-3 py-2 text-xs font-semibold text-neutral-900 dark:border-neutral-800 dark:text-neutral-100 sm:px-4 sm:text-sm">
+                      PRO
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {planComparison.rows.map((row) => (
+                    <tr key={row.metric}>
+                      <th className="border-b border-neutral-200 bg-neutral-50/80 px-3 py-2 align-top text-xs font-semibold text-neutral-700 dark:border-neutral-800 dark:bg-neutral-900/65 dark:text-neutral-200 sm:px-4 sm:text-sm">
+                        {row.metric}
+                      </th>
+                      <td className="border-b border-neutral-200 px-3 py-2 align-top text-xs text-neutral-700 dark:border-neutral-800 dark:text-neutral-200 sm:px-4 sm:text-sm">
+                        {row.free}
+                      </td>
+                      <td className="border-b border-neutral-200 bg-neutral-50/35 px-3 py-2 align-top text-xs text-neutral-700 dark:border-neutral-800 dark:bg-neutral-900/35 dark:text-neutral-200 sm:px-4 sm:text-sm">
+                        {row.basic}
+                      </td>
+                      <td className="border-b border-neutral-200 px-3 py-2 align-top text-xs text-neutral-700 dark:border-neutral-800 dark:text-neutral-200 sm:px-4 sm:text-sm">
+                        {row.pro}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">{planComparison.note}</p>
+
+            <div className="mt-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-900">
+              <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">{planComparison.guideLabel}</p>
+              <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                {planComparison.guides.map((guide) => (
+                  <p
+                    key={guide.plan}
+                    className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs text-neutral-700 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-200"
+                  >
+                    <span className="font-semibold">{guide.plan}：</span>
+                    {guide.text}
                   </p>
-                  <p className="mt-1 text-sm font-semibold text-neutral-900 dark:text-neutral-100">{plan.tagline}</p>
-                  <ul className="mt-2 space-y-1 text-xs text-neutral-600 dark:text-neutral-300">
-                    {plan.details.map((detail) => (
-                      <li key={detail}>• {detail}</li>
-                    ))}
-                  </ul>
-                </section>
-              ))}
+                ))}
+              </div>
             </div>
 
             <div className="mt-4 flex justify-end gap-2">
