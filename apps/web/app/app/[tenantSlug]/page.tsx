@@ -48,7 +48,7 @@ export default function TenantAppPage() {
 
   const [tenantReady, setTenantReady] = useState(false);
   const [tenantId, setTenantId] = useState<string | null>(null);
-  const [activeWindow, setActiveWindow] = useState<DashboardOverviewWindow>('today');
+  const [activeWindow, setActiveWindow] = useState<DashboardOverviewWindow>('30d');
   const [overviewByWindow, setOverviewByWindow] = useState<Partial<Record<DashboardOverviewWindow, DashboardOverviewResponse>>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +77,7 @@ export default function TenantAppPage() {
     setTenantReady(false);
     setTenantId(null);
     setOverviewByWindow({});
-    setActiveWindow('today');
+    setActiveWindow('30d');
     setLoading(true);
     setError(null);
 

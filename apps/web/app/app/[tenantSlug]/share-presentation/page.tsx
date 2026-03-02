@@ -445,13 +445,18 @@ function ThemeColorPicker({ id, label, value, fallback, options, onChange }: The
               type="button"
               aria-pressed={active}
               className={`rounded-xl border px-2 py-2 text-left transition ${
-                active ? 'border-neutral-900 bg-neutral-900/5 shadow-[0_6px_16px_rgba(15,23,42,0.12)]' : 'border-neutral-200 hover:border-neutral-400'
+                active ? 'shadow-[0_6px_16px_rgba(15,23,42,0.12)]' : 'hover:border-neutral-400'
               }`}
+              style={{
+                backgroundColor: active ? '#fff7d0' : '#ffffff',
+                color: '#111827',
+                borderColor: active ? option.value : '#e5e7eb'
+              }}
               onClick={() => onChange(option.value)}
             >
               <span className="flex items-center gap-2">
                 <span className="h-5 w-5 rounded-full border border-black/10" style={{ backgroundColor: option.value }} />
-                <span className="truncate text-xs font-medium text-neutral-700">{option.label}</span>
+                <span className="truncate text-xs font-semibold text-neutral-800">{option.label}</span>
               </span>
             </button>
           );

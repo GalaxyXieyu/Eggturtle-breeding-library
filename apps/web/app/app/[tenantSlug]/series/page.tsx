@@ -74,7 +74,6 @@ export default function SeriesListPage() {
     total: 0,
     totalPages: 1
   });
-  const activeCount = series.filter((item) => item.isActive).length;
   const hasSearch = search.trim().length > 0;
 
   const loadSeries = useCallback(async (query: Pick<ListSeriesQuery, 'search'>) => {
@@ -311,22 +310,15 @@ export default function SeriesListPage() {
       <Card className="tenant-card-lift relative overflow-hidden rounded-3xl border-neutral-200/90 bg-white transition-all">
         <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-[#FFD400]/20 blur-3xl" />
         <CardHeader className="relative z-10">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-3xl">
-                <Layers3 size={24} />
-                系列管理
-              </CardTitle>
-              <CardDescription className="mt-2">按系列编码或名称快速定位，卡片点击后在抽屉中编辑。</CardDescription>
-              <p className="mt-3 inline-flex items-center rounded-full border border-[#FFD400]/55 bg-[#FFF7D0] px-3 py-1 text-xs font-semibold text-neutral-800">
-                主题焦点：系列封面、状态、排序一体管理
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="accent">TOTAL {meta.total}</Badge>
-              <Badge variant="success">ACTIVE {activeCount}</Badge>
-              <Badge variant="default">INACTIVE {Math.max(meta.total - activeCount, 0)}</Badge>
-            </div>
+          <div>
+            <CardTitle className="flex items-center gap-2 text-3xl">
+              <Layers3 size={24} />
+              系列管理
+            </CardTitle>
+            <CardDescription className="mt-2">按系列编码或名称快速定位，卡片点击后在抽屉中编辑。</CardDescription>
+            <p className="mt-3 inline-flex items-center rounded-full border border-[#FFD400]/55 bg-[#FFF7D0] px-3 py-1 text-xs font-semibold text-neutral-800">
+              主题焦点：系列封面、状态、排序一体管理
+            </p>
           </div>
         </CardHeader>
         <CardContent className="relative z-10 pt-0">

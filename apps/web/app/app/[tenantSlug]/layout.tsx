@@ -23,7 +23,7 @@ import {
   UserRound
 } from 'lucide-react';
 
-import { UiPreferenceControls, useUiPreferences } from '../../../components/ui-preferences';
+import { useUiPreferences } from '../../../components/ui-preferences';
 import { Button } from '../../../components/ui/button';
 import { ApiError, apiRequest, clearAccessToken, getAccessToken } from '../../../lib/api-client';
 import { formatTenantDisplayName } from '../../../lib/tenant-display';
@@ -223,7 +223,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
       <div className="flex h-full w-full gap-2 p-2 sm:gap-3 sm:p-3 lg:gap-4 lg:p-4">
         <aside
           className={cn(
-            'fixed inset-y-0 left-0 z-50 flex w-[272px] flex-col overflow-y-auto border-r border-neutral-200 bg-white shadow-[0_16px_32px_rgba(0,0,0,0.08)] transition-transform duration-300 lg:relative lg:h-full lg:translate-x-0 lg:rounded-3xl lg:border lg:shadow-[0_8px_26px_rgba(0,0,0,0.08)]',
+            'fixed inset-y-0 left-0 z-50 flex w-[272px] flex-col overflow-hidden border-r border-neutral-200 bg-white shadow-[0_16px_32px_rgba(0,0,0,0.08)] transition-transform duration-300 lg:relative lg:h-full lg:translate-x-0 lg:rounded-3xl lg:border lg:shadow-[0_8px_26px_rgba(0,0,0,0.08)]',
             'dark:border-neutral-800 dark:bg-neutral-950/96 dark:shadow-[0_20px_40px_rgba(0,0,0,0.45)]',
             mobileNavOpen ? 'translate-x-0' : '-translate-x-full'
           )}
@@ -238,7 +238,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
             </div>
           </div>
 
-          <nav className="space-y-1 px-3 py-4">
+          <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
             {NAV_ITEMS.map((item) => {
               const href = item.href(tenantSlug);
               const active = isActive(pathname, href);
@@ -272,7 +272,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
             })}
           </nav>
 
-          <div className="mt-auto border-t border-neutral-200 px-3 pb-2 pt-2.5 sm:p-3 dark:border-neutral-800">
+          <div className="mt-auto border-t border-neutral-200 px-3 py-3 dark:border-neutral-800">
             <Button
               type="button"
               variant="outline"
@@ -307,10 +307,6 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
               <LogOut size={16} />
               <span>{copy.logout}</span>
             </Button>
-
-            <div className="mt-2 hidden sm:block">
-              <UiPreferenceControls className="tenant-sidebar-pref" />
-            </div>
           </div>
         </aside>
 

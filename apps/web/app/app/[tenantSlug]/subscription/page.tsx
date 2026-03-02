@@ -8,7 +8,7 @@ import {
   redeemTenantSubscriptionActivationCodeResponseSchema,
   type TenantSubscription
 } from '@eggturtle/shared';
-import { ArrowRight, Gift, Sparkles, Wallet } from 'lucide-react';
+import { ArrowRight, Wallet } from 'lucide-react';
 
 import { Badge } from '../../../../components/ui/badge';
 import { Button } from '../../../../components/ui/button';
@@ -26,12 +26,6 @@ type PlanPackage = {
   price: string;
   productLimit: string;
   aiQuota: string;
-  perks: string[];
-};
-
-type UpgradeTrack = {
-  title: string;
-  summary: string;
   perks: string[];
 };
 
@@ -78,6 +72,7 @@ export default function SubscriptionPage() {
   const [activationCode, setActivationCode] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [upgradeModalPlan, setUpgradeModalPlan] = useState<PlanPackage | null>(null);
   const [activeMobilePlanIndex, setActiveMobilePlanIndex] = useState(0);
   const mobilePlansRef = useRef<HTMLDivElement | null>(null);
 
@@ -125,40 +120,8 @@ export default function SubscriptionPage() {
     };
   }, [tenantSlug]);
 
-  async function handleRedeemActivationCode() {
-    if (!activationCode.trim()) {
-      setError('请输入升级码。');
-      return;
-    }
-
-    setRedeeming(true);
-    setMessage(null);
-    setError(null);
-
-    try {
-      const payload = redeemTenantSubscriptionActivationCodeRequestSchema.parse({
-        code: activationCode.trim()
-      });
-      const response = await apiRequest('/subscriptions/activation-codes/redeem', {
-        method: 'POST',
-        body: payload,
-        requestSchema: redeemTenantSubscriptionActivationCodeRequestSchema,
-        responseSchema: redeemTenantSubscriptionActivationCodeResponseSchema
-      });
-
-      setSubscription(response.subscription);
-      setActivationCode('');
-      setMessage(`套餐已更新为${formatPlanLabel(response.subscription.plan)}。`);
-    } catch (requestError) {
-      setError(formatError(requestError));
-    } finally {
-      setRedeeming(false);
-    }
-  }
-
   const currentPlan = normalizePlan(subscription?.plan);
   const effectiveProductLimit = resolveEffectiveProductLimit(subscription);
-  const upgradeTracks = buildUpgradeTracks(currentPlan);
   const recommendedTier = useMemo(() => getRecommendedTier(currentPlan), [currentPlan]);
   const recommendedPlan = useMemo(
     () => (recommendedTier ? PLAN_PACKAGES.find((item) => item.tier === recommendedTier) ?? null : null),
@@ -187,9 +150,65 @@ export default function SubscriptionPage() {
     setActiveMobilePlanIndex(currentPlanIndex);
   }, [currentPlanIndex]);
 
+  useEffect(() => {
+    if (!upgradeModalPlan) {
+      return;
+    }
+
+    function handleEscClose(event: KeyboardEvent) {
+      if (event.key === 'Escape' && !redeeming) {
+        setUpgradeModalPlan(null);
+      }
+    }
+
+    window.addEventListener('keydown', handleEscClose);
+    return () => {
+      window.removeEventListener('keydown', handleEscClose);
+    };
+  }, [upgradeModalPlan, redeeming]);
+
+  async function handleRedeemActivationCode() {
+    if (!activationCode.trim()) {
+      setError('请输入升级码。');
+      return;
+    }
+
+    setRedeeming(true);
+    setMessage(null);
+    setError(null);
+
+    try {
+      const payload = redeemTenantSubscriptionActivationCodeRequestSchema.parse({
+        code: activationCode.trim()
+      });
+      const response = await apiRequest('/subscriptions/activation-codes/redeem', {
+        method: 'POST',
+        body: payload,
+        requestSchema: redeemTenantSubscriptionActivationCodeRequestSchema,
+        responseSchema: redeemTenantSubscriptionActivationCodeResponseSchema
+      });
+
+      setSubscription(response.subscription);
+      setMessage(`套餐已更新为${formatPlanLabel(response.subscription.plan)}。`);
+      setActivationCode('');
+      setUpgradeModalPlan(null);
+    } catch (requestError) {
+      setError(formatError(requestError));
+    } finally {
+      setRedeeming(false);
+    }
+  }
+
+  function openUpgradeModal(plan: PlanPackage) {
+    setActivationCode('');
+    setMessage(null);
+    setError(null);
+    setUpgradeModalPlan(plan);
+  }
+
   function focusUpgradeSection() {
-    const target = document.getElementById('upgrade-now');
-    target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const targetIndex = recommendedPlanIndex >= 0 ? recommendedPlanIndex : undefined;
+    focusPlanSection(targetIndex);
   }
 
   function focusPlanSection(index?: number) {
@@ -280,7 +299,7 @@ export default function SubscriptionPage() {
               >
                 立刻升级
               </Button>
-              <p className="mt-2 text-center text-xs text-neutral-200/90">输入激活码后，套餐立即生效</p>
+              <p className="mt-2 text-center text-xs text-neutral-200/90">点击后跳转到价格卡片，直接对比套餐差异</p>
             </div>
           </div>
 
@@ -420,9 +439,11 @@ export default function SubscriptionPage() {
                           </div>
                         </details>
                         {!isCurrent ? (
-                          <Button type="button" variant="secondary" className="mt-3 w-full" onClick={focusUpgradeSection}>
-                            立刻升级到{item.name}
-                          </Button>
+                          <div className="mt-3 flex justify-end">
+                            <Button type="button" size="sm" className="h-8 rounded-lg px-3" onClick={() => openUpgradeModal(item)}>
+                              升级
+                            </Button>
+                          </div>
                         ) : null}
                         <p className="mt-2 text-center text-[11px] text-neutral-500">
                           {index + 1} / {PLAN_PACKAGES.length}
@@ -453,29 +474,44 @@ export default function SubscriptionPage() {
                     <th className="border-b border-neutral-200 px-4 py-2 text-sm font-semibold text-neutral-700">种龟上限</th>
                     <th className="border-b border-neutral-200 px-4 py-2 text-sm font-semibold text-neutral-700">AI 额度</th>
                     <th className="border-b border-neutral-200 px-4 py-2 text-sm font-semibold text-neutral-700">核心福利</th>
+                    <th className="border-b border-neutral-200 px-4 py-2 text-right text-sm font-semibold text-neutral-700">操作</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {PLAN_PACKAGES.map((item) => (
-                    <tr key={item.tier} className={item.tier === currentPlan ? 'bg-[#FFD400]/10' : ''}>
-                      <td className="border-b border-neutral-200 px-4 py-3 align-top">
-                        <p className="text-sm font-semibold text-neutral-900">{item.name}</p>
-                        {item.tier === currentPlan ? <p className="text-xs text-neutral-600">当前套餐</p> : null}
-                      </td>
-                      <td className="border-b border-neutral-200 px-4 py-3 align-top text-sm text-neutral-800">{item.price}</td>
-                      <td className="border-b border-neutral-200 px-4 py-3 align-top text-sm text-neutral-800">{item.productLimit}</td>
-                      <td className="border-b border-neutral-200 px-4 py-3 align-top text-sm text-neutral-800">{item.aiQuota}</td>
-                      <td className="border-b border-neutral-200 px-4 py-3 align-top">
-                        <div className="space-y-1">
-                          {item.perks.map((perk) => (
-                            <p key={`${item.tier}-${perk}`} className="text-sm text-neutral-800">
-                              • {perk}
-                            </p>
-                          ))}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {PLAN_PACKAGES.map((item) => {
+                    const isCurrent = item.tier === currentPlan;
+                    return (
+                      <tr key={item.tier} className={isCurrent ? 'bg-[#FFD400]/10' : ''}>
+                        <td className="border-b border-neutral-200 px-4 py-3 align-top">
+                          <p className="text-sm font-semibold text-neutral-900">{item.name}</p>
+                          {isCurrent ? <p className="text-xs text-neutral-600">当前套餐</p> : null}
+                        </td>
+                        <td className="border-b border-neutral-200 px-4 py-3 align-top text-sm text-neutral-800">{item.price}</td>
+                        <td className="border-b border-neutral-200 px-4 py-3 align-top text-sm text-neutral-800">{item.productLimit}</td>
+                        <td className="border-b border-neutral-200 px-4 py-3 align-top text-sm text-neutral-800">{item.aiQuota}</td>
+                        <td className="border-b border-neutral-200 px-4 py-3 align-top">
+                          <div className="space-y-1">
+                            {item.perks.map((perk) => (
+                              <p key={`${item.tier}-${perk}`} className="text-sm text-neutral-800">
+                                • {perk}
+                              </p>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="border-b border-neutral-200 px-4 py-3 align-top">
+                          {!isCurrent ? (
+                            <div className="flex justify-end">
+                              <Button type="button" size="sm" className="h-8 rounded-lg px-3" onClick={() => openUpgradeModal(item)}>
+                                升级
+                              </Button>
+                            </div>
+                          ) : (
+                            <p className="text-right text-xs text-neutral-500">已生效</p>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -486,58 +522,65 @@ export default function SubscriptionPage() {
         </Card>
       ) : null}
 
-      {!loading ? (
-        <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-2xl">
-              <Gift size={18} />
-              切换套餐可获得的福利
-            </CardTitle>
-            <CardDescription>按你当前套餐，给出最直接的升级收益。</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-3 md:grid-cols-2">
-            {upgradeTracks.map((item) => (
-              <section key={item.title} className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
-                <p className="text-sm font-semibold text-neutral-900">{item.title}</p>
-                <p className="mt-1 text-sm text-neutral-600">{item.summary}</p>
-                <div className="mt-2 space-y-1">
-                  {item.perks.map((perk) => (
-                    <p key={`${item.title}-${perk}`} className="text-sm text-neutral-800">
-                      • {perk}
-                    </p>
-                  ))}
-                </div>
-              </section>
-            ))}
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {!loading ? (
-        <Card id="upgrade-now" className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-2xl">
-              <Sparkles size={18} />
-              升级套餐
-            </CardTitle>
-            <CardDescription>输入激活码后立即生效，套餐状态会自动刷新。</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Label htmlFor="subscription-activation-code">激活码</Label>
-            <div className="flex flex-wrap gap-2">
+      {!loading && upgradeModalPlan ? (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-3 sm:items-center"
+          onClick={() => {
+            if (!redeeming) {
+              setUpgradeModalPlan(null);
+            }
+          }}
+        >
+          <section
+            className="w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-4 shadow-[0_22px_60px_rgba(15,23,42,0.22)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-lg font-black text-neutral-900">输入激活码升级套餐</p>
+                <p className="mt-1 text-sm text-neutral-600">
+                  目标版本：{upgradeModalPlan.name}（后续这里可切换为支付弹窗）
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                className="h-8 rounded-lg px-2 text-xs"
+                disabled={redeeming}
+                onClick={() => {
+                  setUpgradeModalPlan(null);
+                }}
+              >
+                关闭
+              </Button>
+            </div>
+            <div className="mt-4 space-y-2">
+              <Label htmlFor="subscription-activation-code-modal">激活码</Label>
               <Input
-                id="subscription-activation-code"
+                id="subscription-activation-code-modal"
                 type="text"
                 value={activationCode}
                 placeholder="例如 ETM-ABCD-1234-EFGH"
                 onChange={(event) => setActivationCode(event.target.value)}
               />
+            </div>
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={redeeming}
+                onClick={() => {
+                  setUpgradeModalPlan(null);
+                }}
+              >
+                取消
+              </Button>
               <Button type="button" disabled={redeeming} onClick={() => void handleRedeemActivationCode()}>
-                {redeeming ? '升级中...' : '立即升级'}
+                {redeeming ? '升级中...' : '确认升级'}
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          </section>
+        </div>
       ) : null}
 
       {message ? (
@@ -657,51 +700,6 @@ function toDisplayBytes(value: string | null | undefined) {
 
   const gb = bytes / (1024 * 1024 * 1024);
   return `${gb.toFixed(2)} GB`;
-}
-
-function buildUpgradeTracks(plan: PlanTier): UpgradeTrack[] {
-  if (plan === 'FREE') {
-    return [
-      {
-        title: '升级到基础版',
-        summary: '适合已经进入稳定繁育阶段，想要提高可管理容量与展示效率。',
-        perks: ['种龟上限从 10 提升到 30', '可用图册与二维码展示能力', '适合小团队持续运营']
-      },
-      {
-        title: '升级到专业版',
-        summary: '适合品牌化经营和持续增长阶段。',
-        perks: ['种龟上限提升到 200', '证书能力 + 图片水印能力', '更高 AI 月额度与展示能力']
-      }
-    ];
-  }
-
-  if (plan === 'BASIC') {
-    return [
-      {
-        title: '升级到专业版',
-        summary: '在基础版之上，强化品牌展示和交易转化链路。',
-        perks: ['种龟管理容量进一步提升到 200', '增加证书与防盗图能力', '获得更高 AI 月度额度']
-      },
-      {
-        title: '保持基础版',
-        summary: '如果当前团队规模稳定，基础版已覆盖常规运营。',
-        perks: ['维持 30 只管理上限', '继续使用图册与二维码', '可按需加购 AI 额度包']
-      }
-    ];
-  }
-
-  return [
-    {
-      title: '当前已是专业版',
-      summary: '你已在最高标准套餐，可继续通过运营能力放大收益。',
-      perks: ['保持 200 只管理上限', '持续使用证书与水印能力', '支持 AI 额度包多次叠加']
-    },
-    {
-      title: '优化建议',
-      summary: '专业版建议搭配标准化分享页和证书模板，提升成交效率。',
-      perks: ['统一品牌展示页素材', '按批次维护证书与来源信息', '定期复盘 AI 自动记录使用率']
-    }
-  ];
 }
 
 function formatError(error: unknown) {

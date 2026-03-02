@@ -618,8 +618,8 @@ export default function TenantProductsPage() {
               </CardDescription>
             ) : null}
           </div>
-          <div className="flex items-center gap-2">
-            <Button type="button" size="sm" className="lg:hidden" disabled={submitting} onClick={openCreateModal}>
+          <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end">
+            <Button type="button" size="sm" className="ml-auto lg:hidden" disabled={submitting} onClick={openCreateModal}>
               <Plus size={14} />
               新建
             </Button>
