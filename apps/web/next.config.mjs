@@ -25,8 +25,7 @@ const nextConfig = {
       { source: '/s/:path*', destination: `${internalApiBaseUrl}/s/:path*` },
       { source: '/subscriptions/:path*', destination: `${internalApiBaseUrl}/subscriptions/:path*` },
       { source: '/payments/:path*', destination: `${internalApiBaseUrl}/payments/:path*` },
-      { source: '/audit-logs/:path*', destination: `${internalApiBaseUrl}/audit-logs/:path*` },
-      { source: '/admin/:path*', destination: `${internalApiBaseUrl}/admin/:path*` }
+      { source: '/audit-logs/:path*', destination: `${internalApiBaseUrl}/audit-logs/:path*` }
     ];
   }
 };

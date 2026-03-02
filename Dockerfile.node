@@ -22,7 +22,8 @@ COPY scripts ./scripts
 
 RUN pnpm --filter @eggturtle/shared build \
   && pnpm --filter @eggturtle/api build \
-  && pnpm --filter @eggturtle/web build
+  && pnpm --filter @eggturtle/web build \
+  && pnpm --filter @eggturtle/admin build
 
 FROM node:22-alpine AS runner
 
