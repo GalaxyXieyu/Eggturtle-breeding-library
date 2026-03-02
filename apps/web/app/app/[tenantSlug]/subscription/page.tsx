@@ -158,25 +158,41 @@ export default function SubscriptionPage() {
   const effectiveProductLimit = resolveEffectiveProductLimit(subscription);
   const upgradeTracks = buildUpgradeTracks(currentPlan);
 
+  function focusUpgradeSection() {
+    const target = document.getElementById('upgrade-now');
+    target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   return (
     <main className="space-y-4 pb-10 sm:space-y-6">
-      <Card className="tenant-card-lift relative overflow-hidden rounded-3xl border-neutral-200/90 bg-white p-6 sm:p-7">
-        <div className="pointer-events-none absolute -right-12 -top-16 h-44 w-44 rounded-full bg-[#FFD400]/20 blur-3xl" />
-        <CardHeader className="relative z-10 p-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="accent">套餐订阅中心</Badge>
-            <Badge variant={subscription?.status === 'ACTIVE' ? 'success' : 'warning'}>{formatStatusLabel(subscription?.status)}</Badge>
-          </div>
-          <CardTitle className="mt-3 text-3xl text-neutral-900 sm:text-4xl">{formatPlanLabel(currentPlan)}</CardTitle>
-          <CardDescription className="mt-2 text-neutral-600">
-            这里集中展示当前套餐、配额状态、不同版本差异，以及升级可获得的能力。
-          </CardDescription>
-        </CardHeader>
-      </Card>
-
       {loading ? (
         <Card className="rounded-3xl border-neutral-200/90 bg-white p-6">
           <p className="text-sm text-neutral-600">正在加载套餐信息...</p>
+        </Card>
+      ) : null}
+
+      {!loading ? (
+        <Card className="rounded-2xl border-neutral-200/90 bg-white p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="accent">套餐订阅中心</Badge>
+                <Badge variant={subscription?.status === 'ACTIVE' ? 'success' : 'warning'}>{formatStatusLabel(subscription?.status)}</Badge>
+              </div>
+              <p className="mt-2 text-xl font-semibold text-neutral-900">{formatPlanLabel(currentPlan)}</p>
+              <p className="mt-1 text-sm text-neutral-600">查看当前配额、版本差异和升级福利。</p>
+            </div>
+            <div className="w-full rounded-2xl border border-neutral-200 bg-neutral-50/90 p-2 sm:w-auto sm:min-w-[210px]">
+              <Button
+                type="button"
+                className="h-11 w-full rounded-xl bg-neutral-900 text-sm font-semibold text-white shadow-[0_10px_20px_rgba(15,23,42,0.3)] hover:bg-neutral-800"
+                onClick={focusUpgradeSection}
+              >
+                立刻升级
+              </Button>
+              <p className="mt-2 text-center text-xs text-neutral-500">激活码升级入口在页面下方</p>
+            </div>
+          </div>
         </Card>
       ) : null}
 
@@ -199,7 +215,58 @@ export default function SubscriptionPage() {
             <CardDescription>依据当前文档口径整理，价格与能力一页看清。</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="overflow-x-auto rounded-2xl border border-neutral-200">
+            <div className="grid gap-3 md:hidden">
+              {PLAN_PACKAGES.map((item) => {
+                const isCurrent = item.tier === currentPlan;
+                return (
+                  <section
+                    key={`mobile-${item.tier}`}
+                    className={`relative overflow-hidden rounded-2xl border p-4 shadow-[0_8px_20px_rgba(15,23,42,0.08)] ${
+                      isCurrent ? 'border-[#FFD400]/70 bg-gradient-to-b from-[#FFF6CF] to-white' : 'border-neutral-200 bg-white'
+                    }`}
+                  >
+                    <div className="pointer-events-none absolute -right-6 -top-8 h-20 w-20 rounded-full bg-[#FFD400]/30 blur-2xl" />
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between">
+                        <p className="text-lg font-bold text-neutral-900">{item.name}</p>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                            isCurrent ? 'bg-neutral-900 text-white' : 'bg-neutral-100 text-neutral-700'
+                          }`}
+                        >
+                          {isCurrent ? '当前' : '可升级'}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-2xl font-black text-neutral-900">{item.price}</p>
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-2 py-1.5">
+                          <p className="text-[11px] text-neutral-500">种龟上限</p>
+                          <p className="text-sm font-semibold text-neutral-900">{item.productLimit}</p>
+                        </div>
+                        <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-2 py-1.5">
+                          <p className="text-[11px] text-neutral-500">AI 额度</p>
+                          <p className="text-xs font-semibold text-neutral-900">{item.aiQuota}</p>
+                        </div>
+                      </div>
+                      <div className="mt-3 space-y-1">
+                        {item.perks.map((perk) => (
+                          <p key={`mobile-perk-${item.tier}-${perk}`} className="text-sm text-neutral-800">
+                            • {perk}
+                          </p>
+                        ))}
+                      </div>
+                      {!isCurrent ? (
+                        <Button type="button" variant="secondary" className="mt-3 w-full" onClick={focusUpgradeSection}>
+                          立刻升级到{item.name}
+                        </Button>
+                      ) : null}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+
+            <div className="hidden overflow-x-auto rounded-2xl border border-neutral-200 md:block">
               <table className="w-full min-w-[760px] border-separate border-spacing-0 text-left">
                 <thead>
                   <tr className="bg-neutral-50">
@@ -269,7 +336,7 @@ export default function SubscriptionPage() {
       ) : null}
 
       {!loading ? (
-        <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
+        <Card id="upgrade-now" className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-2xl">
               <Sparkles size={18} />

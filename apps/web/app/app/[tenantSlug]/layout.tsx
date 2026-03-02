@@ -272,7 +272,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
             })}
           </nav>
 
-          <div className="border-t border-neutral-200 p-3 dark:border-neutral-800">
+          <div className="mt-auto border-t border-neutral-200 p-3 dark:border-neutral-800">
             <Button
               type="button"
               variant="outline"

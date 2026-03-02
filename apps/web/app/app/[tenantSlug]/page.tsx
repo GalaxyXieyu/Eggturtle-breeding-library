@@ -7,10 +7,8 @@ import {
   createShareResponseSchema,
   dashboardOverviewResponseSchema,
   meResponseSchema,
-  meSubscriptionResponseSchema,
   type DashboardOverviewResponse,
-  type DashboardOverviewWindow,
-  type TenantSubscription
+  type DashboardOverviewWindow
 } from '@eggturtle/shared';
 import {
   AlertTriangle,
@@ -26,7 +24,6 @@ import {
 } from 'lucide-react';
 
 import { ApiError, apiRequest, getAccessToken } from '../../../lib/api-client';
-import { formatTenantDisplayName } from '../../../lib/tenant-display';
 import { switchTenantBySlug } from '../../../lib/tenant-session';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
@@ -44,53 +41,17 @@ const WINDOW_OPTIONS: Array<{ key: DashboardOverviewWindow; label: string; short
   { key: '30d', label: '近 30 天', shortLabel: '近 30 天' }
 ];
 
-const NEED_MATING_CARDS = [
-  {
-    key: 'need' as const,
-    title: '待配对',
-    hint: '已产蛋且暂无新配对'
-  },
-  {
-    key: 'warning' as const,
-    title: '预警',
-    hint: '待配对天数超过阈值'
-  }
-];
-
-const MONO_CARD_TONE = {
-  active: {
-    container: 'border-neutral-900 bg-neutral-900 text-white',
-    label: 'text-neutral-200',
-    value: 'text-white',
-    hint: 'text-neutral-100'
-  },
-  inactive: {
-    container: 'border-neutral-200 bg-neutral-50 text-neutral-900',
-    label: 'text-neutral-600',
-    value: 'text-neutral-900',
-    hint: 'text-neutral-600'
-  }
-} as const;
-
-function getMonoCardTone(active: boolean) {
-  return active ? MONO_CARD_TONE.active : MONO_CARD_TONE.inactive;
-}
-
 export default function TenantAppPage() {
   const router = useRouter();
   const params = useParams<{ tenantSlug: string }>();
   const tenantSlug = useMemo(() => params.tenantSlug ?? '', [params.tenantSlug]);
-  const displayTenantName = useMemo(() => formatTenantDisplayName(tenantSlug, '蛋龟选育库'), [tenantSlug]);
 
   const [tenantReady, setTenantReady] = useState(false);
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [activeWindow, setActiveWindow] = useState<DashboardOverviewWindow>('today');
-  const [activeNeedMatingCard, setActiveNeedMatingCard] = useState<'need' | 'warning'>('need');
   const [overviewByWindow, setOverviewByWindow] = useState<Partial<Record<DashboardOverviewWindow, DashboardOverviewResponse>>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [subscription, setSubscription] = useState<TenantSubscription | null>(null);
-  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
 
   const [shareLinks, setShareLinks] = useState<ShareLinks | null>(null);
   const [shareLoading, setShareLoading] = useState(false);
@@ -116,8 +77,6 @@ export default function TenantAppPage() {
     setTenantReady(false);
     setTenantId(null);
     setOverviewByWindow({});
-    setSubscription(null);
-    setSubscriptionLoading(false);
     setActiveWindow('today');
     setLoading(true);
     setError(null);
@@ -188,44 +147,7 @@ export default function TenantAppPage() {
     };
   }, [activeWindow, overviewByWindow, tenantReady]);
 
-  useEffect(() => {
-    if (!tenantReady) {
-      return;
-    }
-
-    let cancelled = false;
-    setSubscriptionLoading(true);
-
-    void (async () => {
-      try {
-        const response = await apiRequest('/me/subscription', { responseSchema: meSubscriptionResponseSchema });
-        if (cancelled) {
-          return;
-        }
-        setSubscription(response.subscription);
-      } catch {
-        if (!cancelled) {
-          setSubscription(null);
-        }
-      } finally {
-        if (!cancelled) {
-          setSubscriptionLoading(false);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [tenantReady, tenantSlug]);
-
   const overview = overviewByWindow[activeWindow] ?? null;
-  const needMatingValue = overview
-    ? activeNeedMatingCard === 'need'
-      ? overview.needMating.needMatingCount
-      : overview.needMating.warningCount
-    : 0;
-
   async function ensureShareLinks() {
     if (shareLinks) {
       return shareLinks;
@@ -336,10 +258,10 @@ export default function TenantAppPage() {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="space-y-3">
                   <Badge variant="accent" className="w-fit">
-                    租户工作台
+                    数据总览
                   </Badge>
-                  <CardTitle className="text-3xl text-neutral-900 sm:text-4xl">{displayTenantName}</CardTitle>
-                  <CardDescription className="text-neutral-600">核心指标统一到一个面板，切换时间窗即可对比趋势。</CardDescription>
+                  <CardTitle className="text-2xl text-neutral-900 sm:text-3xl">核心指标看板</CardTitle>
+                  <CardDescription className="text-neutral-600">使用同一套视图切换时间窗口，快速对比趋势变化。</CardDescription>
                 </div>
                 <div className="hidden shrink-0 items-center gap-1 rounded-2xl border border-neutral-200/90 bg-gradient-to-b from-white to-neutral-100/85 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_1px_2px_rgba(15,23,42,0.08)] sm:flex">
                   {WINDOW_OPTIONS.map((item) => (
@@ -359,68 +281,52 @@ export default function TenantAppPage() {
                   ))}
                 </div>
               </div>
+              <div className="mt-4 rounded-2xl border border-neutral-200 bg-neutral-50/85 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] sm:hidden">
+                <div className="grid grid-cols-3 gap-1">
+                  {WINDOW_OPTIONS.map((item) => (
+                    <button
+                      key={`window-mobile-chip-${item.key}`}
+                      type="button"
+                      aria-pressed={activeWindow === item.key}
+                      className={`rounded-xl px-2 py-2 text-xs font-semibold leading-none transition ${
+                        activeWindow === item.key
+                          ? 'bg-neutral-900 text-white shadow-[0_8px_16px_rgba(15,23,42,0.25)]'
+                          : 'bg-transparent text-neutral-700 hover:bg-white hover:text-neutral-900'
+                      }`}
+                      onClick={() => setActiveWindow(item.key)}
+                    >
+                      {item.shortLabel}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-2 px-2 text-[11px] text-neutral-600">
+                  当前窗口：产蛋 {overview.eggs.totalEggCount} · 配对 {overview.matings.eventCount} · 访问 UV {overview.share.uv}
+                </p>
+              </div>
             </CardHeader>
           </Card>
 
-          <section className="grid grid-cols-1 gap-4">
-            <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
-              <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <CardTitle className="text-2xl">套餐与版本</CardTitle>
-                  <CardDescription>这里集中展示当前套餐状态，升级入口固定在右侧按钮。</CardDescription>
-                </div>
-                <Button type="button" size="sm" onClick={() => router.push(`/app/${tenantSlug}/subscription`)}>
-                  升级套餐
-                </Button>
+          <section className="space-y-3 sm:hidden">
+            <Card className="rounded-2xl border-neutral-200/90 bg-white p-4">
+              <CardHeader className="p-0">
+                <CardTitle className="text-base">繁育概览</CardTitle>
+                <CardDescription className="text-xs">先看产蛋与配对主线指标。</CardDescription>
               </CardHeader>
-              <CardContent className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
-                  <p className="text-xs text-neutral-500">当前套餐</p>
-                  <p className="mt-1 text-lg font-bold text-neutral-900">
-                    {subscriptionLoading ? '加载中...' : formatSubscriptionPlan(subscription?.plan)}
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
-                  <p className="text-xs text-neutral-500">套餐状态</p>
-                  <p className="mt-1 text-lg font-bold text-neutral-900">
-                    {subscriptionLoading ? '加载中...' : formatSubscriptionStatus(subscription?.status)}
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
-                  <p className="text-xs text-neutral-500">到期时间</p>
-                  <p className="mt-1 text-sm font-semibold text-neutral-900">
-                    {subscriptionLoading ? '加载中...' : formatSubscriptionDate(subscription?.expiresAt ?? null)}
-                  </p>
-                </div>
+              <CardContent className="mt-3 grid grid-cols-3 gap-2 p-0">
+                <CompactStat label="产蛋总数" value={overview.eggs.totalEggCount} />
+                <CompactStat label="产蛋事件" value={overview.eggs.eventCount} />
+                <CompactStat label="配对事件" value={overview.matings.eventCount} />
               </CardContent>
             </Card>
-          </section>
-
-          <section className="sm:hidden">
-            <div className="flex snap-x gap-3 overflow-x-auto pb-1">
-              {WINDOW_OPTIONS.map((item) => {
-                const itemData = overviewByWindow[item.key];
-                const eggs = itemData?.eggs.totalEggCount ?? 0;
-                const mating = itemData?.matings.eventCount ?? 0;
-                const active = activeWindow === item.key;
-                const tone = getMonoCardTone(active);
-                return (
-                  <button
-                    key={`window-mobile-${item.key}`}
-                    type="button"
-                    className={`min-w-[76%] snap-start rounded-2xl border p-4 text-left transition ${tone.container}`}
-                    onClick={() => setActiveWindow(item.key)}
-                  >
-                    <p className={`text-xs uppercase tracking-[0.15em] ${tone.label}`}>{item.shortLabel}</p>
-                    <p className={`mt-2 text-xl font-black leading-none ${tone.value}`}>{item.label}</p>
-                    <p className={`mt-2 text-xs ${tone.hint}`}>产蛋数 {eggs} · 配对事件 {mating}</p>
-                  </button>
-                );
-              })}
+            <div className="grid grid-cols-2 gap-3">
+              <CompactKpiCard label="待配对" value={overview.needMating.needMatingCount} hint="优先处理" icon={<HeartHandshake size={14} />} />
+              <CompactKpiCard label="预警" value={overview.needMating.warningCount} hint="风险项" icon={<AlertTriangle size={14} />} />
+              <CompactKpiCard label="分享 UV" value={overview.share.uv} hint="访问人数" icon={<Share2 size={14} />} />
+              <CompactKpiCard label="页面访问" value={overview.share.pv} hint="总访问量" icon={<QrCode size={14} />} />
             </div>
           </section>
 
-          <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <section className="hidden grid-cols-2 gap-3 sm:grid sm:grid-cols-3 lg:grid-cols-6">
             <KpiCard label="产蛋总数" value={overview.eggs.totalEggCount} hint="产蛋总量" icon={<Shell size={16} />} />
             <KpiCard label="产蛋事件" value={overview.eggs.eventCount} hint="产蛋次数" icon={<CalendarDays size={16} />} />
             <KpiCard label="配对事件" value={overview.matings.eventCount} hint="配对次数" icon={<Workflow size={16} />} />
@@ -429,7 +335,7 @@ export default function TenantAppPage() {
             <KpiCard label="分享 UV" value={overview.share.uv} hint={`页面访问 ${overview.share.pv}`} icon={<Share2 size={16} />} />
           </section>
 
-          <section className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)]">
+          <section className="grid grid-cols-1 gap-4">
             <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
               <CardHeader>
                 <CardTitle className="text-2xl">产蛋/配对趋势</CardTitle>
@@ -437,40 +343,6 @@ export default function TenantAppPage() {
               </CardHeader>
               <CardContent>
                 <SimpleBarChart chart={overview.chart} />
-              </CardContent>
-            </Card>
-
-            <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
-              <CardHeader>
-                <CardTitle className="text-2xl">待配对看板</CardTitle>
-                <CardDescription>卡片切换关注重点，先处理风险更高项。</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex snap-x gap-3 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 sm:overflow-visible">
-                  {NEED_MATING_CARDS.map((item) => {
-                    const value = item.key === 'need' ? overview.needMating.needMatingCount : overview.needMating.warningCount;
-                    const active = activeNeedMatingCard === item.key;
-                    const tone = getMonoCardTone(active);
-                    return (
-                      <button
-                        key={item.key}
-                        type="button"
-                        className={`min-w-[76%] snap-start rounded-2xl border px-4 py-3 text-left transition sm:min-w-0 ${tone.container}`}
-                        onClick={() => setActiveNeedMatingCard(item.key)}
-                      >
-                        <p className={`text-xs uppercase tracking-[0.16em] ${tone.label}`}>{item.title}</p>
-                        <p className={`mt-1 text-3xl font-black leading-none ${tone.value}`}>{value}</p>
-                        <p className={`mt-1 text-xs ${tone.hint}`}>{item.hint}</p>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3 text-sm text-neutral-600">
-                  当前关注：
-                  <span className="ml-1 font-semibold text-neutral-900">
-                    {activeNeedMatingCard === 'need' ? '待配对' : '预警'} {needMatingValue} 项
-                  </span>
-                </div>
               </CardContent>
             </Card>
           </section>
@@ -624,6 +496,32 @@ function KpiCard(props: { label: string; value: number | string; hint: string; i
   );
 }
 
+function CompactStat(props: { label: string; value: number | string }) {
+  return (
+    <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-2 py-2">
+      <p className="text-[11px] text-neutral-500">{props.label}</p>
+      <p className="mt-1 text-lg font-black leading-none text-neutral-900">{props.value}</p>
+    </div>
+  );
+}
+
+function CompactKpiCard(props: { label: string; value: number | string; hint: string; icon: ReactNode }) {
+  return (
+    <Card className="rounded-2xl border-neutral-200/90 bg-white p-3">
+      <CardHeader className="p-0">
+        <div className="flex items-center justify-between">
+          <p className="text-[11px] text-neutral-500">{props.hint}</p>
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#FFD400]/18 text-neutral-800">{props.icon}</span>
+        </div>
+      </CardHeader>
+      <CardContent className="mt-3 p-0">
+        <p className="text-3xl font-black leading-none text-neutral-900">{props.value}</p>
+        <p className="mt-1 text-xs font-semibold text-neutral-700">{props.label}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
 function SimpleBarChart(props: { chart: DashboardOverviewResponse['chart'] }) {
   const maxValue = Math.max(
     1,
@@ -702,43 +600,6 @@ function buildPermanentShareLink(shareToken: string) {
   }
 
   return `/public/s/${shareToken}`;
-}
-
-function formatSubscriptionPlan(plan: TenantSubscription['plan'] | null | undefined) {
-  if (plan === 'FREE') {
-    return '免费版';
-  }
-  if (plan === 'BASIC') {
-    return '基础版';
-  }
-  if (plan === 'PRO') {
-    return '专业版';
-  }
-  return '-';
-}
-
-function formatSubscriptionStatus(status: TenantSubscription['status'] | null | undefined) {
-  if (status === 'ACTIVE') {
-    return '生效中';
-  }
-  if (status === 'EXPIRED') {
-    return '已过期';
-  }
-  if (status === 'DISABLED') {
-    return '已禁用';
-  }
-  return '-';
-}
-
-function formatSubscriptionDate(value: string | null) {
-  if (!value) {
-    return '长期有效';
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return `${date.toLocaleDateString('zh-CN')} ${date.toLocaleTimeString('zh-CN')}`;
 }
 
 function formatError(error: unknown) {
