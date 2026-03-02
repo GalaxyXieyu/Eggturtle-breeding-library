@@ -163,6 +163,66 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
       const upsertMemberPayload = upsertTenantMemberResponseSchema.parse(upsertMemberResponse.body);
       checks += 1;
 
+      // P0 regression: role changes must take effect immediately for existing tokens.
+      // 1) Editor can write.
+      const memberSession = await ensureTenantSession(ctx, {
+        email: memberEmail,
+        tenantId,
+      });
+
+      const editorWriteResponse = await ctx.request({
+        method: 'POST',
+        path: '/products',
+        token: memberSession.token,
+        json: {
+          code: uniqueSuffix('rbac-live-write').toUpperCase().slice(0, 64),
+          name: `RBAC Live Write ${Date.now()}`,
+          description: 'rbac live check',
+        },
+      });
+      assertStatus(editorWriteResponse, 201, 'rbac.live.editor.write');
+      checks += 1;
+
+      // 2) Downgrade to VIEWER and ensure the *same* token is immediately blocked for writes.
+      const downgradeResponse = await ctx.request({
+        method: 'POST',
+        path: `/admin/tenants/${tenantId}/members`,
+        token: superAdminLogin.token,
+        json: {
+          email: memberEmail,
+          role: 'VIEWER',
+        },
+      });
+      assertStatus(downgradeResponse, 201, 'admin.upsert-member.downgrade-viewer');
+      const downgradedPayload = upsertTenantMemberResponseSchema.parse(downgradeResponse.body);
+      if (downgradedPayload.role !== 'VIEWER') {
+        throw new ApiTestError('admin.upsert-member.downgrade-viewer role should be VIEWER');
+      }
+      checks += 1;
+
+      const viewerWriteResponse = await ctx.request({
+        method: 'POST',
+        path: '/products',
+        token: memberSession.token,
+        json: {
+          code: uniqueSuffix('rbac-live-deny').toUpperCase().slice(0, 64),
+          name: `RBAC Live Deny ${Date.now()}`,
+          description: 'rbac live deny check',
+        },
+      });
+      assertStatus(viewerWriteResponse, 403, 'rbac.live.viewer.write');
+      assertErrorCode(viewerWriteResponse, 'FORBIDDEN');
+      checks += 1;
+
+      const viewerReadResponse = await ctx.request({
+        method: 'GET',
+        path: '/products',
+        token: memberSession.token,
+      });
+      assertStatus(viewerReadResponse, 200, 'rbac.live.viewer.read');
+      checks += 1;
+
+      // 3) Remove membership and ensure the same token cannot access the tenant anymore.
       const deleteMemberResponse = await ctx.request({
         method: 'DELETE',
         path: `/admin/tenants/${tenantId}/members/${upsertMemberPayload.user.id}`,
@@ -182,6 +242,27 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
       if (deleteMemberPayload.previousRole !== upsertMemberPayload.role) {
         throw new ApiTestError('admin.delete-member response previousRole mismatch');
       }
+      checks += 1;
+
+      const revokedReadResponse = await ctx.request({
+        method: 'GET',
+        path: '/products',
+        token: memberSession.token,
+      });
+      assertStatus(revokedReadResponse, [401, 403, 404], 'rbac.live.revoked.read');
+      checks += 1;
+
+      const revokedWriteResponse = await ctx.request({
+        method: 'POST',
+        path: '/products',
+        token: memberSession.token,
+        json: {
+          code: uniqueSuffix('rbac-live-revoked').toUpperCase().slice(0, 64),
+          name: `RBAC Live Revoked ${Date.now()}`,
+          description: 'rbac live revoked check',
+        },
+      });
+      assertStatus(revokedWriteResponse, [401, 403, 404], 'rbac.live.revoked.write');
       checks += 1;
 
       const deleteMissingMemberResponse = await ctx.request({
