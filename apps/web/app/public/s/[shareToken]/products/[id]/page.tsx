@@ -4,9 +4,11 @@ import {
   mapPublicProductToLegacyBreeder,
   mapTenantFeedToLegacy
 } from '../../../../_public-product/public-share-adapter';
+import PublicShareErrorPanel from '../../../../_shared/public-share-error-panel';
 import {
   buildPublicShareRouteQuery,
   fetchPublicShareFromSearchParams,
+  shouldAutoRefreshShareSignature,
   type PublicSearchParams
 } from '../../../../_shared/public-share-api';
 
@@ -23,12 +25,12 @@ export default async function PublicShareProductDetailPage({
 
   if (!shareResult.ok) {
     return (
-      <main className="share-shell">
-        <section className="card panel stack">
-          <h1>公开详情不可用</h1>
-          <p className="notice notice-error">{shareResult.message}</p>
-        </section>
-      </main>
+      <PublicShareErrorPanel
+        title="公开详情不可用"
+        message={shareResult.message}
+        shareToken={params.shareToken}
+        canAutoRefresh={shouldAutoRefreshShareSignature(shareResult.status, shareResult.errorCode)}
+      />
     );
   }
 

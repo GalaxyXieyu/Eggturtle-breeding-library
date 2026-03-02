@@ -33,6 +33,8 @@ type PublicShareFetchResult =
   | {
       ok: false;
       message: string;
+      status?: number;
+      errorCode?: string;
     };
 
 // Server-side fetch needs an absolute URL. Prefer INTERNAL_API_BASE_URL for deployments.
@@ -144,7 +146,9 @@ async function fetchPublicShare(
   if (!response.ok) {
     return {
       ok: false,
-      message: pickErrorMessage(payload, response.status)
+      message: pickErrorMessage(payload, response.status),
+      status: response.status,
+      errorCode: pickErrorCode(payload)
     };
   }
 
@@ -194,6 +198,26 @@ function pickErrorMessage(payload: unknown, status: number): string {
   }
 
   return `Request failed with status ${status}`;
+}
+
+function pickErrorCode(payload: unknown): string | undefined {
+  if (payload && typeof payload === 'object' && 'errorCode' in payload && typeof payload.errorCode === 'string') {
+    return payload.errorCode;
+  }
+
+  return undefined;
+}
+
+export function shouldAutoRefreshShareSignature(status?: number, errorCode?: string): boolean {
+  if (status !== 401) {
+    return false;
+  }
+
+  if (!errorCode) {
+    return true;
+  }
+
+  return errorCode === 'SHARE_SIGNATURE_EXPIRED' || errorCode === 'SHARE_SIGNATURE_INVALID';
 }
 
 function firstValue(value: string | string[] | undefined): string | undefined {

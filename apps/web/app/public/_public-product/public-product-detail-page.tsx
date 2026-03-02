@@ -5,6 +5,7 @@ import type { PublicSharePresentation } from '@eggturtle/shared';
 
 import { UiPreferenceControls } from '../../../components/ui-preferences';
 
+import PublicPermalinkBar from '../_shared/public-permalink-bar';
 import type { Breeder, BreederEventItem, FamilyTree, MaleMateLoadItem, Series } from './types';
 import {
   BreederCarousel,
@@ -64,6 +65,7 @@ export default function PublicProductDetailPage({
         </div>
         <div className="px-3 sm:px-4 lg:px-5 2xl:px-6">
           <DemoHint demo={demo} />
+          <PublicPermalinkBar shareToken={shareToken} className="mb-3" />
         </div>
 
         {isNotFound ? (
