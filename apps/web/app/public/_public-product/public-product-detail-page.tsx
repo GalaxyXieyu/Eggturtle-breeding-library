@@ -95,7 +95,14 @@ export default function PublicProductDetailPage({
                         className="group overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_30px_rgba(0,0,0,0.12)] dark:border-white/10 dark:bg-neutral-900/80"
                       >
                         <div className="relative aspect-[4/5] bg-neutral-100">
-                          <img src={item.images[0]?.url || '/images/mg_01.jpg'} alt={item.code} className="h-full w-full object-cover" />
+                          <img
+                            src={item.images[0]?.url || '/images/mg_01.jpg'}
+                            alt={item.code}
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                            decoding="async"
+                            fetchPriority="low"
+                          />
                         </div>
                         <div className="p-2.5">
                           <div className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{item.code}</div>

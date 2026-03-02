@@ -213,7 +213,14 @@ export function BreederCard({
       className="group w-full overflow-hidden rounded-2xl border border-neutral-200/90 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)] transition active:scale-[0.995] hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-[0_12px_34px_rgba(0,0,0,0.14)]"
     >
       <div className="relative aspect-[4/5] bg-neutral-100">
-        <img src={mainImage?.url || '/images/mg_01.jpg'} alt={breeder.code} className="h-full w-full object-cover" />
+        <img
+          src={mainImage?.url || '/images/mg_01.jpg'}
+          alt={breeder.code}
+          className="h-full w-full object-cover"
+          loading="lazy"
+          decoding="async"
+          fetchPriority="low"
+        />
         <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/30 to-transparent" />
 
         {badge ? (
@@ -312,7 +319,14 @@ export function BreederCarousel({
           ) : null}
 
           <div className="relative h-full w-full shrink-0">
-            <img src={activeImage?.url || '/images/mg_01.jpg'} alt={activeImage?.alt || breeder.code} className="h-full w-full object-cover" />
+            <img
+              src={activeImage?.url || '/images/mg_01.jpg'}
+              alt={activeImage?.alt || breeder.code}
+              className="h-full w-full object-cover"
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
+            />
 
             {breeder.images.length > 1 ? (
               <>
@@ -365,7 +379,14 @@ export function BreederCarousel({
                 className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-md border-2 transition-all ${index === currentImageIndex ? 'border-neutral-900' : 'border-transparent'}`}
                 onClick={() => setCurrentImageIndex(index)}
               >
-                <img src={img.url} alt={img.alt || `${breeder.code}-${index + 1}`} className="h-full w-full object-cover" />
+                <img
+                  src={img.url}
+                  alt={img.alt || `${breeder.code}-${index + 1}`}
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                  decoding="async"
+                  fetchPriority="low"
+                />
               </button>
             ))}
           </div>
@@ -692,7 +713,14 @@ function TreeNode({
       className="group relative block h-24 w-20 overflow-hidden rounded-lg border-2 border-neutral-200 bg-white shadow-sm transition hover:border-amber-400 hover:shadow-md"
     >
       {node.thumbnailUrl ? (
-        <img src={node.thumbnailUrl} alt={node.code} className="h-full w-full object-cover" />
+        <img
+          src={node.thumbnailUrl}
+          alt={node.code}
+          className="h-full w-full object-cover"
+          loading="lazy"
+          decoding="async"
+          fetchPriority="low"
+        />
       ) : (
         <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-neutral-100 to-neutral-200">
           <span className="text-xs text-neutral-400">暂无图</span>
