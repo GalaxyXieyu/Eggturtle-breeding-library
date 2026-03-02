@@ -8,6 +8,8 @@ import {
   exportSuperAdminAuditLogsQuerySchema,
   getAdminTenantResponseSchema,
   getAdminTenantSubscriptionResponseSchema,
+  offboardAdminTenantRequestSchema,
+  offboardAdminTenantResponseSchema,
   reactivateAdminTenantResponseSchema,
   listAdminTenantMembersQuerySchema,
   listAdminTenantMembersResponseSchema,
@@ -99,6 +101,18 @@ export class AdminController {
     const response = await this.adminService.reactivateTenant(user.id, tenantId);
 
     return reactivateAdminTenantResponseSchema.parse(response);
+  }
+
+  @Post('tenants/:tenantId/lifecycle/offboard')
+  async offboardTenant(
+    @CurrentUser() user: NonNullable<AuthenticatedRequest['user']>,
+    @Param('tenantId') tenantId: string,
+    @Body() body: unknown
+  ) {
+    const payload = parseOrThrow(offboardAdminTenantRequestSchema, body);
+    const response = await this.adminService.offboardTenant(user.id, tenantId, payload);
+
+    return offboardAdminTenantResponseSchema.parse(response);
   }
 
   @Post('subscription-activation-codes')

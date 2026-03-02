@@ -25,6 +25,7 @@ import {
   ApiError,
   apiRequest,
   getAdminTenantSubscription,
+  offboardAdminTenant,
   reactivateAdminTenant,
   suspendAdminTenant,
   updateAdminTenantSubscription
@@ -48,8 +49,11 @@ type SubscriptionState = {
 
 type LifecycleState = {
   reason: string;
+  offboardReason: string;
+  offboardConfirmSlug: string;
   suspending: boolean;
   reactivating: boolean;
+  offboarding: boolean;
   error: string | null;
   actionMessage: string | null;
 };
@@ -76,8 +80,11 @@ export default function TenantDetailPage() {
   });
   const [lifecycleState, setLifecycleState] = useState<LifecycleState>({
     reason: '',
+    offboardReason: '',
+    offboardConfirmSlug: '',
     suspending: false,
     reactivating: false,
+    offboarding: false,
     error: null,
     actionMessage: null
   });
@@ -177,6 +184,8 @@ export default function TenantDetailPage() {
         setLifecycleState((previous) => ({
           ...previous,
           reason: response.subscription.disabledReason ?? '',
+          offboardReason: '',
+          offboardConfirmSlug: '',
           error: null,
           actionMessage: null
         }));
@@ -196,6 +205,8 @@ export default function TenantDetailPage() {
           setLifecycleState((previous) => ({
             ...previous,
             reason: '',
+            offboardReason: '',
+            offboardConfirmSlug: '',
             error: null,
             actionMessage: null
           }));
@@ -364,6 +375,8 @@ export default function TenantDetailPage() {
       setLifecycleState((previous) => ({
         ...previous,
         reason: '',
+        offboardReason: '',
+        offboardConfirmSlug: '',
         reactivating: false,
         error: null,
         actionMessage: response.auditLogId
@@ -374,6 +387,83 @@ export default function TenantDetailPage() {
       setLifecycleState((previous) => ({
         ...previous,
         reactivating: false,
+        error: formatError(error)
+      }));
+    }
+  }
+
+  async function handleOffboardTenant() {
+    const tenantSlug = state.tenant?.slug ?? '';
+    const reason = lifecycleState.offboardReason.trim();
+    const confirmTenantSlug = lifecycleState.offboardConfirmSlug.trim();
+
+    if (!reason) {
+      setLifecycleState((previous) => ({
+        ...previous,
+        error: '请填写下线原因。'
+      }));
+      return;
+    }
+
+    if (!tenantSlug) {
+      setLifecycleState((previous) => ({
+        ...previous,
+        error: '租户信息未加载完成，暂时无法执行下线。'
+      }));
+      return;
+    }
+
+    if (confirmTenantSlug !== tenantSlug) {
+      setLifecycleState((previous) => ({
+        ...previous,
+        error: `确认 slug 不匹配，必须输入 ${tenantSlug}`
+      }));
+      return;
+    }
+
+    const firstConfirm = window.confirm(
+      [`Offboard tenant ${tenantId}?`, `Slug: ${tenantSlug}`, `Reason: ${reason}`].join('\n')
+    );
+    if (!firstConfirm) {
+      return;
+    }
+
+    const secondConfirm = window.confirm('高风险操作：下线后将禁用租户写操作。确认继续执行？');
+    if (!secondConfirm) {
+      return;
+    }
+
+    setLifecycleState((previous) => ({
+      ...previous,
+      offboarding: true,
+      error: null,
+      actionMessage: null
+    }));
+
+    try {
+      const response = await offboardAdminTenant(tenantId, {
+        reason,
+        confirmTenantSlug
+      });
+      applySubscriptionSnapshot(
+        response.subscription,
+        response.auditLogId ? `Lifecycle updated. Audit: ${response.auditLogId}` : 'Tenant offboarded.'
+      );
+      setLifecycleState((previous) => ({
+        ...previous,
+        reason: response.subscription.disabledReason ?? previous.reason,
+        offboardReason: '',
+        offboardConfirmSlug: '',
+        offboarding: false,
+        error: null,
+        actionMessage: response.auditLogId
+          ? `Tenant offboarded. Audit: ${response.auditLogId}`
+          : 'Tenant offboarded.'
+      }));
+    } catch (error) {
+      setLifecycleState((previous) => ({
+        ...previous,
+        offboarding: false,
         error: formatError(error)
       }));
     }
@@ -588,14 +678,24 @@ export default function TenantDetailPage() {
                 }))
               }
               placeholder="例如：账单逾期 / 风险排查"
-              disabled={subscriptionState.saving || lifecycleState.suspending || lifecycleState.reactivating}
+              disabled={
+                subscriptionState.saving ||
+                lifecycleState.suspending ||
+                lifecycleState.reactivating ||
+                lifecycleState.offboarding
+              }
             />
           </label>
 
           <div className="inline-actions">
             <button
               type="submit"
-              disabled={subscriptionState.saving || lifecycleState.suspending || lifecycleState.reactivating}
+              disabled={
+                subscriptionState.saving ||
+                lifecycleState.suspending ||
+                lifecycleState.reactivating ||
+                lifecycleState.offboarding
+              }
             >
               {lifecycleState.suspending ? 'Suspending...' : 'Suspend tenant'}
             </button>
@@ -603,9 +703,84 @@ export default function TenantDetailPage() {
               className="secondary"
               type="button"
               onClick={handleReactivateTenant}
-              disabled={subscriptionState.saving || lifecycleState.suspending || lifecycleState.reactivating}
+              disabled={
+                subscriptionState.saving ||
+                lifecycleState.suspending ||
+                lifecycleState.reactivating ||
+                lifecycleState.offboarding
+              }
             >
               {lifecycleState.reactivating ? 'Reactivating...' : 'Reactivate tenant'}
+            </button>
+          </div>
+        </form>
+
+        <form className="stack admin-subscription-form admin-danger-zone" onSubmit={(event) => event.preventDefault()}>
+          <h3>Danger zone · Tenant offboard</h3>
+          <p className="muted">双确认后执行租户下线，系统将禁用该租户写操作，并记录审计日志。</p>
+
+          <label className="stack row-tight" htmlFor="tenant-offboard-reason">
+            <span>下线原因（必填）</span>
+            <input
+              id="tenant-offboard-reason"
+              type="text"
+              maxLength={255}
+              value={lifecycleState.offboardReason}
+              onChange={(event) =>
+                setLifecycleState((previous) => ({
+                  ...previous,
+                  offboardReason: event.target.value,
+                  error: null
+                }))
+              }
+              placeholder="例如：安全风险处置 / 业务终止"
+              disabled={
+                subscriptionState.saving ||
+                lifecycleState.suspending ||
+                lifecycleState.reactivating ||
+                lifecycleState.offboarding
+              }
+            />
+          </label>
+
+          <label className="stack row-tight" htmlFor="tenant-offboard-confirm-slug">
+            <span>输入租户 slug 二次确认（{state.tenant?.slug ?? '-'})</span>
+            <input
+              id="tenant-offboard-confirm-slug"
+              type="text"
+              value={lifecycleState.offboardConfirmSlug}
+              onChange={(event) =>
+                setLifecycleState((previous) => ({
+                  ...previous,
+                  offboardConfirmSlug: event.target.value,
+                  error: null
+                }))
+              }
+              placeholder={state.tenant?.slug ?? '等待租户数据加载'}
+              disabled={
+                !state.tenant ||
+                subscriptionState.saving ||
+                lifecycleState.suspending ||
+                lifecycleState.reactivating ||
+                lifecycleState.offboarding
+              }
+            />
+          </label>
+
+          <div className="inline-actions">
+            <button
+              className="danger"
+              type="button"
+              onClick={() => void handleOffboardTenant()}
+              disabled={
+                !state.tenant ||
+                subscriptionState.saving ||
+                lifecycleState.suspending ||
+                lifecycleState.reactivating ||
+                lifecycleState.offboarding
+              }
+            >
+              {lifecycleState.offboarding ? 'Offboarding...' : 'Offboard tenant'}
             </button>
           </div>
         </form>

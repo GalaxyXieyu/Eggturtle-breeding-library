@@ -16,7 +16,8 @@ export const SuperAdminAuditAction = {
   UpdateTenantSubscription: 'admin.tenants.subscription.update',
   CreateSubscriptionActivationCode: 'admin.subscription-activation-codes.create',
   SuspendTenantLifecycle: 'admin.tenants.lifecycle.suspend',
-  ReactivateTenantLifecycle: 'admin.tenants.lifecycle.reactivate'
+  ReactivateTenantLifecycle: 'admin.tenants.lifecycle.reactivate',
+  OffboardTenantLifecycle: 'admin.tenants.lifecycle.offboard'
 } as const;
 
 export const superAdminAuditActionSchema = z.enum([
@@ -31,7 +32,8 @@ export const superAdminAuditActionSchema = z.enum([
   SuperAdminAuditAction.UpdateTenantSubscription,
   SuperAdminAuditAction.CreateSubscriptionActivationCode,
   SuperAdminAuditAction.SuspendTenantLifecycle,
-  SuperAdminAuditAction.ReactivateTenantLifecycle
+  SuperAdminAuditAction.ReactivateTenantLifecycle,
+  SuperAdminAuditAction.OffboardTenantLifecycle
 ]);
 
 export const adminUserSchema = authUserSchema.extend({
@@ -74,6 +76,16 @@ export const suspendAdminTenantResponseSchema = z.object({
 });
 
 export const reactivateAdminTenantResponseSchema = z.object({
+  subscription: tenantSubscriptionSchema,
+  auditLogId: z.string().min(1)
+});
+
+export const offboardAdminTenantRequestSchema = z.object({
+  reason: z.string().trim().min(1).max(255),
+  confirmTenantSlug: tenantSlugSchema
+});
+
+export const offboardAdminTenantResponseSchema = z.object({
   subscription: tenantSubscriptionSchema,
   auditLogId: z.string().min(1)
 });
@@ -169,6 +181,8 @@ export type CreateAdminTenantResponse = z.infer<typeof createAdminTenantResponse
 export type SuspendAdminTenantRequest = z.infer<typeof suspendAdminTenantRequestSchema>;
 export type SuspendAdminTenantResponse = z.infer<typeof suspendAdminTenantResponseSchema>;
 export type ReactivateAdminTenantResponse = z.infer<typeof reactivateAdminTenantResponseSchema>;
+export type OffboardAdminTenantRequest = z.infer<typeof offboardAdminTenantRequestSchema>;
+export type OffboardAdminTenantResponse = z.infer<typeof offboardAdminTenantResponseSchema>;
 export type GetAdminTenantResponse = z.infer<typeof getAdminTenantResponseSchema>;
 export type ListAdminTenantsResponse = z.infer<typeof listAdminTenantsResponseSchema>;
 export type ListAdminUsersResponse = z.infer<typeof listAdminUsersResponseSchema>;

@@ -9,6 +9,8 @@ import type {
   ExportSuperAdminAuditLogsQuery,
   GetAdminTenantResponse,
   GetAdminTenantSubscriptionResponse,
+  OffboardAdminTenantRequest,
+  OffboardAdminTenantResponse,
   ReactivateAdminTenantResponse,
   ListAdminTenantMembersQuery,
   ListAdminTenantMembersResponse,
@@ -333,6 +335,80 @@ export class AdminService {
             tenantSlug: tenant.slug,
             previousDisabledAt: previousSubscription?.disabledAt?.toISOString() ?? null,
             previousDisabledReason: previousSubscription?.disabledReason ?? null
+          }
+        },
+        tx
+      );
+
+      return {
+        subscription,
+        auditLogId
+      };
+    });
+  }
+
+  async offboardTenant(
+    actorUserId: string,
+    tenantId: string,
+    payload: OffboardAdminTenantRequest
+  ): Promise<OffboardAdminTenantResponse> {
+    return this.prisma.$transaction(async (tx) => {
+      const tenant = await tx.tenant.findUnique({
+        where: {
+          id: tenantId
+        },
+        select: {
+          id: true,
+          slug: true
+        }
+      });
+
+      if (!tenant) {
+        throw new NotFoundException({
+          message: 'Tenant not found.',
+          errorCode: ErrorCode.TenantNotFound
+        });
+      }
+
+      if (payload.confirmTenantSlug !== tenant.slug) {
+        throw new BadRequestException({
+          message: 'confirmTenantSlug must exactly match tenant slug.',
+          errorCode: ErrorCode.InvalidRequestPayload
+        });
+      }
+
+      const previousSubscription = await tx.tenantSubscription.findUnique({
+        where: {
+          tenantId: tenant.id
+        },
+        select: {
+          disabledAt: true,
+          disabledReason: true
+        }
+      });
+
+      const offboardReason = `[OFFBOARD] ${payload.reason.trim()}`;
+      const subscription = await this.tenantSubscriptionsService.upsertSubscription(
+        tenant.id,
+        {
+          disabledAt: new Date().toISOString(),
+          disabledReason: offboardReason
+        },
+        tx
+      );
+
+      const auditLogId = await this.superAdminAuditLogsService.createLog(
+        {
+          actorUserId,
+          targetTenantId: tenant.id,
+          action: SuperAdminAuditAction.OffboardTenantLifecycle,
+          metadata: {
+            tenantSlug: tenant.slug,
+            reason: payload.reason.trim(),
+            confirmTenantSlug: payload.confirmTenantSlug,
+            previousDisabledAt: previousSubscription?.disabledAt?.toISOString() ?? null,
+            previousDisabledReason: previousSubscription?.disabledReason ?? null,
+            resultingStatus: subscription.status
           }
         },
         tx

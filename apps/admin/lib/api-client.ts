@@ -1,10 +1,13 @@
 import {
   getAdminTenantSubscriptionResponseSchema,
+  offboardAdminTenantRequestSchema,
+  offboardAdminTenantResponseSchema,
   reactivateAdminTenantResponseSchema,
   suspendAdminTenantRequestSchema,
   suspendAdminTenantResponseSchema,
   updateTenantSubscriptionRequestSchema,
   updateTenantSubscriptionResponseSchema,
+  type OffboardAdminTenantRequest,
   type SuspendAdminTenantRequest,
   type UpdateTenantSubscriptionRequest
 } from '@eggturtle/shared';
@@ -215,5 +218,17 @@ export async function reactivateAdminTenant(tenantId: string) {
   return apiRequest(`/admin/tenants/${tenantId}/lifecycle/reactivate`, {
     method: 'POST',
     responseSchema: reactivateAdminTenantResponseSchema
+  });
+}
+
+export async function offboardAdminTenant(
+  tenantId: string,
+  payload: OffboardAdminTenantRequest
+) {
+  return apiRequest(`/admin/tenants/${tenantId}/lifecycle/offboard`, {
+    method: 'POST',
+    body: payload,
+    requestSchema: offboardAdminTenantRequestSchema,
+    responseSchema: offboardAdminTenantResponseSchema
   });
 }
