@@ -56,6 +56,25 @@ const NEED_MATING_CARDS = [
   }
 ];
 
+const MONO_CARD_TONE = {
+  active: {
+    container: 'border-neutral-900 bg-neutral-900 text-white',
+    label: 'text-neutral-200',
+    value: 'text-white',
+    hint: 'text-neutral-100'
+  },
+  inactive: {
+    container: 'border-neutral-200 bg-neutral-50 text-neutral-900',
+    label: 'text-neutral-600',
+    value: 'text-neutral-900',
+    hint: 'text-neutral-600'
+  }
+} as const;
+
+function getMonoCardTone(active: boolean) {
+  return active ? MONO_CARD_TONE.active : MONO_CARD_TONE.inactive;
+}
+
 export default function TenantAppPage() {
   const router = useRouter();
   const params = useParams<{ tenantSlug: string }>();
@@ -288,88 +307,6 @@ export default function TenantAppPage() {
             </CardHeader>
           </Card>
 
-          <section className="sm:hidden">
-            <div className="flex snap-x gap-3 overflow-x-auto pb-1">
-              {WINDOW_OPTIONS.map((item) => {
-                const itemData = overviewByWindow[item.key];
-                const eggs = itemData?.eggs.totalEggCount ?? 0;
-                const mating = itemData?.matings.eventCount ?? 0;
-                return (
-                  <button
-                    key={`window-mobile-${item.key}`}
-                    type="button"
-                    className={`min-w-[76%] snap-start rounded-2xl border p-4 text-left transition ${
-                      activeWindow === item.key
-                        ? 'border-neutral-900 bg-neutral-900 text-white'
-                        : 'border-neutral-200 bg-white text-neutral-900'
-                    }`}
-                    onClick={() => setActiveWindow(item.key)}
-                  >
-                    <p className="text-xs uppercase tracking-[0.15em] opacity-75">{item.shortLabel}</p>
-                    <p className="mt-2 text-xl font-black leading-none">{item.label}</p>
-                    <p className="mt-2 text-xs opacity-80">产蛋数 {eggs} · 配对事件 {mating}</p>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            <KpiCard label="产蛋总数" value={overview.eggs.totalEggCount} hint="Egg Count" icon={<Shell size={16} />} />
-            <KpiCard label="产蛋事件" value={overview.eggs.eventCount} hint="Egg Events" icon={<CalendarDays size={16} />} />
-            <KpiCard label="配对事件" value={overview.matings.eventCount} hint="Mating Events" icon={<Workflow size={16} />} />
-            <KpiCard label="需配对" value={overview.needMating.needMatingCount} hint="Need Mating" icon={<HeartHandshake size={16} />} />
-            <KpiCard label="预警" value={overview.needMating.warningCount} hint="Warning" icon={<AlertTriangle size={16} />} />
-            <KpiCard label="分享 UV" value={overview.share.uv} hint={`PV ${overview.share.pv}`} icon={<Share2 size={16} />} />
-          </section>
-
-          <section className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)]">
-            <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
-              <CardHeader>
-                <CardTitle className="text-2xl">产蛋/配对趋势</CardTitle>
-                <CardDescription>无图表依赖，按窗口展示每日柱状对比。</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <SimpleBarChart chart={overview.chart} />
-              </CardContent>
-            </Card>
-
-            <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
-              <CardHeader>
-                <CardTitle className="text-2xl">待配对看板</CardTitle>
-                <CardDescription>卡片切换关注重点，先处理风险更高项。</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex snap-x gap-3 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 sm:overflow-visible">
-                  {NEED_MATING_CARDS.map((item) => {
-                    const value = item.key === 'need' ? overview.needMating.needMatingCount : overview.needMating.warningCount;
-                    const active = activeNeedMatingCard === item.key;
-                    return (
-                      <button
-                        key={item.key}
-                        type="button"
-                        className={`min-w-[76%] snap-start rounded-2xl border px-4 py-3 text-left transition sm:min-w-0 ${
-                          active ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-200 bg-neutral-50'
-                        }`}
-                        onClick={() => setActiveNeedMatingCard(item.key)}
-                      >
-                        <p className="text-xs uppercase tracking-[0.16em] opacity-75">{item.title}</p>
-                        <p className="mt-1 text-3xl font-black leading-none">{value}</p>
-                        <p className="mt-1 text-xs opacity-80">{item.hint}</p>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3 text-sm text-neutral-600">
-                  当前关注：
-                  <span className="ml-1 font-semibold text-neutral-900">
-                    {activeNeedMatingCard === 'need' ? '待配对' : '预警'} {needMatingValue} 项
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          </section>
-
           <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
               <CardHeader>
@@ -431,6 +368,86 @@ export default function TenantAppPage() {
               </CardContent>
             </Card>
           </section>
+
+          <section className="sm:hidden">
+            <div className="flex snap-x gap-3 overflow-x-auto pb-1">
+              {WINDOW_OPTIONS.map((item) => {
+                const itemData = overviewByWindow[item.key];
+                const eggs = itemData?.eggs.totalEggCount ?? 0;
+                const mating = itemData?.matings.eventCount ?? 0;
+                const active = activeWindow === item.key;
+                const tone = getMonoCardTone(active);
+                return (
+                  <button
+                    key={`window-mobile-${item.key}`}
+                    type="button"
+                    className={`min-w-[76%] snap-start rounded-2xl border p-4 text-left transition ${tone.container}`}
+                    onClick={() => setActiveWindow(item.key)}
+                  >
+                    <p className={`text-xs uppercase tracking-[0.15em] ${tone.label}`}>{item.shortLabel}</p>
+                    <p className={`mt-2 text-xl font-black leading-none ${tone.value}`}>{item.label}</p>
+                    <p className={`mt-2 text-xs ${tone.hint}`}>产蛋数 {eggs} · 配对事件 {mating}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            <KpiCard label="产蛋总数" value={overview.eggs.totalEggCount} hint="Egg Count" icon={<Shell size={16} />} />
+            <KpiCard label="产蛋事件" value={overview.eggs.eventCount} hint="Egg Events" icon={<CalendarDays size={16} />} />
+            <KpiCard label="配对事件" value={overview.matings.eventCount} hint="Mating Events" icon={<Workflow size={16} />} />
+            <KpiCard label="需配对" value={overview.needMating.needMatingCount} hint="Need Mating" icon={<HeartHandshake size={16} />} />
+            <KpiCard label="预警" value={overview.needMating.warningCount} hint="Warning" icon={<AlertTriangle size={16} />} />
+            <KpiCard label="分享 UV" value={overview.share.uv} hint={`PV ${overview.share.pv}`} icon={<Share2 size={16} />} />
+          </section>
+
+          <section className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)]">
+            <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
+              <CardHeader>
+                <CardTitle className="text-2xl">产蛋/配对趋势</CardTitle>
+                <CardDescription>无图表依赖，按窗口展示每日柱状对比。</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <SimpleBarChart chart={overview.chart} />
+              </CardContent>
+            </Card>
+
+            <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
+              <CardHeader>
+                <CardTitle className="text-2xl">待配对看板</CardTitle>
+                <CardDescription>卡片切换关注重点，先处理风险更高项。</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex snap-x gap-3 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 sm:overflow-visible">
+                  {NEED_MATING_CARDS.map((item) => {
+                    const value = item.key === 'need' ? overview.needMating.needMatingCount : overview.needMating.warningCount;
+                    const active = activeNeedMatingCard === item.key;
+                    const tone = getMonoCardTone(active);
+                    return (
+                      <button
+                        key={item.key}
+                        type="button"
+                        className={`min-w-[76%] snap-start rounded-2xl border px-4 py-3 text-left transition sm:min-w-0 ${tone.container}`}
+                        onClick={() => setActiveNeedMatingCard(item.key)}
+                      >
+                        <p className={`text-xs uppercase tracking-[0.16em] ${tone.label}`}>{item.title}</p>
+                        <p className={`mt-1 text-3xl font-black leading-none ${tone.value}`}>{value}</p>
+                        <p className={`mt-1 text-xs ${tone.hint}`}>{item.hint}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3 text-sm text-neutral-600">
+                  当前关注：
+                  <span className="ml-1 font-semibold text-neutral-900">
+                    {activeNeedMatingCard === 'need' ? '待配对' : '预警'} {needMatingValue} 项
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+
         </>
       ) : null}
 
