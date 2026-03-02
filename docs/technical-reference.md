@@ -1,6 +1,6 @@
 # Technical Reference（业务口径 + 规则）
 
-更新时间：2026-03-01  
+更新时间：2026-03-02  
 范围：`apps/api`、`packages/shared`、`legacy/backend`
 
 ## 0. 业务主线（先讲清楚我们在卖什么）
@@ -57,6 +57,7 @@
 代码证据：
 - `apps/api/src/shares/shares.service.ts`（分享创建逻辑未做 `maxShares` 拦截）
 - `apps/api/src/subscriptions/tenant-subscriptions.service.ts`（写权限与额度校验在订阅服务）
+- `scripts/api-tests/subscription.ts`（`maxShares=1` 下可连续创建分享）
 
 ### 2.3 AI 能力口径（产品已定、实现分阶段）
 
@@ -77,8 +78,10 @@
 - `MUST`：`code` 在租户内按不区分大小写唯一校验。
 
 代码证据：
+- `packages/shared/src/product.ts`（`createProductRequestSchema`、`updateProductRequestSchema` 跨字段约束）
 - `apps/api/src/products/products.service.ts`（`createProduct`、`updateProduct`）
 - `apps/api/src/products/breeding-rules.ts`（`normalizeCodeUpper`）
+- `scripts/api-tests/products.ts`（male+price 拒绝、female->male 自动清空回归）
 
 ### 3.2 交配/产蛋/手工事件写入规则
 

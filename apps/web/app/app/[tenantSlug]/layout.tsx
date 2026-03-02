@@ -5,6 +5,11 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import {
+  createShareRequestSchema,
+  createShareResponseSchema,
+  meResponseSchema
+} from '@eggturtle/shared';
+import {
   LayoutDashboard,
   Package,
   Layers,
@@ -19,7 +24,7 @@ import {
 
 import { UiPreferenceControls, useUiPreferences } from '../../../components/ui-preferences';
 import { Button } from '../../../components/ui/button';
-import { clearAccessToken } from '../../../lib/api-client';
+import { ApiError, apiRequest, clearAccessToken } from '../../../lib/api-client';
 import { formatTenantDisplayName } from '../../../lib/tenant-display';
 import { cn } from '../../../lib/utils';
 
@@ -69,24 +74,79 @@ const SHELL_COPY = {
     workspace: '租户工作台',
     controlCenter: '控制中心',
     upgradePlan: '升级套餐',
-    createShare: '创建分享链接',
+    createShare: '创建并复制分享链接',
     logout: '退出登录',
     defaultTenant: '蛋龟选育库',
     openMenu: '打开导航菜单',
     closeMenu: '关闭导航菜单',
-    closeSidebar: '关闭侧边栏'
+    closeSidebar: '关闭侧边栏',
+    quickSharePending: '正在生成链接...',
+    quickShareSuccess: '分享链接已复制',
+    quickShareFallback: '复制失败，请手动复制：',
+    quickShareMissingTenant: '当前租户上下文未就绪，暂时无法生成链接。',
+    quickShareErrorFallback: '创建分享链接失败。',
+    planModalTitle: '套餐对比',
+    planModalSubtitle: '先看差异，再决定是否升级。',
+    planModalClose: '稍后再看',
+    planModalUpgradeNow: '去升级套餐'
   },
   en: {
     workspace: 'Tenant Workspace',
     controlCenter: 'Control Center',
     upgradePlan: 'Upgrade Plan',
-    createShare: 'Create Share Link',
+    createShare: 'Create & Copy Share Link',
     logout: 'Sign out',
     defaultTenant: 'Eggturtle Workspace',
     openMenu: 'Open navigation menu',
     closeMenu: 'Close navigation menu',
-    closeSidebar: 'Close sidebar'
+    closeSidebar: 'Close sidebar',
+    quickSharePending: 'Creating share link...',
+    quickShareSuccess: 'Share link copied',
+    quickShareFallback: 'Copy failed, please copy manually:',
+    quickShareMissingTenant: 'Tenant context is not ready yet.',
+    quickShareErrorFallback: 'Failed to create share link.',
+    planModalTitle: 'Plan Comparison',
+    planModalSubtitle: 'Check differences before upgrading.',
+    planModalClose: 'Later',
+    planModalUpgradeNow: 'Upgrade now'
   }
+} as const;
+
+const PLAN_COMPARISON = {
+  zh: [
+    {
+      plan: 'FREE',
+      tagline: '适合试运行',
+      details: ['基础数据管理', '标准分享能力', '适合个人或早期验证']
+    },
+    {
+      plan: 'BASIC',
+      tagline: '适合稳定运营',
+      details: ['更高资源配额', '更长周期数据沉淀', '适合小团队持续使用']
+    },
+    {
+      plan: 'PRO',
+      tagline: '适合规模化经营',
+      details: ['最高配额与弹性扩展', '复杂场景长期使用', '适合多角色协作与增长期']
+    }
+  ],
+  en: [
+    {
+      plan: 'FREE',
+      tagline: 'For trial usage',
+      details: ['Core data management', 'Standard sharing features', 'Great for early validation']
+    },
+    {
+      plan: 'BASIC',
+      tagline: 'For steady operation',
+      details: ['Higher quota', 'Longer-term data usage', 'Good for small teams']
+    },
+    {
+      plan: 'PRO',
+      tagline: 'For scale-up',
+      details: ['Largest quota and flexibility', 'Built for advanced workflows', 'Best for multi-role growth']
+    }
+  ]
 } as const;
 
 export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) {
@@ -95,6 +155,10 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
   const pathname = usePathname();
   const router = useRouter();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
+  const [quickSharePending, setQuickSharePending] = useState(false);
+  const [quickShareMessage, setQuickShareMessage] = useState<string | null>(null);
+  const [quickShareError, setQuickShareError] = useState<string | null>(null);
   const { locale } = useUiPreferences();
   const copy = SHELL_COPY[locale];
   const displayTenantName = useMemo(() => formatTenantDisplayName(tenantSlug, copy.defaultTenant), [tenantSlug, copy.defaultTenant]);
@@ -103,6 +167,52 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
     const matched = NAV_ITEMS.find((item) => isActive(pathname, item.href(tenantSlug)));
     return matched?.label[locale] ?? NAV_ITEMS[0].label[locale];
   }, [pathname, tenantSlug, locale]);
+
+  async function handleQuickShareCopy() {
+    if (quickSharePending) {
+      return;
+    }
+
+    setQuickSharePending(true);
+    setQuickShareMessage(null);
+    setQuickShareError(null);
+
+    try {
+      const meResponse = await apiRequest('/me', {
+        responseSchema: meResponseSchema
+      });
+
+      if (!meResponse.tenantId) {
+        setQuickShareError(copy.quickShareMissingTenant);
+        return;
+      }
+
+      const payload = createShareRequestSchema.parse({
+        resourceType: 'tenant_feed',
+        resourceId: meResponse.tenantId
+      });
+
+      const createShareResponse = await apiRequest('/shares', {
+        method: 'POST',
+        body: payload,
+        requestSchema: createShareRequestSchema,
+        responseSchema: createShareResponseSchema
+      });
+
+      const permanentLink = buildPermanentShareLink(createShareResponse.share.shareToken);
+
+      try {
+        await navigator.clipboard.writeText(permanentLink);
+        setQuickShareMessage(`${copy.quickShareSuccess}：${permanentLink}`);
+      } catch {
+        setQuickShareError(`${copy.quickShareFallback} ${permanentLink}`);
+      }
+    } catch (error) {
+      setQuickShareError(formatActionError(error, copy.quickShareErrorFallback));
+    } finally {
+      setQuickSharePending(false);
+    }
+  }
 
   return (
     <div className="tenant-shell-bg h-[100svh] overflow-hidden">
@@ -155,14 +265,14 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
             })}
           </nav>
 
-          <div className="border-t border-neutral-200 p-3 dark:border-neutral-800">
+          <div className="mt-auto border-t border-neutral-200 p-3 dark:border-neutral-800">
             <Button
               type="button"
               variant="outline"
-              className="mb-2 hidden w-full justify-start rounded-xl border-neutral-200 !bg-neutral-50 !text-neutral-800 shadow-none hover:!bg-neutral-100 hover:!text-neutral-900 [&_svg]:text-neutral-500 hover:[&_svg]:text-neutral-700 dark:border-neutral-700 dark:!bg-neutral-900 dark:!text-neutral-100 dark:hover:!bg-neutral-800 dark:[&_svg]:text-neutral-300 dark:hover:[&_svg]:text-neutral-100 lg:flex"
+              className="mb-2 w-full justify-start rounded-xl border-neutral-200 !bg-neutral-50 !text-neutral-800 shadow-none hover:!bg-neutral-100 hover:!text-neutral-900 [&_svg]:text-neutral-500 hover:[&_svg]:text-neutral-700 dark:border-neutral-700 dark:!bg-neutral-900 dark:!text-neutral-100 dark:hover:!bg-neutral-800 dark:[&_svg]:text-neutral-300 dark:hover:[&_svg]:text-neutral-100"
               onClick={() => {
                 setMobileNavOpen(false);
-                router.push(`/app/${tenantSlug}/account#subscription-plan`);
+                setIsPlanModalOpen(true);
               }}
             >
               <Wallet size={16} />
@@ -171,22 +281,29 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
             <Button
               type="button"
               variant="outline"
-              className="mb-3 hidden w-full justify-start rounded-xl border-neutral-200 !bg-neutral-50 !text-neutral-800 shadow-none hover:!bg-neutral-100 hover:!text-neutral-900 [&_svg]:text-neutral-500 hover:[&_svg]:text-neutral-700 dark:border-neutral-700 dark:!bg-neutral-900 dark:!text-neutral-100 dark:hover:!bg-neutral-800 dark:[&_svg]:text-neutral-300 dark:hover:[&_svg]:text-neutral-100 lg:flex"
-              onClick={() => {
-                setMobileNavOpen(false);
-                router.push(`/app/${tenantSlug}/account#share-link`);
-              }}
+              className="w-full justify-start rounded-xl border-neutral-200 !bg-neutral-50 !text-neutral-800 shadow-none hover:!bg-neutral-100 hover:!text-neutral-900 [&_svg]:text-neutral-500 hover:[&_svg]:text-neutral-700 dark:border-neutral-700 dark:!bg-neutral-900 dark:!text-neutral-100 dark:hover:!bg-neutral-800 dark:[&_svg]:text-neutral-300 dark:hover:[&_svg]:text-neutral-100"
+              onClick={() => void handleQuickShareCopy()}
+              disabled={quickSharePending}
             >
               <Link2 size={16} />
-              <span>{copy.createShare}</span>
+              <span>{quickSharePending ? copy.quickSharePending : copy.createShare}</span>
             </Button>
-            <div className="mb-3">
-              <UiPreferenceControls className="tenant-sidebar-pref" />
-            </div>
+
+            {quickShareError ? (
+              <p className="mt-2 break-all rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                {quickShareError}
+              </p>
+            ) : null}
+            {quickShareMessage ? (
+              <p className="mt-2 break-all rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                {quickShareMessage}
+              </p>
+            ) : null}
+
             <Button
               type="button"
               variant="ghost"
-              className="w-full justify-start text-neutral-600 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-neutral-100"
+              className="mt-3 w-full justify-start text-neutral-600 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-neutral-100"
               onClick={() => {
                 clearAccessToken();
                 router.replace('/login');
@@ -195,6 +312,10 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
               <LogOut size={16} />
               <span>{copy.logout}</span>
             </Button>
+
+            <div className="mt-3">
+              <UiPreferenceControls className="tenant-sidebar-pref" />
+            </div>
           </div>
         </aside>
 
@@ -260,6 +381,60 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
         </section>
       </div>
 
+      {isPlanModalOpen ? (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={copy.planModalTitle}
+          onClick={() => setIsPlanModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-2xl rounded-3xl border border-neutral-200 bg-white p-5 shadow-[0_24px_60px_rgba(0,0,0,0.2)] dark:border-neutral-800 dark:bg-neutral-950"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-4">
+              <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">{copy.planModalTitle}</h2>
+              <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">{copy.planModalSubtitle}</p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              {PLAN_COMPARISON[locale].map((plan) => (
+                <section
+                  key={plan.plan}
+                  className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-900"
+                >
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500 dark:text-neutral-400">
+                    {plan.plan}
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-neutral-900 dark:text-neutral-100">{plan.tagline}</p>
+                  <ul className="mt-2 space-y-1 text-xs text-neutral-600 dark:text-neutral-300">
+                    {plan.details.map((detail) => (
+                      <li key={detail}>• {detail}</li>
+                    ))}
+                  </ul>
+                </section>
+              ))}
+            </div>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={() => setIsPlanModalOpen(false)}>
+                {copy.planModalClose}
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setIsPlanModalOpen(false);
+                  router.push(`/app/${tenantSlug}/account#subscription-plan`);
+                }}
+              >
+                {copy.planModalUpgradeNow}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {mobileNavOpen ? (
         <button
           type="button"
@@ -278,4 +453,24 @@ function isActive(pathname: string, href: string): boolean {
   }
 
   return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function buildPermanentShareLink(shareToken: string) {
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return `${window.location.origin}/public/s/${shareToken}`;
+  }
+
+  return `/public/s/${shareToken}`;
+}
+
+function formatActionError(error: unknown, fallback: string) {
+  if (error instanceof ApiError) {
+    return error.message;
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return fallback;
 }

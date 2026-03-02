@@ -49,7 +49,7 @@ export const productSchema = z.object({
   updatedAt: z.string().datetime().optional()
 });
 
-export const createProductRequestSchema = z.object({
+const createProductRequestBaseSchema = z.object({
   code: productCodeSchema,
   type: nullableType,
   name: productNameSchema,
@@ -67,10 +67,34 @@ export const createProductRequestSchema = z.object({
   isFeatured: z.boolean().optional()
 });
 
-export const updateProductRequestSchema = createProductRequestSchema
+export const createProductRequestSchema = createProductRequestBaseSchema.superRefine((payload, ctx) => {
+  if (payload.offspringUnitPrice !== null && payload.offspringUnitPrice !== undefined && payload.sex !== 'female') {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['offspringUnitPrice'],
+      message: 'offspringUnitPrice is only allowed when sex is female.'
+    });
+  }
+});
+
+export const updateProductRequestSchema = createProductRequestBaseSchema
   .partial()
   .refine((payload) => Object.keys(payload).length > 0, {
     message: 'At least one field must be provided for update.'
+  })
+  .superRefine((payload, ctx) => {
+    if (
+      payload.offspringUnitPrice !== null &&
+      payload.offspringUnitPrice !== undefined &&
+      payload.sex !== undefined &&
+      payload.sex !== 'female'
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['offspringUnitPrice'],
+        message: 'offspringUnitPrice is only allowed when sex is female.'
+      });
+    }
   });
 
 const eventDateInputSchema = z.string().trim().min(1).max(40);

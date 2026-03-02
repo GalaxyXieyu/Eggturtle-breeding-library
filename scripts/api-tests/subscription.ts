@@ -135,7 +135,19 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
       resourceId: session.tenantId,
     },
   });
-  assertStatus(createShareOnFree, 201, 'subscription.share.allowed-free-plan');
+  assertStatus(createShareOnFree, 201, 'subscription.share.allowed-free-plan-1');
+  checks += 1;
+
+  const createShareOnFreeAgain = await ctx.request({
+    method: 'POST',
+    path: '/shares',
+    token: session.token,
+    json: {
+      resourceType: 'tenant_feed',
+      resourceId: session.tenantId,
+    },
+  });
+  assertStatus(createShareOnFreeAgain, 201, 'subscription.share.allowed-free-plan-2');
   checks += 1;
 
   const firstUpload = await ctx.request({

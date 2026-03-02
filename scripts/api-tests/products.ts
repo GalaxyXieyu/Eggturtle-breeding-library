@@ -5,6 +5,8 @@ import {
   TestModule,
   asArray,
   asObject,
+  assertErrorCode,
+  assertStatus,
   ensureTenantSession,
   readObject,
   readString,
@@ -61,7 +63,6 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
       description: marker,
       seriesId: selectedSeriesId ?? undefined,
       sex: 'male',
-      offspringUnitPrice: 128.5,
       sireCode: 'SIRE-A',
       damCode: 'DAM-A',
       mateCode: 'MATE-A',
@@ -73,9 +74,7 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
     },
   });
 
-  if (createAResponse.status !== 201) {
-    throw new ApiTestError(`create product A expected 201, got ${createAResponse.status}`);
-  }
+  assertStatus(createAResponse, 201, 'products.createA');
 
   const createABody = asObject(createAResponse.body, 'products.createA response');
   const productA = readObject(createABody, 'product', 'products.createA.product');
@@ -88,7 +87,10 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
   }
   assertNullableStringField(productA, 'seriesId', 'products.createA.product.seriesId');
   assertNullableStringField(productA, 'sex', 'products.createA.product.sex', 'male');
-  assertNullableNumberField(productA, 'offspringUnitPrice', 'products.createA.product.offspringUnitPrice', 128.5);
+  assertNullableNumberField(productA, 'offspringUnitPrice', 'products.createA.product.offspringUnitPrice');
+  if (productA.offspringUnitPrice !== null) {
+    throw new ApiTestError('create product A should clear offspringUnitPrice for non-female sex');
+  }
   assertNullableStringField(productA, 'sireCode', 'products.createA.product.sireCode', 'SIRE-A');
   assertNullableStringField(productA, 'damCode', 'products.createA.product.damCode', 'DAM-A');
   assertNullableStringField(productA, 'mateCode', 'products.createA.product.mateCode', 'MATE-A');
@@ -102,6 +104,21 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
       `create product A seriesId mismatch: expected ${selectedSeriesId}, got ${String(productA.seriesId)}`,
     );
   }
+  checks += 1;
+
+  const createInvalidMalePriceResponse = await ctx.request({
+    method: 'POST',
+    path: '/products',
+    token: session.token,
+    json: {
+      code: `${codePrefix}-MALE-PRICE`,
+      description: marker,
+      sex: 'male',
+      offspringUnitPrice: 88,
+    },
+  });
+  assertStatus(createInvalidMalePriceResponse, 400, 'products.create.invalid-male-offspring-price');
+  assertErrorCode(createInvalidMalePriceResponse, 'INVALID_REQUEST_PAYLOAD');
   checks += 1;
 
   const createBResponse = await ctx.request({
@@ -125,16 +142,34 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
     },
   });
 
-  if (createBResponse.status !== 201) {
-    throw new ApiTestError(`create product B expected 201, got ${createBResponse.status}`);
-  }
+  assertStatus(createBResponse, 201, 'products.createB');
 
   const createBBody = asObject(createBResponse.body, 'products.createB response');
   const productB = readObject(createBBody, 'product', 'products.createB.product');
+  const productBId = readString(productB, 'id', 'products.createB.product.id');
   if (readString(productB, 'name', 'products.createB.product.name') !== 'Product B') {
     throw new ApiTestError('create product B should keep explicit name');
   }
   assertNullableStringField(productB, 'sex', 'products.createB.product.sex', 'female');
+  assertNullableNumberField(productB, 'offspringUnitPrice', 'products.createB.product.offspringUnitPrice', 256);
+  checks += 1;
+
+  const updateBSexResponse = await ctx.request({
+    method: 'PUT',
+    path: `/products/${productBId}`,
+    token: session.token,
+    json: {
+      sex: 'male',
+    },
+  });
+  assertStatus(updateBSexResponse, 200, 'products.updateB.sex-to-male');
+  const updateBSexBody = asObject(updateBSexResponse.body, 'products.updateB response');
+  const updatedB = readObject(updateBSexBody, 'product', 'products.updateB.product');
+  assertNullableStringField(updatedB, 'sex', 'products.updateB.product.sex', 'male');
+  assertNullableNumberField(updatedB, 'offspringUnitPrice', 'products.updateB.product.offspringUnitPrice');
+  if (updatedB.offspringUnitPrice !== null) {
+    throw new ApiTestError('update product B should clear offspringUnitPrice when sex is changed to non-female');
+  }
   checks += 1;
 
   const createCResponse = await ctx.request({
@@ -249,9 +284,9 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
   );
   const femaleCodes = femaleProducts.map((entry) => readString(entry, 'code', 'products.list.female.item.code'));
 
-  if (femaleCodes.length !== 2 || femaleCodes[0] !== codeB || femaleCodes[1] !== codeC) {
+  if (femaleCodes.length !== 1 || femaleCodes[0] !== codeC) {
     throw new ApiTestError(
-      `list products female filter mismatch: expected [${codeB}, ${codeC}], got ${JSON.stringify(femaleCodes)}`,
+      `list products female filter mismatch: expected [${codeC}], got ${JSON.stringify(femaleCodes)}`,
     );
   }
 
