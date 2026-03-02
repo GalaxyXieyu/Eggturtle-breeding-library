@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import {
   meSubscriptionResponseSchema,
@@ -73,6 +73,8 @@ export default function SubscriptionPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [upgradeModalPlan, setUpgradeModalPlan] = useState<PlanPackage | null>(null);
+  const [activeMobilePlanIndex, setActiveMobilePlanIndex] = useState(0);
+  const mobilePlansRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!tenantSlug) {
@@ -128,6 +130,13 @@ export default function SubscriptionPage() {
 
     return Math.max(PLAN_LIMITS[featuredPlan.tier] - effectiveProductLimit, 0);
   }, [featuredPlan, effectiveProductLimit]);
+  const highestPlanIndex = useMemo(() => PLAN_PACKAGES.findIndex((item) => item.tier === 'PRO'), []);
+
+  useEffect(() => {
+    if (highestPlanIndex >= 0) {
+      setActiveMobilePlanIndex(highestPlanIndex);
+    }
+  }, [highestPlanIndex]);
 
   useEffect(() => {
     if (!upgradeModalPlan) {
@@ -186,8 +195,61 @@ export default function SubscriptionPage() {
   }
 
   function focusUpgradeSection() {
-    const target = document.getElementById('quick-upgrade');
+    focusPlanSection(highestPlanIndex >= 0 ? highestPlanIndex : undefined);
+  }
+
+  function focusPlanSection(index?: number) {
+    const target = document.getElementById('plan-packages');
     target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    if (typeof index !== 'number' || index < 0) {
+      return;
+    }
+
+    window.setTimeout(() => {
+      scrollToMobilePlan(index);
+    }, 220);
+  }
+
+  function scrollToMobilePlan(index: number) {
+    const container = mobilePlansRef.current;
+    if (!container) {
+      return;
+    }
+
+    const target = container.children.item(index) as HTMLElement | null;
+    if (!target) {
+      return;
+    }
+
+    container.scrollTo({ left: target.offsetLeft, behavior: 'smooth' });
+    setActiveMobilePlanIndex(index);
+  }
+
+  function handleMobilePlanScroll() {
+    const container = mobilePlansRef.current;
+    if (!container) {
+      return;
+    }
+
+    const children = Array.from(container.children) as HTMLElement[];
+    if (children.length === 0) {
+      return;
+    }
+
+    let nextIndex = 0;
+    let smallestDistance = Number.POSITIVE_INFINITY;
+    for (let index = 0; index < children.length; index += 1) {
+      const distance = Math.abs(children[index].offsetLeft - container.scrollLeft);
+      if (distance < smallestDistance) {
+        smallestDistance = distance;
+        nextIndex = index;
+      }
+    }
+
+    if (nextIndex !== activeMobilePlanIndex) {
+      setActiveMobilePlanIndex(nextIndex);
+    }
   }
 
   return (
@@ -224,7 +286,7 @@ export default function SubscriptionPage() {
               >
                 立刻升级
               </Button>
-              <p className="mt-2 text-center text-xs text-neutral-200/90">点击后直达立即升级区，输入激活码即可生效</p>
+              <p className="mt-2 text-center text-xs text-neutral-200/90">点击后定位到专业版卡片，三档套餐均保留可对比</p>
             </div>
           </div>
 
@@ -274,13 +336,173 @@ export default function SubscriptionPage() {
       ) : null}
 
       {!loading ? (
+        <Card id="plan-packages" className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-2xl">
+              <Wallet size={18} />
+              版本差异与升级收益
+            </CardTitle>
+            <CardDescription>保留三档套餐卡片，便于横向对比能力差异。</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-3 md:hidden">
+              <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                {PLAN_PACKAGES.map((item, index) => (
+                  <button
+                    key={`mobile-plan-tab-${item.tier}`}
+                    type="button"
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition ${
+                      activeMobilePlanIndex === index
+                        ? 'border-neutral-900 bg-neutral-900 text-white'
+                        : 'border-neutral-200 bg-white text-neutral-700'
+                    }`}
+                    onClick={() => scrollToMobilePlan(index)}
+                  >
+                    {item.name}
+                  </button>
+                ))}
+              </div>
+              <div
+                ref={mobilePlansRef}
+                className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                onScroll={handleMobilePlanScroll}
+              >
+                {PLAN_PACKAGES.map((item, index) => {
+                  const isCurrent = item.tier === currentPlan;
+                  const isHighest = item.tier === 'PRO';
+                  return (
+                    <section
+                      key={`mobile-${item.tier}`}
+                      className={`relative min-w-[86%] snap-center overflow-hidden rounded-2xl border p-4 shadow-[0_8px_20px_rgba(15,23,42,0.08)] ${
+                        isCurrent
+                          ? 'border-[#FFD400]/70 bg-gradient-to-b from-[#FFF6CF] to-white'
+                          : isHighest
+                            ? 'border-neutral-900 bg-gradient-to-b from-neutral-50 to-white'
+                            : 'border-neutral-200 bg-white'
+                      }`}
+                    >
+                      <div className="pointer-events-none absolute -right-6 -top-8 h-20 w-20 rounded-full bg-[#FFD400]/30 blur-2xl" />
+                      <div className="relative z-10">
+                        <div className="flex items-center justify-between">
+                          <p className="text-lg font-bold text-neutral-900">{item.name}</p>
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                              isCurrent ? 'bg-neutral-900 text-white' : isHighest ? 'bg-[#FFD400]/25 text-neutral-900' : 'bg-neutral-100 text-neutral-700'
+                            }`}
+                          >
+                            {isCurrent ? '当前' : isHighest ? '高阶' : '可升级'}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-2xl font-black text-neutral-900">{item.price}</p>
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-2 py-1.5">
+                            <p className="text-[11px] text-neutral-500">种龟上限</p>
+                            <p className="text-sm font-semibold text-neutral-900">{item.productLimit}</p>
+                          </div>
+                          <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-2 py-1.5">
+                            <p className="text-[11px] text-neutral-500">AI 额度</p>
+                            <p className="text-xs font-semibold text-neutral-900">{item.aiQuota}</p>
+                          </div>
+                        </div>
+                        <details className="mt-3 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2">
+                          <summary className="cursor-pointer text-xs font-semibold text-neutral-700">展开核心福利</summary>
+                          <div className="mt-2 space-y-1">
+                            {item.perks.map((perk) => (
+                              <p key={`mobile-perk-${item.tier}-${perk}`} className="text-sm text-neutral-800">
+                                • {perk}
+                              </p>
+                            ))}
+                          </div>
+                        </details>
+                        {!isCurrent ? (
+                          <div className="mt-3 flex justify-end">
+                            <Button type="button" size="sm" className="h-8 rounded-lg px-3" onClick={() => openUpgradeModal(item)}>
+                              升级
+                            </Button>
+                          </div>
+                        ) : null}
+                        <p className="mt-2 text-center text-[11px] text-neutral-500">
+                          {index + 1} / {PLAN_PACKAGES.length}
+                        </p>
+                      </div>
+                    </section>
+                  );
+                })}
+              </div>
+              <div className="flex items-center justify-center gap-1.5">
+                {PLAN_PACKAGES.map((item, index) => (
+                  <span
+                    key={`mobile-dot-${item.tier}`}
+                    className={`h-1.5 rounded-full transition-all ${
+                      activeMobilePlanIndex === index ? 'w-4 bg-neutral-900' : 'w-1.5 bg-neutral-300'
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="hidden overflow-x-auto rounded-2xl border border-neutral-200 md:block">
+              <table className="w-full min-w-[760px] border-separate border-spacing-0 text-left">
+                <thead>
+                  <tr className="bg-neutral-50">
+                    <th className="border-b border-neutral-200 px-4 py-2 text-sm font-semibold text-neutral-700">版本</th>
+                    <th className="border-b border-neutral-200 px-4 py-2 text-sm font-semibold text-neutral-700">价格</th>
+                    <th className="border-b border-neutral-200 px-4 py-2 text-sm font-semibold text-neutral-700">种龟上限</th>
+                    <th className="border-b border-neutral-200 px-4 py-2 text-sm font-semibold text-neutral-700">AI 额度</th>
+                    <th className="border-b border-neutral-200 px-4 py-2 text-sm font-semibold text-neutral-700">核心福利</th>
+                    <th className="border-b border-neutral-200 px-4 py-2 text-right text-sm font-semibold text-neutral-700">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {PLAN_PACKAGES.map((item) => {
+                    const isCurrent = item.tier === currentPlan;
+                    return (
+                      <tr key={item.tier} className={isCurrent ? 'bg-[#FFD400]/10' : ''}>
+                        <td className="border-b border-neutral-200 px-4 py-3 align-top">
+                          <p className="text-sm font-semibold text-neutral-900">{item.name}</p>
+                          {isCurrent ? <p className="text-xs text-neutral-600">当前套餐</p> : null}
+                        </td>
+                        <td className="border-b border-neutral-200 px-4 py-3 align-top text-sm text-neutral-800">{item.price}</td>
+                        <td className="border-b border-neutral-200 px-4 py-3 align-top text-sm text-neutral-800">{item.productLimit}</td>
+                        <td className="border-b border-neutral-200 px-4 py-3 align-top text-sm text-neutral-800">{item.aiQuota}</td>
+                        <td className="border-b border-neutral-200 px-4 py-3 align-top">
+                          <div className="space-y-1">
+                            {item.perks.map((perk) => (
+                              <p key={`${item.tier}-${perk}`} className="text-sm text-neutral-800">
+                                • {perk}
+                              </p>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="border-b border-neutral-200 px-4 py-3 align-top">
+                          {!isCurrent ? (
+                            <div className="flex justify-end">
+                              <Button type="button" size="sm" className="h-8 rounded-lg px-3" onClick={() => openUpgradeModal(item)}>
+                                升级
+                              </Button>
+                            </div>
+                          ) : (
+                            <p className="text-right text-xs text-neutral-500">已生效</p>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {!loading ? (
         <Card id="quick-upgrade" className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-2xl">
               <Wallet size={18} />
               立即升级
             </CardTitle>
-            <CardDescription>已移除多卡片升级区，统一在这里一步完成升级。</CardDescription>
+            <CardDescription>统一在这里输入激活码完成升级。</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {featuredPlan ? (
@@ -406,7 +628,7 @@ export default function SubscriptionPage() {
       ) : null}
     </main>
   );
-}
+  }
 
 function resolveEffectiveProductLimit(subscription: TenantSubscription | null): number {
   if (!subscription) {
