@@ -7,21 +7,16 @@ import {
   createShareResponseSchema,
   meProfileResponseSchema,
   meResponseSchema,
-  meSubscriptionResponseSchema,
-  redeemTenantSubscriptionActivationCodeRequestSchema,
-  redeemTenantSubscriptionActivationCodeResponseSchema,
   type MeProfile,
-  type TenantSubscription,
   updateMeProfileRequestSchema,
   updateMeProfileResponseSchema,
   updateMyPasswordRequestSchema,
   updateMyPasswordResponseSchema
 } from '@eggturtle/shared';
-import { Copy, KeyRound, Link2, UserRound, Wallet } from 'lucide-react';
+import { Copy, KeyRound, Link2, UserRound } from 'lucide-react';
 
 import { ApiError, apiRequest, getAccessToken } from '../../../../lib/api-client';
 import { switchTenantBySlug } from '../../../../lib/tenant-session';
-import { Badge } from '../../../../components/ui/badge';
 import { Button } from '../../../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../components/ui/card';
 import { Input } from '../../../../components/ui/input';
@@ -36,10 +31,8 @@ export default function AccountPage() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [generatingShare, setGeneratingShare] = useState(false);
-  const [redeemingSubscription, setRedeemingSubscription] = useState(false);
 
   const [profile, setProfile] = useState<MeProfile | null>(null);
-  const [subscription, setSubscription] = useState<TenantSubscription | null>(null);
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [shareLink, setShareLink] = useState<string | null>(null);
 
@@ -47,7 +40,6 @@ export default function AccountPage() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [activationCode, setActivationCode] = useState('');
 
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -73,10 +65,9 @@ export default function AccountPage() {
       try {
         await switchTenantBySlug(tenantSlug);
 
-        const [me, profileResponse, subscriptionResponse] = await Promise.all([
+        const [me, profileResponse] = await Promise.all([
           apiRequest('/me', { responseSchema: meResponseSchema }),
-          apiRequest('/me/profile', { responseSchema: meProfileResponseSchema }),
-          apiRequest('/me/subscription', { responseSchema: meSubscriptionResponseSchema })
+          apiRequest('/me/profile', { responseSchema: meProfileResponseSchema })
         ]);
 
         if (cancelled) {
@@ -86,7 +77,6 @@ export default function AccountPage() {
         setTenantId(me.tenantId ?? null);
         setProfile(profileResponse.profile);
         setNameDraft(profileResponse.profile.name ?? '');
-        setSubscription(subscriptionResponse.subscription);
       } catch (requestError) {
         if (!cancelled) {
           setError(formatError(requestError));
@@ -207,40 +197,10 @@ export default function AccountPage() {
     }
   }
 
-  async function handleRedeemActivationCode() {
-    if (!activationCode.trim()) {
-      setError('请输入升级码。');
-      return;
-    }
-
-    setRedeemingSubscription(true);
-    setError(null);
-    setMessage(null);
-
-    try {
-      const payload = redeemTenantSubscriptionActivationCodeRequestSchema.parse({
-        code: activationCode.trim()
-      });
-      const response = await apiRequest('/subscriptions/activation-codes/redeem', {
-        method: 'POST',
-        body: payload,
-        requestSchema: redeemTenantSubscriptionActivationCodeRequestSchema,
-        responseSchema: redeemTenantSubscriptionActivationCodeResponseSchema
-      });
-      setSubscription(response.subscription);
-      setActivationCode('');
-      setMessage(`套餐已更新：${formatSubscriptionPlanLabel(response.subscription.plan)}。`);
-    } catch (requestError) {
-      setError(formatError(requestError));
-    } finally {
-      setRedeemingSubscription(false);
-    }
-  }
-
   return (
     <main className="space-y-4 pb-10 sm:space-y-6">
       <Card className="rounded-2xl border-neutral-200/90 bg-white/90 p-4">
-        <p className="text-sm text-neutral-600">管理个人资料、密码、套餐状态和公开分享链接。</p>
+        <p className="text-sm text-neutral-600">管理个人资料、密码和公开分享链接。</p>
       </Card>
 
       {loading ? (
@@ -326,47 +286,6 @@ export default function AccountPage() {
             </CardContent>
           </Card>
 
-          <Card id="subscription-plan" className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-2xl">
-                <Wallet size={18} />
-                套餐状态
-              </CardTitle>
-              <CardDescription>当前租户订阅与配额信息。</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="accent">{formatSubscriptionPlanLabel(subscription?.plan)}</Badge>
-                <Badge variant={subscription?.status === 'ACTIVE' ? 'success' : 'warning'}>
-                  {formatSubscriptionStatusLabel(subscription?.status)}
-                </Badge>
-              </div>
-              <div className="grid gap-1 text-neutral-600">
-                <p>开始时间：{formatDate(subscription?.startsAt ?? null)}</p>
-                <p>到期时间：{formatDate(subscription?.expiresAt ?? null)}</p>
-                <p>图片上限：{toDisplayValue(subscription?.maxImages)}</p>
-                <p>存储上限：{toDisplayBytes(subscription?.maxStorageBytes)}</p>
-                <p>分享上限：{toDisplayValue(subscription?.maxShares)}</p>
-              </div>
-              <div className="space-y-2 rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
-                <Label htmlFor="subscription-activation-code">升级码</Label>
-                <div className="flex flex-wrap gap-2">
-                  <Input
-                    id="subscription-activation-code"
-                    type="text"
-                    value={activationCode}
-                    placeholder="输入激活码后立即升级套餐"
-                    onChange={(event) => setActivationCode(event.target.value)}
-                  />
-                  <Button type="button" variant="primary" disabled={redeemingSubscription} onClick={() => void handleRedeemActivationCode()}>
-                    {redeemingSubscription ? '升级中...' : '立即升级套餐'}
-                  </Button>
-                </div>
-                <p className="text-xs text-neutral-500">升级成功后，套餐状态和配额会自动刷新。</p>
-              </div>
-            </CardContent>
-          </Card>
-
           <Card id="share-link" className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-2xl">
@@ -421,54 +340,6 @@ function formatDate(value: string | null | undefined) {
   }
 
   return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
-}
-
-function formatSubscriptionPlanLabel(plan: TenantSubscription['plan'] | null | undefined) {
-  if (plan === 'FREE') {
-    return '免费版';
-  }
-  if (plan === 'BASIC') {
-    return '基础版';
-  }
-  if (plan === 'PRO') {
-    return '专业版';
-  }
-  return '-';
-}
-
-function formatSubscriptionStatusLabel(status: TenantSubscription['status'] | null | undefined) {
-  if (status === 'ACTIVE') {
-    return '生效中';
-  }
-  if (status === 'EXPIRED') {
-    return '已过期';
-  }
-  if (status === 'DISABLED') {
-    return '已禁用';
-  }
-  return '-';
-}
-
-function toDisplayValue(value: number | null | undefined) {
-  if (value === null || value === undefined) {
-    return '不限';
-  }
-
-  return `${value}`;
-}
-
-function toDisplayBytes(value: string | null | undefined) {
-  if (!value) {
-    return '不限';
-  }
-
-  const bytes = Number(value);
-  if (!Number.isFinite(bytes) || bytes <= 0) {
-    return value;
-  }
-
-  const gb = bytes / (1024 * 1024 * 1024);
-  return `${gb.toFixed(2)} GB`;
 }
 
 function formatError(error: unknown) {

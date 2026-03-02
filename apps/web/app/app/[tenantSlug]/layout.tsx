@@ -2,12 +2,13 @@
 
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import {
   createShareRequestSchema,
   createShareResponseSchema,
-  meResponseSchema
+  meResponseSchema,
+  meSubscriptionResponseSchema
 } from '@eggturtle/shared';
 import {
   LayoutDashboard,
@@ -24,8 +25,9 @@ import {
 
 import { UiPreferenceControls, useUiPreferences } from '../../../components/ui-preferences';
 import { Button } from '../../../components/ui/button';
-import { ApiError, apiRequest, clearAccessToken } from '../../../lib/api-client';
+import { ApiError, apiRequest, clearAccessToken, getAccessToken } from '../../../lib/api-client';
 import { formatTenantDisplayName } from '../../../lib/tenant-display';
+import { switchTenantBySlug } from '../../../lib/tenant-session';
 import { cn } from '../../../lib/utils';
 
 type TenantRouteLayoutProps = {
@@ -43,30 +45,16 @@ type NavItem = {
 
 type PlanTier = 'FREE' | 'BASIC' | 'PRO';
 
-type PlanComparisonRow = {
-  metric: string;
-  free: string;
-  basic: string;
-  pro: string;
-};
-
-type PlanComparisonConfig = {
-  metricHeader: string;
-  intro: string;
-  note: string;
-  guideLabel: string;
-  guides: Array<{
-    plan: PlanTier;
-    text: string;
-  }>;
-  rows: PlanComparisonRow[];
-};
-
 const NAV_ITEMS: NavItem[] = [
   {
     label: { zh: '控制台', en: 'Dashboard' },
     href: (tenantSlug) => `/app/${tenantSlug}`,
     icon: LayoutDashboard
+  },
+  {
+    label: { zh: '套餐订阅', en: 'Subscription' },
+    href: (tenantSlug) => `/app/${tenantSlug}/subscription`,
+    icon: Wallet
   },
   {
     label: { zh: '宠物管理', en: 'Pets' },
@@ -106,10 +94,7 @@ const SHELL_COPY = {
     quickShareFallback: '复制失败，请手动复制：',
     quickShareMissingTenant: '当前租户上下文未就绪，暂时无法生成链接。',
     quickShareErrorFallback: '创建分享链接失败。',
-    planModalTitle: '套餐对比',
-    planModalSubtitle: '按关键维度看差异，再决定是否升级。',
-    planModalClose: '稍后再看',
-    planModalUpgradeNow: '去升级套餐'
+    planLoading: '加载套餐中...'
   },
   en: {
     workspace: 'Tenant Workspace',
@@ -126,87 +111,7 @@ const SHELL_COPY = {
     quickShareFallback: 'Copy failed, please copy manually:',
     quickShareMissingTenant: 'Tenant context is not ready yet.',
     quickShareErrorFallback: 'Failed to create share link.',
-    planModalTitle: 'Plan Comparison',
-    planModalSubtitle: 'Compare key dimensions before upgrading.',
-    planModalClose: 'Later',
-    planModalUpgradeNow: 'Upgrade now'
-  }
-} as const;
-
-const PLAN_COMPARISON: Record<'zh' | 'en', PlanComparisonConfig> = {
-  zh: {
-    metricHeader: '对比维度',
-    intro: '下面用同一张表横向展示 FREE / BASIC / PRO 的核心差异。',
-    note: '具体数值配额请以“个人设置 > 套餐状态”页面中的实时数据为准。',
-    guideLabel: '如何选择',
-    guides: [
-      { plan: 'FREE', text: '先验证流程与数据录入，适合起步阶段。' },
-      { plan: 'BASIC', text: '已有稳定业务后升级，兼顾成本与容量。' },
-      { plan: 'PRO', text: '适合多角色协作和持续增长场景。' }
-    ],
-    rows: [
-      {
-        metric: '适用阶段',
-        free: '个人或小规模试运行',
-        basic: '稳定运营中的小团队',
-        pro: '规模化经营与增长期'
-      },
-      {
-        metric: '数据与配额',
-        free: '基础配额，满足早期验证',
-        basic: '更高配额，覆盖日常运营',
-        pro: '最高配额，支持弹性扩展'
-      },
-      {
-        metric: '能力侧重点',
-        free: '基础管理 + 标准分享',
-        basic: '增强沉淀能力与持续使用',
-        pro: '复杂业务场景与长期高频使用'
-      },
-      {
-        metric: '协作规模',
-        free: '1-2 人为主',
-        basic: '小团队协作',
-        pro: '多角色协作'
-      }
-    ]
-  },
-  en: {
-    metricHeader: 'Dimension',
-    intro: 'A side-by-side matrix of FREE / BASIC / PRO key differences.',
-    note: 'For exact quota numbers, check real-time data in "Account > Subscription Status".',
-    guideLabel: 'How to choose',
-    guides: [
-      { plan: 'FREE', text: 'Start here for workflow validation and early setup.' },
-      { plan: 'BASIC', text: 'Best next step for stable daily operations.' },
-      { plan: 'PRO', text: 'Ideal for multi-role collaboration and scaling.' }
-    ],
-    rows: [
-      {
-        metric: 'Best for',
-        free: 'Individual or early trial',
-        basic: 'Steady small-team operation',
-        pro: 'Scale and growth stage'
-      },
-      {
-        metric: 'Data & quota',
-        free: 'Baseline quota for validation',
-        basic: 'Higher quota for daily workload',
-        pro: 'Top quota with flexible expansion'
-      },
-      {
-        metric: 'Capability focus',
-        free: 'Core management + standard sharing',
-        basic: 'Stronger retention for steady usage',
-        pro: 'Built for complex long-term workflows'
-      },
-      {
-        metric: 'Collaboration size',
-        free: 'Mainly 1-2 people',
-        basic: 'Small team collaboration',
-        pro: 'Multi-role collaboration'
-      }
-    ]
+    planLoading: 'Loading plan...'
   }
 } as const;
 
@@ -216,19 +121,56 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
   const pathname = usePathname();
   const router = useRouter();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
   const [quickSharePending, setQuickSharePending] = useState(false);
   const [quickShareMessage, setQuickShareMessage] = useState<string | null>(null);
   const [quickShareError, setQuickShareError] = useState<string | null>(null);
+  const [currentPlan, setCurrentPlan] = useState<PlanTier>('FREE');
+  const [planLoading, setPlanLoading] = useState(true);
   const { locale } = useUiPreferences();
   const copy = SHELL_COPY[locale];
-  const planComparison = PLAN_COMPARISON[locale];
   const displayTenantName = useMemo(() => formatTenantDisplayName(tenantSlug, copy.defaultTenant), [tenantSlug, copy.defaultTenant]);
 
   const activeLabel = useMemo(() => {
     const matched = NAV_ITEMS.find((item) => isActive(pathname, item.href(tenantSlug)));
     return matched?.label[locale] ?? NAV_ITEMS[0].label[locale];
   }, [pathname, tenantSlug, locale]);
+
+  useEffect(() => {
+    if (!tenantSlug || !getAccessToken()) {
+      setPlanLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setPlanLoading(true);
+
+    void (async () => {
+      try {
+        await switchTenantBySlug(tenantSlug);
+        const response = await apiRequest('/me/subscription', {
+          responseSchema: meSubscriptionResponseSchema
+        });
+
+        if (cancelled) {
+          return;
+        }
+
+        setCurrentPlan(normalizePlanTier(response.subscription.plan));
+      } catch {
+        if (!cancelled) {
+          setCurrentPlan('FREE');
+        }
+      } finally {
+        if (!cancelled) {
+          setPlanLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tenantSlug]);
 
   async function handleQuickShareCopy() {
     if (quickSharePending) {
@@ -281,19 +223,22 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
       <div className="flex h-full w-full gap-2 p-2 sm:gap-3 sm:p-3 lg:gap-4 lg:p-4">
         <aside
           className={cn(
-            'fixed inset-y-0 left-0 z-50 flex w-[272px] flex-col border-r border-neutral-200 bg-white shadow-[0_16px_32px_rgba(0,0,0,0.08)] transition-transform duration-300 lg:relative lg:h-full lg:translate-x-0 lg:rounded-3xl lg:border lg:shadow-[0_8px_26px_rgba(0,0,0,0.08)]',
+            'fixed inset-y-0 left-0 z-50 flex w-[272px] flex-col overflow-y-auto border-r border-neutral-200 bg-white shadow-[0_16px_32px_rgba(0,0,0,0.08)] transition-transform duration-300 lg:relative lg:h-full lg:translate-x-0 lg:rounded-3xl lg:border lg:shadow-[0_8px_26px_rgba(0,0,0,0.08)]',
             'dark:border-neutral-800 dark:bg-neutral-950/96 dark:shadow-[0_20px_40px_rgba(0,0,0,0.45)]',
             mobileNavOpen ? 'translate-x-0' : '-translate-x-full'
           )}
         >
           <div className="border-b border-neutral-200 px-6 py-5 dark:border-neutral-800">
             <p className="text-xs uppercase tracking-[0.28em] text-neutral-500 dark:text-neutral-400">{copy.workspace}</p>
-            <p className="mt-2 text-3xl font-semibold leading-none text-neutral-900 dark:text-neutral-100">
-              {displayTenantName}
-            </p>
+            <div className="mt-2 flex items-center gap-2">
+              <p className="text-3xl font-semibold leading-none text-neutral-900 dark:text-neutral-100">{displayTenantName}</p>
+              <span className="inline-flex items-center rounded-full border border-[#FFD400]/45 bg-[#FFD400]/20 px-2 py-0.5 text-[11px] font-semibold text-neutral-900 dark:border-[#FFD400]/35 dark:bg-[#FFD400]/16 dark:text-[#ffe8a6]">
+                {planLoading ? copy.planLoading : formatPlanBadgeLabel(currentPlan, locale)}
+              </span>
+            </div>
           </div>
 
-          <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+          <nav className="space-y-1 px-3 py-4">
             {NAV_ITEMS.map((item) => {
               const href = item.href(tenantSlug);
               const active = isActive(pathname, href);
@@ -327,19 +272,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
             })}
           </nav>
 
-          <div className="mt-auto border-t border-neutral-200 p-3 dark:border-neutral-800">
-            <Button
-              type="button"
-              variant="outline"
-              className="mb-2 w-full justify-start rounded-xl border-neutral-200 !bg-neutral-50 !text-neutral-800 shadow-none hover:!bg-neutral-100 hover:!text-neutral-900 [&_svg]:text-neutral-500 hover:[&_svg]:text-neutral-700 dark:border-neutral-700 dark:!bg-neutral-900 dark:!text-neutral-100 dark:hover:!bg-neutral-800 dark:[&_svg]:text-neutral-300 dark:hover:[&_svg]:text-neutral-100"
-              onClick={() => {
-                setMobileNavOpen(false);
-                setIsPlanModalOpen(true);
-              }}
-            >
-              <Wallet size={16} />
-              <span>{copy.upgradePlan}</span>
-            </Button>
+          <div className="border-t border-neutral-200 p-3 dark:border-neutral-800">
             <Button
               type="button"
               variant="outline"
@@ -443,97 +376,6 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
         </section>
       </div>
 
-      {isPlanModalOpen ? (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label={copy.planModalTitle}
-          onClick={() => setIsPlanModalOpen(false)}
-        >
-          <div
-            className="w-full max-w-4xl rounded-3xl border border-neutral-200 bg-white p-5 shadow-[0_24px_60px_rgba(0,0,0,0.2)] dark:border-neutral-800 dark:bg-neutral-950"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="mb-4">
-              <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">{copy.planModalTitle}</h2>
-              <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">{copy.planModalSubtitle}</p>
-              <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{planComparison.intro}</p>
-            </div>
-
-            <div className="overflow-x-auto rounded-2xl border border-neutral-200 dark:border-neutral-800">
-              <table className="w-full min-w-[680px] border-separate border-spacing-0 text-left">
-                <thead>
-                  <tr className="bg-neutral-50 dark:bg-neutral-900">
-                    <th className="border-b border-neutral-200 px-3 py-2 text-xs font-semibold text-neutral-600 dark:border-neutral-800 dark:text-neutral-300 sm:px-4 sm:text-sm">
-                      {planComparison.metricHeader}
-                    </th>
-                    <th className="border-b border-neutral-200 px-3 py-2 text-xs font-semibold text-neutral-900 dark:border-neutral-800 dark:text-neutral-100 sm:px-4 sm:text-sm">
-                      FREE
-                    </th>
-                    <th className="border-b border-neutral-200 px-3 py-2 text-xs font-semibold text-neutral-900 dark:border-neutral-800 dark:text-neutral-100 sm:px-4 sm:text-sm">
-                      BASIC
-                    </th>
-                    <th className="border-b border-neutral-200 px-3 py-2 text-xs font-semibold text-neutral-900 dark:border-neutral-800 dark:text-neutral-100 sm:px-4 sm:text-sm">
-                      PRO
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {planComparison.rows.map((row) => (
-                    <tr key={row.metric}>
-                      <th className="border-b border-neutral-200 bg-neutral-50/80 px-3 py-2 align-top text-xs font-semibold text-neutral-700 dark:border-neutral-800 dark:bg-neutral-900/65 dark:text-neutral-200 sm:px-4 sm:text-sm">
-                        {row.metric}
-                      </th>
-                      <td className="border-b border-neutral-200 px-3 py-2 align-top text-xs text-neutral-700 dark:border-neutral-800 dark:text-neutral-200 sm:px-4 sm:text-sm">
-                        {row.free}
-                      </td>
-                      <td className="border-b border-neutral-200 bg-neutral-50/35 px-3 py-2 align-top text-xs text-neutral-700 dark:border-neutral-800 dark:bg-neutral-900/35 dark:text-neutral-200 sm:px-4 sm:text-sm">
-                        {row.basic}
-                      </td>
-                      <td className="border-b border-neutral-200 px-3 py-2 align-top text-xs text-neutral-700 dark:border-neutral-800 dark:text-neutral-200 sm:px-4 sm:text-sm">
-                        {row.pro}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">{planComparison.note}</p>
-
-            <div className="mt-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-900">
-              <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">{planComparison.guideLabel}</p>
-              <div className="mt-2 grid gap-2 sm:grid-cols-3">
-                {planComparison.guides.map((guide) => (
-                  <p
-                    key={guide.plan}
-                    className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs text-neutral-700 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-200"
-                  >
-                    <span className="font-semibold">{guide.plan}：</span>
-                    {guide.text}
-                  </p>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-4 flex justify-end gap-2">
-              <Button type="button" variant="secondary" onClick={() => setIsPlanModalOpen(false)}>
-                {copy.planModalClose}
-              </Button>
-              <Button
-                type="button"
-                onClick={() => {
-                  setIsPlanModalOpen(false);
-                  router.push(`/app/${tenantSlug}/account#subscription-plan`);
-                }}
-              >
-                {copy.planModalUpgradeNow}
-              </Button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
       {mobileNavOpen ? (
         <button
           type="button"
@@ -560,6 +402,36 @@ function buildPermanentShareLink(shareToken: string) {
   }
 
   return `/public/s/${shareToken}`;
+}
+
+function normalizePlanTier(plan: string): PlanTier {
+  if (plan === 'BASIC') {
+    return 'BASIC';
+  }
+  if (plan === 'PRO') {
+    return 'PRO';
+  }
+  return 'FREE';
+}
+
+function formatPlanBadgeLabel(plan: PlanTier, locale: 'zh' | 'en') {
+  if (locale === 'zh') {
+    if (plan === 'FREE') {
+      return '免费版';
+    }
+    if (plan === 'BASIC') {
+      return '基础版';
+    }
+    return '专业版';
+  }
+
+  if (plan === 'FREE') {
+    return 'Free';
+  }
+  if (plan === 'BASIC') {
+    return 'Basic';
+  }
+  return 'Pro';
 }
 
 function formatActionError(error: unknown, fallback: string) {

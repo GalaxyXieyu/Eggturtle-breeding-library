@@ -369,7 +369,7 @@ export default function TenantAppPage() {
                   <CardTitle className="text-2xl">套餐与版本</CardTitle>
                   <CardDescription>这里集中展示当前套餐状态，升级入口固定在右侧按钮。</CardDescription>
                 </div>
-                <Button type="button" size="sm" onClick={() => router.push(`/app/${tenantSlug}/account#subscription-plan`)}>
+                <Button type="button" size="sm" onClick={() => router.push(`/app/${tenantSlug}/subscription`)}>
                   升级套餐
                 </Button>
               </CardHeader>
@@ -392,29 +392,6 @@ export default function TenantAppPage() {
                     {subscriptionLoading ? '加载中...' : formatSubscriptionDate(subscription?.expiresAt ?? null)}
                   </p>
                 </div>
-              </CardContent>
-            </Card>
-          </section>
-
-          <section className="grid grid-cols-1 gap-4">
-            <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
-              <CardHeader>
-                <CardTitle className="text-2xl">热门点击榜</CardTitle>
-                <CardDescription>取分享访问日志中的产品点击统计（窗口内）。</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {overview.share.productClicksTop.length === 0 ? (
-                  <p className="text-sm text-neutral-500">当前窗口暂无点击数据。</p>
-                ) : null}
-                {overview.share.productClicksTop.map((item, index) => (
-                  <div key={item.productId} className="flex items-center justify-between rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2">
-                    <div>
-                      <p className="text-sm font-semibold text-neutral-900">#{index + 1} · {item.code}</p>
-                      <p className="text-xs text-neutral-500">产品 ID：{item.productId}</p>
-                    </div>
-                    <p className="text-lg font-bold text-neutral-900">{item.clicks}</p>
-                  </div>
-                ))}
               </CardContent>
             </Card>
           </section>
@@ -494,6 +471,29 @@ export default function TenantAppPage() {
                     {activeNeedMatingCard === 'need' ? '待配对' : '预警'} {needMatingValue} 项
                   </span>
                 </div>
+              </CardContent>
+            </Card>
+          </section>
+
+          <section className="grid grid-cols-1 gap-4">
+            <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
+              <CardHeader>
+                <CardTitle className="text-2xl">热门点击榜</CardTitle>
+                <CardDescription>取分享访问日志中的产品点击统计（窗口内）。</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {overview.share.productClicksTop.length === 0 ? (
+                  <p className="text-sm text-neutral-500">当前窗口暂无点击数据。</p>
+                ) : null}
+                {overview.share.productClicksTop.map((item, index) => (
+                  <div key={item.productId} className="flex items-center justify-between rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2">
+                    <div>
+                      <p className="text-sm font-semibold text-neutral-900">#{index + 1} · {item.code}</p>
+                      <p className="text-xs text-neutral-500">产品 ID：{item.productId}</p>
+                    </div>
+                    <p className="text-lg font-bold text-neutral-900">{item.clicks}</p>
+                  </div>
+                ))}
               </CardContent>
             </Card>
           </section>
