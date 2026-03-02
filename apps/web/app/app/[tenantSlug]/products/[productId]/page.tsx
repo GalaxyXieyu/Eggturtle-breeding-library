@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 'use client';
 
 import { ChangeEvent, useCallback, useEffect, useMemo, useState } from 'react';

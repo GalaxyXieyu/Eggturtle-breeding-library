@@ -341,15 +341,16 @@ export default function TenantAppPage() {
                   <CardTitle className="text-3xl text-neutral-900 sm:text-4xl">{displayTenantName}</CardTitle>
                   <CardDescription className="text-neutral-600">核心指标统一到一个面板，切换时间窗即可对比趋势。</CardDescription>
                 </div>
-                <div className="hidden shrink-0 items-center gap-2 rounded-2xl border border-neutral-200 bg-neutral-50 p-1 sm:flex">
+                <div className="hidden shrink-0 items-center gap-1 rounded-2xl border border-neutral-200/90 bg-gradient-to-b from-white to-neutral-100/85 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_1px_2px_rgba(15,23,42,0.08)] sm:flex">
                   {WINDOW_OPTIONS.map((item) => (
                     <button
                       key={item.key}
                       type="button"
-                      className={`rounded-xl px-3 py-1.5 text-sm font-medium transition ${
+                      aria-pressed={activeWindow === item.key}
+                      className={`rounded-xl border px-3.5 py-1.5 text-sm font-semibold leading-none transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD400]/80 focus-visible:ring-offset-1 ${
                         activeWindow === item.key
-                          ? 'bg-neutral-900 text-white shadow-sm'
-                          : 'text-neutral-600 hover:bg-neutral-200/70'
+                          ? 'border-neutral-900 bg-neutral-900 text-white shadow-[0_6px_14px_rgba(15,23,42,0.28)]'
+                          : 'border-transparent bg-transparent text-neutral-700 hover:border-neutral-300 hover:bg-white hover:text-neutral-900'
                       }`}
                       onClick={() => setActiveWindow(item.key)}
                     >

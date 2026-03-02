@@ -15,6 +15,7 @@ Next.js backoffice for super-admin operations.
 ## Auth flow
 
 - `/login` requests email code from API (`/auth/request-code`) through admin route handlers.
+- Password mode on `/login` supports `email` or account name (email local-part before `@`).
 - Verification (`/auth/verify-code`) sets an HttpOnly session cookie (`eggturtle.admin.access_token`).
 - `/dashboard/*` is protected server-side by `DashboardAccessGuard`, which validates the cookie token via API `/me` and checks `ADMIN_SUPER_EMAIL_ALLOWLIST`.
 - If session is invalid or not allowlisted, user is redirected to `/login`.

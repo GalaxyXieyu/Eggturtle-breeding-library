@@ -22,7 +22,10 @@ type LoginCopy = {
   modeLabel: string;
   modePassword: string;
   modeCode: string;
+  loginIdentifierLabel: string;
+  loginIdentifierPlaceholder: string;
   emailLabel: string;
+  emailPlaceholder: string;
   passwordLabel: string;
   passwordPlaceholder: string;
   signingIn: string;
@@ -47,7 +50,10 @@ const COPY: Record<UiLocale, LoginCopy> = {
     modeLabel: '登录模式',
     modePassword: '账号密码',
     modeCode: '邮箱验证码',
+    loginIdentifierLabel: '邮箱或账号名',
+    loginIdentifierPlaceholder: 'you@eggturtle.local 或账号名',
     emailLabel: '邮箱',
+    emailPlaceholder: 'you@eggturtle.local',
     passwordLabel: '密码',
     passwordPlaceholder: '请输入密码',
     signingIn: '登录中...',
@@ -70,7 +76,10 @@ const COPY: Record<UiLocale, LoginCopy> = {
     modeLabel: 'Login mode',
     modePassword: 'Password',
     modeCode: 'Email code',
+    loginIdentifierLabel: 'Email or account',
+    loginIdentifierPlaceholder: 'you@eggturtle.local or account name',
     emailLabel: 'Email',
+    emailPlaceholder: 'you@eggturtle.local',
     passwordLabel: 'Password',
     passwordPlaceholder: 'Enter your password',
     signingIn: 'Signing in...',
@@ -289,13 +298,13 @@ export default function LoginPage() {
                 {mode === 'password' ? (
                   <form className="stack login-panel" onSubmit={handlePasswordLogin}>
                     <div className="stack login-field">
-                      <label htmlFor="email">{copy.emailLabel}</label>
+                      <label htmlFor="email">{copy.loginIdentifierLabel}</label>
                       <input
                         id="email"
-                        type="email"
-                        autoComplete="email"
+                        type="text"
+                        autoComplete="username"
                         value={email}
-                        placeholder="you@eggturtle.local"
+                        placeholder={copy.loginIdentifierPlaceholder}
                         onChange={(event) => setEmail(event.target.value)}
                         required
                       />
@@ -329,7 +338,7 @@ export default function LoginPage() {
                         type="email"
                         autoComplete="email"
                         value={email}
-                        placeholder="you@eggturtle.local"
+                        placeholder={copy.emailPlaceholder}
                         onChange={(event) => setEmail(event.target.value)}
                         required
                       />

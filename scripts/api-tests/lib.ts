@@ -613,11 +613,12 @@ export async function verifyCode(
   ctx: TestContext,
   email: string,
   code: string,
+  password?: string,
 ): Promise<{ accessToken: string; user: Record<string, unknown> }> {
   const response = await ctx.request({
     method: 'POST',
     path: '/auth/verify-code',
-    json: { email, code },
+    json: password ? { email, code, password } : { email, code },
   });
 
   assertStatus(response, 201, 'auth.verify-code');

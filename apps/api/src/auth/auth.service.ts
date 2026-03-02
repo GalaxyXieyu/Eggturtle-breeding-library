@@ -179,6 +179,10 @@ export class AuthService {
       user = ownerMembership?.user ?? null;
     }
 
+    if (!user && !loginIdentifier.includes('@')) {
+      user = await this.findUserByAccountName(loginIdentifier);
+    }
+
     if (!user?.passwordHash) {
       this.throwInvalidCredentials();
     }
@@ -200,6 +204,30 @@ export class AuthService {
         name: user.name
       }
     };
+  }
+
+  private async findUserByAccountName(accountName: string) {
+    const candidates = await this.prisma.user.findMany({
+      where: {
+        passwordHash: {
+          not: null
+        },
+        email: {
+          startsWith: `${accountName}@`,
+          mode: 'insensitive'
+        }
+      },
+      orderBy: {
+        createdAt: 'asc'
+      },
+      take: 2
+    });
+
+    if (candidates.length !== 1) {
+      return null;
+    }
+
+    return candidates[0];
   }
 
   async switchTenant(user: AuthUser, payload: SwitchTenantRequest): Promise<SwitchTenantResponse> {
@@ -573,7 +601,7 @@ export class AuthService {
 
   private throwInvalidCredentials(): never {
     throw new UnauthorizedException({
-      message: 'Email or password is incorrect.',
+      message: 'Login identifier or password is incorrect.',
       errorCode: ErrorCode.Unauthorized
     });
   }

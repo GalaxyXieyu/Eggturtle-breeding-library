@@ -47,6 +47,45 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
   const verified = await verifyCode(ctx, email, requestedCode.devCode);
   checks += 1;
 
+  const passwordForAccountLogin = `Auth@${Date.now()}!`;
+  const requestedPasswordCode = await requestCode(ctx, email);
+  checks += 1;
+  await verifyCode(ctx, email, requestedPasswordCode.devCode, passwordForAccountLogin);
+  checks += 1;
+
+  const accountName = email.split('@')[0];
+  const passwordLoginResponse = await ctx.request({
+    method: 'POST',
+    path: '/auth/password-login',
+    json: {
+      email: accountName,
+      password: passwordForAccountLogin
+    }
+  });
+  if (passwordLoginResponse.status !== 201) {
+    throw new ApiTestError(`password-login by account name expected 201, got ${passwordLoginResponse.status}`);
+  }
+
+  const passwordLoginBody = asObject(passwordLoginResponse.body, 'auth.password-login response');
+  ensureKeys(passwordLoginBody, ['accessToken', 'user'], 'auth.password-login');
+  const passwordAccessToken = readString(passwordLoginBody, 'accessToken', 'auth.password-login.accessToken');
+  const passwordUser = readObject(passwordLoginBody, 'user', 'auth.password-login.user');
+  const passwordUserEmail = readString(passwordUser, 'email', 'auth.password-login.user.email');
+  if (passwordUserEmail !== email) {
+    throw new ApiTestError(`password-login by account name expected email ${email}, got ${passwordUserEmail}`);
+  }
+  checks += 1;
+
+  const passwordMeResponse = await ctx.request({
+    method: 'GET',
+    path: '/me',
+    token: passwordAccessToken
+  });
+  if (passwordMeResponse.status !== 200) {
+    throw new ApiTestError(`/me after account-name password-login expected 200, got ${passwordMeResponse.status}`);
+  }
+  checks += 1;
+
   const meResponse = await ctx.request({
     method: 'GET',
     path: '/me',

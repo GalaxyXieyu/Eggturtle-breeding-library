@@ -211,7 +211,8 @@
     - 当前统计：`products=32`、`product_images=64`（该租户图片数据最完整）
   - 本地可用账号（已设置密码）：
     - 租户端（图片数据主账号）：`admin@turtlealbum.local` / `Turtle@2026!`
-    - 平台后台（super-admin）：`synthetic.superadmin@local.test` / `Super@2026!`
+    - 平台后台（super-admin）：`admin@local.test` / `Siri@2026`（可用账号名 `admin` 登录）
+    - 兼容旧账号：`synthetic.superadmin@local.test` / `Super@2026!`
     - 本地后台 allowlist 已写入：`apps/admin/.env.local`
   - 当前删除其它租户会影响 smoke/回归样例，默认先不做破坏性清理；如确认清理再执行“只保留 turtle-album”。
 - 2026-02-28 UI_STYLE_GUIDE 对齐优化补充（apps/web）：

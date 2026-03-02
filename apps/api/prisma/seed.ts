@@ -1,10 +1,22 @@
 import { PrismaClient, TenantMemberRole } from '@prisma/client';
+import { randomBytes, scryptSync } from 'node:crypto';
 
 const prisma = new PrismaClient();
+
+const DEFAULT_SUPER_ADMIN_EMAIL = 'admin@local.test';
+const DEFAULT_SUPER_ADMIN_PASSWORD = 'Siri@2026';
+
+function hashPassword(password: string) {
+  const pepper = process.env.AUTH_PASSWORD_PEPPER ?? process.env.AUTH_CODE_PEPPER ?? '';
+  const salt = randomBytes(16);
+  const derived = scryptSync(`${password}:${pepper}`, salt, 64);
+  return `scrypt$${salt.toString('hex')}$${derived.toString('hex')}`;
+}
 
 async function main() {
   const ownerEmail = 'owner@eggturtle.local';
   const tenantSlug = 'eggturtle-demo';
+  const now = new Date();
 
   const owner = await prisma.user.upsert({
     where: { email: ownerEmail },
@@ -39,11 +51,28 @@ async function main() {
     }
   });
 
+  const superAdmin = await prisma.user.upsert({
+    where: { email: DEFAULT_SUPER_ADMIN_EMAIL },
+    update: {
+      name: 'Platform Admin',
+      passwordHash: hashPassword(DEFAULT_SUPER_ADMIN_PASSWORD),
+      passwordUpdatedAt: now
+    },
+    create: {
+      email: DEFAULT_SUPER_ADMIN_EMAIL,
+      name: 'Platform Admin',
+      passwordHash: hashPassword(DEFAULT_SUPER_ADMIN_PASSWORD),
+      passwordUpdatedAt: now
+    }
+  });
+
   console.info('Seed complete:', {
     ownerEmail,
     tenantSlug,
     ownerId: owner.id,
-    tenantId: tenant.id
+    tenantId: tenant.id,
+    superAdminEmail: superAdmin.email,
+    superAdminPassword: DEFAULT_SUPER_ADMIN_PASSWORD
   });
 }
 
