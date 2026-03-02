@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { PublicSharePresentation } from '@eggturtle/shared';
 
 import { UiPreferenceControls } from '../../../components/ui-preferences';
+import PublicFloatingActions from '../_shared/public-floating-actions';
 
 import type { Breeder, NeedMatingStatus, Series } from './types';
 import { BreederCard, DemoHint, PublicEmptyState, SeriesIntroCard, ShareContactCard } from './components';
@@ -16,13 +17,14 @@ type Props = {
   series: Series[];
   breeders: Breeder[];
   presentation?: PublicSharePresentation | null;
+  tenantSlug?: string;
 };
 
 function rankStatus(status: NeedMatingStatus) {
   return status === 'warning' ? 1 : 0;
 }
 
-export default function PublicFeedPage({ demo, shareToken, shareQuery, series, breeders, presentation }: Props) {
+export default function PublicFeedPage({ demo, shareToken, shareQuery, series, breeders, presentation, tenantSlug }: Props) {
   const [seriesId, setSeriesId] = useState<string>(series[0]?.id || '');
   const [sex, setSex] = useState<'all' | 'male' | 'female'>('all');
   const [status, setStatus] = useState<'all' | NeedMatingStatus>('all');
@@ -72,6 +74,11 @@ export default function PublicFeedPage({ demo, shareToken, shareQuery, series, b
   const brandPrimary = resolvedPresentation.theme.brandPrimary;
   const brandSecondary = resolvedPresentation.theme.brandSecondary;
   const activeButtonShadow = `0 6px 20px ${hexToRgba(brandPrimary, 0.22)}`;
+  const permalink =
+    typeof window !== 'undefined' && window.location?.origin
+      ? `${window.location.origin}/public/s/${shareToken}`
+      : `/public/s/${shareToken}`;
+  const homeHref = tenantSlug ? `/app/${tenantSlug}` : '/app';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-stone-100 via-white to-amber-50/40 text-black dark:from-neutral-950 dark:via-neutral-950 dark:to-neutral-900/40 dark:text-neutral-100">
@@ -252,6 +259,7 @@ export default function PublicFeedPage({ demo, shareToken, shareQuery, series, b
 
         <ShareContactCard presentation={resolvedPresentation} className="mt-4" />
       </div>
+      <PublicFloatingActions permalink={permalink} homeHref={homeHref} />
     </div>
   );
 }

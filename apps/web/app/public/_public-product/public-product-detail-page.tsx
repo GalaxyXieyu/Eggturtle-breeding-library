@@ -5,6 +5,7 @@ import Link from 'next/link';
 import type { PublicSharePresentation } from '@eggturtle/shared';
 
 import { UiPreferenceControls } from '../../../components/ui-preferences';
+import PublicFloatingActions from '../_shared/public-floating-actions';
 
 import type { Breeder, BreederEventItem, FamilyTree, MaleMateLoadItem, Series } from './types';
 import {
@@ -56,6 +57,10 @@ export default function PublicProductDetailPage({
   const resolvedHomeHref = withDemo(homeHref ?? `/public/s/${shareToken}`, demo, shareQuery);
   const resolvedPresentation = resolvePublicSharePresentation(presentation);
   const brandPrimary = resolvedPresentation.theme.brandPrimary;
+  const permalink =
+    typeof window !== 'undefined' && window.location?.origin
+      ? `${window.location.origin}/public/s/${shareToken}/products/${breederId}`
+      : `/public/s/${shareToken}/products/${breederId}`;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-stone-100 via-white to-amber-50/40 text-black dark:from-neutral-950 dark:via-neutral-950 dark:to-neutral-900/40 dark:text-neutral-100">
@@ -180,6 +185,7 @@ export default function PublicProductDetailPage({
           </>
         ) : null}
       </div>
+      <PublicFloatingActions permalink={permalink} homeHref={homeHref ?? '/app'} />
     </div>
   );
 }
