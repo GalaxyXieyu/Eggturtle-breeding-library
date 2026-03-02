@@ -17,6 +17,8 @@ const COPY = {
     title: '正在进入工作台',
     subtitle: '正在解析租户上下文。',
     loading: '正在解析租户信息...',
+    loadingDetail: '正在同步租户权限与工作台配置，通常只需几秒。',
+    loadingStage: '连接工作台服务',
     openTenantSelect: '打开租户选择',
     backToLogin: '返回登录',
     unknownError: '未知错误'
@@ -25,6 +27,8 @@ const COPY = {
     title: 'Entering Workspace',
     subtitle: 'Resolving tenant context.',
     loading: 'Resolving tenant information...',
+    loadingDetail: 'Syncing tenant permissions and workspace settings. This should only take a few seconds.',
+    loadingStage: 'Connecting workspace services',
     openTenantSelect: 'Open tenant selector',
     backToLogin: 'Back to login',
     unknownError: 'Unknown error'
@@ -71,28 +75,42 @@ export default function AppEntryPage() {
   }, [copy.unknownError, router]);
 
   return (
-    <main className="workspace-shell">
-      <header className="workspace-head">
-        <div className="stack">
-          <h1>{copy.title}</h1>
-          <p className="muted">{copy.subtitle}</p>
+    <main className="workspace-shell tenant-entry-shell">
+      <section className="tenant-entry-stage">
+        <div className="tenant-entry-glow" aria-hidden />
+
+        <div className="card panel stack tenant-entry-card" aria-live="polite">
+          <header className="stack tenant-entry-header">
+            <h1>{copy.title}</h1>
+            <p className="muted">{state.loading ? copy.loadingDetail : copy.subtitle}</p>
+          </header>
+
+          {state.loading ? (
+            <div className="tenant-entry-loading stack" role="status">
+              <div className="tenant-entry-status">
+                <span className="tenant-entry-ping" aria-hidden />
+                <span>{copy.loading}</span>
+              </div>
+              <div className="tenant-entry-progress" aria-hidden>
+                <span />
+              </div>
+              <p className="tenant-entry-stage-label">{copy.loadingStage}</p>
+            </div>
+          ) : null}
+
+          {state.error ? <p className="notice notice-error">{state.error}</p> : null}
+
+          {!state.loading && state.error ? (
+            <div className="row">
+              <button type="button" onClick={() => router.push('/tenant-select')}>
+                {copy.openTenantSelect}
+              </button>
+              <button type="button" className="secondary" onClick={() => router.push('/login')}>
+                {copy.backToLogin}
+              </button>
+            </div>
+          ) : null}
         </div>
-      </header>
-
-      <section className="card panel stack">
-        {state.loading ? <p className="notice notice-info">{copy.loading}</p> : null}
-        {state.error ? <p className="notice notice-error">{state.error}</p> : null}
-
-        {!state.loading && state.error ? (
-          <div className="row">
-            <button type="button" onClick={() => router.push('/tenant-select')}>
-              {copy.openTenantSelect}
-            </button>
-            <button type="button" className="secondary" onClick={() => router.push('/login')}>
-              {copy.backToLogin}
-            </button>
-          </div>
-        ) : null}
       </section>
     </main>
   );
