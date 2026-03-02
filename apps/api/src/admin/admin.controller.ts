@@ -1,10 +1,11 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, Res, UseGuards } from '@nestjs/common';
 import {
   createTenantSubscriptionActivationCodeRequestSchema,
   createTenantSubscriptionActivationCodeResponseSchema,
   createAdminTenantRequestSchema,
   createAdminTenantResponseSchema,
   deleteTenantMemberResponseSchema,
+  exportSuperAdminAuditLogsQuerySchema,
   getAdminTenantResponseSchema,
   getAdminTenantSubscriptionResponseSchema,
   reactivateAdminTenantResponseSchema,
@@ -171,5 +172,26 @@ export class AdminController {
     const response = await this.adminService.listAuditLogs(user.id, parsedQuery);
 
     return listSuperAdminAuditLogsResponseSchema.parse(response);
+  }
+
+  @Get('audit-logs/export')
+  async exportAuditLogs(
+    @CurrentUser() user: NonNullable<AuthenticatedRequest['user']>,
+    @Query() query: unknown,
+    @Res()
+    response: {
+      setHeader: (name: string, value: string) => unknown;
+      send: (body: string) => unknown;
+    }
+  ) {
+    const parsedQuery = parseOrThrow(exportSuperAdminAuditLogsQuerySchema, query);
+    const result = await this.adminService.exportAuditLogs(user.id, parsedQuery);
+    const filename = `audit-logs-${new Date().toISOString().replaceAll(':', '-').slice(0, 19)}.csv`;
+
+    response.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    response.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    response.setHeader('X-Export-Row-Count', String(result.rowCount));
+    response.setHeader('X-Export-Truncated', result.truncated ? '1' : '0');
+    response.send(`\uFEFF${result.csv}`);
   }
 }

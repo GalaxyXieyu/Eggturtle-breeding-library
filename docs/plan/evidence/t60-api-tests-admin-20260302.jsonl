@@ -1,0 +1,13 @@
+
+> eggturtle-node-rebuild@ api-tests /Volumes/DATABASE/code/Eggturtle-breeding-library
+> pnpm --filter @eggturtle/api exec ts-node --project tsconfig.json ../../scripts/api-tests/run.ts -- --confirm-writes --clear-token-cache --json --api-base http\://localhost\:30113 --allow-remote --only admin --super-admin-email synthetic.superadmin\@local.test --require-super-admin-pass
+
+{"ts":"2026-03-02T13:16:10.412Z","level":"info","event":"auth.token-cache.clear","path":"/Volumes/DATABASE/code/Eggturtle-breeding-library/.data/api-tests/token-cache.json","removed":true}
+{"ts":"2026-03-02T13:16:10.414Z","level":"info","event":"runner.start","apiBase":"http://localhost:30113","modules":"admin"}
+{"ts":"2026-03-02T13:16:10.414Z","level":"info","event":"module.start","module":"admin","description":"Admin endpoint deny/allow checks for tenant user, audit export, and super-admin member revoke flow"}
+{"ts":"2026-03-02T13:16:10.503Z","level":"info","event":"auth.token-cache.store","email":"api-admin-role-1772457370414-4c6156c056@example.com"}
+{"ts":"2026-03-02T13:16:10.518Z","level":"info","event":"auth.token-cache.store","email":"synthetic.superadmin@local.test"}
+{"ts":"2026-03-02T13:16:10.580Z","level":"info","event":"auth.token-cache.store","email":"api-admin-remove-member-1772457370563-ac15ad70f3@example.com"}
+{"ts":"2026-03-02T13:16:10.646Z","level":"ok","event":"admin.done","checks":19,"tenantUserEmail":"api-admin-role-1772457370414-4c6156c056@example.com","superAdminStatus":200,"removedTenantId":"cmm97crze00065i69q6og7dqg","removedMemberUserId":"cmm97cs05000l5i6970m6s956"}
+{"ts":"2026-03-02T13:16:10.646Z","level":"ok","event":"module.done","module":"admin","checks":19,"durationMs":232}
+{"ts":"2026-03-02T13:16:10.647Z","level":"ok","event":"runner.done","modules":1,"totalChecks":19}

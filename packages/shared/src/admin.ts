@@ -11,6 +11,7 @@ export const SuperAdminAuditAction = {
   UpsertTenantMember: 'admin.tenants.members.upsert',
   RemoveTenantMember: 'admin.tenants.members.remove',
   ListAuditLogs: 'admin.audit-logs.list',
+  ExportAuditLogs: 'admin.audit-logs.export',
   GetTenantSubscription: 'admin.tenants.subscription.get',
   UpdateTenantSubscription: 'admin.tenants.subscription.update',
   CreateSubscriptionActivationCode: 'admin.subscription-activation-codes.create',
@@ -25,6 +26,7 @@ export const superAdminAuditActionSchema = z.enum([
   SuperAdminAuditAction.UpsertTenantMember,
   SuperAdminAuditAction.RemoveTenantMember,
   SuperAdminAuditAction.ListAuditLogs,
+  SuperAdminAuditAction.ExportAuditLogs,
   SuperAdminAuditAction.GetTenantSubscription,
   SuperAdminAuditAction.UpdateTenantSubscription,
   SuperAdminAuditAction.CreateSubscriptionActivationCode,
@@ -148,6 +150,15 @@ export const listSuperAdminAuditLogsResponseSchema = z.object({
   totalPages: z.number().int().min(1)
 });
 
+export const exportSuperAdminAuditLogsQuerySchema = z.object({
+  tenantId: z.string().trim().min(1).optional(),
+  actorUserId: z.string().trim().min(1).optional(),
+  action: superAdminAuditActionSchema.optional(),
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
+  limit: z.coerce.number().int().min(1).max(5000).default(2000)
+});
+
 export type SuperAdminAuditActionType =
   (typeof SuperAdminAuditAction)[keyof typeof SuperAdminAuditAction];
 export type AdminUser = z.infer<typeof adminUserSchema>;
@@ -170,3 +181,4 @@ export type DeleteTenantMemberResponse = z.infer<typeof deleteTenantMemberRespon
 export type SuperAdminAuditLog = z.infer<typeof superAdminAuditLogSchema>;
 export type ListSuperAdminAuditLogsQuery = z.infer<typeof listSuperAdminAuditLogsQuerySchema>;
 export type ListSuperAdminAuditLogsResponse = z.infer<typeof listSuperAdminAuditLogsResponseSchema>;
+export type ExportSuperAdminAuditLogsQuery = z.infer<typeof exportSuperAdminAuditLogsQuerySchema>;
