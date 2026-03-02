@@ -12,7 +12,6 @@ import { Filter, Plus, Search as SearchIcon, SlidersHorizontal, X } from 'lucide
 
 import { ApiError, apiRequest, getAccessToken, resolveAuthenticatedAssetUrl } from '../../../../lib/api-client';
 import { switchTenantBySlug } from '../../../../lib/tenant-session';
-import { Badge } from '../../../../components/ui/badge';
 import { Button } from '../../../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../components/ui/card';
 import { Input } from '../../../../components/ui/input';
@@ -620,7 +619,6 @@ export default function TenantProductsPage() {
             ) : null}
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="accent">封面已就绪</Badge>
             <Button type="button" size="sm" className="lg:hidden" disabled={submitting} onClick={openCreateModal}>
               <Plus size={14} />
               新建
