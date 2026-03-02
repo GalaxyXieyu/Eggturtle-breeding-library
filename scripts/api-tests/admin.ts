@@ -14,17 +14,21 @@ import {
   ModuleResult,
   TestContext,
   TestModule,
+  asObject,
   assertErrorCode,
   assertStatus,
   defaultEmail,
   ensureTenantSession,
   loginWithDevCode,
+  readString,
   uniqueSuffix,
 } from './lib';
 
+const AUDIT_EXPORT_TEST_LIMIT = 2000;
+
 export const adminModule: TestModule = {
   name: 'admin',
-  description: 'Admin endpoint deny/allow checks for tenant user and super-admin member revoke flow',
+  description: 'Admin endpoint deny/allow checks for tenant user, audit export, and super-admin member revoke flow',
   requiresWrites: true,
   run,
 };
@@ -67,6 +71,8 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
 
     if (superAdminResponse.status === 200) {
       listAdminTenantsResponseSchema.parse(superAdminResponse.body);
+      const superAdminUser = asObject(superAdminLogin.user, 'auth.verify-code.user');
+      const superAdminUserId = readString(superAdminUser, 'id', 'auth.verify-code.user.id');
 
       const tenantSlug = uniqueSuffix('admin-rm-member').slice(0, 80);
       const createTenantResponse = await ctx.request({
@@ -240,7 +246,7 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
       if (!deleteMemberPayload.removed) {
         throw new ApiTestError('admin.delete-member response removed should be true');
       }
-      if (deleteMemberPayload.previousRole !== upsertMemberPayload.role) {
+      if (deleteMemberPayload.previousRole !== downgradedPayload.role) {
         throw new ApiTestError('admin.delete-member response previousRole mismatch');
       }
       checks += 1;
@@ -287,6 +293,66 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
       }
       checks += 1;
 
+      const exportFrom = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const exportTo = new Date(Date.now() + 60 * 1000).toISOString();
+      const exportCsvResponse = await ctx.request({
+        method: 'GET',
+        path: '/admin/audit-logs/export',
+        token: superAdminLogin.token,
+        query: {
+          from: exportFrom,
+          to: exportTo,
+          actorUserId: superAdminUserId,
+          limit: AUDIT_EXPORT_TEST_LIMIT,
+        },
+      });
+      assertStatus(exportCsvResponse, 200, 'admin.audit-export.csv.ok');
+
+      const exportContentType = exportCsvResponse.headers.get('content-type') ?? '';
+      if (!exportContentType.includes('text/csv')) {
+        throw new ApiTestError(
+          `admin.audit-export.csv.ok expected content-type to include text/csv, got ${exportContentType}`,
+        );
+      }
+
+      const csvLines = splitCsvLines(exportCsvResponse.text);
+      if (csvLines.length === 0) {
+        throw new ApiTestError('admin.audit-export.csv.ok expected non-empty csv payload');
+      }
+
+      const headerRow = stripUtf8Bom(csvLines[0]).toLowerCase();
+      if (!headerRow.includes('"action"') || !headerRow.includes('"createdat"')) {
+        throw new ApiTestError('admin.audit-export.csv.ok header should include action and createdAt columns');
+      }
+
+      if (csvLines.length > AUDIT_EXPORT_TEST_LIMIT + 1) {
+        throw new ApiTestError(
+          `admin.audit-export.csv.ok expected at most ${AUDIT_EXPORT_TEST_LIMIT + 1} lines, got ${csvLines.length}`,
+        );
+      }
+      checks += 1;
+
+      const exportOverLimitResponse = await ctx.request({
+        method: 'GET',
+        path: '/admin/audit-logs/export',
+        token: superAdminLogin.token,
+        query: {
+          from: exportFrom,
+          to: exportTo,
+          actorUserId: superAdminUserId,
+          limit: 1,
+        },
+      });
+      assertStatus(exportOverLimitResponse, 400, 'admin.audit-export.csv.limit');
+      const overLimitPayload = asObject(exportOverLimitResponse.body, 'admin.audit-export.csv.limit response');
+      const overLimitMessage = readString(overLimitPayload, 'message', 'admin.audit-export.csv.limit.message');
+      if (!overLimitMessage.toLowerCase().includes('narrow')) {
+        throw new ApiTestError(
+          `admin.audit-export.csv.limit message should guide filter narrowing, got ${overLimitMessage}`,
+        );
+      }
+      checks += 1;
+
       removedMemberUserId = upsertMemberPayload.user.id;
       removedTenantId = tenantId;
     } else {
@@ -314,4 +380,15 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
       removedMemberUserId,
     },
   };
+}
+
+function splitCsvLines(payload: string): string[] {
+  return payload
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+}
+
+function stripUtf8Bom(input: string): string {
+  return input.startsWith('\uFEFF') ? input.slice(1) : input;
 }

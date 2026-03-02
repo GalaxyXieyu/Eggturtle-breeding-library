@@ -1,10 +1,11 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, Res, UseGuards } from '@nestjs/common';
 import {
   createTenantSubscriptionActivationCodeRequestSchema,
   createTenantSubscriptionActivationCodeResponseSchema,
   createAdminTenantRequestSchema,
   createAdminTenantResponseSchema,
   deleteTenantMemberResponseSchema,
+  exportSuperAdminAuditLogsQuerySchema,
   getAdminTenantResponseSchema,
   getAdminTenantSubscriptionResponseSchema,
   reactivateAdminTenantResponseSchema,
@@ -171,5 +172,23 @@ export class AdminController {
     const response = await this.adminService.listAuditLogs(user.id, parsedQuery);
 
     return listSuperAdminAuditLogsResponseSchema.parse(response);
+  }
+
+  @Get('audit-logs/export')
+  async exportAuditLogs(
+    @CurrentUser() user: NonNullable<AuthenticatedRequest['user']>,
+    @Query() query: unknown,
+    // We only need header setters + send(); keep it minimal to avoid leaking Express types here.
+    @Res() response: { setHeader: (key: string, value: string) => void; send: (body: string) => void }
+  ) {
+    const parsedQuery = parseOrThrow(exportSuperAdminAuditLogsQuerySchema, query);
+    const result = await this.adminService.exportAuditLogs(user.id, parsedQuery);
+    const filename = `audit-logs-${new Date().toISOString().replaceAll(':', '-').slice(0, 19)}.csv`;
+
+    response.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    response.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    response.setHeader('X-Export-Row-Count', String(result.rowCount));
+    response.setHeader('X-Export-Truncated', result.truncated ? '1' : '0');
+    response.send(`\uFEFF${result.csv}`);
   }
 }
