@@ -608,19 +608,6 @@ export default function TenantProductsPage() {
         <CardContent className="pt-0">{renderFilterForm('desktop')}</CardContent>
       </Card>
 
-      <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all lg:hidden">
-        <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
-          <div>
-            <CardTitle className="text-xl">产品列表</CardTitle>
-            <CardDescription>筛选在右下角悬浮按钮中打开。</CardDescription>
-          </div>
-          <Button type="button" size="sm" disabled={submitting} onClick={openCreateModal}>
-            <Plus size={14} />
-            新建
-          </Button>
-        </CardHeader>
-      </Card>
-
       <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -632,7 +619,13 @@ export default function TenantProductsPage() {
               </CardDescription>
             ) : null}
           </div>
-          <Badge variant="accent">封面已就绪</Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="accent">封面已就绪</Badge>
+            <Button type="button" size="sm" className="lg:hidden" disabled={submitting} onClick={openCreateModal}>
+              <Plus size={14} />
+              新建
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">

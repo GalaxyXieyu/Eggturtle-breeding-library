@@ -9,7 +9,7 @@ import {
   type ListSeriesQuery,
   type Series
 } from '@eggturtle/shared';
-import { ArrowUpRight, Layers3, ListFilter, Pencil, RotateCcw, Search, X } from 'lucide-react';
+import { ArrowUpRight, Layers3, ListFilter, Pencil, RotateCcw, Search, SlidersHorizontal, X } from 'lucide-react';
 
 import { ApiError, apiRequest, getAccessToken, resolveAuthenticatedAssetUrl } from '../../../../lib/api-client';
 import { switchTenantBySlug } from '../../../../lib/tenant-session';
@@ -65,6 +65,7 @@ export default function SeriesListPage() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editor, setEditor] = useState<SeriesEditorState | null>(null);
   const [meta, setMeta] = useState<ListMeta>({
@@ -139,6 +140,7 @@ export default function SeriesListPage() {
 
     try {
       await loadSeries({ search: search.trim() || undefined });
+      setIsFilterModalOpen(false);
     } catch (requestError) {
       setError(formatError(requestError));
       setLoading(false);
@@ -150,6 +152,7 @@ export default function SeriesListPage() {
 
     try {
       await loadSeries({ search: undefined });
+      setIsFilterModalOpen(false);
     } catch (requestError) {
       setError(formatError(requestError));
       setLoading(false);
@@ -163,6 +166,74 @@ export default function SeriesListPage() {
       setError(formatError(requestError));
       setLoading(false);
     }
+  }
+
+  function renderFilterForm(mode: 'desktop' | 'mobile') {
+    if (mode === 'desktop') {
+      return (
+        <form className="hidden gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_auto]" onSubmit={handleSearch}>
+          <div className="relative">
+            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+            <Input
+              type="text"
+              placeholder="按系列编码或名称搜索"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="h-11 rounded-2xl border-neutral-200 bg-white pl-10"
+            />
+          </div>
+          <Button type="submit" variant="primary" className="h-11 rounded-2xl px-5" disabled={loading}>
+            <ListFilter size={16} />
+            {loading ? '加载中...' : '应用筛选'}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            className="h-11 rounded-2xl px-5"
+            disabled={loading && !hasSearch}
+            onClick={() => {
+              void handleResetSearch();
+            }}
+          >
+            <RotateCcw size={16} />
+            重置
+          </Button>
+        </form>
+      );
+    }
+
+    return (
+      <form className="grid gap-3" onSubmit={handleSearch}>
+        <div className="relative">
+          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+          <Input
+            type="text"
+            placeholder="按系列编码或名称搜索"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            className="h-11 rounded-2xl border-neutral-200 bg-white pl-10"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Button type="submit" variant="primary" className="h-11 rounded-2xl px-4" disabled={loading}>
+            <ListFilter size={16} />
+            {loading ? '加载中...' : '应用筛选'}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            className="h-11 rounded-2xl px-4"
+            disabled={loading && !hasSearch}
+            onClick={() => {
+              void handleResetSearch();
+            }}
+          >
+            <RotateCcw size={16} />
+            重置
+          </Button>
+        </div>
+      </form>
+    );
   }
 
   function openEditor(item: SeriesItem) {
@@ -247,6 +318,9 @@ export default function SeriesListPage() {
                 系列管理
               </CardTitle>
               <CardDescription className="mt-2">按系列编码或名称快速定位，卡片点击后在抽屉中编辑。</CardDescription>
+              <p className="mt-3 inline-flex items-center rounded-full border border-[#FFD400]/55 bg-[#FFF7D0] px-3 py-1 text-xs font-semibold text-neutral-800">
+                主题焦点：系列封面、状态、排序一体管理
+              </p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Badge variant="accent">TOTAL {meta.total}</Badge>
@@ -256,34 +330,10 @@ export default function SeriesListPage() {
           </div>
         </CardHeader>
         <CardContent className="relative z-10 pt-0">
-          <form className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto]" onSubmit={handleSearch}>
-            <div className="relative">
-              <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-              <Input
-                type="text"
-                placeholder="按系列编码或名称搜索"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                className="h-11 rounded-2xl border-neutral-200 bg-white pl-10"
-              />
-            </div>
-            <Button type="submit" variant="primary" className="h-11 rounded-2xl px-5" disabled={loading}>
-              <ListFilter size={16} />
-              {loading ? '加载中...' : '应用筛选'}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              className="h-11 rounded-2xl px-5"
-              disabled={loading && !hasSearch}
-              onClick={() => {
-                void handleResetSearch();
-              }}
-            >
-              <RotateCcw size={16} />
-              重置
-            </Button>
-          </form>
+          {renderFilterForm('desktop')}
+          <p className="rounded-2xl border border-neutral-200 bg-neutral-50/90 px-3 py-2 text-xs text-neutral-600 lg:hidden">
+            移动端筛选已收纳到右下角悬浮按钮，点击可打开筛选弹窗。
+          </p>
           <div className="mt-4 flex flex-wrap gap-2 text-xs text-neutral-600">
             <span className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5">
               当前第 {meta.page}/{meta.totalPages} 页
@@ -386,6 +436,50 @@ export default function SeriesListPage() {
           ) : null}
         </CardContent>
       </Card>
+
+      <Button
+        type="button"
+        size="icon"
+        className="fixed bottom-6 right-5 z-40 h-12 w-12 rounded-full shadow-[0_10px_24px_rgba(0,0,0,0.22)] lg:hidden"
+        aria-label="打开系列筛选弹窗"
+        onClick={() => setIsFilterModalOpen(true)}
+      >
+        <SlidersHorizontal size={18} />
+      </Button>
+
+      {isFilterModalOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-end bg-black/35 p-3 sm:items-center sm:justify-center sm:p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="筛选系列"
+          onClick={() => setIsFilterModalOpen(false)}
+        >
+          <Card
+            className="w-full max-h-[86vh] overflow-y-auto rounded-3xl border-neutral-200 bg-white shadow-2xl sm:max-w-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <CardHeader className="sticky top-0 z-10 border-b border-neutral-200/80 bg-white/95 backdrop-blur">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <CardTitle className="text-xl">筛选系列</CardTitle>
+                  <CardDescription>设置筛选后会立即刷新下方系列卡片列表。</CardDescription>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="icon"
+                  className="h-9 w-9 rounded-full"
+                  onClick={() => setIsFilterModalOpen(false)}
+                >
+                  <X size={16} />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4">{renderFilterForm('mobile')}</CardContent>
+          </Card>
+        </div>
+      ) : null}
 
       {editor ? (
         <div className="fixed inset-0 z-50">

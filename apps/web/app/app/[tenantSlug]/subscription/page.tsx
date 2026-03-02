@@ -8,7 +8,7 @@ import {
   redeemTenantSubscriptionActivationCodeResponseSchema,
   type TenantSubscription
 } from '@eggturtle/shared';
-import { Gift, Sparkles, Wallet } from 'lucide-react';
+import { ArrowRight, Gift, Sparkles, Wallet } from 'lucide-react';
 
 import { Badge } from '../../../../components/ui/badge';
 import { Button } from '../../../../components/ui/button';
@@ -159,10 +159,29 @@ export default function SubscriptionPage() {
   const currentPlan = normalizePlan(subscription?.plan);
   const effectiveProductLimit = resolveEffectiveProductLimit(subscription);
   const upgradeTracks = buildUpgradeTracks(currentPlan);
+  const recommendedTier = useMemo(() => getRecommendedTier(currentPlan), [currentPlan]);
+  const recommendedPlan = useMemo(
+    () => (recommendedTier ? PLAN_PACKAGES.find((item) => item.tier === recommendedTier) ?? null : null),
+    [recommendedTier]
+  );
   const currentPlanIndex = useMemo(() => {
     const index = PLAN_PACKAGES.findIndex((item) => item.tier === currentPlan);
     return index >= 0 ? index : 0;
   }, [currentPlan]);
+  const recommendedPlanIndex = useMemo(() => {
+    if (!recommendedPlan) {
+      return -1;
+    }
+
+    return PLAN_PACKAGES.findIndex((item) => item.tier === recommendedPlan.tier);
+  }, [recommendedPlan]);
+  const recommendedPlanDelta = useMemo(() => {
+    if (!recommendedPlan) {
+      return 0;
+    }
+
+    return Math.max(PLAN_LIMITS[recommendedPlan.tier] - effectiveProductLimit, 0);
+  }, [recommendedPlan, effectiveProductLimit]);
 
   useEffect(() => {
     setActiveMobilePlanIndex(currentPlanIndex);
@@ -171,6 +190,19 @@ export default function SubscriptionPage() {
   function focusUpgradeSection() {
     const target = document.getElementById('upgrade-now');
     target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function focusPlanSection(index?: number) {
+    const target = document.getElementById('plan-packages');
+    target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    if (typeof index !== 'number' || index < 0) {
+      return;
+    }
+
+    window.setTimeout(() => {
+      scrollToMobilePlan(index);
+    }, 220);
   }
 
   function scrollToMobilePlan(index: number) {
@@ -223,47 +255,94 @@ export default function SubscriptionPage() {
       ) : null}
 
       {!loading ? (
-        <Card className="rounded-2xl border-neutral-200/90 bg-white p-4">
+        <Card
+          className={`rounded-2xl border p-4 ${
+            currentPlan === 'FREE'
+              ? 'border-[#FFD400]/70 bg-gradient-to-b from-[#FFF7D5] via-white to-white'
+              : 'border-neutral-200/90 bg-white'
+          }`}
+        >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="accent">套餐订阅中心</Badge>
                 <Badge variant={subscription?.status === 'ACTIVE' ? 'success' : 'warning'}>{formatStatusLabel(subscription?.status)}</Badge>
+                {currentPlan === 'FREE' ? <Badge variant="warning">建议升级</Badge> : null}
               </div>
-              <p className="mt-2 text-xl font-semibold text-neutral-900">{formatPlanLabel(currentPlan)}</p>
-              <p className="mt-1 text-sm text-neutral-600">查看当前配额、版本差异和升级福利。</p>
+              <p className="mt-2 text-2xl font-black text-neutral-900">{formatPlanLabel(currentPlan)}</p>
+              <p className="mt-1 text-sm text-neutral-700">{buildPlanUrgencyCopy(currentPlan, effectiveProductLimit)}</p>
             </div>
-            <div className="w-full rounded-2xl border border-neutral-200 bg-neutral-50/90 p-2 sm:w-auto sm:min-w-[210px]">
+            <div className="w-full rounded-2xl border border-neutral-900/10 bg-neutral-900 p-2.5 text-white sm:w-auto sm:min-w-[220px]">
               <Button
                 type="button"
-                className="h-11 w-full rounded-xl bg-neutral-900 text-sm font-semibold text-white shadow-[0_10px_20px_rgba(15,23,42,0.3)] hover:bg-neutral-800"
+                className="h-11 w-full rounded-xl bg-[#FFD400] text-sm font-semibold text-neutral-900 shadow-[0_10px_22px_rgba(0,0,0,0.34)] hover:bg-[#f0c800]"
                 onClick={focusUpgradeSection}
               >
                 立刻升级
               </Button>
-              <p className="mt-2 text-center text-xs text-neutral-500">激活码升级入口在页面下方</p>
+              <p className="mt-2 text-center text-xs text-neutral-200/90">输入激活码后，套餐立即生效</p>
             </div>
           </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="rounded-xl border border-neutral-200 bg-white/90 px-3 py-2">
+              <p className="text-[11px] text-neutral-500">可管理种龟</p>
+              <p className="mt-1 text-lg font-black text-neutral-900">{effectiveProductLimit}</p>
+            </div>
+            <div className="rounded-xl border border-neutral-200 bg-white/90 px-3 py-2">
+              <p className="text-[11px] text-neutral-500">图片上限</p>
+              <p className="mt-1 text-lg font-black text-neutral-900">{toDisplayValue(subscription?.maxImages)}</p>
+            </div>
+            <div className="rounded-xl border border-neutral-200 bg-white/90 px-3 py-2">
+              <p className="text-[11px] text-neutral-500">存储上限</p>
+              <p className="mt-1 text-lg font-black text-neutral-900">{toDisplayBytes(subscription?.maxStorageBytes)}</p>
+            </div>
+            <div className="rounded-xl border border-neutral-200 bg-white/90 px-3 py-2">
+              <p className="text-[11px] text-neutral-500">到期时间</p>
+              <p className="mt-1 text-lg font-black text-neutral-900">{formatSubscriptionDate(subscription?.expiresAt ?? null)}</p>
+            </div>
+          </div>
+
+          {recommendedPlan ? (
+            <div className="mt-3 rounded-2xl border border-neutral-900/10 bg-neutral-900 px-3 py-3 text-white">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs uppercase tracking-[0.16em] text-[#FFD400]">推荐升级</p>
+                  <p className="mt-1 text-sm font-semibold">
+                    {recommendedPlan.name} · {recommendedPlan.price}
+                  </p>
+                  <p className="mt-1 text-xs text-neutral-200">
+                    {recommendedPlanDelta > 0 ? `种龟管理容量立即 +${recommendedPlanDelta}` : '解锁更多高级能力'}
+                    ，并开启{recommendedPlan.perks[0]}。
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="h-8 shrink-0 rounded-lg border-white/30 bg-white/10 px-2.5 text-xs text-white hover:bg-white/20"
+                  onClick={() => focusPlanSection(recommendedPlanIndex)}
+                >
+                  查看套餐
+                  <ArrowRight size={13} />
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm font-semibold text-emerald-700">
+              当前已是专业版，建议继续用证书与水印能力放大品牌成交效率。
+            </div>
+          )}
         </Card>
       ) : null}
 
       {!loading ? (
-        <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard title="可管理种龟上限" value={`${effectiveProductLimit}`} hint="当前生效额度（优先读取租户自定义值）" />
-          <StatCard title="图片上限" value={toDisplayValue(subscription?.maxImages)} hint="图片数量配额" />
-          <StatCard title="存储上限" value={toDisplayBytes(subscription?.maxStorageBytes)} hint="图片存储配额" />
-          <StatCard title="到期时间" value={formatSubscriptionDate(subscription?.expiresAt ?? null)} hint="未设置到期则长期有效" />
-        </section>
-      ) : null}
-
-      {!loading ? (
-        <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
+        <Card id="plan-packages" className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-2xl">
               <Wallet size={18} />
-              版本与额度对比
+              版本差异与升级收益
             </CardTitle>
-            <CardDescription>依据当前文档口径整理，价格与能力一页看清。</CardDescription>
+            <CardDescription>先看套餐卡片，再选择升级路径；免费版建议优先升到基础版。</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="space-y-3 md:hidden">
@@ -290,11 +369,16 @@ export default function SubscriptionPage() {
               >
                 {PLAN_PACKAGES.map((item, index) => {
                   const isCurrent = item.tier === currentPlan;
+                  const isRecommended = recommendedTier === item.tier;
                   return (
                     <section
                       key={`mobile-${item.tier}`}
                       className={`relative min-w-[86%] snap-center overflow-hidden rounded-2xl border p-4 shadow-[0_8px_20px_rgba(15,23,42,0.08)] ${
-                        isCurrent ? 'border-[#FFD400]/70 bg-gradient-to-b from-[#FFF6CF] to-white' : 'border-neutral-200 bg-white'
+                        isCurrent
+                          ? 'border-[#FFD400]/70 bg-gradient-to-b from-[#FFF6CF] to-white'
+                          : isRecommended
+                            ? 'border-neutral-900 bg-gradient-to-b from-neutral-50 to-white'
+                            : 'border-neutral-200 bg-white'
                       }`}
                     >
                       <div className="pointer-events-none absolute -right-6 -top-8 h-20 w-20 rounded-full bg-[#FFD400]/30 blur-2xl" />
@@ -303,13 +387,18 @@ export default function SubscriptionPage() {
                           <p className="text-lg font-bold text-neutral-900">{item.name}</p>
                           <span
                             className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                              isCurrent ? 'bg-neutral-900 text-white' : 'bg-neutral-100 text-neutral-700'
+                              isCurrent ? 'bg-neutral-900 text-white' : isRecommended ? 'bg-[#FFD400]/25 text-neutral-900' : 'bg-neutral-100 text-neutral-700'
                             }`}
                           >
-                            {isCurrent ? '当前' : '可升级'}
+                            {isCurrent ? '当前' : isRecommended ? '推荐' : '可升级'}
                           </span>
                         </div>
                         <p className="mt-2 text-2xl font-black text-neutral-900">{item.price}</p>
+                        {isRecommended ? (
+                          <p className="mt-1 rounded-lg bg-[#FFD400]/16 px-2 py-1 text-[11px] font-semibold text-neutral-700">
+                            从{formatPlanLabel(currentPlan)}升级更划算，优先解锁主流程能力。
+                          </p>
+                        ) : null}
                         <div className="mt-3 grid grid-cols-2 gap-2">
                           <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-2 py-1.5">
                             <p className="text-[11px] text-neutral-500">种龟上限</p>
@@ -466,20 +555,6 @@ export default function SubscriptionPage() {
   );
 }
 
-function StatCard(props: { title: string; value: string; hint: string }) {
-  return (
-    <Card className="rounded-2xl border-neutral-200/90 bg-white p-4">
-      <CardHeader className="p-0">
-        <p className="text-xs text-neutral-500">{props.title}</p>
-      </CardHeader>
-      <CardContent className="mt-2 p-0">
-        <p className="text-2xl font-black text-neutral-900">{props.value}</p>
-        <p className="mt-1 text-xs text-neutral-500">{props.hint}</p>
-      </CardContent>
-    </Card>
-  );
-}
-
 function resolveEffectiveProductLimit(subscription: TenantSubscription | null): number {
   if (!subscription) {
     return PLAN_LIMITS.FREE;
@@ -490,6 +565,30 @@ function resolveEffectiveProductLimit(subscription: TenantSubscription | null): 
   }
 
   return PLAN_LIMITS[normalizePlan(subscription.plan)];
+}
+
+function getRecommendedTier(plan: PlanTier): PlanTier | null {
+  if (plan === 'FREE') {
+    return 'BASIC';
+  }
+
+  if (plan === 'BASIC') {
+    return 'PRO';
+  }
+
+  return null;
+}
+
+function buildPlanUrgencyCopy(plan: PlanTier, effectiveProductLimit: number) {
+  if (plan === 'FREE') {
+    return `免费版最多可管理 ${effectiveProductLimit} 只，达到上限后需升级才能继续扩容。`;
+  }
+
+  if (plan === 'BASIC') {
+    return `基础版当前可管理 ${effectiveProductLimit} 只，适合稳定运营；增长阶段建议升级专业版。`;
+  }
+
+  return `专业版当前可管理 ${effectiveProductLimit} 只，适合高频上新与品牌化经营。`;
 }
 
 function normalizePlan(plan: TenantSubscription['plan'] | null | undefined): PlanTier {

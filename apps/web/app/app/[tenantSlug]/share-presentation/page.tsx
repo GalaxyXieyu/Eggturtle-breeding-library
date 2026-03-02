@@ -32,6 +32,11 @@ type FormState = {
   wechatId: string;
 };
 
+type ThemeColorOption = {
+  label: string;
+  value: string;
+};
+
 const DEFAULT_FORM: FormState = {
   feedTitle: '',
   feedSubtitle: '',
@@ -44,6 +49,24 @@ const DEFAULT_FORM: FormState = {
   wechatId: ''
 };
 
+const PRIMARY_COLOR_OPTIONS: ThemeColorOption[] = [
+  { label: '金黄', value: '#FFD400' },
+  { label: '橙金', value: '#F59E0B' },
+  { label: '珊瑚', value: '#FB7185' },
+  { label: '青蓝', value: '#06B6D4' },
+  { label: '翠绿', value: '#22C55E' },
+  { label: '紫罗兰', value: '#8B5CF6' }
+];
+
+const SECONDARY_COLOR_OPTIONS: ThemeColorOption[] = [
+  { label: '石墨', value: '#1f2937' },
+  { label: '深蓝灰', value: '#334155' },
+  { label: '午夜蓝', value: '#172554' },
+  { label: '深墨绿', value: '#14532d' },
+  { label: '深酒红', value: '#4c0519' },
+  { label: '深棕', value: '#3f2a18' }
+];
+
 export default function SharePresentationPage() {
   const router = useRouter();
   const params = useParams<{ tenantSlug: string }>();
@@ -54,6 +77,14 @@ export default function SharePresentationPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
+  const primaryColorOptions = useMemo(
+    () => withCurrentColorOption(PRIMARY_COLOR_OPTIONS, normalizeColor(form.brandPrimary)),
+    [form.brandPrimary]
+  );
+  const secondaryColorOptions = useMemo(
+    () => withCurrentColorOption(SECONDARY_COLOR_OPTIONS, normalizeColor(form.brandSecondary)),
+    [form.brandSecondary]
+  );
 
   const loadPresentation = useCallback(async () => {
     const response = await apiRequest('/tenant-share-presentation', {
@@ -152,10 +183,6 @@ export default function SharePresentationPage() {
 
   return (
     <main className="space-y-4 pb-8 sm:space-y-6">
-      <Card className="rounded-2xl border-neutral-200/90 bg-white/90 p-4">
-        <p className="text-sm text-neutral-600">配置公开 feed/detail 的标题文案、主题色、顶部轮播图和微信联系方式。</p>
-      </Card>
-
       {loading ? (
         <Card className="rounded-3xl border-neutral-200/90 bg-white p-6">
           <CardContent className="p-0 text-sm text-neutral-600">正在加载分享展示...</CardContent>
@@ -199,25 +226,22 @@ export default function SharePresentationPage() {
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="brand-primary">主题主色</Label>
-                    <Input
-                      id="brand-primary"
-                      value={form.brandPrimary}
-                      placeholder="#FFD400"
-                      onChange={(event) => setForm((prev) => ({ ...prev, brandPrimary: event.target.value }))}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="brand-secondary">主题辅色</Label>
-                    <Input
-                      id="brand-secondary"
-                      value={form.brandSecondary}
-                      placeholder="#1f2937"
-                      onChange={(event) => setForm((prev) => ({ ...prev, brandSecondary: event.target.value }))}
-                    />
-                  </div>
+                  <ThemeColorPicker
+                    id="brand-primary"
+                    label="主题主色"
+                    value={form.brandPrimary}
+                    fallback="#FFD400"
+                    options={primaryColorOptions}
+                    onChange={(nextColor) => setForm((prev) => ({ ...prev, brandPrimary: nextColor }))}
+                  />
+                  <ThemeColorPicker
+                    id="brand-secondary"
+                    label="主题辅色"
+                    value={form.brandSecondary}
+                    fallback="#1f2937"
+                    options={secondaryColorOptions}
+                    onChange={(nextColor) => setForm((prev) => ({ ...prev, brandSecondary: nextColor }))}
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -331,6 +355,30 @@ export default function SharePresentationPage() {
                 </div>
               </div>
 
+              <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+                <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">主题应用预览</p>
+                <div className="mt-3 flex items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-white p-3">
+                  <span
+                    className="rounded-full px-2.5 py-1 text-xs font-semibold"
+                    style={{
+                      backgroundColor: preview.brandPrimary,
+                      color: getContrastTextColor(preview.brandPrimary)
+                    }}
+                  >
+                    主题标签
+                  </span>
+                  <span
+                    className="rounded-lg px-3 py-1.5 text-xs font-semibold"
+                    style={{
+                      backgroundColor: preview.brandSecondary,
+                      color: getContrastTextColor(preview.brandSecondary)
+                    }}
+                  >
+                    示例按钮
+                  </span>
+                </div>
+              </div>
+
               {preview.showWechatBlock ? (
                 <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
                   <p className="text-xs uppercase tracking-[0.22em] text-neutral-500">Wechat Contact</p>
@@ -370,6 +418,77 @@ export default function SharePresentationPage() {
       ) : null}
     </main>
   );
+}
+
+type ThemeColorPickerProps = {
+  id: string;
+  label: string;
+  value: string;
+  fallback: string;
+  options: ThemeColorOption[];
+  onChange: (color: string) => void;
+};
+
+function ThemeColorPicker({ id, label, value, fallback, options, onChange }: ThemeColorPickerProps) {
+  const resolvedColor = normalizeColor(value) ?? fallback;
+
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      <div className="grid grid-cols-3 gap-2">
+        {options.map((option) => {
+          const active = option.value.toLowerCase() === resolvedColor.toLowerCase();
+
+          return (
+            <button
+              key={`${label}-${option.value}`}
+              type="button"
+              aria-pressed={active}
+              className={`rounded-xl border px-2 py-2 text-left transition ${
+                active ? 'border-neutral-900 bg-neutral-900/5 shadow-[0_6px_16px_rgba(15,23,42,0.12)]' : 'border-neutral-200 hover:border-neutral-400'
+              }`}
+              onClick={() => onChange(option.value)}
+            >
+              <span className="flex items-center gap-2">
+                <span className="h-5 w-5 rounded-full border border-black/10" style={{ backgroundColor: option.value }} />
+                <span className="truncate text-xs font-medium text-neutral-700">{option.label}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <div className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-2.5 py-2">
+        <input
+          id={id}
+          type="color"
+          value={resolvedColor}
+          className="h-8 w-10 cursor-pointer rounded-md border border-neutral-300 bg-white p-0"
+          aria-label={`${label} 自定义颜色`}
+          onChange={(event) => onChange(event.target.value)}
+        />
+        <Label htmlFor={id} className="text-xs text-neutral-600">
+          自定义颜色
+        </Label>
+        <div className="ml-auto flex items-center gap-1.5 text-xs text-neutral-600">
+          <span className="h-4 w-4 rounded-full border border-black/10" style={{ backgroundColor: resolvedColor }} />
+          当前已选
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function withCurrentColorOption(options: ThemeColorOption[], currentColor: string | null): ThemeColorOption[] {
+  if (!currentColor) {
+    return options;
+  }
+
+  const hasCurrent = options.some((option) => option.value.toLowerCase() === currentColor.toLowerCase());
+  if (hasCurrent) {
+    return options;
+  }
+
+  return [{ label: '当前色', value: currentColor }, ...options];
 }
 
 function toFormState(presentation: TenantSharePresentation): FormState {
@@ -424,6 +543,23 @@ function normalizeColor(value: string): string | null {
   }
 
   return normalized;
+}
+
+function getContrastTextColor(color: string): '#111827' | '#ffffff' {
+  const normalized = normalizeColor(color);
+  if (!normalized) {
+    return '#111827';
+  }
+
+  const hex = normalized.length === 4
+    ? `#${normalized[1]}${normalized[1]}${normalized[2]}${normalized[2]}${normalized[3]}${normalized[3]}`
+    : normalized;
+  const red = Number.parseInt(hex.slice(1, 3), 16);
+  const green = Number.parseInt(hex.slice(3, 5), 16);
+  const blue = Number.parseInt(hex.slice(5, 7), 16);
+  const brightness = (red * 299 + green * 587 + blue * 114) / 1000;
+
+  return brightness >= 150 ? '#111827' : '#ffffff';
 }
 
 function formatError(error: unknown) {
