@@ -23,7 +23,7 @@ import {
   UserRound
 } from 'lucide-react';
 
-import { useUiPreferences } from '../../../components/ui-preferences';
+import { UiPreferenceControls, useUiPreferences } from '../../../components/ui-preferences';
 import { Button } from '../../../components/ui/button';
 import { ApiError, apiRequest, clearAccessToken, getAccessToken } from '../../../lib/api-client';
 import { formatTenantDisplayName } from '../../../lib/tenant-display';
@@ -307,6 +307,10 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
               <LogOut size={16} />
               <span>{copy.logout}</span>
             </Button>
+
+            <div className="mt-2 hidden sm:block">
+              <UiPreferenceControls className="tenant-sidebar-pref" />
+            </div>
           </div>
         </aside>
 
