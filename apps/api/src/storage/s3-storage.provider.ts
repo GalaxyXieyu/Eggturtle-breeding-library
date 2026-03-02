@@ -42,7 +42,8 @@ export class S3StorageProvider implements StorageProvider {
           Bucket: bucket,
           Key: key,
           Body: input.body,
-          ContentType: input.contentType?.trim() || undefined
+          ContentType: input.contentType?.trim() || undefined,
+          Metadata: this.normalizeMetadata(input.metadata)
         })
       );
     } catch (error) {
@@ -169,6 +170,22 @@ export class S3StorageProvider implements StorageProvider {
     }
 
     return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase());
+  }
+
+  private normalizeMetadata(metadata?: Record<string, string>): Record<string, string> | undefined {
+    if (!metadata) {
+      return undefined;
+    }
+
+    const normalizedEntries = Object.entries(metadata)
+      .map(([key, value]) => [key.trim().toLowerCase(), value.trim()] as const)
+      .filter(([key, value]) => key.length > 0 && value.length > 0);
+
+    if (normalizedEntries.length === 0) {
+      return undefined;
+    }
+
+    return Object.fromEntries(normalizedEntries);
   }
 
   private isMissingObjectError(error: unknown): boolean {

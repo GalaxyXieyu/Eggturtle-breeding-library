@@ -2,6 +2,7 @@ export type PutObjectInput = {
   key: string;
   body: Buffer;
   contentType?: string;
+  metadata?: Record<string, string>;
 };
 
 export type PutObjectResult = {

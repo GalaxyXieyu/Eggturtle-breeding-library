@@ -7,6 +7,7 @@ import {
   deleteTenantMemberResponseSchema,
   getAdminTenantResponseSchema,
   getAdminTenantSubscriptionResponseSchema,
+  reactivateAdminTenantResponseSchema,
   listAdminTenantMembersQuerySchema,
   listAdminTenantMembersResponseSchema,
   listAdminTenantsQuerySchema,
@@ -14,6 +15,8 @@ import {
   listAdminUsersResponseSchema,
   listSuperAdminAuditLogsQuerySchema,
   listSuperAdminAuditLogsResponseSchema,
+  suspendAdminTenantRequestSchema,
+  suspendAdminTenantResponseSchema,
   updateTenantSubscriptionRequestSchema,
   updateTenantSubscriptionResponseSchema,
   upsertTenantMemberRequestSchema,
@@ -73,6 +76,28 @@ export class AdminController {
     const response = await this.adminService.updateTenantSubscription(user.id, tenantId, payload);
 
     return updateTenantSubscriptionResponseSchema.parse(response);
+  }
+
+  @Post('tenants/:tenantId/lifecycle/suspend')
+  async suspendTenant(
+    @CurrentUser() user: NonNullable<AuthenticatedRequest['user']>,
+    @Param('tenantId') tenantId: string,
+    @Body() body: unknown
+  ) {
+    const payload = parseOrThrow(suspendAdminTenantRequestSchema, body);
+    const response = await this.adminService.suspendTenant(user.id, tenantId, payload);
+
+    return suspendAdminTenantResponseSchema.parse(response);
+  }
+
+  @Post('tenants/:tenantId/lifecycle/reactivate')
+  async reactivateTenant(
+    @CurrentUser() user: NonNullable<AuthenticatedRequest['user']>,
+    @Param('tenantId') tenantId: string
+  ) {
+    const response = await this.adminService.reactivateTenant(user.id, tenantId);
+
+    return reactivateAdminTenantResponseSchema.parse(response);
   }
 
   @Post('subscription-activation-codes')

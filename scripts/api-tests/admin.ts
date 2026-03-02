@@ -3,8 +3,11 @@ import {
   deleteTenantMemberResponseSchema,
   listAdminTenantMembersResponseSchema,
   listAdminTenantsResponseSchema,
+  reactivateAdminTenantResponseSchema,
+  suspendAdminTenantResponseSchema,
   upsertTenantMemberResponseSchema,
 } from '../../packages/shared/src/admin';
+import { getAdminTenantSubscriptionResponseSchema } from '../../packages/shared/src/subscription';
 
 import {
   ApiTestError,
@@ -77,6 +80,73 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
       assertStatus(createTenantResponse, 201, 'admin.create-tenant');
       const createTenantPayload = createAdminTenantResponseSchema.parse(createTenantResponse.body);
       const tenantId = createTenantPayload.tenant.id;
+      checks += 1;
+
+      const beforeLifecycleResponse = await ctx.request({
+        method: 'GET',
+        path: `/admin/tenants/${tenantId}/subscription`,
+        token: superAdminLogin.token,
+      });
+      assertStatus(beforeLifecycleResponse, 200, 'admin.lifecycle.subscription.before');
+      const beforeLifecyclePayload = getAdminTenantSubscriptionResponseSchema.parse(beforeLifecycleResponse.body);
+      if (beforeLifecyclePayload.subscription.disabledAt !== null) {
+        throw new ApiTestError('admin.lifecycle.subscription.before disabledAt should be null');
+      }
+      checks += 1;
+
+      const suspendReason = `risk-review-${Date.now()}`;
+      const suspendResponse = await ctx.request({
+        method: 'POST',
+        path: `/admin/tenants/${tenantId}/lifecycle/suspend`,
+        token: superAdminLogin.token,
+        json: {
+          reason: suspendReason,
+        },
+      });
+      assertStatus(suspendResponse, 201, 'admin.lifecycle.suspend');
+      const suspendPayload = suspendAdminTenantResponseSchema.parse(suspendResponse.body);
+      if (suspendPayload.subscription.status !== 'DISABLED') {
+        throw new ApiTestError('admin.lifecycle.suspend status should be DISABLED');
+      }
+      if (suspendPayload.subscription.disabledAt === null) {
+        throw new ApiTestError('admin.lifecycle.suspend disabledAt should not be null');
+      }
+      if (suspendPayload.subscription.disabledReason !== suspendReason) {
+        throw new ApiTestError('admin.lifecycle.suspend disabledReason mismatch');
+      }
+      checks += 1;
+
+      const reactivateResponse = await ctx.request({
+        method: 'POST',
+        path: `/admin/tenants/${tenantId}/lifecycle/reactivate`,
+        token: superAdminLogin.token,
+      });
+      assertStatus(reactivateResponse, 201, 'admin.lifecycle.reactivate');
+      const reactivatePayload = reactivateAdminTenantResponseSchema.parse(reactivateResponse.body);
+      if (reactivatePayload.subscription.disabledAt !== null) {
+        throw new ApiTestError('admin.lifecycle.reactivate disabledAt should be null');
+      }
+      if (reactivatePayload.subscription.disabledReason !== null) {
+        throw new ApiTestError('admin.lifecycle.reactivate disabledReason should be null');
+      }
+      if (reactivatePayload.subscription.status !== 'ACTIVE') {
+        throw new ApiTestError('admin.lifecycle.reactivate status should be ACTIVE');
+      }
+      checks += 1;
+
+      const afterLifecycleResponse = await ctx.request({
+        method: 'GET',
+        path: `/admin/tenants/${tenantId}/subscription`,
+        token: superAdminLogin.token,
+      });
+      assertStatus(afterLifecycleResponse, 200, 'admin.lifecycle.subscription.after');
+      const afterLifecyclePayload = getAdminTenantSubscriptionResponseSchema.parse(afterLifecycleResponse.body);
+      if (afterLifecyclePayload.subscription.disabledAt !== null) {
+        throw new ApiTestError('admin.lifecycle.subscription.after disabledAt should be null');
+      }
+      if (afterLifecyclePayload.subscription.disabledReason !== null) {
+        throw new ApiTestError('admin.lifecycle.subscription.after disabledReason should be null');
+      }
       checks += 1;
 
       const memberEmail = defaultEmail('api-admin-remove-member');

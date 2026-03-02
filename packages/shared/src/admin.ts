@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { authEmailSchema, authUserSchema } from './auth';
+import { tenantSubscriptionSchema } from './subscription';
 import { tenantNameSchema, tenantRoleSchema, tenantSchema, tenantSlugSchema } from './tenant';
 
 export const SuperAdminAuditAction = {
@@ -12,7 +13,9 @@ export const SuperAdminAuditAction = {
   ListAuditLogs: 'admin.audit-logs.list',
   GetTenantSubscription: 'admin.tenants.subscription.get',
   UpdateTenantSubscription: 'admin.tenants.subscription.update',
-  CreateSubscriptionActivationCode: 'admin.subscription-activation-codes.create'
+  CreateSubscriptionActivationCode: 'admin.subscription-activation-codes.create',
+  SuspendTenantLifecycle: 'admin.tenants.lifecycle.suspend',
+  ReactivateTenantLifecycle: 'admin.tenants.lifecycle.reactivate'
 } as const;
 
 export const superAdminAuditActionSchema = z.enum([
@@ -24,7 +27,9 @@ export const superAdminAuditActionSchema = z.enum([
   SuperAdminAuditAction.ListAuditLogs,
   SuperAdminAuditAction.GetTenantSubscription,
   SuperAdminAuditAction.UpdateTenantSubscription,
-  SuperAdminAuditAction.CreateSubscriptionActivationCode
+  SuperAdminAuditAction.CreateSubscriptionActivationCode,
+  SuperAdminAuditAction.SuspendTenantLifecycle,
+  SuperAdminAuditAction.ReactivateTenantLifecycle
 ]);
 
 export const adminUserSchema = authUserSchema.extend({
@@ -55,6 +60,20 @@ export const createAdminTenantRequestSchema = z.object({
 
 export const createAdminTenantResponseSchema = z.object({
   tenant: adminTenantSchema
+});
+
+export const suspendAdminTenantRequestSchema = z.object({
+  reason: z.string().trim().min(1).max(255)
+});
+
+export const suspendAdminTenantResponseSchema = z.object({
+  subscription: tenantSubscriptionSchema,
+  auditLogId: z.string().min(1)
+});
+
+export const reactivateAdminTenantResponseSchema = z.object({
+  subscription: tenantSubscriptionSchema,
+  auditLogId: z.string().min(1)
 });
 
 export const listAdminUsersResponseSchema = z.object({
@@ -136,6 +155,9 @@ export type AdminTenant = z.infer<typeof adminTenantSchema>;
 export type ListAdminTenantsQuery = z.infer<typeof listAdminTenantsQuerySchema>;
 export type CreateAdminTenantRequest = z.infer<typeof createAdminTenantRequestSchema>;
 export type CreateAdminTenantResponse = z.infer<typeof createAdminTenantResponseSchema>;
+export type SuspendAdminTenantRequest = z.infer<typeof suspendAdminTenantRequestSchema>;
+export type SuspendAdminTenantResponse = z.infer<typeof suspendAdminTenantResponseSchema>;
+export type ReactivateAdminTenantResponse = z.infer<typeof reactivateAdminTenantResponseSchema>;
 export type GetAdminTenantResponse = z.infer<typeof getAdminTenantResponseSchema>;
 export type ListAdminTenantsResponse = z.infer<typeof listAdminTenantsResponseSchema>;
 export type ListAdminUsersResponse = z.infer<typeof listAdminUsersResponseSchema>;

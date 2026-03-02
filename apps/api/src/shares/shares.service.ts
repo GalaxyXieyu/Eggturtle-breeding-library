@@ -441,8 +441,11 @@ export class SharesService {
             expiresAt
           }),
           contentType: image.contentType,
+          sizeBytes: image.sizeBytes.toString(),
           sortOrder: image.sortOrder,
-          isMain: image.isMain
+          isMain: image.isMain,
+          createdAt: image.createdAt.toISOString(),
+          updatedAt: image.updatedAt.toISOString()
         }))
       );
 

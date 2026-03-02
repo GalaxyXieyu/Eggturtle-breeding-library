@@ -25,6 +25,8 @@ import {
   ApiError,
   apiRequest,
   getAdminTenantSubscription,
+  reactivateAdminTenant,
+  suspendAdminTenant,
   updateAdminTenantSubscription
 } from '../../../../lib/api-client';
 
@@ -42,6 +44,14 @@ type SubscriptionState = {
   error: string | null;
   actionMessage: string | null;
   subscription: TenantSubscription | null;
+};
+
+type LifecycleState = {
+  reason: string;
+  suspending: boolean;
+  reactivating: boolean;
+  error: string | null;
+  actionMessage: string | null;
 };
 
 const subscriptionPlanOptions = tenantSubscriptionPlanSchema.options;
@@ -63,6 +73,13 @@ export default function TenantDetailPage() {
     error: null,
     actionMessage: null,
     subscription: null
+  });
+  const [lifecycleState, setLifecycleState] = useState<LifecycleState>({
+    reason: '',
+    suspending: false,
+    reactivating: false,
+    error: null,
+    actionMessage: null
   });
   const [subscriptionPlan, setSubscriptionPlan] = useState<TenantSubscriptionPlan>('FREE');
   const [subscriptionExpiresAtInput, setSubscriptionExpiresAtInput] = useState('');
@@ -157,6 +174,12 @@ export default function TenantDetailPage() {
         setSubscriptionMaxImagesInput(toNullableNumberInputValue(response.subscription.maxImages));
         setSubscriptionMaxStorageBytesInput(response.subscription.maxStorageBytes ?? '');
         setSubscriptionMaxSharesInput(toNullableNumberInputValue(response.subscription.maxShares));
+        setLifecycleState((previous) => ({
+          ...previous,
+          reason: response.subscription.disabledReason ?? '',
+          error: null,
+          actionMessage: null
+        }));
       } catch (error) {
         if (!cancelled) {
           setSubscriptionState((previous) => ({
@@ -170,6 +193,12 @@ export default function TenantDetailPage() {
           setSubscriptionMaxImagesInput('');
           setSubscriptionMaxStorageBytesInput('');
           setSubscriptionMaxSharesInput('');
+          setLifecycleState((previous) => ({
+            ...previous,
+            reason: '',
+            error: null,
+            actionMessage: null
+          }));
         }
       }
     }
@@ -184,6 +213,21 @@ export default function TenantDetailPage() {
   function handleMemberSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMemberSearch(memberSearchInput.trim());
+  }
+
+  function applySubscriptionSnapshot(subscription: TenantSubscription, actionMessage: string | null) {
+    setSubscriptionState({
+      loading: false,
+      saving: false,
+      error: null,
+      actionMessage,
+      subscription
+    });
+    setSubscriptionPlan(subscription.plan);
+    setSubscriptionExpiresAtInput(toDateTimeLocalValue(subscription.expiresAt));
+    setSubscriptionMaxImagesInput(toNullableNumberInputValue(subscription.maxImages));
+    setSubscriptionMaxStorageBytesInput(subscription.maxStorageBytes ?? '');
+    setSubscriptionMaxSharesInput(toNullableNumberInputValue(subscription.maxShares));
   }
 
   async function handleSubscriptionSubmit(event: FormEvent<HTMLFormElement>) {
@@ -231,24 +275,105 @@ export default function TenantDetailPage() {
         maxShares
       });
 
-      setSubscriptionState({
-        loading: false,
-        saving: false,
-        error: null,
-        actionMessage: response.auditLogId
+      applySubscriptionSnapshot(
+        response.subscription,
+        response.auditLogId
           ? `Subscription updated. Audit: ${response.auditLogId}`
-          : 'Subscription updated successfully.',
-        subscription: response.subscription
-      });
-      setSubscriptionPlan(response.subscription.plan);
-      setSubscriptionExpiresAtInput(toDateTimeLocalValue(response.subscription.expiresAt));
-      setSubscriptionMaxImagesInput(toNullableNumberInputValue(response.subscription.maxImages));
-      setSubscriptionMaxStorageBytesInput(response.subscription.maxStorageBytes ?? '');
-      setSubscriptionMaxSharesInput(toNullableNumberInputValue(response.subscription.maxShares));
+          : 'Subscription updated successfully.'
+      );
+      setLifecycleState((previous) => ({
+        ...previous,
+        reason: response.subscription.disabledReason ?? previous.reason,
+        error: null
+      }));
     } catch (error) {
       setSubscriptionState((previous) => ({
         ...previous,
         saving: false,
+        error: formatError(error)
+      }));
+    }
+  }
+
+  async function handleSuspendSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const reason = lifecycleState.reason.trim();
+    if (!reason) {
+      setLifecycleState((previous) => ({
+        ...previous,
+        error: '请填写冻结原因。'
+      }));
+      return;
+    }
+
+    const confirmMessage = [`Suspend tenant ${tenantId}?`, `Reason: ${reason}`].join('\n');
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    setLifecycleState((previous) => ({
+      ...previous,
+      suspending: true,
+      error: null,
+      actionMessage: null
+    }));
+
+    try {
+      const response = await suspendAdminTenant(tenantId, { reason });
+      applySubscriptionSnapshot(
+        response.subscription,
+        response.auditLogId ? `Lifecycle updated. Audit: ${response.auditLogId}` : 'Tenant suspended.'
+      );
+      setLifecycleState((previous) => ({
+        ...previous,
+        reason: response.subscription.disabledReason ?? reason,
+        suspending: false,
+        error: null,
+        actionMessage: response.auditLogId
+          ? `Tenant suspended. Audit: ${response.auditLogId}`
+          : 'Tenant suspended.'
+      }));
+    } catch (error) {
+      setLifecycleState((previous) => ({
+        ...previous,
+        suspending: false,
+        error: formatError(error)
+      }));
+    }
+  }
+
+  async function handleReactivateTenant() {
+    const confirmMessage = `Reactivate tenant ${tenantId}?`;
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    setLifecycleState((previous) => ({
+      ...previous,
+      reactivating: true,
+      error: null,
+      actionMessage: null
+    }));
+
+    try {
+      const response = await reactivateAdminTenant(tenantId);
+      applySubscriptionSnapshot(
+        response.subscription,
+        response.auditLogId ? `Lifecycle updated. Audit: ${response.auditLogId}` : 'Tenant reactivated.'
+      );
+      setLifecycleState((previous) => ({
+        ...previous,
+        reason: '',
+        reactivating: false,
+        error: null,
+        actionMessage: response.auditLogId
+          ? `Tenant reactivated. Audit: ${response.auditLogId}`
+          : 'Tenant reactivated.'
+      }));
+    } catch (error) {
+      setLifecycleState((previous) => ({
+        ...previous,
+        reactivating: false,
         error: formatError(error)
       }));
     }
@@ -323,6 +448,18 @@ export default function TenantDetailPage() {
                 </AdminBadge>
               </dd>
             </div>
+            {subscriptionState.subscription.disabledAt ? (
+              <div>
+                <dt>Disabled at</dt>
+                <dd>{formatDate(subscriptionState.subscription.disabledAt)}</dd>
+              </div>
+            ) : null}
+            {subscriptionState.subscription.disabledReason ? (
+              <div>
+                <dt>Disabled reason</dt>
+                <dd>{subscriptionState.subscription.disabledReason}</dd>
+              </div>
+            ) : null}
             <div>
               <dt>Expiry</dt>
               <dd>{formatOptionalDate(subscriptionState.subscription.expiresAt)}</dd>
@@ -432,8 +569,51 @@ export default function TenantDetailPage() {
           </div>
         </form>
 
+        <form className="stack admin-subscription-form" onSubmit={handleSuspendSubmit}>
+          <h3>Lifecycle control</h3>
+          <p className="muted">冻结后租户写操作会被拒绝，直至恢复。</p>
+
+          <label className="stack row-tight" htmlFor="tenant-suspend-reason">
+            <span>冻结原因</span>
+            <input
+              id="tenant-suspend-reason"
+              type="text"
+              maxLength={255}
+              value={lifecycleState.reason}
+              onChange={(event) =>
+                setLifecycleState((previous) => ({
+                  ...previous,
+                  reason: event.target.value,
+                  error: null
+                }))
+              }
+              placeholder="例如：账单逾期 / 风险排查"
+              disabled={subscriptionState.saving || lifecycleState.suspending || lifecycleState.reactivating}
+            />
+          </label>
+
+          <div className="inline-actions">
+            <button
+              type="submit"
+              disabled={subscriptionState.saving || lifecycleState.suspending || lifecycleState.reactivating}
+            >
+              {lifecycleState.suspending ? 'Suspending...' : 'Suspend tenant'}
+            </button>
+            <button
+              className="secondary"
+              type="button"
+              onClick={handleReactivateTenant}
+              disabled={subscriptionState.saving || lifecycleState.suspending || lifecycleState.reactivating}
+            >
+              {lifecycleState.reactivating ? 'Reactivating...' : 'Reactivate tenant'}
+            </button>
+          </div>
+        </form>
+
         {subscriptionState.error ? <p className="error">{subscriptionState.error}</p> : null}
         {subscriptionState.actionMessage ? <p className="success">{subscriptionState.actionMessage}</p> : null}
+        {lifecycleState.error ? <p className="error">{lifecycleState.error}</p> : null}
+        {lifecycleState.actionMessage ? <p className="success">{lifecycleState.actionMessage}</p> : null}
       </AdminPanel>
 
       <AdminPanel className="stack">
@@ -628,6 +808,10 @@ function toRoleTone(role: string): 'accent' | 'info' | 'warning' | 'neutral' {
 function toSubscriptionStatusTone(status: string): 'success' | 'warning' | 'danger' | 'neutral' {
   if (status === 'ACTIVE') {
     return 'success';
+  }
+
+  if (status === 'DISABLED') {
+    return 'danger';
   }
 
   if (status === 'TRIALING') {

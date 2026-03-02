@@ -497,6 +497,8 @@ function resolveImageUrl(imageUrl: string) {
 }
 
 function createDemoImages(productId: string): ProductImage[] {
+  const nowIso = new Date().toISOString();
+
   return [
     {
       id: `${productId}-demo-1`,
@@ -505,8 +507,11 @@ function createDemoImages(productId: string): ProductImage[] {
       key: `${productId}/demo-1`,
       url: '/images/mg_01.jpg',
       contentType: 'image/jpeg',
+      sizeBytes: '204800',
       sortOrder: 0,
-      isMain: true
+      isMain: true,
+      createdAt: nowIso,
+      updatedAt: nowIso
     },
     {
       id: `${productId}-demo-2`,
@@ -515,8 +520,11 @@ function createDemoImages(productId: string): ProductImage[] {
       key: `${productId}/demo-2`,
       url: '/images/mg_02.jpg',
       contentType: 'image/jpeg',
+      sizeBytes: '189440',
       sortOrder: 1,
-      isMain: false
+      isMain: false,
+      createdAt: nowIso,
+      updatedAt: nowIso
     },
     {
       id: `${productId}-demo-3`,
@@ -525,8 +533,11 @@ function createDemoImages(productId: string): ProductImage[] {
       key: `${productId}/demo-3`,
       url: '/images/mg_03.jpg',
       contentType: 'image/jpeg',
+      sizeBytes: '176128',
       sortOrder: 2,
-      isMain: false
+      isMain: false,
+      createdAt: nowIso,
+      updatedAt: nowIso
     }
   ];
 }

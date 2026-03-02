@@ -6,6 +6,7 @@ const DEFAULT_API_BASE_URL = '';
 
 const LOGIN_PATH = '/login';
 const PRODUCT_IMAGE_CONTENT_PATH_PATTERN = /^\/products\/[^/]+\/images\/[^/]+\/content$/;
+const MAX_ERROR_MESSAGE_LENGTH = 220;
 
 type SchemaParser<T> = {
   parse: (value: unknown) => T;
@@ -151,8 +152,31 @@ async function parseJsonBody(response: Response) {
   try {
     return JSON.parse(text) as unknown;
   } catch {
-    return { message: text };
+    return {
+      message: getSafeErrorMessage(text, response.status, response.headers.get('content-type'))
+    };
   }
+}
+
+function getSafeErrorMessage(rawText: string, status: number, contentType: string | null) {
+  const normalized = rawText.replace(/\s+/g, ' ').trim();
+  const lowered = normalized.toLowerCase();
+  const looksLikeHtml =
+    lowered.startsWith('<!doctype html') ||
+    lowered.startsWith('<html') ||
+    lowered.startsWith('<head') ||
+    lowered.startsWith('<body');
+
+  if (!normalized || looksLikeHtml) {
+    const resolvedContentType = contentType ?? 'unknown';
+    return `Request failed with status ${status} (upstream returned ${resolvedContentType}, not JSON).`;
+  }
+
+  if (normalized.length > MAX_ERROR_MESSAGE_LENGTH) {
+    return `${normalized.slice(0, MAX_ERROR_MESSAGE_LENGTH)}...`;
+  }
+
+  return normalized;
 }
 
 function pickErrorMessage(payload: unknown, fallback: string) {

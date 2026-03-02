@@ -8,6 +8,7 @@ import type {
   DeleteTenantMemberResponse,
   GetAdminTenantResponse,
   GetAdminTenantSubscriptionResponse,
+  ReactivateAdminTenantResponse,
   ListAdminTenantMembersQuery,
   ListAdminTenantMembersResponse,
   ListAdminTenantsQuery,
@@ -15,6 +16,8 @@ import type {
   ListAdminUsersResponse,
   ListSuperAdminAuditLogsQuery,
   ListSuperAdminAuditLogsResponse,
+  SuspendAdminTenantRequest,
+  SuspendAdminTenantResponse,
   UpdateTenantSubscriptionRequest,
   UpdateTenantSubscriptionResponse,
   UpsertTenantMemberRequest,
@@ -205,6 +208,127 @@ export class AdminService {
             tenantSlug: tenant.slug,
             payload,
             subscription
+          }
+        },
+        tx
+      );
+
+      return {
+        subscription,
+        auditLogId
+      };
+    });
+  }
+
+  async suspendTenant(
+    actorUserId: string,
+    tenantId: string,
+    payload: SuspendAdminTenantRequest
+  ): Promise<SuspendAdminTenantResponse> {
+    return this.prisma.$transaction(async (tx) => {
+      const tenant = await tx.tenant.findUnique({
+        where: {
+          id: tenantId
+        },
+        select: {
+          id: true,
+          slug: true
+        }
+      });
+
+      if (!tenant) {
+        throw new NotFoundException({
+          message: 'Tenant not found.',
+          errorCode: ErrorCode.TenantNotFound
+        });
+      }
+
+      const previousSubscription = await tx.tenantSubscription.findUnique({
+        where: {
+          tenantId: tenant.id
+        },
+        select: {
+          disabledAt: true,
+          disabledReason: true
+        }
+      });
+
+      const subscription = await this.tenantSubscriptionsService.upsertSubscription(
+        tenant.id,
+        {
+          disabledAt: new Date().toISOString(),
+          disabledReason: payload.reason
+        },
+        tx
+      );
+      const auditLogId = await this.superAdminAuditLogsService.createLog(
+        {
+          actorUserId,
+          targetTenantId: tenant.id,
+          action: SuperAdminAuditAction.SuspendTenantLifecycle,
+          metadata: {
+            tenantSlug: tenant.slug,
+            reason: payload.reason,
+            previousDisabledAt: previousSubscription?.disabledAt?.toISOString() ?? null,
+            previousDisabledReason: previousSubscription?.disabledReason ?? null
+          }
+        },
+        tx
+      );
+
+      return {
+        subscription,
+        auditLogId
+      };
+    });
+  }
+
+  async reactivateTenant(actorUserId: string, tenantId: string): Promise<ReactivateAdminTenantResponse> {
+    return this.prisma.$transaction(async (tx) => {
+      const tenant = await tx.tenant.findUnique({
+        where: {
+          id: tenantId
+        },
+        select: {
+          id: true,
+          slug: true
+        }
+      });
+
+      if (!tenant) {
+        throw new NotFoundException({
+          message: 'Tenant not found.',
+          errorCode: ErrorCode.TenantNotFound
+        });
+      }
+
+      const previousSubscription = await tx.tenantSubscription.findUnique({
+        where: {
+          tenantId: tenant.id
+        },
+        select: {
+          disabledAt: true,
+          disabledReason: true
+        }
+      });
+
+      const subscription = await this.tenantSubscriptionsService.upsertSubscription(
+        tenant.id,
+        {
+          disabledAt: null,
+          disabledReason: null
+        },
+        tx
+      );
+      const auditLogId = await this.superAdminAuditLogsService.createLog(
+        {
+          actorUserId,
+          targetTenantId: tenant.id,
+          action: SuperAdminAuditAction.ReactivateTenantLifecycle,
+          metadata: {
+            tenantSlug: tenant.slug,
+            previousDisabledAt: previousSubscription?.disabledAt?.toISOString() ?? null,
+            previousDisabledReason: previousSubscription?.disabledReason ?? null
           }
         },
         tx

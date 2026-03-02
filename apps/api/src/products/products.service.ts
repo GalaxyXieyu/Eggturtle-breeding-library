@@ -876,7 +876,13 @@ export class ProductsService {
       uploadResult = await this.storageProvider.putObject({
         key,
         body: file.buffer,
-        contentType
+        contentType,
+        metadata: {
+          tenantId,
+          productId: product.id,
+          uploadedBy: actorUserId,
+          source: 'products.upload'
+        }
       });
 
       const image = await this.prisma.productImage.create({
@@ -1478,8 +1484,11 @@ export class ProductsService {
       key: image.key,
       url: this.buildImageAccessPath(image.productId, image.id),
       contentType: image.contentType,
+      sizeBytes: image.sizeBytes.toString(),
       sortOrder: image.sortOrder,
-      isMain: image.isMain
+      isMain: image.isMain,
+      createdAt: image.createdAt.toISOString(),
+      updatedAt: image.updatedAt.toISOString()
     };
   }
 

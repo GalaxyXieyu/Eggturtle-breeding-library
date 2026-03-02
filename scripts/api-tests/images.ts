@@ -68,6 +68,9 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
   if (!readBoolean(firstImage, 'isMain', 'products.images.upload.first.image.isMain')) {
     throw new ApiTestError('first uploaded image should be main image');
   }
+  assertPositiveIntegerString(firstImage, 'sizeBytes', 'products.images.upload.first.image.sizeBytes');
+  assertIsoDatetime(firstImage, 'createdAt', 'products.images.upload.first.image.createdAt');
+  assertIsoDatetime(firstImage, 'updatedAt', 'products.images.upload.first.image.updatedAt');
   checks += 1;
 
   const secondUpload = await ctx.request({
@@ -86,6 +89,9 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
   if (readBoolean(secondImage, 'isMain', 'products.images.upload.second.image.isMain')) {
     throw new ApiTestError('second uploaded image should not be main image');
   }
+  assertPositiveIntegerString(secondImage, 'sizeBytes', 'products.images.upload.second.image.sizeBytes');
+  assertIsoDatetime(secondImage, 'createdAt', 'products.images.upload.second.image.createdAt');
+  assertIsoDatetime(secondImage, 'updatedAt', 'products.images.upload.second.image.updatedAt');
   checks += 1;
 
   const setMainResponse = await ctx.request({
@@ -158,6 +164,9 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
   if (!readBoolean(listedImages[0], 'isMain', 'products.images.list[0].isMain')) {
     throw new ApiTestError('list images expected first item to be main after set-main');
   }
+  assertPositiveIntegerString(listedImages[0], 'sizeBytes', 'products.images.list[0].sizeBytes');
+  assertIsoDatetime(listedImages[0], 'createdAt', 'products.images.list[0].createdAt');
+  assertIsoDatetime(listedImages[0], 'updatedAt', 'products.images.list[0].updatedAt');
   checks += 1;
 
   const contentResponse = await ctx.request({
@@ -249,4 +258,27 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
       secondImageId,
     },
   };
+}
+
+function assertPositiveIntegerString(objectValue: Record<string, unknown>, key: string, label: string): void {
+  const value = objectValue[key];
+  if (typeof value !== 'string' || !/^\d+$/.test(value)) {
+    throw new ApiTestError(`Expected ${label} positive-integer string, got ${String(value)}`);
+  }
+
+  if (BigInt(value) <= 0n) {
+    throw new ApiTestError(`Expected ${label} > 0, got ${value}`);
+  }
+}
+
+function assertIsoDatetime(objectValue: Record<string, unknown>, key: string, label: string): void {
+  const value = objectValue[key];
+  if (typeof value !== 'string') {
+    throw new ApiTestError(`Expected ${label} datetime string, got ${String(value)}`);
+  }
+
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) {
+    throw new ApiTestError(`Expected ${label} valid datetime, got ${value}`);
+  }
 }

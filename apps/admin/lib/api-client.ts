@@ -1,12 +1,17 @@
 import {
   getAdminTenantSubscriptionResponseSchema,
+  reactivateAdminTenantResponseSchema,
+  suspendAdminTenantRequestSchema,
+  suspendAdminTenantResponseSchema,
   updateTenantSubscriptionRequestSchema,
   updateTenantSubscriptionResponseSchema,
+  type SuspendAdminTenantRequest,
   type UpdateTenantSubscriptionRequest
 } from '@eggturtle/shared';
 
 const LOGIN_PATH = '/login';
 const AUTH_PROXY_PREFIX = '/api/proxy';
+const MAX_ERROR_MESSAGE_LENGTH = 220;
 
 type SchemaParser<T> = {
   parse: (value: unknown) => T;
@@ -60,8 +65,31 @@ async function parseJsonBody(response: Response) {
   try {
     return JSON.parse(text) as unknown;
   } catch {
-    return { message: text };
+    return {
+      message: getSafeErrorMessage(text, response.status, response.headers.get('content-type'))
+    };
   }
+}
+
+function getSafeErrorMessage(rawText: string, status: number, contentType: string | null) {
+  const normalized = rawText.replace(/\s+/g, ' ').trim();
+  const lowered = normalized.toLowerCase();
+  const looksLikeHtml =
+    lowered.startsWith('<!doctype html') ||
+    lowered.startsWith('<html') ||
+    lowered.startsWith('<head') ||
+    lowered.startsWith('<body');
+
+  if (!normalized || looksLikeHtml) {
+    const resolvedContentType = contentType ?? 'unknown';
+    return `Request failed with status ${status} (upstream returned ${resolvedContentType}, not JSON).`;
+  }
+
+  if (normalized.length > MAX_ERROR_MESSAGE_LENGTH) {
+    return `${normalized.slice(0, MAX_ERROR_MESSAGE_LENGTH)}...`;
+  }
+
+  return normalized;
 }
 
 function pickErrorMessage(payload: unknown, fallback: string) {
@@ -168,5 +196,24 @@ export async function updateAdminTenantSubscription(
     body: payload,
     requestSchema: updateTenantSubscriptionRequestSchema,
     responseSchema: updateTenantSubscriptionResponseSchema
+  });
+}
+
+export async function suspendAdminTenant(
+  tenantId: string,
+  payload: SuspendAdminTenantRequest
+) {
+  return apiRequest(`/admin/tenants/${tenantId}/lifecycle/suspend`, {
+    method: 'POST',
+    body: payload,
+    requestSchema: suspendAdminTenantRequestSchema,
+    responseSchema: suspendAdminTenantResponseSchema
+  });
+}
+
+export async function reactivateAdminTenant(tenantId: string) {
+  return apiRequest(`/admin/tenants/${tenantId}/lifecycle/reactivate`, {
+    method: 'POST',
+    responseSchema: reactivateAdminTenantResponseSchema
   });
 }

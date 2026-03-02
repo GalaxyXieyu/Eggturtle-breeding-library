@@ -134,8 +134,11 @@ export const productImageSchema = z.object({
   key: z.string().min(1),
   url: z.string().min(1),
   contentType: z.string().min(1).nullable(),
+  sizeBytes: z.string().regex(/^\d+$/),
   sortOrder: z.number().int().nonnegative(),
-  isMain: z.boolean()
+  isMain: z.boolean(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime()
 });
 
 export const listProductImagesResponseSchema = z.object({
