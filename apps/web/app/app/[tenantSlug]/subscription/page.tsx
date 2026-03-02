@@ -74,7 +74,9 @@ export default function SubscriptionPage() {
   const [error, setError] = useState<string | null>(null);
   const [upgradeModalPlan, setUpgradeModalPlan] = useState<PlanPackage | null>(null);
   const [activeMobilePlanIndex, setActiveMobilePlanIndex] = useState(0);
+  const [proPlanFocused, setProPlanFocused] = useState(false);
   const mobilePlansRef = useRef<HTMLDivElement | null>(null);
+  const proPlanFocusTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!tenantSlug) {
@@ -137,6 +139,14 @@ export default function SubscriptionPage() {
       setActiveMobilePlanIndex(highestPlanIndex);
     }
   }, [highestPlanIndex]);
+
+  useEffect(() => {
+    return () => {
+      if (proPlanFocusTimerRef.current !== null) {
+        window.clearTimeout(proPlanFocusTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!upgradeModalPlan) {
@@ -202,12 +212,23 @@ export default function SubscriptionPage() {
     const target = document.getElementById('plan-packages');
     target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-    if (typeof index !== 'number' || index < 0) {
-      return;
-    }
-
     window.setTimeout(() => {
-      scrollToMobilePlan(index);
+      const isDesktop = typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches;
+      const proAnchorId = isDesktop ? 'plan-tier-pro-desktop' : 'plan-tier-pro-mobile';
+      const proAnchor = document.getElementById(proAnchorId);
+      proAnchor?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      if (typeof index === 'number' && index >= 0) {
+        scrollToMobilePlan(index);
+      }
+
+      setProPlanFocused(true);
+      if (proPlanFocusTimerRef.current !== null) {
+        window.clearTimeout(proPlanFocusTimerRef.current);
+      }
+      proPlanFocusTimerRef.current = window.setTimeout(() => {
+        setProPlanFocused(false);
+      }, 1400);
     }, 220);
   }
 
@@ -370,16 +391,18 @@ export default function SubscriptionPage() {
                 {PLAN_PACKAGES.map((item, index) => {
                   const isCurrent = item.tier === currentPlan;
                   const isHighest = item.tier === 'PRO';
+                  const isFocusedPro = isHighest && proPlanFocused;
                   return (
                     <section
                       key={`mobile-${item.tier}`}
+                      id={isHighest ? 'plan-tier-pro-mobile' : undefined}
                       className={`relative min-w-[86%] snap-center overflow-hidden rounded-2xl border p-4 shadow-[0_8px_20px_rgba(15,23,42,0.08)] ${
                         isCurrent
                           ? 'border-[#FFD400]/70 bg-gradient-to-b from-[#FFF6CF] to-white'
                           : isHighest
                             ? 'border-neutral-900 bg-gradient-to-b from-neutral-50 to-white'
                             : 'border-neutral-200 bg-white'
-                      }`}
+                      } ${isFocusedPro ? 'ring-2 ring-[#FFD400] ring-offset-2 ring-offset-white' : ''}`}
                     >
                       <div className="pointer-events-none absolute -right-6 -top-8 h-20 w-20 rounded-full bg-[#FFD400]/30 blur-2xl" />
                       <div className="relative z-10">
@@ -456,8 +479,14 @@ export default function SubscriptionPage() {
                 <tbody>
                   {PLAN_PACKAGES.map((item) => {
                     const isCurrent = item.tier === currentPlan;
+                    const isHighest = item.tier === 'PRO';
+                    const isFocusedPro = isHighest && proPlanFocused;
                     return (
-                      <tr key={item.tier} className={isCurrent ? 'bg-[#FFD400]/10' : ''}>
+                      <tr
+                        key={item.tier}
+                        id={isHighest ? 'plan-tier-pro-desktop' : undefined}
+                        className={isFocusedPro ? 'bg-[#FFF3C0]' : isCurrent ? 'bg-[#FFD400]/10' : ''}
+                      >
                         <td className="border-b border-neutral-200 px-4 py-3 align-top">
                           <p className="text-sm font-semibold text-neutral-900">{item.name}</p>
                           {isCurrent ? <p className="text-xs text-neutral-600">当前套餐</p> : null}
