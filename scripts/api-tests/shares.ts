@@ -34,6 +34,16 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
 
   let checks = 0;
 
+  const redactUrl = (input: string) => {
+    let output = String(input);
+
+    output = output.replace(/\/public\/s\/[^/?]+/g, '/public/s/<shareToken>');
+    output = output.replace(/\/s\/[^/?]+/g, '/s/<shareToken>');
+    output = output.replace(/([?&](sig|sid|exp|tenantId|resourceId|key)=)[^&]+/g, '$1<redacted>');
+
+    return output;
+  };
+
   const createProductResponse = await ctx.request({
     method: 'POST',
     path: '/products',
@@ -86,12 +96,12 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
   try {
     parsedEntryUrl = new URL(entryUrl);
   } catch {
-    throw new ApiTestError(`share.entryUrl is not a valid absolute URL: ${entryUrl}`);
+    throw new ApiTestError(`share.entryUrl is not a valid absolute URL: ${redactUrl(entryUrl)}`);
   }
 
   if (parsedEntryUrl.pathname !== `/s/${shareToken}`) {
     throw new ApiTestError(
-      `share.entryUrl path mismatch: expected /s/${shareToken}, got ${parsedEntryUrl.pathname}`,
+      `share.entryUrl path mismatch: expected /s/<shareToken>, got ${redactUrl(parsedEntryUrl.pathname)}`,
     );
   }
 
@@ -112,7 +122,7 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
   }
 
   if (!location.includes('/public/s/')) {
-    throw new ApiTestError(`share redirect target mismatch, expected /public/s/, got: ${location}`);
+    throw new ApiTestError(`share redirect target mismatch, expected /public/s/, got: ${redactUrl(location)}`);
   }
 
   const signed = parseShareRedirect(location);
@@ -162,7 +172,9 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
   try {
     parsedImageUrl = new URL(firstImageUrl);
   } catch {
-    throw new ApiTestError(`public share image URL is not a valid absolute URL: ${firstImageUrl}`);
+    throw new ApiTestError(
+      `public share image URL is not a valid absolute URL: ${redactUrl(firstImageUrl)}`,
+    );
   }
 
   if (parsedImageUrl.pathname !== `/shares/${signed.sid}/public/assets`) {
