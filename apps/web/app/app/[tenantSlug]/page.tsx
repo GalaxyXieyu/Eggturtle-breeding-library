@@ -7,8 +7,10 @@ import {
   createShareResponseSchema,
   dashboardOverviewResponseSchema,
   meResponseSchema,
+  meSubscriptionResponseSchema,
   type DashboardOverviewResponse,
-  type DashboardOverviewWindow
+  type DashboardOverviewWindow,
+  type TenantSubscription
 } from '@eggturtle/shared';
 import {
   AlertTriangle,
@@ -87,6 +89,8 @@ export default function TenantAppPage() {
   const [overviewByWindow, setOverviewByWindow] = useState<Partial<Record<DashboardOverviewWindow, DashboardOverviewResponse>>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [subscription, setSubscription] = useState<TenantSubscription | null>(null);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
 
   const [shareLinks, setShareLinks] = useState<ShareLinks | null>(null);
   const [shareLoading, setShareLoading] = useState(false);
@@ -112,6 +116,8 @@ export default function TenantAppPage() {
     setTenantReady(false);
     setTenantId(null);
     setOverviewByWindow({});
+    setSubscription(null);
+    setSubscriptionLoading(false);
     setActiveWindow('today');
     setLoading(true);
     setError(null);
@@ -181,6 +187,37 @@ export default function TenantAppPage() {
       cancelled = true;
     };
   }, [activeWindow, overviewByWindow, tenantReady]);
+
+  useEffect(() => {
+    if (!tenantReady) {
+      return;
+    }
+
+    let cancelled = false;
+    setSubscriptionLoading(true);
+
+    void (async () => {
+      try {
+        const response = await apiRequest('/me/subscription', { responseSchema: meSubscriptionResponseSchema });
+        if (cancelled) {
+          return;
+        }
+        setSubscription(response.subscription);
+      } catch {
+        if (!cancelled) {
+          setSubscription(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setSubscriptionLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tenantReady, tenantSlug]);
 
   const overview = overviewByWindow[activeWindow] ?? null;
   const needMatingValue = overview
@@ -323,6 +360,40 @@ export default function TenantAppPage() {
               </div>
             </CardHeader>
           </Card>
+
+          <section className="grid grid-cols-1 gap-4">
+            <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
+              <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <CardTitle className="text-2xl">套餐与版本</CardTitle>
+                  <CardDescription>这里集中展示当前套餐状态，升级入口固定在右侧按钮。</CardDescription>
+                </div>
+                <Button type="button" size="sm" onClick={() => router.push(`/app/${tenantSlug}/account#subscription-plan`)}>
+                  升级套餐
+                </Button>
+              </CardHeader>
+              <CardContent className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+                  <p className="text-xs text-neutral-500">当前套餐</p>
+                  <p className="mt-1 text-lg font-bold text-neutral-900">
+                    {subscriptionLoading ? '加载中...' : formatSubscriptionPlan(subscription?.plan)}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+                  <p className="text-xs text-neutral-500">套餐状态</p>
+                  <p className="mt-1 text-lg font-bold text-neutral-900">
+                    {subscriptionLoading ? '加载中...' : formatSubscriptionStatus(subscription?.status)}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+                  <p className="text-xs text-neutral-500">到期时间</p>
+                  <p className="mt-1 text-sm font-semibold text-neutral-900">
+                    {subscriptionLoading ? '加载中...' : formatSubscriptionDate(subscription?.expiresAt ?? null)}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
 
           <section className="grid grid-cols-1 gap-4">
             <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
@@ -630,6 +701,43 @@ function buildPermanentShareLink(shareToken: string) {
   }
 
   return `/public/s/${shareToken}`;
+}
+
+function formatSubscriptionPlan(plan: TenantSubscription['plan'] | null | undefined) {
+  if (plan === 'FREE') {
+    return '免费版';
+  }
+  if (plan === 'BASIC') {
+    return '基础版';
+  }
+  if (plan === 'PRO') {
+    return '专业版';
+  }
+  return '-';
+}
+
+function formatSubscriptionStatus(status: TenantSubscription['status'] | null | undefined) {
+  if (status === 'ACTIVE') {
+    return '生效中';
+  }
+  if (status === 'EXPIRED') {
+    return '已过期';
+  }
+  if (status === 'DISABLED') {
+    return '已禁用';
+  }
+  return '-';
+}
+
+function formatSubscriptionDate(value: string | null) {
+  if (!value) {
+    return '长期有效';
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return `${date.toLocaleDateString('zh-CN')} ${date.toLocaleTimeString('zh-CN')}`;
 }
 
 function formatError(error: unknown) {

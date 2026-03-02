@@ -8,6 +8,8 @@ import {
   meProfileResponseSchema,
   meResponseSchema,
   meSubscriptionResponseSchema,
+  redeemTenantSubscriptionActivationCodeRequestSchema,
+  redeemTenantSubscriptionActivationCodeResponseSchema,
   type MeProfile,
   type TenantSubscription,
   updateMeProfileRequestSchema,
@@ -34,6 +36,7 @@ export default function AccountPage() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [generatingShare, setGeneratingShare] = useState(false);
+  const [redeemingSubscription, setRedeemingSubscription] = useState(false);
 
   const [profile, setProfile] = useState<MeProfile | null>(null);
   const [subscription, setSubscription] = useState<TenantSubscription | null>(null);
@@ -44,6 +47,7 @@ export default function AccountPage() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [activationCode, setActivationCode] = useState('');
 
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -203,6 +207,36 @@ export default function AccountPage() {
     }
   }
 
+  async function handleRedeemActivationCode() {
+    if (!activationCode.trim()) {
+      setError('请输入升级码。');
+      return;
+    }
+
+    setRedeemingSubscription(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const payload = redeemTenantSubscriptionActivationCodeRequestSchema.parse({
+        code: activationCode.trim()
+      });
+      const response = await apiRequest('/subscriptions/activation-codes/redeem', {
+        method: 'POST',
+        body: payload,
+        requestSchema: redeemTenantSubscriptionActivationCodeRequestSchema,
+        responseSchema: redeemTenantSubscriptionActivationCodeResponseSchema
+      });
+      setSubscription(response.subscription);
+      setActivationCode('');
+      setMessage(`套餐已更新：${formatSubscriptionPlanLabel(response.subscription.plan)}。`);
+    } catch (requestError) {
+      setError(formatError(requestError));
+    } finally {
+      setRedeemingSubscription(false);
+    }
+  }
+
   return (
     <main className="space-y-4 pb-10 sm:space-y-6">
       <Card className="rounded-2xl border-neutral-200/90 bg-white/90 p-4">
@@ -292,7 +326,7 @@ export default function AccountPage() {
             </CardContent>
           </Card>
 
-          <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
+          <Card id="subscription-plan" className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-2xl">
                 <Wallet size={18} />
@@ -302,9 +336,9 @@ export default function AccountPage() {
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="accent">{subscription?.plan ?? '-'}</Badge>
+                <Badge variant="accent">{formatSubscriptionPlanLabel(subscription?.plan)}</Badge>
                 <Badge variant={subscription?.status === 'ACTIVE' ? 'success' : 'warning'}>
-                  {subscription?.status ?? '-'}
+                  {formatSubscriptionStatusLabel(subscription?.status)}
                 </Badge>
               </div>
               <div className="grid gap-1 text-neutral-600">
@@ -313,6 +347,22 @@ export default function AccountPage() {
                 <p>图片上限：{toDisplayValue(subscription?.maxImages)}</p>
                 <p>存储上限：{toDisplayBytes(subscription?.maxStorageBytes)}</p>
                 <p>分享上限：{toDisplayValue(subscription?.maxShares)}</p>
+              </div>
+              <div className="space-y-2 rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+                <Label htmlFor="subscription-activation-code">升级码</Label>
+                <div className="flex flex-wrap gap-2">
+                  <Input
+                    id="subscription-activation-code"
+                    type="text"
+                    value={activationCode}
+                    placeholder="输入激活码后立即升级套餐"
+                    onChange={(event) => setActivationCode(event.target.value)}
+                  />
+                  <Button type="button" variant="primary" disabled={redeemingSubscription} onClick={() => void handleRedeemActivationCode()}>
+                    {redeemingSubscription ? '升级中...' : '立即升级套餐'}
+                  </Button>
+                </div>
+                <p className="text-xs text-neutral-500">升级成功后，套餐状态和配额会自动刷新。</p>
               </div>
             </CardContent>
           </Card>
@@ -371,6 +421,32 @@ function formatDate(value: string | null | undefined) {
   }
 
   return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+}
+
+function formatSubscriptionPlanLabel(plan: TenantSubscription['plan'] | null | undefined) {
+  if (plan === 'FREE') {
+    return '免费版';
+  }
+  if (plan === 'BASIC') {
+    return '基础版';
+  }
+  if (plan === 'PRO') {
+    return '专业版';
+  }
+  return '-';
+}
+
+function formatSubscriptionStatusLabel(status: TenantSubscription['status'] | null | undefined) {
+  if (status === 'ACTIVE') {
+    return '生效中';
+  }
+  if (status === 'EXPIRED') {
+    return '已过期';
+  }
+  if (status === 'DISABLED') {
+    return '已禁用';
+  }
+  return '-';
 }
 
 function toDisplayValue(value: number | null | undefined) {

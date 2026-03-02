@@ -10,6 +10,7 @@ import {
   Layers,
   QrCode,
   Link2,
+  Wallet,
   LogOut,
   Menu,
   X,
@@ -67,6 +68,7 @@ const SHELL_COPY = {
   zh: {
     workspace: '租户工作台',
     controlCenter: '控制中心',
+    upgradePlan: '升级套餐',
     createShare: '创建分享链接',
     logout: '退出登录',
     defaultTenant: '蛋龟选育库',
@@ -77,6 +79,7 @@ const SHELL_COPY = {
   en: {
     workspace: 'Tenant Workspace',
     controlCenter: 'Control Center',
+    upgradePlan: 'Upgrade Plan',
     createShare: 'Create Share Link',
     logout: 'Sign out',
     defaultTenant: 'Eggturtle Workspace',
@@ -153,6 +156,18 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
           </nav>
 
           <div className="border-t border-neutral-200 p-3 dark:border-neutral-800">
+            <Button
+              type="button"
+              variant="secondary"
+              className="mb-2 hidden w-full justify-start border border-neutral-200 bg-neutral-50 text-neutral-800 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800 lg:flex"
+              onClick={() => {
+                setMobileNavOpen(false);
+                router.push(`/app/${tenantSlug}/account#subscription-plan`);
+              }}
+            >
+              <Wallet size={16} />
+              <span>{copy.upgradePlan}</span>
+            </Button>
             <Button
               type="button"
               variant="secondary"

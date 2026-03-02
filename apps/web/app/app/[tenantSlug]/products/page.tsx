@@ -441,7 +441,7 @@ export default function TenantProductsPage() {
             totalPages: Math.max(1, Math.ceil(total / currentMeta.pageSize))
           };
         });
-        setMessage(`Demo 模式：已创建产品 ${demoProduct.code}`);
+        setMessage(`演示模式：已创建产品 ${demoProduct.code}`);
         setCreateCode('');
         setIsCreateModalOpen(false);
         setSubmitting(false);
@@ -504,7 +504,7 @@ export default function TenantProductsPage() {
           <Input
             id={searchId}
             type="text"
-            placeholder="按 code / name / 描述搜索"
+            placeholder="按编号 / 名称 / 描述搜索"
             value={searchInput}
             className="h-9"
             onChange={(event) => setSearchInput(event.target.value)}
@@ -597,7 +597,7 @@ export default function TenantProductsPage() {
             </CardTitle>
             <CardDescription>
               紧凑模式，减少筛选区对产品列表的占用。
-              {isDemoMode ? '（Demo 模式：仅演示 UI，不写入真实数据）' : ''}
+              {isDemoMode ? '（演示模式：仅演示界面，不写入真实数据）' : ''}
             </CardDescription>
           </div>
           <Button type="button" size="sm" disabled={submitting} onClick={openCreateModal}>
@@ -632,7 +632,7 @@ export default function TenantProductsPage() {
               </CardDescription>
             ) : null}
           </div>
-          <Badge variant="accent">COVER READY</Badge>
+          <Badge variant="accent">封面已就绪</Badge>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -690,9 +690,9 @@ export default function TenantProductsPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>封面</TableHead>
-                      <TableHead>Code</TableHead>
-                      <TableHead>Series</TableHead>
-                      <TableHead>Sex</TableHead>
+                      <TableHead>编码</TableHead>
+                      <TableHead>系列</TableHead>
+                      <TableHead>性别</TableHead>
                       <TableHead>更新时间</TableHead>
                       <TableHead>操作</TableHead>
                     </TableRow>
@@ -736,8 +736,8 @@ export default function TenantProductsPage() {
                       <div className="h-16 w-16 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100">{renderCover(item)}</div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold text-neutral-900">{item.code}</p>
-                        <p className="truncate text-xs text-neutral-500">Series：{item.seriesId || '-'}</p>
-                        <p className="truncate text-xs text-neutral-500">Sex：{formatSex(item.sex)}</p>
+                        <p className="truncate text-xs text-neutral-500">系列：{item.seriesId || '-'}</p>
+                        <p className="truncate text-xs text-neutral-500">性别：{formatSex(item.sex)}</p>
                         <p className="mt-1 text-xs text-neutral-400">{formatDateTime(item.updatedAt)}</p>
                       </div>
                       <Button
@@ -921,7 +921,7 @@ function renderCover(item: Product) {
     return <div className="flex h-full w-full items-center justify-center text-xs text-neutral-500">无封面</div>;
   }
 
-  return <img src={resolveImageUrl(item.coverImageUrl)} alt={`${item.code} cover`} className="h-full w-full object-cover" />;
+  return <img src={resolveImageUrl(item.coverImageUrl)} alt={`${item.code} 封面`} className="h-full w-full object-cover" />;
 }
 
 function resolveImageUrl(value: string) {
