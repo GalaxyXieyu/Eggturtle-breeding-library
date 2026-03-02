@@ -17,6 +17,8 @@ import {
 import { Prisma } from '@prisma/client';
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 
+import { resolveAllowedMaxEdge, resizeToWebpMaxEdge } from '../images/image-variants';
+
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { PrismaService } from '../prisma.service';
 import { STORAGE_PROVIDER_TOKEN } from '../storage/storage.constants';
@@ -38,6 +40,7 @@ type PublicShareQueryInput = {
   productId?: string;
   exp: string;
   sig: string;
+  maxEdge?: number;
 };
 
 type PublicShareAssetQueryInput = PublicShareQueryInput & {
@@ -301,6 +304,8 @@ export class SharesService {
       sig: query.sig
     });
 
+    const maxEdge = resolveAllowedMaxEdge(query.maxEdge);
+
     const share = await this.prisma.publicShare.findFirst({
       where: {
         id: shareId,
@@ -335,6 +340,8 @@ export class SharesService {
 
     const object = await this.storageProvider.getObject(query.key);
 
+    const resized = maxEdge ? await resizeToWebpMaxEdge({ body: object.body, maxEdge }) : null;
+
     await this.writeShareAccessAuditLog(
       {
         id: share.id,
@@ -350,8 +357,8 @@ export class SharesService {
     );
 
     return {
-      content: object.body,
-      contentType: object.contentType,
+      content: resized?.body ?? object.body,
+      contentType: resized?.contentType ?? object.contentType,
       expiresAt
     };
   }
@@ -387,7 +394,8 @@ export class SharesService {
               resourceId: share.resourceId,
               key: coverImage.key,
               fallbackUrl: coverImage.url,
-              expiresAt
+              expiresAt,
+              maxEdge: 480
             })
           : null;
 
@@ -438,7 +446,8 @@ export class SharesService {
             resourceId: share.resourceId,
             key: image.key,
             fallbackUrl: image.url,
-            expiresAt
+            expiresAt,
+            maxEdge: 960
           }),
           contentType: image.contentType,
           sizeBytes: image.sizeBytes.toString(),
@@ -788,7 +797,21 @@ export class SharesService {
               resourceId: share.resourceId,
               key: mainImage.key,
               fallbackUrl: mainImage.url,
-              expiresAt
+              expiresAt,
+              maxEdge: 960
+            })
+          : null;
+
+        const femaleThumbnailUrl = mainImage
+          ? await this.resolvePublicImageUrl({
+              shareId: share.id,
+              tenantId,
+              resourceType: share.resourceType,
+              resourceId: share.resourceId,
+              key: mainImage.key,
+              fallbackUrl: mainImage.url,
+              expiresAt,
+              maxEdge: 480
             })
           : null;
 
@@ -796,7 +819,7 @@ export class SharesService {
           femaleId: female.id,
           femaleCode: female.code,
           femaleMainImageUrl,
-          femaleThumbnailUrl: femaleMainImageUrl,
+          femaleThumbnailUrl,
           lastEggAt: lastEggAt ? lastEggAt.toISOString() : null,
           lastMatingWithThisMaleAt: lastMatingWithThisMaleAt ? lastMatingWithThisMaleAt.toISOString() : null,
           daysSinceEgg,
@@ -817,6 +840,7 @@ export class SharesService {
     exp: string;
     sig: string;
     key: string;
+    maxEdge?: number;
   }): string {
     const params = new URLSearchParams();
     params.set('tenantId', input.tenantId);
@@ -825,6 +849,11 @@ export class SharesService {
     params.set('exp', input.exp);
     params.set('sig', input.sig);
     params.set('key', input.key);
+
+    const allowedMaxEdge = resolveAllowedMaxEdge(input.maxEdge);
+    if (allowedMaxEdge) {
+      params.set('maxEdge', allowedMaxEdge.toString());
+    }
 
     return `/shares/${input.shareId}/public/assets?${params.toString()}`;
   }
@@ -837,6 +866,7 @@ export class SharesService {
     key: string;
     fallbackUrl: string;
     expiresAt: Date;
+    maxEdge?: number;
   }): Promise<string> {
     if (!this.isManagedStorageKey(input.tenantId, input.key)) {
       return input.fallbackUrl;
@@ -858,7 +888,8 @@ export class SharesService {
       resourceId: input.resourceId,
       exp,
       sig,
-      key: input.key
+      key: input.key,
+      maxEdge: input.maxEdge
     });
   }
 
