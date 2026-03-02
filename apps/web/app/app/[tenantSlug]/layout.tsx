@@ -158,8 +158,8 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
           <div className="border-t border-neutral-200 p-3 dark:border-neutral-800">
             <Button
               type="button"
-              variant="secondary"
-              className="mb-2 hidden w-full justify-start border border-neutral-200 bg-neutral-50 text-neutral-800 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800 lg:flex"
+              variant="outline"
+              className="mb-2 hidden w-full justify-start rounded-xl border-neutral-200 !bg-neutral-50 !text-neutral-800 shadow-none hover:!bg-neutral-100 hover:!text-neutral-900 [&_svg]:text-neutral-500 hover:[&_svg]:text-neutral-700 dark:border-neutral-700 dark:!bg-neutral-900 dark:!text-neutral-100 dark:hover:!bg-neutral-800 dark:[&_svg]:text-neutral-300 dark:hover:[&_svg]:text-neutral-100 lg:flex"
               onClick={() => {
                 setMobileNavOpen(false);
                 router.push(`/app/${tenantSlug}/account#subscription-plan`);
@@ -170,8 +170,8 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
             </Button>
             <Button
               type="button"
-              variant="secondary"
-              className="mb-3 hidden w-full justify-start border border-neutral-200 bg-neutral-50 text-neutral-800 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800 lg:flex"
+              variant="outline"
+              className="mb-3 hidden w-full justify-start rounded-xl border-neutral-200 !bg-neutral-50 !text-neutral-800 shadow-none hover:!bg-neutral-100 hover:!text-neutral-900 [&_svg]:text-neutral-500 hover:[&_svg]:text-neutral-700 dark:border-neutral-700 dark:!bg-neutral-900 dark:!text-neutral-100 dark:hover:!bg-neutral-800 dark:[&_svg]:text-neutral-300 dark:hover:[&_svg]:text-neutral-100 lg:flex"
               onClick={() => {
                 setMobileNavOpen(false);
                 router.push(`/app/${tenantSlug}/account#share-link`);
