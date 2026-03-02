@@ -28,6 +28,8 @@ import type {
 import { randomUUID } from 'node:crypto';
 import * as path from 'node:path';
 
+import { resolveAllowedMaxEdge, resizeToWebpMaxEdge } from '../images/image-variants';
+
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { PrismaService } from '../prisma.service';
 import { STORAGE_PROVIDER_TOKEN } from '../storage/storage.constants';
@@ -1132,7 +1134,10 @@ export class ProductsService {
   async getProductImageContent(
     tenantId: string,
     productId: string,
-    imageId: string
+    imageId: string,
+    options?: {
+      maxEdge?: number;
+    }
   ): Promise<ProductImageContentResult> {
     await this.findProductOrThrow(tenantId, productId);
 
@@ -1167,11 +1172,14 @@ export class ProductsService {
       };
     }
 
+    const maxEdge = resolveAllowedMaxEdge(options?.maxEdge);
+
     try {
       const storedObject = await this.storageProvider.getObject(image.key);
+      const resized = maxEdge ? await resizeToWebpMaxEdge({ body: storedObject.body, maxEdge }) : null;
       return {
-        content: storedObject.body,
-        contentType: image.contentType ?? storedObject.contentType
+        content: resized?.body ?? storedObject.body,
+        contentType: resized?.contentType ?? image.contentType ?? storedObject.contentType
       };
     } catch (error) {
       if (error instanceof NotFoundException) {

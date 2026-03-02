@@ -182,6 +182,28 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
   }
   checks += 1;
 
+  const resizedResponse = await ctx.request({
+    method: 'GET',
+    path: `/products/${productId}/images/${secondImageId}/content`,
+    token: session.token,
+    redirect: 'manual',
+    query: {
+      maxEdge: 480,
+    },
+  });
+  if (![200, 302].includes(resizedResponse.status)) {
+    throw new ApiTestError(
+      `resized image content expected 200 or 302, got ${resizedResponse.status} (imageId=${secondImageId})`,
+    );
+  }
+  if (resizedResponse.status === 200) {
+    const contentType = resizedResponse.headers.get('content-type') ?? '';
+    if (!contentType.includes('image/webp')) {
+      throw new ApiTestError(`resized image expected image/webp content-type, got ${contentType}`);
+    }
+  }
+  checks += 1;
+
   const foreignSession = await ensureTenantSession(ctx, {
     email: defaultEmail('images-foreign-tenant'),
   });
