@@ -1,6 +1,11 @@
 /** @type {import('next').NextConfig} */
+const isDev = process.env.NODE_ENV === 'development';
+
 const nextConfig = {
   reactStrictMode: true,
+  // Keep dev/build artifacts isolated to avoid chunk-cache corruption when running
+  // `next dev` and `next build` in the same repo session.
+  distDir: isDev ? '.next-dev' : '.next',
   async rewrites() {
     const internalApiBaseUrl = process.env.INTERNAL_API_BASE_URL ?? 'http://127.0.0.1:30011';
 

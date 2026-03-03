@@ -51,6 +51,46 @@ pnpm --filter @eggturtle/api prisma:seed
 
 ### 4) 启动服务
 
+推荐一键启动（会同时启动 API/Web/Admin）：
+
+```bash
+# 等价于 ./dev.sh start（内置 restart 逻辑：先 stop 再 start）
+pnpm dev:start
+```
+
+停止/查看状态：
+
+```bash
+pnpm dev:stop
+pnpm dev:status
+```
+
+`pnpm dev:*` 底层使用 `./dev.sh`。需要直接执行脚本时可用：
+
+```bash
+./dev.sh start  # 启动全部服务（内置 restart：先停后启）
+./dev.sh stop   # 停止全部服务
+./dev.sh status # 查看服务与健康检查状态
+```
+
+若出现前端无样式或缓存异常，可在启动时附加清理：
+
+```bash
+CLEAN_ON_START=1 ./dev.sh start
+```
+
+常用环境变量（按需覆盖默认检查）：
+
+```bash
+API_HEALTH_URL=http://127.0.0.1:30011/health ./dev.sh start
+WEB_HEALTH_URL=http://127.0.0.1:30010/login ./dev.sh start
+ADMIN_HEALTH_URL=http://127.0.0.1:30020/login ./dev.sh start
+WEB_CSS_CHECK_URL=http://127.0.0.1:30010/_next/static/css/app/layout.css ./dev.sh start
+SKIP_WEB_ASSET_CHECK=1 ./dev.sh start # 跳过 CSS 资源探测
+```
+
+也可分别启动：
+
 ```bash
 # API
 pnpm --filter @eggturtle/api dev

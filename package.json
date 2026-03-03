@@ -5,6 +5,9 @@
   "scripts": {
     "lint": "pnpm -r lint",
     "build": "pnpm -r build",
+    "dev:start": "./dev.sh start",
+    "dev:stop": "./dev.sh stop",
+    "dev:status": "./dev.sh status",
     "format": "prettier --write .",
     "api-tests": "pnpm --filter @eggturtle/api exec ts-node --project tsconfig.json ../../scripts/api-tests/run.ts",
     "api-tests:gate": "pnpm api-tests -- --only auth,products,series,breeders,images,featured,shares,admin,subscription --clear-token-cache",
