@@ -1,13 +1,22 @@
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, Res, UseGuards } from '@nestjs/common';
 import {
+  adminRevenueOverviewResponseSchema,
+  adminUsageOverviewResponseSchema,
   createTenantSubscriptionActivationCodeRequestSchema,
   createTenantSubscriptionActivationCodeResponseSchema,
   createAdminTenantRequestSchema,
   createAdminTenantResponseSchema,
   deleteTenantMemberResponseSchema,
+  adminActivityOverviewResponseSchema,
   exportSuperAdminAuditLogsQuerySchema,
+  getAdminActivityOverviewQuerySchema,
+  getAdminRevenueOverviewQuerySchema,
   getAdminTenantResponseSchema,
   getAdminTenantSubscriptionResponseSchema,
+  getAdminTenantUsageResponseSchema,
+  getAdminUsageOverviewQuerySchema,
+  offboardAdminTenantRequestSchema,
+  offboardAdminTenantResponseSchema,
   reactivateAdminTenantResponseSchema,
   listAdminTenantMembersQuerySchema,
   listAdminTenantMembersResponseSchema,
@@ -101,6 +110,18 @@ export class AdminController {
     return reactivateAdminTenantResponseSchema.parse(response);
   }
 
+  @Post('tenants/:tenantId/lifecycle/offboard')
+  async offboardTenant(
+    @CurrentUser() user: NonNullable<AuthenticatedRequest['user']>,
+    @Param('tenantId') tenantId: string,
+    @Body() body: unknown
+  ) {
+    const payload = parseOrThrow(offboardAdminTenantRequestSchema, body);
+    const response = await this.adminService.offboardTenant(user.id, tenantId, payload);
+
+    return offboardAdminTenantResponseSchema.parse(response);
+  }
+
   @Post('subscription-activation-codes')
   async createSubscriptionActivationCode(
     @CurrentUser() user: NonNullable<AuthenticatedRequest['user']>,
@@ -172,6 +193,49 @@ export class AdminController {
     const response = await this.adminService.listAuditLogs(user.id, parsedQuery);
 
     return listSuperAdminAuditLogsResponseSchema.parse(response);
+  }
+
+  @Get('analytics/activity/overview')
+  async getActivityOverview(
+    @CurrentUser() user: NonNullable<AuthenticatedRequest['user']>,
+    @Query() query: unknown
+  ) {
+    const parsedQuery = parseOrThrow(getAdminActivityOverviewQuerySchema, query);
+    const response = await this.adminService.getActivityOverview(user.id, parsedQuery);
+
+    return adminActivityOverviewResponseSchema.parse(response);
+  }
+
+  @Get('analytics/usage/overview')
+  async getUsageOverview(
+    @CurrentUser() user: NonNullable<AuthenticatedRequest['user']>,
+    @Query() query: unknown
+  ) {
+    const parsedQuery = parseOrThrow(getAdminUsageOverviewQuerySchema, query);
+    const response = await this.adminService.getUsageOverview(user.id, parsedQuery);
+
+    return adminUsageOverviewResponseSchema.parse(response);
+  }
+
+  @Get('tenants/:tenantId/usage')
+  async getTenantUsage(
+    @CurrentUser() user: NonNullable<AuthenticatedRequest['user']>,
+    @Param('tenantId') tenantId: string
+  ) {
+    const response = await this.adminService.getTenantUsage(user.id, tenantId);
+
+    return getAdminTenantUsageResponseSchema.parse(response);
+  }
+
+  @Get('analytics/revenue/overview')
+  async getRevenueOverview(
+    @CurrentUser() user: NonNullable<AuthenticatedRequest['user']>,
+    @Query() query: unknown
+  ) {
+    const parsedQuery = parseOrThrow(getAdminRevenueOverviewQuerySchema, query);
+    const response = await this.adminService.getRevenueOverview(user.id, parsedQuery);
+
+    return adminRevenueOverviewResponseSchema.parse(response);
   }
 
   @Get('audit-logs/export')

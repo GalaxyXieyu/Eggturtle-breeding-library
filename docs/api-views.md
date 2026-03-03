@@ -1,6 +1,6 @@
 # API Views（主线 + Legacy 映射）
 
-更新时间：2026-03-01  
+更新时间：2026-03-03  
 范围：`apps/web`、`apps/admin`、`apps/api`、`legacy/backend`
 
 ## 1. 前端页面 -> API 映射
@@ -38,6 +38,11 @@
 | `/dashboard/tenants/[tenantId]` | `apps/admin/app/dashboard/tenants/[tenantId]/page.tsx` | 租户详情+订阅配置 | `GET /admin/tenants/:tenantId`、`GET /admin/tenants/:tenantId/subscription`、`PUT /admin/tenants/:tenantId/subscription` |
 | `/dashboard/memberships` | `apps/admin/app/dashboard/memberships/page.tsx` | 跨租户成员管理 | `GET /admin/tenants/:tenantId/members`、`POST /admin/tenants/:tenantId/members`、`DELETE /admin/tenants/:tenantId/members/:userId` |
 | `/dashboard/audit-logs` | `apps/admin/app/dashboard/audit-logs/page.tsx` | 平台审计日志 | `GET /admin/audit-logs` |
+| `/dashboard/analytics` | `apps/admin/app/dashboard/analytics/page.tsx` | 活跃度看板（兼容入口） | `GET /admin/analytics/activity/overview` |
+| `/dashboard/analytics/activity` | `apps/admin/app/dashboard/analytics/activity/page.tsx` | 活跃度看板（主入口） | `GET /admin/analytics/activity/overview` |
+| `/dashboard/usage` | `apps/admin/app/dashboard/usage/page.tsx` | 用量看板（TopN + 单租户明细） | `GET /admin/analytics/usage/overview`、`GET /admin/tenants/:tenantId/usage` |
+| `/dashboard/billing` | `apps/admin/app/dashboard/billing/page.tsx` | 付费看板（兼容入口） | `GET /admin/analytics/revenue/overview` |
+| `/dashboard/analytics/revenue` | `apps/admin/app/dashboard/analytics/revenue/page.tsx` | 付费看板（主入口） | `GET /admin/analytics/revenue/overview` |
 
 ## 2. Node 主线 API 全量视图（`apps/api/src/*.controller.ts`）
 
@@ -116,6 +121,10 @@
 - `POST /admin/tenants/:tenantId/members`
 - `DELETE /admin/tenants/:tenantId/members/:userId`
 - `GET /admin/audit-logs`
+- `GET /admin/analytics/activity/overview`
+- `GET /admin/analytics/usage/overview`
+- `GET /admin/tenants/:tenantId/usage`
+- `GET /admin/analytics/revenue/overview`
 - `GET /health`
 - `GET /health/db`
 - `GET /payments/readiness`

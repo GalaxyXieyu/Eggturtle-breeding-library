@@ -1,10 +1,23 @@
 import {
+  adminActivityOverviewResponseSchema,
+  adminRevenueOverviewResponseSchema,
+  adminUsageOverviewResponseSchema,
+  getAdminRevenueOverviewQuerySchema,
+  getAdminActivityOverviewQuerySchema,
+  getAdminTenantUsageResponseSchema,
+  getAdminUsageOverviewQuerySchema,
   getAdminTenantSubscriptionResponseSchema,
+  offboardAdminTenantRequestSchema,
+  offboardAdminTenantResponseSchema,
   reactivateAdminTenantResponseSchema,
   suspendAdminTenantRequestSchema,
   suspendAdminTenantResponseSchema,
   updateTenantSubscriptionRequestSchema,
   updateTenantSubscriptionResponseSchema,
+  type GetAdminActivityOverviewQuery,
+  type GetAdminRevenueOverviewQuery,
+  type GetAdminUsageOverviewQuery,
+  type OffboardAdminTenantRequest,
   type SuspendAdminTenantRequest,
   type UpdateTenantSubscriptionRequest
 } from '@eggturtle/shared';
@@ -215,5 +228,56 @@ export async function reactivateAdminTenant(tenantId: string) {
   return apiRequest(`/admin/tenants/${tenantId}/lifecycle/reactivate`, {
     method: 'POST',
     responseSchema: reactivateAdminTenantResponseSchema
+  });
+}
+
+export async function offboardAdminTenant(
+  tenantId: string,
+  payload: OffboardAdminTenantRequest
+) {
+  return apiRequest(`/admin/tenants/${tenantId}/lifecycle/offboard`, {
+    method: 'POST',
+    body: payload,
+    requestSchema: offboardAdminTenantRequestSchema,
+    responseSchema: offboardAdminTenantResponseSchema
+  });
+}
+
+export async function getAdminActivityOverview(query?: Partial<GetAdminActivityOverviewQuery>) {
+  const parsedQuery = getAdminActivityOverviewQuerySchema.parse(query ?? {});
+  const params = new URLSearchParams({
+    window: parsedQuery.window
+  });
+
+  return apiRequest(`/admin/analytics/activity/overview?${params.toString()}`, {
+    responseSchema: adminActivityOverviewResponseSchema
+  });
+}
+
+export async function getAdminUsageOverview(query?: Partial<GetAdminUsageOverviewQuery>) {
+  const parsedQuery = getAdminUsageOverviewQuerySchema.parse(query ?? {});
+  const params = new URLSearchParams({
+    topN: String(parsedQuery.topN)
+  });
+
+  return apiRequest(`/admin/analytics/usage/overview?${params.toString()}`, {
+    responseSchema: adminUsageOverviewResponseSchema
+  });
+}
+
+export async function getAdminTenantUsage(tenantId: string) {
+  return apiRequest(`/admin/tenants/${tenantId}/usage`, {
+    responseSchema: getAdminTenantUsageResponseSchema
+  });
+}
+
+export async function getAdminRevenueOverview(query?: Partial<GetAdminRevenueOverviewQuery>) {
+  const parsedQuery = getAdminRevenueOverviewQuerySchema.parse(query ?? {});
+  const params = new URLSearchParams({
+    window: parsedQuery.window
+  });
+
+  return apiRequest(`/admin/analytics/revenue/overview?${params.toString()}`, {
+    responseSchema: adminRevenueOverviewResponseSchema
   });
 }
