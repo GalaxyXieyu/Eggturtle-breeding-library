@@ -18,6 +18,7 @@ env:
   # Run schema migrations before rolling out new image. Uses the same env as the workload (no secrets in Actions).
   RUN_DB_MIGRATIONS: ${{ vars.RUN_DB_MIGRATIONS || 'true' }}
   DB_MIGRATION_COMMAND: ${{ vars.DB_MIGRATION_COMMAND || 'pnpm --filter @eggturtle/api prisma:deploy' }}
+  ROLLOUT_TIMEOUT_SECONDS: ${{ vars.ROLLOUT_TIMEOUT_SECONDS || '600' }}
 
 jobs:
   verify:
@@ -223,4 +224,32 @@ jobs:
 
           echo "Updating workload image and rolling out..."
           kubectl set image "$WORKLOAD_KIND"/"$WORKLOAD_NAME" "$CONTAINER_NAME"="$IMAGE_REF" -n "$NAMESPACE"
-          kubectl rollout status "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE" --timeout=600s
+          if ! kubectl rollout status "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE" --timeout="${ROLLOUT_TIMEOUT_SECONDS}s"; then
+            echo "::warning::Rollout timed out after ${ROLLOUT_TIMEOUT_SECONDS}s. Collecting diagnostics..."
+            kubectl get pods -n "$NAMESPACE" -o wide | sed -n '1,220p' || true
+            kubectl get rs -n "$NAMESPACE" | sed -n '1,220p' || true
+            kubectl describe "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE" | sed -n '1,320p' || true
+
+            OLD_PODS=$(kubectl get pods -n "$NAMESPACE" -o json \
+              | jq -r --arg workload "$WORKLOAD_NAME" --arg container "$CONTAINER_NAME" --arg image "$IMAGE_REF" '
+                  .items[]
+                  | select((.metadata.name | startswith($workload + "-")))
+                  | select(any(.spec.containers[]?; .name == $container and .image != $image))
+                  | .metadata.name
+                ' \
+              | sort -u)
+
+            if [ -n "$OLD_PODS" ]; then
+              echo "Force deleting old pods still using outdated image:"
+              printf '%s\n' "$OLD_PODS"
+              while IFS= read -r pod; do
+                [ -n "$pod" ] || continue
+                kubectl delete pod "$pod" -n "$NAMESPACE" --grace-period=0 --force || true
+              done <<< "$OLD_PODS"
+
+              kubectl rollout status "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE" --timeout=300s
+            else
+              echo "::error::Rollout timed out and no old pods were detected for automatic recovery."
+              exit 1
+            fi
+          fi
