@@ -13,6 +13,7 @@ import { ArrowUpRight, Layers3, ListFilter, Pencil, RotateCcw, Search, SlidersHo
 
 import { ApiError, apiRequest, getAccessToken, resolveAuthenticatedAssetUrl } from '../../../../lib/api-client';
 import { switchTenantBySlug } from '../../../../lib/tenant-session';
+import TenantFloatingShareButton from '../../../../components/tenant-floating-share-button';
 import { Badge } from '../../../../components/ui/badge';
 import { Button } from '../../../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../components/ui/card';
@@ -163,15 +164,6 @@ export default function SeriesListPage() {
     }
   }
 
-  async function handleRefresh() {
-    try {
-      await loadSeries({ search: search.trim() || undefined });
-    } catch (requestError) {
-      setError(formatError(requestError));
-      setLoading(false);
-    }
-  }
-
   function renderFilterForm(mode: 'desktop' | 'mobile') {
     if (mode === 'desktop') {
       return (
@@ -305,7 +297,8 @@ export default function SeriesListPage() {
   }
 
   return (
-    <main className="space-y-4 pb-8 sm:space-y-6">
+    <>
+      <main className="space-y-4 pb-8 sm:space-y-6">
       {error ? (
         <Card className="rounded-3xl border-red-200 bg-red-50 p-5">
           <p className="text-sm font-semibold text-red-700">{error}</p>
@@ -406,15 +399,17 @@ export default function SeriesListPage() {
       </Card>
 
       {isManageMode ? (
-        <Button
-          type="button"
-          size="icon"
-          className="mobile-fab fixed right-5 z-40 h-12 w-12 rounded-full shadow-[0_10px_24px_rgba(0,0,0,0.22)] lg:hidden"
-          aria-label="打开系列筛选弹窗"
-          onClick={() => setIsFilterModalOpen(true)}
-        >
-          <SlidersHorizontal size={18} />
-        </Button>
+        <div className="mobile-fab fixed right-5 z-50 flex flex-col-reverse gap-2 lg:hidden">
+          <Button
+            type="button"
+            size="icon"
+            className="tenant-fab-button h-11 w-11"
+            aria-label="打开系列筛选弹窗"
+            onClick={() => setIsFilterModalOpen(true)}
+          >
+            <SlidersHorizontal size={18} />
+          </Button>
+        </div>
       ) : null}
 
       {isFilterModalOpen && isManageMode ? (
@@ -554,6 +549,14 @@ export default function SeriesListPage() {
         </div>
       ) : null}
     </main>
+      {isManageMode ? (
+        <div className="hidden lg:block">
+          <TenantFloatingShareButton intent="series" />
+        </div>
+      ) : (
+        <TenantFloatingShareButton intent="series" />
+      )}
+    </>
   );
 }
 

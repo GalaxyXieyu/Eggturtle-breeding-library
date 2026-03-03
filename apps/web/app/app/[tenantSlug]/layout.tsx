@@ -21,6 +21,7 @@ import {
 
 import { UiPreferenceControls, useUiPreferences } from '../../../components/ui-preferences';
 import { Button } from '../../../components/ui/button';
+import TenantFloatingShareButton, { type TenantShareIntent } from '../../../components/tenant-floating-share-button';
 import { ApiError, apiRequest, clearAccessToken, getAccessToken } from '../../../lib/api-client';
 import { formatTenantDisplayName } from '../../../lib/tenant-display';
 import { switchTenantBySlug } from '../../../lib/tenant-session';
@@ -71,7 +72,6 @@ const SHELL_COPY = {
     upgradePlan: '升级套餐',
     createShare: '创建并复制分享链接',
     openSharePage: '打开分享页',
-    shareNav: '分享',
     logout: '退出登录',
     defaultTenant: '蛋龟选育库',
     quickSharePending: '正在打开分享页...',
@@ -86,7 +86,6 @@ const SHELL_COPY = {
     upgradePlan: 'Upgrade Plan',
     createShare: 'Create & Copy Share Link',
     openSharePage: 'Open share page',
-    shareNav: 'Share',
     logout: 'Sign out',
     defaultTenant: 'Eggturtle Workspace',
     quickSharePending: 'Opening share page...',
@@ -115,6 +114,23 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
     const matched = NAV_ITEMS.find((item) => isActive(pathname, item.href(tenantSlug)));
     return matched?.label[locale] ?? NAV_ITEMS[0].label[locale];
   }, [pathname, tenantSlug, locale]);
+
+  const floatingShareIntent = useMemo<TenantShareIntent>(() => {
+    const segments = pathname.split('/').filter(Boolean);
+    if (segments[0] !== 'app' || segments[1] !== tenantSlug) {
+      return 'feed';
+    }
+
+    if (segments[2] === 'series') {
+      return 'series';
+    }
+
+    if ((segments[2] === 'products' || segments[2] === 'breeders') && segments[3]) {
+      return { productId: safelyDecodePathSegment(segments[3]) };
+    }
+
+    return 'feed';
+  }, [pathname, tenantSlug]);
 
   useEffect(() => {
     if (!tenantSlug || !getAccessToken()) {
@@ -300,18 +316,6 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
                   <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">{activeLabel}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="icon"
-                    title={copy.openSharePage}
-                    aria-label={copy.openSharePage}
-                    className="tenant-mobile-toolbar-action h-10 w-10 rounded-2xl border border-white/90 bg-white/85 shadow-[0_4px_14px_rgba(0,0,0,0.1)] dark:border-neutral-700 dark:bg-neutral-900"
-                    onClick={() => void handleQuickShareOpen()}
-                    disabled={quickSharePending}
-                  >
-                    <Share2 size={18} />
-                  </Button>
                   <UiPreferenceControls className="tenant-mobile-pref tenant-mobile-toolbar-action rounded-2xl border border-white/90 bg-white/85 p-1 shadow-[0_4px_14px_rgba(0,0,0,0.1)] dark:border-neutral-700 dark:bg-neutral-900" />
                 </div>
               </div>
@@ -371,7 +375,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
       </div>
 
       <nav
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-black/10 bg-white/96 px-2 pt-4 pb-[max(6px,env(safe-area-inset-bottom))] backdrop-blur lg:hidden dark:border-white/10 dark:bg-neutral-950/92"
+        className="fixed inset-x-0 bottom-0 z-40 h-[85px] border-t border-black/10 bg-white/96 px-2 pt-0 pb-0 text-[13px] backdrop-blur lg:hidden dark:border-white/10 dark:bg-neutral-950/92"
         aria-label="租户移动端主导航"
       >
         <ul className="mx-auto flex w-full max-w-xl items-end justify-between gap-0">
@@ -383,7 +387,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
 
             if (isCenter) {
               return (
-                <li key={`mobile-${href}`} className="flex flex-1 justify-center">
+                <li key={`mobile-${href}`} className="flex min-w-0 flex-1 justify-center">
                   <Link
                     href={href}
                     className="flex flex-col items-center gap-1 transition-opacity active:opacity-90 -translate-y-5"
@@ -413,7 +417,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
             }
 
             return (
-              <li key={`mobile-${href}`} className="flex flex-1 justify-center">
+              <li key={`mobile-${href}`} className="flex min-w-0 flex-1 justify-center">
                 <Link
                   href={href}
                   className={cn(
@@ -438,23 +442,9 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
               </li>
             );
           })}
-          <li className="flex flex-1 justify-center">
-            <button
-              type="button"
-              onClick={() => void handleQuickShareOpen()}
-              disabled={quickSharePending}
-              className="inline-flex min-w-[56px] flex-col items-center gap-0.5 px-1 pb-0.5 text-[11px] font-medium text-neutral-500 transition-colors hover:text-neutral-800 disabled:opacity-50 dark:text-neutral-400 dark:hover:text-neutral-200"
-              aria-label={copy.openSharePage}
-              title={copy.openSharePage}
-            >
-              <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-transparent text-current transition-colors">
-                <Share2 size={18} />
-              </span>
-              <span>{copy.shareNav}</span>
-            </button>
-          </li>
         </ul>
       </nav>
+      <TenantFloatingShareButton intent={floatingShareIntent} className="lg:hidden" />
     </div>
   );
 }
@@ -527,4 +517,12 @@ function formatActionError(error: unknown, fallback: string) {
   }
 
   return fallback;
+}
+
+function safelyDecodePathSegment(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
 }

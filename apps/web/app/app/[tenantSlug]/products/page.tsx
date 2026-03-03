@@ -12,6 +12,7 @@ import { Filter, Plus, Search as SearchIcon, SlidersHorizontal, X } from 'lucide
 
 import { ApiError, apiRequest, getAccessToken, resolveAuthenticatedAssetUrl } from '../../../../lib/api-client';
 import { switchTenantBySlug } from '../../../../lib/tenant-session';
+import TenantFloatingShareButton from '../../../../components/tenant-floating-share-button';
 import { Button } from '../../../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../components/ui/card';
 import { Input } from '../../../../components/ui/input';
@@ -943,11 +944,11 @@ export default function TenantProductsPage() {
       ) : null}
 
       {isManageMode && showMobileManageFab ? (
-        <div className="mobile-fab fixed right-5 z-40 flex flex-col gap-2 lg:hidden">
+        <div className="mobile-fab fixed right-5 z-50 flex flex-col-reverse gap-2 lg:hidden">
           <Button
             type="button"
             size="icon"
-            className="h-12 w-12 rounded-full shadow-[0_10px_24px_rgba(0,0,0,0.22)]"
+            className="tenant-fab-button h-11 w-11"
             aria-label="新建产品"
             onClick={openCreateModal}
             disabled={submitting}
@@ -958,7 +959,7 @@ export default function TenantProductsPage() {
             type="button"
             size="icon"
             variant="secondary"
-            className="h-12 w-12 rounded-full bg-white/95 shadow-[0_10px_24px_rgba(0,0,0,0.18)]"
+            className="tenant-fab-button bg-white/95 dark:bg-neutral-900/92"
             aria-label="打开筛选弹窗"
             onClick={() => setIsFilterModalOpen(true)}
           >
@@ -1038,6 +1039,14 @@ export default function TenantProductsPage() {
         </div>
       ) : null}
     </main>
+      {isManageMode && showMobileManageFab ? (
+        <div className="hidden lg:block">
+          <TenantFloatingShareButton intent="feed" />
+        </div>
+      ) : (
+        <TenantFloatingShareButton intent="feed" />
+      )}
+    </>
   );
 }
 
