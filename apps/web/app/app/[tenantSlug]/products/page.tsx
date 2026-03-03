@@ -59,6 +59,11 @@ const DEMO_PRODUCTS: Product[] = [
     description: '展示用示例产品',
     seriesId: 'MG',
     sex: 'female',
+    needMatingStatus: 'need_mating',
+    lastEggAt: '2026-02-19T00:00:00.000Z',
+    lastMatingAt: '2026-01-29T00:00:00.000Z',
+    daysSinceEgg: 12,
+    offspringUnitPrice: 20000,
     coverImageUrl: '/images/mg_01.jpg',
     createdAt: '2026-02-28T07:10:00.000Z',
     updatedAt: '2026-02-28T09:20:00.000Z',
@@ -72,6 +77,7 @@ const DEMO_PRODUCTS: Product[] = [
     description: '展示用示例产品',
     seriesId: 'MG',
     sex: 'male',
+    needMatingStatus: 'normal',
     coverImageUrl: '/images/mg_02.jpg',
     createdAt: '2026-02-27T11:00:00.000Z',
     updatedAt: '2026-02-28T08:15:00.000Z',
@@ -90,6 +96,9 @@ const DEMO_PRODUCTS: Product[] = [
     updatedAt: '2026-02-26T12:45:00.000Z',
   },
 ];
+
+const MODAL_CLOSE_BUTTON_CLASS =
+  '!h-10 !w-10 !min-h-10 !min-w-10 !rounded-full !border-0 !p-0 !leading-none bg-neutral-900 text-white shadow-[0_10px_24px_rgba(0,0,0,0.34)] ring-1 ring-black/20 transition hover:bg-neutral-800 focus-visible:ring-2 focus-visible:ring-black/35 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200';
 
 export default function TenantProductsPage() {
   const router = useRouter();
@@ -776,10 +785,22 @@ export default function TenantProductsPage() {
                         </div>
                       )}
                       <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/30 to-transparent" />
-                      <div className="absolute left-2 top-2 rounded-full border border-white/70 bg-white/90 px-2.5 py-1 text-xs font-medium text-neutral-800 shadow-[0_2px_12px_rgba(0,0,0,0.12)] backdrop-blur-sm dark:border-white/40 dark:bg-neutral-800/90 dark:text-neutral-200">
+                      {item.needMatingStatus === 'need_mating' || item.needMatingStatus === 'warning' ? (
+                        <div
+                          className={`absolute left-2 top-2 rounded-full px-2.5 py-1 text-xs font-medium ${
+                            item.needMatingStatus === 'need_mating'
+                              ? 'bg-[#FFD400]/90 text-black ring-1 ring-black/10'
+                              : 'bg-red-600/90 text-white ring-1 ring-black/10'
+                          }`}
+                        >
+                          {item.needMatingStatus === 'need_mating' ? '待配' : '⚠️逾期未交配'}
+                          {typeof item.daysSinceEgg === 'number' ? ` 第${item.daysSinceEgg}天` : ''}
+                        </div>
+                      ) : null}
+                      <div className="absolute right-2 top-2 rounded-full bg-white/90 px-2.5 py-1 text-xs text-black">
                         {formatSex(item.sex)}
                       </div>
-                      <span className="absolute right-2 top-2 flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full shadow-[0_2px_12px_rgba(0,0,0,0.12)] transition-transform duration-200 hover:scale-105">
+                      <span className="absolute bottom-2 right-2 flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full shadow-[0_2px_12px_rgba(0,0,0,0.12)] transition-transform duration-200 hover:scale-105">
                         <button
                           type="button"
                           data-ui="button"
@@ -795,27 +816,53 @@ export default function TenantProductsPage() {
                       </span>
                     </div>
 
-                    <div className="space-y-2 p-3">
-                      <p className="truncate text-sm font-semibold text-neutral-900 sm:text-base">
-                        {item.code}
-                      </p>
-                      {item.description ? (
-                        <p className="line-clamp-2 text-xs leading-relaxed text-neutral-600">
-                          {item.description}
-                        </p>
-                      ) : null}
-                      <div className="flex flex-wrap gap-1.5 text-[11px] text-neutral-700">
-                        {item.sireCode ? (
-                          <span className="rounded-full bg-neutral-100 px-2 py-0.5">
-                            父系 {item.sireCode}
-                          </span>
-                        ) : null}
-                        {item.damCode ? (
-                          <span className="rounded-full bg-neutral-100 px-2 py-0.5">
-                            母系 {item.damCode}
+                    <div className="p-3 lg:p-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0 text-sm font-semibold tracking-wide text-neutral-900 sm:text-base lg:text-lg">
+                          {item.code}
+                        </div>
+                        {typeof item.offspringUnitPrice === 'number' ? (
+                          <span className="shrink-0 rounded-full bg-neutral-900 px-2 py-0.5 text-[11px] font-semibold leading-5 text-[#FFD400] ring-1 ring-white/10 sm:text-xs">
+                            子代 ¥ {item.offspringUnitPrice}
                           </span>
                         ) : null}
                       </div>
+
+                      {item.lastEggAt || item.lastMatingAt ? (
+                        <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-neutral-700">
+                          {item.lastEggAt ? (
+                            <span className="rounded-full bg-amber-50 px-2 py-0.5 ring-1 ring-amber-200/60">
+                              产蛋 {formatShortDate(item.lastEggAt)}
+                            </span>
+                          ) : null}
+                          {item.lastMatingAt ? (
+                            <span className="rounded-full bg-emerald-50 px-2 py-0.5 ring-1 ring-emerald-200/60">
+                              交配 {formatShortDate(item.lastMatingAt)}
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : null}
+
+                      {item.description ? (
+                        <div className="mt-2 rounded-xl bg-neutral-100/80 px-2.5 py-1.5 text-xs leading-relaxed text-neutral-700 sm:text-sm">
+                          <span className="line-clamp-2">{item.description}</span>
+                        </div>
+                      ) : null}
+
+                      {item.sireCode || item.damCode ? (
+                        <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-neutral-700">
+                          {item.sireCode ? (
+                            <span className="rounded-full bg-neutral-100 px-2 py-0.5">
+                              父系 {item.sireCode}
+                            </span>
+                          ) : null}
+                          {item.damCode ? (
+                            <span className="rounded-full bg-neutral-100 px-2 py-0.5">
+                              母系 {item.damCode}
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </div>
                   </article>
                 ))}
@@ -900,10 +947,11 @@ export default function TenantProductsPage() {
                     type="button"
                     variant="secondary"
                     size="icon"
-                    className="h-9 w-9 rounded-full"
+                    className={MODAL_CLOSE_BUTTON_CLASS}
                     onClick={() => setIsFilterModalOpen(false)}
+                    aria-label="关闭筛选"
                   >
-                    <X size={16} />
+                    <X size={17} strokeWidth={2.6} />
                   </Button>
                 </div>
               </CardHeader>
@@ -952,4 +1000,14 @@ function formatSex(value?: string | null) {
   }
 
   return value;
+}
+
+function formatShortDate(value?: string | null) {
+  const raw = (value ?? '').trim();
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) {
+    return '';
+  }
+
+  return `${match[2]}.${match[3]}`;
 }

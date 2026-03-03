@@ -308,7 +308,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
           className="pointer-events-none absolute inset-x-0 bottom-0 top-6 border-t border-black/10 bg-white/96 backdrop-blur dark:border-white/10 dark:bg-neutral-950/92"
           aria-hidden
         />
-        <ul className="relative z-0 mx-auto flex w-full max-w-xl items-end justify-between px-1 leading-[15.85px]">
+        <ul className="relative z-0 mx-auto flex w-full max-w-xl items-end justify-between px-1 leading-[15.85px] mt-[5px] mb-[5px]">
           {NAV_ITEMS.map((item, index) => {
             const href = item.href(tenantSlug);
             const active = isActive(pathname, href);

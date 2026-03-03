@@ -35,6 +35,9 @@ function rankStatus(status: NeedMatingStatus) {
   return status === 'warning' ? 1 : 0;
 }
 
+const MODAL_CLOSE_BUTTON_CLASS =
+  'inline-flex !h-10 !w-10 !min-h-10 !min-w-10 !shrink-0 !items-center !justify-center !rounded-full !border-0 !p-0 !leading-none bg-neutral-900 text-white shadow-[0_10px_24px_rgba(0,0,0,0.34)] ring-1 ring-black/20 transition hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/35 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200';
+
 export default function PublicFeedPage({
   demo,
   shareToken,
@@ -79,6 +82,9 @@ export default function PublicFeedPage({
   }, [initialSeriesId, series]);
 
   useEffect(() => {
+    const OPEN_THRESHOLD = 460;
+    const CLOSE_THRESHOLD = 320;
+
     function updateFilterFloatingState() {
       const isMobileViewport = window.matchMedia('(max-width: 1023px)').matches;
       if (!isMobileViewport) {
@@ -87,11 +93,14 @@ export default function PublicFeedPage({
         return;
       }
 
-      const nextFloating = window.scrollY > 420;
-      setShowMobileFilterFab(nextFloating);
-      if (!nextFloating) {
-        setIsMobileFilterModalOpen(false);
-      }
+      setShowMobileFilterFab((current) => {
+        const y = window.scrollY;
+        const next = current ? y > CLOSE_THRESHOLD : y > OPEN_THRESHOLD;
+        if (!next) {
+          setIsMobileFilterModalOpen(false);
+        }
+        return next;
+      });
     }
 
     updateFilterFloatingState();
@@ -160,14 +169,15 @@ export default function PublicFeedPage({
                 onClick={() => setSeriesId(item.id)}
                 className={`h-8 rounded-full border px-3 text-xs shadow-[0_1px_0_rgba(0,0,0,0.04)] transition lg:h-9 lg:px-4 lg:text-sm ${
                   seriesId === item.id
-                    ? 'bg-white font-semibold'
+                    ? 'font-semibold text-white'
                     : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:shadow-sm'
                 }`}
                 style={
                   seriesId === item.id
                     ? {
                         borderColor: brandPrimary,
-                        color: brandSecondary,
+                        backgroundColor: brandPrimary,
+                        color: '#ffffff',
                         boxShadow: activeButtonShadow,
                       }
                     : undefined
@@ -193,14 +203,15 @@ export default function PublicFeedPage({
                 onClick={() => setSex(item.key)}
                 className={`h-8 rounded-full border px-3 text-xs shadow-[0_1px_0_rgba(0,0,0,0.04)] transition lg:h-9 lg:px-4 lg:text-sm ${
                   sex === item.key
-                    ? 'bg-white font-semibold'
+                    ? 'font-semibold text-white'
                     : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:shadow-sm'
                 }`}
                 style={
                   sex === item.key
                     ? {
                         borderColor: brandPrimary,
-                        color: brandSecondary,
+                        backgroundColor: brandPrimary,
+                        color: '#ffffff',
                         boxShadow: activeButtonShadow,
                       }
                     : undefined
@@ -226,14 +237,15 @@ export default function PublicFeedPage({
                 onClick={() => setStatus(item.key)}
                 className={`h-8 rounded-full border px-3 text-xs shadow-[0_1px_0_rgba(0,0,0,0.04)] transition lg:h-9 lg:px-4 lg:text-sm ${
                   status === item.key
-                    ? 'bg-white font-semibold'
+                    ? 'font-semibold text-white'
                     : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:shadow-sm'
                 }`}
                 style={
                   status === item.key
                     ? {
                         borderColor: brandPrimary,
-                        color: brandSecondary,
+                        backgroundColor: brandPrimary,
+                        color: '#ffffff',
                         boxShadow: activeButtonShadow,
                       }
                     : undefined
@@ -349,7 +361,7 @@ export default function PublicFeedPage({
 
         {isMobileFilterModalOpen ? (
           <div
-            className="fixed inset-0 z-50 flex items-end bg-black/35 p-3 sm:items-center sm:justify-center sm:p-4"
+            className="fixed inset-0 z-[70] flex items-end bg-black/35 p-3 sm:items-center sm:justify-center sm:p-4"
             role="dialog"
             aria-modal="true"
             aria-label="筛选宠物"
@@ -370,11 +382,11 @@ export default function PublicFeedPage({
                 </div>
                 <button
                   type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-700 transition hover:bg-neutral-100 dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                  className={MODAL_CLOSE_BUTTON_CLASS}
                   aria-label="关闭筛选"
                   onClick={() => setIsMobileFilterModalOpen(false)}
                 >
-                  <X size={16} />
+                  <X size={17} strokeWidth={2.6} />
                 </button>
               </div>
               {renderFilterContent()}

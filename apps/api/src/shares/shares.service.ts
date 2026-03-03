@@ -383,9 +383,15 @@ export class SharesService {
       }
     });
 
+    const needMatingSummaryByProductId = await this.loadNeedMatingSummaryByProductIds(
+      share.tenantId,
+      products.map((product) => product.id)
+    );
+
     const items = await Promise.all(
       products.map(async (product) => {
         const coverImage = product.images[0] ?? null;
+        const needMatingSummary = needMatingSummaryByProductId.get(product.id);
         const coverImageUrl = coverImage
           ? await this.resolvePublicImageUrl({
               shareId: share.id,
@@ -408,6 +414,10 @@ export class SharesService {
           description: product.description,
           seriesId: product.seriesId,
           sex: product.sex,
+          needMatingStatus: needMatingSummary?.status ?? null,
+          lastEggAt: needMatingSummary?.lastEggAt?.toISOString() ?? null,
+          lastMatingAt: needMatingSummary?.lastMatingAt?.toISOString() ?? null,
+          daysSinceEgg: needMatingSummary?.daysSinceEgg ?? null,
           offspringUnitPrice: product.offspringUnitPrice?.toNumber() ?? null,
           coverImageUrl,
           popularityScore: product.popularityScore ?? 0,
@@ -509,6 +519,57 @@ export class SharesService {
       detail,
       expiresAt: expiresAt.toISOString()
     };
+  }
+
+  private async loadNeedMatingSummaryByProductIds(tenantId: string, productIds: string[]) {
+    const summaryByProductId = new Map<
+      string,
+      {
+        status: 'normal' | 'need_mating' | 'warning';
+        lastEggAt: Date | null;
+        lastMatingAt: Date | null;
+        daysSinceEgg: number | null;
+      }
+    >();
+
+    if (productIds.length === 0) {
+      return summaryByProductId;
+    }
+
+    const rows = await this.prisma.$queryRaw<
+      Array<{
+        productId: string;
+        excludeFromBreeding: boolean;
+        lastEggAt: Date | null;
+        lastMatingAt: Date | null;
+      }>
+    >(Prisma.sql`
+      SELECT
+        p.id AS "productId",
+        p.exclude_from_breeding AS "excludeFromBreeding",
+        MAX(CASE WHEN e.event_type = 'egg' THEN e.event_date END) AS "lastEggAt",
+        MAX(CASE WHEN e.event_type = 'mating' THEN e.event_date END) AS "lastMatingAt"
+      FROM "products" p
+      LEFT JOIN "product_events" e
+        ON e.tenant_id = p.tenant_id
+       AND e.product_id = p.id
+      WHERE p.tenant_id = ${tenantId}
+        AND p.id IN (${Prisma.join(productIds)})
+        AND LOWER(COALESCE(p.sex, '')) = 'female'
+      GROUP BY p.id, p.exclude_from_breeding
+    `);
+
+    for (const row of rows) {
+      const status = resolveNeedMatingStatus(row.lastEggAt, row.lastMatingAt, row.excludeFromBreeding);
+      summaryByProductId.set(row.productId, {
+        status,
+        lastEggAt: row.lastEggAt,
+        lastMatingAt: row.lastMatingAt,
+        daysSinceEgg: calculateDaysSince(row.lastEggAt)
+      });
+    }
+
+    return summaryByProductId;
   }
 
   private async listPublicProductEvents(tenantId: string, productId: string) {

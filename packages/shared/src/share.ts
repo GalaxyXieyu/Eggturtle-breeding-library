@@ -1,6 +1,11 @@
 import { z } from 'zod';
 
-import { productFamilyTreeSchema, productImageSchema, productSchema } from './product';
+import {
+  productFamilyTreeSchema,
+  productImageSchema,
+  productNeedMatingStatusSchema,
+  productSchema
+} from './product';
 
 const COLOR_HEX_PATTERN = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 const MAX_HERO_IMAGES = 10;
@@ -135,6 +140,10 @@ export const publicShareFeedItemSchema = z.object({
   description: z.string().nullable(),
   seriesId: z.string().nullable(),
   sex: z.string().nullable(),
+  needMatingStatus: productNeedMatingStatusSchema.nullable().optional(),
+  lastEggAt: z.string().datetime().nullable().optional(),
+  lastMatingAt: z.string().datetime().nullable().optional(),
+  daysSinceEgg: z.number().int().nonnegative().nullable().optional(),
   offspringUnitPrice: z.number().finite().nonnegative().nullable(),
   coverImageUrl: z.string().nullable(),
   popularityScore: z.number().int().min(0).max(100),

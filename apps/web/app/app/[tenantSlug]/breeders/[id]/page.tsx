@@ -12,14 +12,14 @@ import {
   type ProductFamilyTree,
   type ProductImage
 } from '@eggturtle/shared';
-import { CalendarClock, Image as ImageIcon, Network, PencilRuler } from 'lucide-react';
+import { ArrowLeft, CalendarClock, Image as ImageIcon, Network, PencilRuler } from 'lucide-react';
 
 import { ApiError, apiRequest, getAccessToken, resolveAuthenticatedAssetUrl } from '../../../../../lib/api-client';
 import { switchTenantBySlug } from '../../../../../lib/tenant-session';
+import { cn } from '../../../../../lib/utils';
 import { Badge } from '../../../../../components/ui/badge';
 import { Button } from '../../../../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../../components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../../../components/ui/table';
 
 type DetailState = {
   breeder: Product | null;
@@ -28,7 +28,14 @@ type DetailState = {
   images: ProductImage[];
 };
 
-type FamilyTreeNode = ProductFamilyTree['self'];
+type FamilyTreeNode = ProductFamilyTree['self'] | ProductFamilyTree['children'][number];
+
+const EVENT_FILTER_OPTIONS = [
+  { key: 'all' as const, title: '全部' },
+  { key: 'mating' as const, title: '交配' },
+  { key: 'egg' as const, title: '产蛋' },
+  { key: 'change_mate' as const, title: '换公' }
+];
 
 export default function BreederDetailPage() {
   const router = useRouter();
@@ -43,6 +50,7 @@ export default function BreederDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeImageId, setActiveImageId] = useState<string | null>(null);
   const [eventFilter, setEventFilter] = useState<'all' | 'mating' | 'egg' | 'change_mate'>('all');
+  const [eventExpanded, setEventExpanded] = useState(true);
   const [data, setData] = useState<DetailState>({
     breeder: null,
     events: [],
@@ -55,6 +63,20 @@ export default function BreederDetailPage() {
     if (eventFilter === 'all') return data.events;
     return data.events.filter((e) => e.eventType === eventFilter);
   }, [data.events, eventFilter]);
+
+  const groupedEvents = useMemo(() => {
+    const groups = new Map<string, ProductEvent[]>();
+    for (const event of filteredEvents) {
+      const year = formatEventYear(event.eventDate);
+      const current = groups.get(year);
+      if (current) {
+        current.push(event);
+      } else {
+        groups.set(year, [event]);
+      }
+    }
+    return Array.from(groups.entries()).map(([year, items]) => ({ year, items }));
+  }, [filteredEvents]);
 
   useEffect(() => {
     if (!getAccessToken()) {
@@ -154,6 +176,15 @@ export default function BreederDetailPage() {
       <Card className="tenant-card-lift overflow-hidden rounded-3xl border-neutral-200/90 bg-white transition-all">
         <CardContent className="grid gap-6 p-0 lg:grid-cols-[380px_minmax(0,1fr)]">
           <div className="relative bg-neutral-100">
+            <button
+              type="button"
+              onClick={() => router.push(listHref)}
+              className="absolute left-3 top-3 z-10 inline-flex h-9 items-center gap-1 rounded-full border border-white/40 bg-black/55 px-3 text-xs font-semibold text-white shadow-[0_8px_20px_rgba(0,0,0,0.28)] backdrop-blur-sm transition hover:bg-black/65"
+              aria-label="返回列表"
+            >
+              <ArrowLeft size={14} />
+              返回
+            </button>
             {activeImage ? (
               <img src={resolveImageUrl(activeImage.url)} alt={`${data.breeder?.code ?? 'breeder'} 图片`} className="h-full w-full object-cover" />
             ) : (
@@ -242,56 +273,37 @@ export default function BreederDetailPage() {
             </CardTitle>
             <CardDescription>{data.tree.limitations}</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="overflow-x-auto rounded-2xl border border-neutral-200/90 bg-neutral-50/50 p-4 shadow-[0_4px_12px_rgba(0,0,0,0.04)]">
-              <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:gap-6">
-                <div className="flex flex-col gap-2">
-                  <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">父本 / 母本</p>
-                  <div className="flex gap-3">
+          <CardContent className="space-y-4">
+            <div className="relative overflow-hidden rounded-2xl border border-black/5 bg-white shadow-[0_8px_24px_rgba(0,0,0,0.06)] dark:border-white/10 dark:bg-neutral-900/75">
+              <div className="overflow-x-auto overflow-y-hidden pb-4">
+                <div className="inline-flex gap-8 px-4 py-6">
+                  <div className="flex flex-col gap-3">
+                    <div className="text-center text-xs font-medium text-neutral-500 dark:text-neutral-400">父本 / 母本</div>
                     <TreeCard title="父本" node={data.tree.sire} onOpen={openBreederDetail} />
                     <TreeCard title="母本" node={data.tree.dam} onOpen={openBreederDetail} />
                   </div>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">当前个体 / 配偶</p>
-                  <div className="flex gap-3">
-                    <TreeCard title="当前个体" node={data.tree.self} onOpen={openBreederDetail} />
+
+                  <div className="flex flex-col gap-3">
+                    <div className="text-center text-xs font-medium text-amber-600 dark:text-amber-400">当前个体 / 配偶</div>
+                    <TreeCard title="当前个体" node={data.tree.self} onOpen={openBreederDetail} highlight />
                     <TreeCard title="配偶" node={data.tree.mate} onOpen={openBreederDetail} />
+                  </div>
+
+                  <div className="flex flex-col gap-3">
+                    <div className="text-center text-xs font-medium text-neutral-500 dark:text-neutral-400">子代</div>
+                    {data.tree.children.length === 0 ? (
+                      <TreeCard title="子代" node={null} onOpen={openBreederDetail} />
+                    ) : (
+                      data.tree.children.map((child) => (
+                        <TreeCard key={child.id} title={formatSex(child.sex)} node={child} onOpen={openBreederDetail} />
+                      ))
+                    )}
                   </div>
                 </div>
               </div>
-            </div>
-
-            <div className="rounded-2xl border border-neutral-200/90 bg-white p-4 shadow-[0_4px_12px_rgba(0,0,0,0.04)]">
-              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-neutral-500">子代</h3>
-              {data.tree.children.length === 0 ? (
-                <p className="text-sm text-neutral-500">未找到直系子代。</p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>编码</TableHead>
-                      <TableHead>名称</TableHead>
-                      <TableHead>性别</TableHead>
-                      <TableHead>操作</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data.tree.children.map((child) => (
-                      <TableRow key={child.id}>
-                        <TableCell>{child.code}</TableCell>
-                        <TableCell>{child.name ?? '未命名种龟'}</TableCell>
-                        <TableCell>{formatSex(child.sex)}</TableCell>
-                        <TableCell>
-                          <Button size="sm" variant="secondary" onClick={() => openBreederDetail(child.id)}>
-                            打开
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
+              <div className="absolute bottom-0 left-0 right-0 flex justify-center">
+                <div className="rounded-t-lg bg-black/60 px-4 py-1.5 text-[11px] text-white backdrop-blur-sm">左右滑动查看完整谱系</div>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -308,67 +320,85 @@ export default function BreederDetailPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {data.events.length === 0 ? (
-              <p className="rounded-2xl border border-neutral-200 bg-neutral-50/80 px-4 py-6 text-center text-sm text-neutral-500">暂无事件记录。</p>
+              <p className="rounded-2xl border border-neutral-200 bg-neutral-50/80 px-4 py-6 text-center text-sm text-neutral-500 dark:border-white/10 dark:bg-neutral-950/40 dark:text-neutral-400">
+                暂无事件记录。
+              </p>
             ) : (
               <>
                 <div className="flex flex-wrap gap-2">
-                  {[
-                    { key: 'all' as const, title: '全部' },
-                    { key: 'mating' as const, title: '交配' },
-                    { key: 'egg' as const, title: '产蛋' },
-                    { key: 'change_mate' as const, title: '换公' }
-                  ].map((item) => (
+                  {EVENT_FILTER_OPTIONS.map((item) => (
                     <button
                       key={item.key}
                       type="button"
                       onClick={() => setEventFilter(item.key)}
                       className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
                         eventFilter === item.key
-                          ? 'border-neutral-900 bg-neutral-900 text-white'
-                          : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300'
+                          ? 'border-neutral-900 bg-neutral-900 text-white dark:border-white/15 dark:bg-neutral-50 dark:text-neutral-950'
+                          : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 dark:border-white/10 dark:bg-neutral-950/30 dark:text-neutral-200 dark:hover:border-white/20'
                       }`}
                     >
                       {item.title}
                     </button>
                   ))}
                 </div>
-                <div className="overflow-x-auto rounded-2xl border border-neutral-200/90 bg-neutral-50/50 p-3 shadow-[0_4px_12px_rgba(0,0,0,0.04)]">
+                <div className="overflow-x-auto rounded-2xl border border-black/5 bg-white p-3 shadow-[0_6px_18px_rgba(0,0,0,0.05)] dark:border-white/10 dark:bg-neutral-900/75">
                   <div className="flex w-max flex-row items-center gap-2">
                     {filteredEvents.map((event) => (
                       <div
                         key={event.id}
-                        className="flex w-[80px] shrink-0 flex-col items-center gap-1 rounded-xl border border-neutral-200 bg-white px-2 py-2.5 shadow-sm"
+                        className="flex w-[84px] shrink-0 flex-col items-center gap-1 rounded-xl border border-neutral-200 bg-white px-2 py-2.5 shadow-sm dark:border-white/10 dark:bg-neutral-950/40"
                       >
                         <span className="text-sm leading-none">{eventTypeIcon(event.eventType)}</span>
-                        <span className="text-[10px] font-semibold leading-tight text-neutral-900">
+                        <span className="text-[10px] font-semibold leading-tight text-neutral-900 dark:text-neutral-100">
                           {formatEventShortDate(event.eventDate)}
                         </span>
-                        <span className="text-[10px] font-semibold leading-tight text-neutral-600">
+                        <span className="text-[10px] font-semibold leading-tight text-neutral-600 dark:text-neutral-300">
                           {eventTypeLabel(event.eventType)}
                         </span>
                       </div>
                     ))}
                   </div>
                 </div>
-                <div className="divide-y divide-neutral-200 overflow-hidden rounded-2xl border border-neutral-200/90 bg-white">
-                  {filteredEvents.map((event) => (
-                    <div key={event.id} className="px-4 py-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-sm leading-none">{eventTypeIcon(event.eventType)}</span>
-                            <span className="text-sm font-semibold text-neutral-900">{eventTypeLabel(event.eventType)}</span>
-                            <span className="text-xs font-medium text-neutral-500">
-                              {new Date(event.eventDate).toLocaleDateString('zh-CN')}
-                            </span>
-                          </div>
-                          {event.note ? (
-                            <p className="mt-1.5 whitespace-pre-wrap text-sm text-neutral-600">{event.note}</p>
-                          ) : null}
-                        </div>
-                      </div>
+                <div className="overflow-hidden rounded-2xl border border-black/5 bg-white shadow-[0_8px_24px_rgba(0,0,0,0.06)] dark:border-white/10 dark:bg-neutral-900/75">
+                  <div className="border-b bg-neutral-50 px-4 py-3 dark:border-white/10 dark:bg-neutral-950/35">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">记录（已加载 {filteredEvents.length} 条）</div>
+                      <button
+                        type="button"
+                        onClick={() => setEventExpanded((current) => !current)}
+                        className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-semibold text-neutral-700 transition hover:border-neutral-300 dark:border-white/10 dark:bg-neutral-950/30 dark:text-neutral-200 dark:hover:border-white/20"
+                      >
+                        {eventExpanded ? '收起' : '展开'}
+                      </button>
                     </div>
-                  ))}
+                  </div>
+                  {eventExpanded ? (
+                    filteredEvents.length === 0 ? (
+                      <div className="p-6 text-sm text-neutral-500 dark:text-neutral-400">暂无记录</div>
+                    ) : (
+                      <div>
+                        {groupedEvents.map((group) => (
+                          <div key={group.year}>
+                            <div className="border-b border-neutral-200/80 px-4 py-2 text-sm font-semibold text-neutral-700 dark:border-white/10 dark:text-neutral-300">
+                              {group.year}
+                            </div>
+                            <div className="divide-y dark:divide-white/10">
+                              {group.items.map((event) => (
+                                <div key={event.id} className="px-4 py-3">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="text-sm leading-none">{eventTypeIcon(event.eventType)}</span>
+                                    <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{eventTypeLabel(event.eventType)}</span>
+                                    <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{formatEventShortDate(event.eventDate)}</span>
+                                  </div>
+                                  <p className="mt-1 text-sm font-medium text-neutral-800 dark:text-neutral-200">{buildEventSummary(event)}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  ) : null}
                 </div>
               </>
             )}
@@ -394,24 +424,36 @@ function MetaItem({ label, value }: { label: string; value: string }) {
   );
 }
 
-function TreeCard(props: { title: string; node: FamilyTreeNode | null; onOpen: (id: string) => void }) {
+function TreeCard(props: { title: string; node: FamilyTreeNode | null; onOpen: (id: string) => void; highlight?: boolean }) {
   const node = props.node;
 
   return (
-    <div className="rounded-2xl border border-neutral-200/90 bg-white p-4 shadow-[0_4px_12px_rgba(0,0,0,0.04)] transition hover:shadow-[0_6px_20px_rgba(0,0,0,0.08)]">
-      <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">{props.title}</p>
+    <div
+      className={cn(
+        'w-28 rounded-2xl border bg-white p-3 shadow-[0_6px_16px_rgba(0,0,0,0.08)] transition hover:shadow-[0_8px_20px_rgba(0,0,0,0.12)] dark:bg-neutral-900/70',
+        props.highlight
+          ? 'border-amber-300 ring-2 ring-amber-200/70 dark:border-amber-400/80 dark:ring-amber-400/20'
+          : 'border-neutral-200/90 dark:border-white/10'
+      )}
+    >
+      <p className="text-[10px] font-semibold tracking-[0.08em] text-neutral-500 dark:text-neutral-400">{props.title}</p>
       {node ? (
-        <div className="mt-2 space-y-1">
-          <p className="text-sm font-semibold text-neutral-900">{node.code}</p>
-          <p className="text-xs text-neutral-500">{node.name ?? '未命名种龟'}</p>
-          <div className="pt-2">
-            <Button size="sm" variant="secondary" className="rounded-xl" onClick={() => props.onOpen(node.id)}>
+        <div className="mt-2 space-y-1.5">
+          <p className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{node.code}</p>
+          <p className="line-clamp-2 min-h-8 text-[11px] leading-4 text-neutral-500 dark:text-neutral-400">{node.name ?? '未命名种龟'}</p>
+          <div className="pt-1">
+            <Button
+              size="sm"
+              variant="secondary"
+              className="h-7 rounded-full border border-neutral-200 px-2.5 text-[11px] font-semibold dark:border-white/10 dark:bg-neutral-950/35 dark:text-neutral-100"
+              onClick={() => props.onOpen(node.id)}
+            >
               打开
             </Button>
           </div>
         </div>
       ) : (
-        <p className="mt-2 text-sm text-neutral-500">未关联</p>
+        <p className="mt-3 text-xs text-neutral-500 dark:text-neutral-400">未关联</p>
       )}
     </div>
   );
@@ -464,4 +506,22 @@ function formatEventShortDate(isoDate: string) {
   const m = d.getMonth() + 1;
   const day = d.getDate();
   return `${m}.${day}`;
+}
+
+function formatEventYear(isoDate: string) {
+  const d = new Date(isoDate);
+  return String(d.getFullYear());
+}
+
+function buildEventSummary(event: ProductEvent) {
+  if (event.eventType === 'mating') {
+    return `公龟 ${event.maleCode || '-'}`;
+  }
+  if (event.eventType === 'egg') {
+    return `数量 ${typeof event.eggCount === 'number' ? event.eggCount : '-'}`;
+  }
+  if (event.eventType === 'change_mate') {
+    return `换公 ${(event.oldMateCode || '-') + ' → ' + (event.newMateCode || '-')}`;
+  }
+  return '-';
 }

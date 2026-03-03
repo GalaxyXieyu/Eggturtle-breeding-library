@@ -124,7 +124,36 @@ export default function PublicShareMePage({ shareToken, shareQuery, presentation
         </section>
 
         <section className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-          <article className="relative overflow-hidden rounded-3xl border border-black/10 bg-white/92 p-4 shadow-[0_14px_30px_rgba(0,0,0,0.08)] dark:border-white/10 dark:bg-neutral-900/75 sm:p-5">
+          <article className="order-1 rounded-3xl border border-black/10 bg-white/92 p-5 shadow-[0_14px_30px_rgba(0,0,0,0.08)] dark:border-white/10 dark:bg-neutral-900/75 lg:order-2">
+            <div className="flex items-center gap-2 text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+              <Sparkles size={16} className="text-[#d3a600]" />
+              功能与优势
+            </div>
+            <p className="mt-2 text-sm leading-relaxed text-neutral-600 dark:text-neutral-300">
+              当前公开主题为“{resolvedPresentation.feedTitle}”，注册后即可在后台编辑标题、封面图、主题色与联系信息。
+            </p>
+
+            <div className="mt-4 space-y-3">
+              {CAPABILITY_CARDS.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <div key={item.title} className="rounded-2xl border border-black/10 bg-white px-3 py-3 shadow-[0_5px_14px_rgba(0,0,0,0.05)] dark:border-white/10 dark:bg-neutral-900/70">
+                    <div className="flex items-start gap-2">
+                      <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#FFF8D9] text-[#8a6400] dark:bg-[#2b2410] dark:text-[#ffd96a]">
+                        <Icon size={14} />
+                      </span>
+                      <div>
+                        <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{item.title}</p>
+                        <p className="mt-1 text-xs leading-relaxed text-neutral-600 dark:text-neutral-300">{item.desc}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </article>
+
+          <article className="order-2 relative overflow-hidden rounded-3xl border border-black/10 bg-white/92 p-4 shadow-[0_14px_30px_rgba(0,0,0,0.08)] dark:border-white/10 dark:bg-neutral-900/75 sm:p-5 lg:order-1">
             <div className="grid grid-cols-2 gap-3 sm:gap-4">
               {collageImages.map((imageUrl, index) => (
                 <div
@@ -151,35 +180,6 @@ export default function PublicShareMePage({ shareToken, shareQuery, presentation
             <div className="pointer-events-none absolute bottom-6 left-6 max-w-[220px] rounded-2xl border border-black/10 bg-white/90 px-3 py-2 backdrop-blur dark:border-white/15 dark:bg-neutral-900/80">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500 dark:text-neutral-400">可配置展示</p>
               <p className="mt-1 text-sm font-semibold text-neutral-900 dark:text-neutral-100">封面图、主题色、联系方式都可自定义</p>
-            </div>
-          </article>
-
-          <article className="rounded-3xl border border-black/10 bg-white/92 p-5 shadow-[0_14px_30px_rgba(0,0,0,0.08)] dark:border-white/10 dark:bg-neutral-900/75">
-            <div className="flex items-center gap-2 text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-              <Sparkles size={16} className="text-[#d3a600]" />
-              功能与优势
-            </div>
-            <p className="mt-2 text-sm leading-relaxed text-neutral-600 dark:text-neutral-300">
-              当前公开主题为“{resolvedPresentation.feedTitle}”，注册后即可在后台编辑标题、封面图、主题色与联系信息。
-            </p>
-
-            <div className="mt-4 space-y-3">
-              {CAPABILITY_CARDS.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <div key={item.title} className="rounded-2xl border border-black/10 bg-white px-3 py-3 shadow-[0_5px_14px_rgba(0,0,0,0.05)] dark:border-white/10 dark:bg-neutral-900/70">
-                    <div className="flex items-start gap-2">
-                      <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#FFF8D9] text-[#8a6400] dark:bg-[#2b2410] dark:text-[#ffd96a]">
-                        <Icon size={14} />
-                      </span>
-                      <div>
-                        <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{item.title}</p>
-                        <p className="mt-1 text-xs leading-relaxed text-neutral-600 dark:text-neutral-300">{item.desc}</p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
             </div>
           </article>
         </section>

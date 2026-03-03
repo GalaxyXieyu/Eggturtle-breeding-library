@@ -80,6 +80,9 @@ const seriesResponseParser = {
   },
 };
 
+const MODAL_CLOSE_BUTTON_CLASS =
+  '!h-10 !w-10 !min-h-10 !min-w-10 !rounded-full !border-0 !p-0 !leading-none bg-neutral-900 text-white shadow-[0_10px_24px_rgba(0,0,0,0.34)] ring-1 ring-black/20 transition hover:bg-neutral-800 focus-visible:ring-2 focus-visible:ring-black/35 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200';
+
 export default function SeriesListPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -498,10 +501,11 @@ export default function SeriesListPage() {
                     type="button"
                     variant="secondary"
                     size="icon"
-                    className="h-9 w-9 rounded-full"
+                    className={MODAL_CLOSE_BUTTON_CLASS}
                     onClick={() => setIsFilterModalOpen(false)}
+                    aria-label="关闭筛选"
                   >
-                    <X size={16} />
+                    <X size={17} strokeWidth={2.6} />
                   </Button>
                 </div>
               </CardHeader>

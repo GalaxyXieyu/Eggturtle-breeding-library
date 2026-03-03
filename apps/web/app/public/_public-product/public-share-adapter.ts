@@ -89,6 +89,10 @@ function mapFeedItemToBreeder(item: PublicShareFeedItem): Breeder {
     description: item.description || undefined,
     seriesId: resolveSeriesKey(item.seriesId, item.code),
     sex: normalizeSex(item.sex),
+    needMatingStatus: item.needMatingStatus ?? undefined,
+    lastEggAt: item.lastEggAt ?? undefined,
+    lastMatingAt: item.lastMatingAt ?? undefined,
+    daysSinceEgg: typeof item.daysSinceEgg === 'number' ? item.daysSinceEgg : undefined,
     offspringUnitPrice: item.offspringUnitPrice ?? undefined,
     images: [{ id: `${item.id}-cover`, url: cover, alt: item.name || item.code, type: 'main' }]
   };

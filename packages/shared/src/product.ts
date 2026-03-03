@@ -7,6 +7,7 @@ const nullableType = z.string().trim().max(80).nullable().optional();
 const productType = z.string().trim().min(1).max(80);
 const nullableSexInput = z.enum(['male', 'female']).nullable().optional();
 const nullableSexResponse = z.string().trim().max(20).nullable().optional();
+const needMatingStatusSchema = z.enum(['normal', 'need_mating', 'warning']);
 const nullableOffspringUnitPrice = z
   .preprocess((value) => {
     if (value === '' || value === null || value === undefined) {
@@ -35,6 +36,10 @@ export const productSchema = z.object({
   description: z.string().nullable(),
   seriesId: nullableSeriesId,
   sex: nullableSexResponse,
+  needMatingStatus: needMatingStatusSchema.nullable().optional(),
+  lastEggAt: z.string().datetime().nullable().optional(),
+  lastMatingAt: z.string().datetime().nullable().optional(),
+  daysSinceEgg: z.number().int().nonnegative().nullable().optional(),
   offspringUnitPrice: nullableOffspringUnitPrice,
   sireCode: nullableCode,
   damCode: nullableCode,
@@ -48,6 +53,8 @@ export const productSchema = z.object({
   createdAt: z.string().datetime().optional(),
   updatedAt: z.string().datetime().optional()
 });
+
+export const productNeedMatingStatusSchema = needMatingStatusSchema;
 
 const createProductRequestBaseSchema = z.object({
   code: productCodeSchema,

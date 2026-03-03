@@ -60,17 +60,17 @@ export default function PublicBottomDock({
       aria-label="公开分享导航"
     >
       <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 top-6 border-t border-black/10 bg-white/96 shadow-[0_-6px_16px_rgba(0,0,0,0.08)] backdrop-blur dark:border-white/10 dark:bg-neutral-950/92"
+        className="pointer-events-none absolute inset-x-0 bottom-0 top-6 border-t border-black/10 bg-white shadow-[0_-6px_16px_rgba(0,0,0,0.08)] dark:border-white/10 dark:bg-neutral-950"
         aria-hidden
       />
-      <ul className="relative z-0 mx-auto flex w-full max-w-xl items-end justify-between px-1 leading-[15.85px]">
+      <ul className="relative z-0 mx-auto flex w-full max-w-[330px] items-end justify-between px-0 leading-[15.85px] sm:max-w-xl sm:px-1">
         {tabs.map((item) => {
           const active = activeTab === item.key;
           const Icon = item.icon;
 
           if (item.isCenter) {
             return (
-              <li key={item.key} className="flex min-w-[72px] justify-center">
+              <li key={item.key} className="flex min-w-[68px] justify-center">
                 <Link
                   href={item.href}
                   className="flex flex-col items-center gap-1 transition-opacity active:opacity-90 -translate-y-2"
@@ -102,11 +102,11 @@ export default function PublicBottomDock({
           }
 
           return (
-            <li key={item.key} className="flex min-w-[56px] justify-center">
+            <li key={item.key} className="flex min-w-[50px] justify-center">
               <Link
                 href={item.href}
                 className={cn(
-                  'inline-flex min-w-[56px] flex-col items-center gap-0.5 px-1 pb-0.5 text-[11px] font-medium transition-colors',
+                  'inline-flex min-w-[50px] flex-col items-center gap-0.5 px-0.5 pb-0.5 text-[11px] font-medium transition-colors',
                   active
                     ? 'text-neutral-900 dark:text-neutral-100'
                     : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200',

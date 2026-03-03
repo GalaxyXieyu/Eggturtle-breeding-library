@@ -28,6 +28,8 @@ type PublicFloatingActionsProps = {
 
 const DEFAULT_SHARE_TITLE = '蛋龟选育库 · 公开图鉴';
 const DEFAULT_SHARE_SUBTITLE = '扫码查看完整公开图鉴与更新动态';
+const MODAL_CLOSE_BUTTON_CLASS =
+  'inline-flex !h-10 !w-10 !min-h-10 !min-w-10 !shrink-0 !items-center !justify-center !rounded-full !border-0 !p-0 !leading-none bg-neutral-900 text-white shadow-[0_10px_24px_rgba(0,0,0,0.34)] ring-1 ring-black/20 transition hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/35 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200';
 
 export default function PublicFloatingActions({
   permalink: permalinkProp,
@@ -215,7 +217,7 @@ export default function PublicFloatingActions({
     <>
       <div
         className={cn(
-          'mobile-fab fixed right-6 z-50 flex flex-col-reverse gap-2 sm:right-6 lg:right-8',
+          'mobile-fab fixed right-6 !z-[55] !bottom-[calc(56px+max(24px,env(safe-area-inset-bottom))+12px)] lg:!bottom-[calc(56px+max(24px,env(safe-area-inset-bottom))+12px)] flex flex-col-reverse gap-2 sm:right-6 lg:right-8',
           className
         )}
       >
@@ -276,10 +278,10 @@ export default function PublicFloatingActions({
               <button
                 type="button"
                 aria-label="关闭二维码"
-                className="rounded-full p-1 text-neutral-500 transition hover:bg-black/5 hover:text-neutral-800 dark:hover:bg-white/10 dark:hover:text-neutral-100"
+                className={MODAL_CLOSE_BUTTON_CLASS}
                 onClick={() => setTenantQrOpen(false)}
               >
-                <X size={16} />
+                <X size={17} strokeWidth={2.6} />
               </button>
             </div>
 
@@ -329,10 +331,10 @@ export default function PublicFloatingActions({
               <button
                 type="button"
                 aria-label="关闭分享卡片"
-                className="rounded-full p-1 text-neutral-500 transition hover:bg-black/5 hover:text-neutral-800 dark:hover:bg-white/10 dark:hover:text-neutral-100"
+                className={MODAL_CLOSE_BUTTON_CLASS}
                 onClick={() => setShareOpen(false)}
               >
-                <X size={16} />
+                <X size={17} strokeWidth={2.6} />
               </button>
             </div>
 

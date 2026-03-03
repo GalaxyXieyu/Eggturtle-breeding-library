@@ -15,8 +15,8 @@ function formatShortDate(value?: string | null) {
 }
 
 function sexLabel(sex?: string | null) {
-  if (sex === 'male') return '种公';
-  if (sex === 'female') return '种母';
+  if (sex === 'male') return '公';
+  if (sex === 'female') return '母';
   return '-';
 }
 

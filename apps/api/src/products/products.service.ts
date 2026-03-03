@@ -43,6 +43,7 @@ import {
   parseEventDateInput,
   processPairTransitionDescription
 } from './breeding-rules';
+import { calculateDaysSince, resolveNeedMatingStatus } from './product-event-utils';
 
 export type UploadedBinaryFile = {
   originalname: string;
@@ -577,10 +578,16 @@ export class ProductsService {
       total = countedTotal;
     }
 
+    const needMatingSummaryByProductId = await this.loadNeedMatingSummaryByProductIds(
+      tenantId,
+      items.map((item) => item.id)
+    );
+
     return {
       products: items.map((item) =>
         this.toProduct(item, {
-          coverImageUrl: item.images[0] ? this.buildImageAccessPath(item.id, item.images[0].id) : null
+          coverImageUrl: item.images[0] ? this.buildImageAccessPath(item.id, item.images[0].id) : null,
+          needMatingSummary: needMatingSummaryByProductId.get(item.id)
         })
       ),
       total,
@@ -1458,6 +1465,12 @@ export class ProductsService {
     product: PrismaProduct,
     options: {
       coverImageUrl?: string | null;
+      needMatingSummary?: {
+        status: 'normal' | 'need_mating' | 'warning';
+        lastEggAt: Date | null;
+        lastMatingAt: Date | null;
+        daysSinceEgg: number | null;
+      };
     } = {}
   ): Product {
     return {
@@ -1469,6 +1482,10 @@ export class ProductsService {
       description: product.description,
       seriesId: product.seriesId,
       sex: product.sex,
+      needMatingStatus: options.needMatingSummary?.status ?? null,
+      lastEggAt: options.needMatingSummary?.lastEggAt?.toISOString() ?? null,
+      lastMatingAt: options.needMatingSummary?.lastMatingAt?.toISOString() ?? null,
+      daysSinceEgg: options.needMatingSummary?.daysSinceEgg ?? null,
       offspringUnitPrice: product.offspringUnitPrice?.toNumber() ?? null,
       sireCode: product.sireCode,
       damCode: product.damCode,
@@ -1482,6 +1499,57 @@ export class ProductsService {
       createdAt: product.createdAt.toISOString(),
       updatedAt: product.updatedAt.toISOString()
     };
+  }
+
+  private async loadNeedMatingSummaryByProductIds(tenantId: string, productIds: string[]) {
+    const summaryByProductId = new Map<
+      string,
+      {
+        status: 'normal' | 'need_mating' | 'warning';
+        lastEggAt: Date | null;
+        lastMatingAt: Date | null;
+        daysSinceEgg: number | null;
+      }
+    >();
+
+    if (productIds.length === 0) {
+      return summaryByProductId;
+    }
+
+    const rows = await this.prisma.$queryRaw<
+      Array<{
+        productId: string;
+        excludeFromBreeding: boolean;
+        lastEggAt: Date | null;
+        lastMatingAt: Date | null;
+      }>
+    >(Prisma.sql`
+      SELECT
+        p.id AS "productId",
+        p.exclude_from_breeding AS "excludeFromBreeding",
+        MAX(CASE WHEN e.event_type = 'egg' THEN e.event_date END) AS "lastEggAt",
+        MAX(CASE WHEN e.event_type = 'mating' THEN e.event_date END) AS "lastMatingAt"
+      FROM "products" p
+      LEFT JOIN "product_events" e
+        ON e.tenant_id = p.tenant_id
+       AND e.product_id = p.id
+      WHERE p.tenant_id = ${tenantId}
+        AND p.id IN (${Prisma.join(productIds)})
+        AND LOWER(COALESCE(p.sex, '')) = 'female'
+      GROUP BY p.id, p.exclude_from_breeding
+    `);
+
+    for (const row of rows) {
+      const status = resolveNeedMatingStatus(row.lastEggAt, row.lastMatingAt, row.excludeFromBreeding);
+      summaryByProductId.set(row.productId, {
+        status,
+        lastEggAt: row.lastEggAt,
+        lastMatingAt: row.lastMatingAt,
+        daysSinceEgg: calculateDaysSince(row.lastEggAt)
+      });
+    }
+
+    return summaryByProductId;
   }
 
   private toProductImage(image: PrismaProductImage): ProductImage {

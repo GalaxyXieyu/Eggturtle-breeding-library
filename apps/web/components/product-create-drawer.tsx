@@ -79,6 +79,8 @@ type ProductCreateDrawerProps = {
 };
 
 const DEFAULT_POPULARITY_SCORE = '0';
+const MODAL_CLOSE_BUTTON_CLASS =
+  'inline-flex !h-10 !w-10 !min-h-10 !min-w-10 !shrink-0 !items-center !justify-center !rounded-full !border-0 !p-0 !leading-none bg-neutral-900 text-white shadow-[0_10px_24px_rgba(0,0,0,0.34)] ring-1 ring-black/20 transition hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/35 disabled:cursor-not-allowed disabled:opacity-45 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200';
 
 export default function ProductCreateDrawer({
   open,
@@ -503,12 +505,12 @@ export default function ProductCreateDrawer({
           <div className="flex items-center justify-between gap-3">
             <button
               type="button"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-700 transition hover:bg-neutral-100"
+              className={MODAL_CLOSE_BUTTON_CLASS}
               onClick={closeDrawer}
               aria-label="关闭抽屉"
               disabled={submitting}
             >
-              <X size={16} />
+              <X size={17} strokeWidth={2.6} />
             </button>
             <div className="text-center">
               <p className="text-sm font-semibold text-neutral-900">新建乌龟</p>
