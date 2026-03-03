@@ -10,10 +10,16 @@ import { cn } from '../../../lib/utils';
 type PublicFloatingActionsProps = {
   permalink: string;
   homeHref?: string;
+  showHomeButton?: boolean;
   className?: string;
 };
 
-export default function PublicFloatingActions({ permalink, homeHref = '/app', className }: PublicFloatingActionsProps) {
+export default function PublicFloatingActions({
+  permalink,
+  homeHref = '/app',
+  showHomeButton = true,
+  className
+}: PublicFloatingActionsProps) {
   const [qrOpen, setQrOpen] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
 
@@ -47,7 +53,13 @@ export default function PublicFloatingActions({ permalink, homeHref = '/app', cl
 
   return (
     <>
-      <div className={cn('fixed bottom-5 right-4 z-40 flex flex-col gap-2 sm:bottom-6 sm:right-6', className)}>
+      <div
+        className={cn(
+          'fixed right-4 z-40 flex flex-col gap-2 sm:right-6',
+          showHomeButton ? 'bottom-5 sm:bottom-6' : 'bottom-[calc(env(safe-area-inset-bottom)+68px)] sm:bottom-[calc(env(safe-area-inset-bottom)+76px)]',
+          className
+        )}
+      >
         <button
           type="button"
           aria-label="当前页二维码"
@@ -58,14 +70,16 @@ export default function PublicFloatingActions({ permalink, homeHref = '/app', cl
           <QrCode size={18} />
         </button>
 
-        <a
-          href={homeHref}
-          aria-label="进入后台"
-          title="进入后台"
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-white/92 text-neutral-800 shadow-[0_8px_24px_rgba(0,0,0,0.16)] backdrop-blur transition hover:scale-[1.03] hover:bg-white dark:border-white/15 dark:bg-neutral-900/88 dark:text-neutral-100"
-        >
-          <Home size={18} />
-        </a>
+        {showHomeButton ? (
+          <a
+            href={homeHref}
+            aria-label="进入后台"
+            title="进入后台"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-white/92 text-neutral-800 shadow-[0_8px_24px_rgba(0,0,0,0.16)] backdrop-blur transition hover:scale-[1.03] hover:bg-white dark:border-white/15 dark:bg-neutral-900/88 dark:text-neutral-100"
+          >
+            <Home size={18} />
+          </a>
+        ) : null}
       </div>
 
       {qrOpen ? (

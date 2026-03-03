@@ -14,12 +14,8 @@ import {
   LayoutDashboard,
   Package,
   Layers,
-  QrCode,
-  Link2,
-  Wallet,
+  Share2,
   LogOut,
-  Menu,
-  X,
   UserRound
 } from 'lucide-react';
 
@@ -47,32 +43,22 @@ type PlanTier = 'FREE' | 'BASIC' | 'PRO';
 
 const NAV_ITEMS: NavItem[] = [
   {
-    label: { zh: '控制台', en: 'Dashboard' },
+    label: { zh: '看板', en: 'Dashboard' },
     href: (tenantSlug) => `/app/${tenantSlug}`,
     icon: LayoutDashboard
   },
   {
-    label: { zh: '套餐订阅', en: 'Subscription' },
-    href: (tenantSlug) => `/app/${tenantSlug}/subscription`,
-    icon: Wallet
-  },
-  {
-    label: { zh: '宠物管理', en: 'Pets' },
-    href: (tenantSlug) => `/app/${tenantSlug}/products`,
-    icon: Package
-  },
-  {
-    label: { zh: '系列管理', en: 'Series' },
+    label: { zh: '系列', en: 'Series' },
     href: (tenantSlug) => `/app/${tenantSlug}/series`,
     icon: Layers
   },
   {
-    label: { zh: '分享展示', en: 'Share Showcase' },
-    href: (tenantSlug) => `/app/${tenantSlug}/share-presentation`,
-    icon: QrCode
+    label: { zh: '宠物', en: 'Pets' },
+    href: (tenantSlug) => `/app/${tenantSlug}/products`,
+    icon: Package
   },
   {
-    label: { zh: '个人设置', en: 'Profile' },
+    label: { zh: '我的', en: 'Account' },
     href: (tenantSlug) => `/app/${tenantSlug}/account`,
     icon: UserRound
   }
@@ -85,11 +71,9 @@ const SHELL_COPY = {
     upgradePlan: '升级套餐',
     createShare: '创建并复制分享链接',
     openSharePage: '打开分享页',
+    shareNav: '分享',
     logout: '退出登录',
     defaultTenant: '蛋龟选育库',
-    openMenu: '打开导航菜单',
-    closeMenu: '关闭导航菜单',
-    closeSidebar: '关闭侧边栏',
     quickSharePending: '正在打开分享页...',
     quickShareSuccess: '已打开分享页',
     quickShareMissingTenant: '当前租户上下文未就绪，暂时无法生成链接。',
@@ -102,11 +86,9 @@ const SHELL_COPY = {
     upgradePlan: 'Upgrade Plan',
     createShare: 'Create & Copy Share Link',
     openSharePage: 'Open share page',
+    shareNav: 'Share',
     logout: 'Sign out',
     defaultTenant: 'Eggturtle Workspace',
-    openMenu: 'Open navigation menu',
-    closeMenu: 'Close navigation menu',
-    closeSidebar: 'Close sidebar',
     quickSharePending: 'Opening share page...',
     quickShareSuccess: 'Share page opened',
     quickShareMissingTenant: 'Tenant context is not ready yet.',
@@ -120,7 +102,6 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
   const tenantSlug = params.tenantSlug ?? '';
   const pathname = usePathname();
   const router = useRouter();
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [quickSharePending, setQuickSharePending] = useState(false);
   const [quickShareNotice, setQuickShareNotice] = useState<string | null>(null);
   const [quickShareError, setQuickShareError] = useState<string | null>(null);
@@ -218,14 +199,8 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
 
   return (
     <div className="tenant-shell-bg h-[100svh] overflow-hidden">
-      <div className="flex h-full w-full gap-2 p-2 sm:gap-3 sm:p-3 lg:gap-4 lg:p-4">
-        <aside
-          className={cn(
-            'fixed inset-y-0 left-0 z-50 flex w-[272px] flex-col overflow-hidden border-r border-neutral-200 bg-white shadow-[0_16px_32px_rgba(0,0,0,0.08)] transition-transform duration-300 lg:relative lg:h-full lg:translate-x-0 lg:rounded-3xl lg:border lg:shadow-[0_8px_26px_rgba(0,0,0,0.08)]',
-            'dark:border-neutral-800 dark:bg-neutral-950/96 dark:shadow-[0_20px_40px_rgba(0,0,0,0.45)]',
-            mobileNavOpen ? 'translate-x-0' : '-translate-x-full'
-          )}
-        >
+      <div className="flex h-full w-full gap-2 p-2 pb-[calc(env(safe-area-inset-bottom)+72px)] sm:gap-3 sm:p-3 lg:gap-4 lg:p-4 lg:pb-4">
+        <aside className="hidden w-[272px] flex-col overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-[0_8px_26px_rgba(0,0,0,0.08)] dark:border-neutral-800 dark:bg-neutral-950/96 dark:shadow-[0_20px_40px_rgba(0,0,0,0.45)] lg:flex">
           <div className="border-b border-neutral-200 px-6 py-5 dark:border-neutral-800">
             <p className="text-xs uppercase tracking-[0.28em] text-neutral-500 dark:text-neutral-400">{copy.workspace}</p>
             <div className="mt-2 flex items-center gap-2">
@@ -252,7 +227,6 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
                       ? 'bg-neutral-900 text-white ring-1 ring-[#FFD400]/45 dark:bg-[#FFD400]/18 dark:text-[#ffe28a] dark:ring-[#FFD400]/30'
                       : 'hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-900 dark:hover:text-neutral-100'
                   )}
-                  onClick={() => setMobileNavOpen(false)}
                 >
                   <span
                     className={cn(
@@ -278,7 +252,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
               onClick={() => void handleQuickShareOpen()}
               disabled={quickSharePending}
             >
-              <Link2 size={16} />
+              <Share2 size={16} />
               <span>{quickSharePending ? copy.quickSharePending : copy.createShare}</span>
             </Button>
 
@@ -332,22 +306,13 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
                     size="icon"
                     title={copy.openSharePage}
                     aria-label={copy.openSharePage}
-                    className="h-9 w-9 rounded-xl border border-white/90 bg-white/85 shadow-[0_4px_14px_rgba(0,0,0,0.1)] dark:border-neutral-700 dark:bg-neutral-900"
+                    className="tenant-mobile-toolbar-action h-10 w-10 rounded-2xl border border-white/90 bg-white/85 shadow-[0_4px_14px_rgba(0,0,0,0.1)] dark:border-neutral-700 dark:bg-neutral-900"
                     onClick={() => void handleQuickShareOpen()}
                     disabled={quickSharePending}
                   >
-                    <Link2 size={16} />
+                    <Share2 size={18} />
                   </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="icon"
-                    aria-label={mobileNavOpen ? copy.closeMenu : copy.openMenu}
-                    className="h-9 w-9 rounded-xl border border-white/90 bg-white/85 shadow-[0_4px_14px_rgba(0,0,0,0.1)] dark:border-neutral-700 dark:bg-neutral-900"
-                    onClick={() => setMobileNavOpen((open) => !open)}
-                  >
-                    {mobileNavOpen ? <X size={18} /> : <Menu size={18} />}
-                  </Button>
+                  <UiPreferenceControls className="tenant-mobile-pref tenant-mobile-toolbar-action rounded-2xl border border-white/90 bg-white/85 p-1 shadow-[0_4px_14px_rgba(0,0,0,0.1)] dark:border-neutral-700 dark:bg-neutral-900" />
                 </div>
               </div>
               <div className="relative z-10 mt-3 flex flex-wrap items-center gap-2">
@@ -357,7 +322,20 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
                 <span className="inline-flex items-center rounded-full border border-white/90 bg-white/80 px-2.5 py-1 text-[11px] text-neutral-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300">
                   {activeLabel}
                 </span>
+                <span className="inline-flex items-center rounded-full border border-[#FFD400]/40 bg-[#FFF8D5]/80 px-2.5 py-1 text-[11px] font-semibold text-neutral-700 dark:border-[#FFD400]/30 dark:bg-[#2b2410]/70 dark:text-[#ffe9a3]">
+                  {planLoading ? copy.planLoading : formatPlanBadgeLabel(currentPlan, locale)}
+                </span>
               </div>
+              {quickShareError ? (
+                <p className="relative z-10 mt-2 break-all rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                  {quickShareError}
+                </p>
+              ) : null}
+              {quickShareNotice ? (
+                <p className="relative z-10 mt-2 break-all rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                  {quickShareNotice}
+                </p>
+              ) : null}
             </div>
           </header>
 
@@ -377,43 +355,123 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
                   size="icon"
                   title={copy.openSharePage}
                   aria-label={copy.openSharePage}
+                  className="rounded-xl [&_svg]:shrink-0"
                   onClick={() => void handleQuickShareOpen()}
                   disabled={quickSharePending}
                 >
-                  <Link2 size={16} />
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="icon"
-                  aria-label={mobileNavOpen ? copy.closeMenu : copy.openMenu}
-                  className="lg:hidden"
-                  onClick={() => setMobileNavOpen((open) => !open)}
-                >
-                  {mobileNavOpen ? <X size={18} /> : <Menu size={18} />}
+                  <Share2 size={18} />
                 </Button>
               </div>
             </div>
           </header>
           <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-            <div className="pb-3 sm:pb-4">{children}</div>
+            <div className="tenant-mobile-content-safe pb-3 sm:pb-4 lg:pb-4">{children}</div>
           </div>
         </section>
       </div>
 
-      {mobileNavOpen ? (
-        <button
-          type="button"
-          aria-label={copy.closeSidebar}
-          className="fixed inset-0 z-40 bg-black/35 lg:hidden"
-          onClick={() => setMobileNavOpen(false)}
-        />
-      ) : null}
+      <nav
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-black/10 bg-white/96 px-2 pt-4 pb-[max(6px,env(safe-area-inset-bottom))] backdrop-blur lg:hidden dark:border-white/10 dark:bg-neutral-950/92"
+        aria-label="租户移动端主导航"
+      >
+        <ul className="mx-auto flex w-full max-w-xl items-end justify-between gap-0">
+          {NAV_ITEMS.map((item, index) => {
+            const href = item.href(tenantSlug);
+            const active = isActive(pathname, href);
+            const Icon = item.icon;
+            const isCenter = index === 2;
+
+            if (isCenter) {
+              return (
+                <li key={`mobile-${href}`} className="flex flex-1 justify-center">
+                  <Link
+                    href={href}
+                    className="flex flex-col items-center gap-1 transition-opacity active:opacity-90 -translate-y-5"
+                    aria-label={item.label[locale]}
+                  >
+                    <span
+                      className={cn(
+                        'flex h-14 w-14 shrink-0 items-center justify-center rounded-full shadow-[0_4px_14px_rgba(0,0,0,0.15)] transition dark:shadow-[0_4px_18px_rgba(0,0,0,0.4)]',
+                        active
+                          ? 'bg-[#FFD400] text-neutral-900 ring-2 ring-[#FFD400] ring-offset-2 ring-offset-white dark:ring-offset-neutral-950'
+                          : 'bg-[#FFD400] text-neutral-900'
+                      )}
+                    >
+                      <Icon size={26} />
+                    </span>
+                    <span
+                      className={cn(
+                        'text-[11px] font-medium whitespace-nowrap',
+                        active ? 'text-neutral-900 dark:text-neutral-100' : 'text-neutral-600 dark:text-neutral-400'
+                      )}
+                    >
+                      {item.label[locale]}
+                    </span>
+                  </Link>
+                </li>
+              );
+            }
+
+            return (
+              <li key={`mobile-${href}`} className="flex flex-1 justify-center">
+                <Link
+                  href={href}
+                  className={cn(
+                    'inline-flex min-w-[56px] flex-col items-center gap-0.5 px-1 pb-0.5 text-[11px] font-medium transition-colors',
+                    active
+                      ? 'text-neutral-900 dark:text-neutral-100'
+                      : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200'
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'inline-flex h-9 w-9 items-center justify-center rounded-2xl transition-colors',
+                      active
+                        ? 'bg-neutral-900 text-white dark:bg-[#FFD400]/20 dark:text-[#FFD400]'
+                        : 'bg-transparent text-current'
+                    )}
+                  >
+                    <Icon size={18} />
+                  </span>
+                  <span>{item.label[locale]}</span>
+                </Link>
+              </li>
+            );
+          })}
+          <li className="flex flex-1 justify-center">
+            <button
+              type="button"
+              onClick={() => void handleQuickShareOpen()}
+              disabled={quickSharePending}
+              className="inline-flex min-w-[56px] flex-col items-center gap-0.5 px-1 pb-0.5 text-[11px] font-medium text-neutral-500 transition-colors hover:text-neutral-800 disabled:opacity-50 dark:text-neutral-400 dark:hover:text-neutral-200"
+              aria-label={copy.openSharePage}
+              title={copy.openSharePage}
+            >
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-transparent text-current transition-colors">
+                <Share2 size={18} />
+              </span>
+              <span>{copy.shareNav}</span>
+            </button>
+          </li>
+        </ul>
+      </nav>
     </div>
   );
 }
 
 function isActive(pathname: string, href: string): boolean {
+  if (/\/app\/[^/]+\/account$/.test(href)) {
+    const tenantBase = href.replace(/\/account$/, '');
+    if (
+      pathname === `${tenantBase}/subscription` ||
+      pathname.startsWith(`${tenantBase}/subscription/`) ||
+      pathname === `${tenantBase}/share-presentation` ||
+      pathname.startsWith(`${tenantBase}/share-presentation/`)
+    ) {
+      return true;
+    }
+  }
+
   if (/\/app\/[^/]+$/.test(href)) {
     return pathname === href;
   }

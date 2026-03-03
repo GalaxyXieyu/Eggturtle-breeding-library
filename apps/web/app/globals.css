@@ -250,12 +250,58 @@
   min-height: 34px;
 }
 
+.tenant-mobile-toolbar-action {
+  backdrop-filter: blur(14px);
+}
+
+.tenant-mobile-toolbar-action.ui-pref-controls {
+  gap: 2px;
+}
+
 :root[data-theme='dark'] .tenant-sidebar-pref {
   background: linear-gradient(145deg, rgba(28, 40, 58, 0.68) 0%, rgba(16, 24, 37, 0.58) 100%);
 }
 
 :root[data-theme='light'] .tenant-sidebar-pref {
-  background: linear-gradient(142deg, rgba(255, 255, 255, 0.7) 0%, rgba(250, 251, 255, 0.5) 100%);
+  background: linear-gradient(142deg, rgba(255, 255, 255, 0.62) 0%, rgba(250, 251, 255, 0.42) 100%);
+}
+
+:root[data-theme='light'] .tenant-sidebar-pref .ui-pref-icon-btn {
+  color: rgba(71, 85, 105, 0.74);
+  background: transparent;
+  box-shadow: none;
+}
+
+:root[data-theme='light'] .tenant-sidebar-pref .ui-pref-icon-btn:hover:not(:disabled) {
+  background: rgba(15, 23, 42, 0.08);
+  color: rgba(15, 23, 42, 0.9);
+  box-shadow: none;
+}
+
+:root[data-theme='light'] .tenant-sidebar-pref .ui-pref-icon-btn:focus-visible {
+  box-shadow: 0 0 0 2px rgba(255, 212, 0, 0.6);
+}
+
+:root[data-theme='light'] .tenant-mobile-pref .ui-pref-icon-btn {
+  color: rgba(30, 41, 59, 0.8);
+}
+
+:root[data-theme='light'] .tenant-mobile-pref .ui-pref-icon-btn:hover:not(:disabled) {
+  background: rgba(15, 23, 42, 0.08);
+  color: rgba(15, 23, 42, 0.92);
+}
+
+:root[data-theme='light'] .tenant-mobile-pref .ui-pref-icon-btn:focus-visible {
+  box-shadow: 0 0 0 2px rgba(255, 212, 0, 0.6);
+}
+
+:root[data-theme='dark'] .tenant-mobile-pref .ui-pref-icon-btn {
+  color: rgba(226, 232, 240, 0.88);
+}
+
+:root[data-theme='dark'] .tenant-mobile-pref .ui-pref-icon-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
 }
 
 .login-card {
@@ -1684,6 +1730,24 @@ button.auth-action {
   min-height: 100vh;
   min-height: 100svh;
   background: linear-gradient(135deg, var(--ui-bg-start) 0%, var(--ui-bg-mid) 55%, var(--ui-bg-end) 100%);
+}
+
+.tenant-mobile-content-safe {
+  padding-bottom: calc(env(safe-area-inset-bottom) + 66px);
+}
+
+.mobile-fab {
+  bottom: calc(env(safe-area-inset-bottom) + 80px);
+}
+
+@media (min-width: 1024px) {
+  .tenant-mobile-content-safe {
+    padding-bottom: 0;
+  }
+
+  .mobile-fab {
+    bottom: 24px;
+  }
 }
 
 .tenant-card-lift:hover {

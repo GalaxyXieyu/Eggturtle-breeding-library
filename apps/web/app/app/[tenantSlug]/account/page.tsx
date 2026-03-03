@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   createShareRequestSchema,
   createShareResponseSchema,
@@ -15,18 +15,32 @@ import {
 } from '@eggturtle/shared';
 import { Copy, KeyRound, Link2, UserRound } from 'lucide-react';
 
-import { ApiError, apiRequest, getAccessToken } from '../../../../lib/api-client';
-import { switchTenantBySlug } from '../../../../lib/tenant-session';
 import { Button } from '../../../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../components/ui/card';
 import { Input } from '../../../../components/ui/input';
 import { Label } from '../../../../components/ui/label';
+import { ApiError, apiRequest, getAccessToken } from '../../../../lib/api-client';
+import { switchTenantBySlug } from '../../../../lib/tenant-session';
+import { cn } from '../../../../lib/utils';
+import SharePresentationPageContent from '../share-presentation/page';
+import SubscriptionPageContent from '../subscription/page';
+
+type AccountTab = 'profile' | 'subscription' | 'share';
+
+const ACCOUNT_TABS: Array<{ key: AccountTab; label: string }> = [
+  { key: 'profile', label: '账号' },
+  { key: 'subscription', label: '订阅' },
+  { key: 'share', label: '分享' }
+];
 
 export default function AccountPage() {
   const router = useRouter();
   const params = useParams<{ tenantSlug: string }>();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const tenantSlug = useMemo(() => params.tenantSlug ?? '', [params.tenantSlug]);
 
+  const [activeTab, setActiveTab] = useState<AccountTab>('profile');
   const [loading, setLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
@@ -43,6 +57,10 @@ export default function AccountPage() {
 
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setActiveTab(normalizeAccountTab(searchParams.get('tab')));
+  }, [searchParams]);
 
   useEffect(() => {
     if (!tenantSlug) {
@@ -64,7 +82,6 @@ export default function AccountPage() {
     void (async () => {
       try {
         await switchTenantBySlug(tenantSlug);
-
         const [me, profileResponse] = await Promise.all([
           apiRequest('/me', { responseSchema: meResponseSchema }),
           apiRequest('/me/profile', { responseSchema: meProfileResponseSchema })
@@ -92,6 +109,23 @@ export default function AccountPage() {
       cancelled = true;
     };
   }, [router, tenantSlug]);
+
+  function switchTab(nextTab: AccountTab) {
+    if (nextTab === activeTab) {
+      return;
+    }
+
+    setActiveTab(nextTab);
+    const nextSearchParams = new URLSearchParams(searchParams.toString());
+    if (nextTab === 'profile') {
+      nextSearchParams.delete('tab');
+    } else {
+      nextSearchParams.set('tab', nextTab);
+    }
+
+    const query = nextSearchParams.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname);
+  }
 
   async function handleSaveProfile() {
     setSavingProfile(true);
@@ -199,15 +233,31 @@ export default function AccountPage() {
 
   return (
     <main className="space-y-4 pb-10 sm:space-y-6">
-      <Card className="rounded-2xl border-neutral-200/90 bg-white/90 p-4">
-        <p className="text-sm text-neutral-600">管理个人资料、密码和公开分享链接。</p>
-      </Card>
+      <section className="flex flex-wrap gap-2">
+        {ACCOUNT_TABS.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            onClick={() => switchTab(item.key)}
+            className={cn(
+              'rounded-full border px-4 py-1.5 text-sm font-semibold transition',
+              activeTab === item.key
+                ? 'border-neutral-900 bg-neutral-900 text-white'
+                : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:text-neutral-900'
+            )}
+          >
+            {item.label}
+          </button>
+        ))}
+      </section>
 
       {loading ? (
         <Card className="rounded-2xl border-neutral-200/90 bg-white p-6">
           <p className="text-sm text-neutral-600">正在加载账户信息...</p>
         </Card>
-      ) : (
+      ) : null}
+
+      {!loading && activeTab === 'profile' ? (
         <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
             <CardHeader>
@@ -285,7 +335,17 @@ export default function AccountPage() {
               </Button>
             </CardContent>
           </Card>
+        </section>
+      ) : null}
 
+      {!loading && activeTab === 'subscription' ? (
+        <section className="rounded-3xl border border-neutral-200/90 bg-white p-2">
+          <SubscriptionPageContent />
+        </section>
+      ) : null}
+
+      {!loading && activeTab === 'share' ? (
+        <section className="grid grid-cols-1 gap-4">
           <Card id="share-link" className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-2xl">
@@ -306,14 +366,15 @@ export default function AccountPage() {
                   <Copy size={14} />
                   复制链接
                 </Button>
-                <Button variant="secondary" onClick={() => router.push(`/app/${tenantSlug}/share-presentation`)}>
-                  分享展示
-                </Button>
               </div>
             </CardContent>
           </Card>
+
+          <section className="rounded-3xl border border-neutral-200/90 bg-white p-2">
+            <SharePresentationPageContent />
+          </section>
         </section>
-      )}
+      ) : null}
 
       {message ? (
         <Card className="rounded-2xl border-emerald-200 bg-emerald-50 p-4">
@@ -327,6 +388,18 @@ export default function AccountPage() {
       ) : null}
     </main>
   );
+}
+
+function normalizeAccountTab(value: string | null): AccountTab {
+  if (value === 'subscription') {
+    return 'subscription';
+  }
+
+  if (value === 'share') {
+    return 'share';
+  }
+
+  return 'profile';
 }
 
 function formatDate(value: string | null | undefined) {

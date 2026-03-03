@@ -10,6 +10,7 @@ import PublicShareErrorPanel from '../../../../_shared/public-share-error-panel'
 import {
   buildPublicShareRouteQuery,
   fetchPublicShareFromSearchParams,
+  firstSearchParamValue,
   refreshPublicShareEntryLocation,
   shouldAutoRefreshShareSignature,
   type PublicSearchParams
@@ -22,7 +23,7 @@ export default async function PublicShareProductDetailPage({
   params: { shareToken: string; id: string };
   searchParams: PublicSearchParams;
 }) {
-  const sidValue = firstValue(searchParams.sid);
+  const sidValue = firstSearchParamValue(searchParams.sid);
   const hasSidParam = typeof sidValue === 'string' && sidValue.trim().length > 0;
   if (!hasSidParam) {
     const location = await refreshPublicShareEntryLocation(params.shareToken);
@@ -64,7 +65,12 @@ export default async function PublicShareProductDetailPage({
     );
   }
 
-  const shareQuery = buildPublicShareRouteQuery(shareResult.shareId, shareResult.query).toString();
+  const shareRouteQuery = buildPublicShareRouteQuery(shareResult.shareId, shareResult.query);
+  const seriesId = firstSearchParamValue(searchParams.series)?.trim();
+  if (seriesId) {
+    shareRouteQuery.set('series', seriesId);
+  }
+  const shareQuery = shareRouteQuery.toString();
   const legacyFeedData = mapTenantFeedToLegacy(shareResult.data);
   const detailData = mapPublicShareDetail(shareResult.data);
   const detailBreeder = shareResult.data.product
@@ -87,20 +93,8 @@ export default async function PublicShareProductDetailPage({
       demo={false}
       shareToken={params.shareToken}
       shareQuery={shareQuery}
-      homeHref={`/app/${shareResult.data.tenant.slug}`}
+      homeHref={`/public/s/${params.shareToken}`}
       presentation={shareResult.data.presentation}
     />
   );
-}
-
-function firstValue(value: string | string[] | undefined): string | undefined {
-  if (typeof value === 'string') {
-    return value;
-  }
-
-  if (Array.isArray(value)) {
-    return value[0];
-  }
-
-  return undefined;
 }

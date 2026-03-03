@@ -376,7 +376,7 @@ export default function TenantAppPage() {
       <Button
         type="button"
         size="icon"
-        className="fixed bottom-6 right-5 z-40 h-12 w-12 rounded-full shadow-[0_10px_24px_rgba(0,0,0,0.22)] lg:hidden"
+        className="mobile-fab fixed right-5 z-40 h-12 w-12 rounded-full shadow-[0_10px_24px_rgba(0,0,0,0.22)] lg:hidden"
         aria-label="打开快捷操作"
         onClick={() => setIsActionSheetOpen(true)}
       >

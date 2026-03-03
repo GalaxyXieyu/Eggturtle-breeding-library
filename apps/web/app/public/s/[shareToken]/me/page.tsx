@@ -1,8 +1,7 @@
 import { redirect } from 'next/navigation';
 
-import PublicFeedPage from '../../_public-product/public-feed-page';
-import { mapTenantFeedToLegacy } from '../../_public-product/public-share-adapter';
-import PublicShareErrorPanel from '../../_shared/public-share-error-panel';
+import PublicShareErrorPanel from '../../../_shared/public-share-error-panel';
+import PublicShareMePage from '../../../_shared/public-share-me-page';
 import {
   buildPublicShareRouteQuery,
   fetchPublicShareFromSearchParams,
@@ -10,11 +9,11 @@ import {
   refreshPublicShareEntryLocation,
   shouldAutoRefreshShareSignature,
   type PublicSearchParams
-} from '../../_shared/public-share-api';
+} from '../../../_shared/public-share-api';
 
-export default async function PublicShareFeedPage({
+export default async function PublicShareMeRoute({
   params,
-  searchParams,
+  searchParams
 }: {
   params: { shareToken: string };
   searchParams: PublicSearchParams;
@@ -40,7 +39,7 @@ export default async function PublicShareFeedPage({
 
     return (
       <PublicShareErrorPanel
-        title="公开图鉴不可用"
+        title="页面暂不可用"
         message={shareResult.message}
         shareToken={params.shareToken}
         canAutoRefresh={false}
@@ -52,32 +51,24 @@ export default async function PublicShareFeedPage({
     return (
       <main className="share-shell">
         <section className="card panel stack">
-          <h1>公开图鉴不可用</h1>
+          <h1>页面暂不可用</h1>
           <p className="notice notice-warning">该链接不是租户图鉴分享链接。</p>
         </section>
       </main>
     );
   }
 
-  const legacyData = mapTenantFeedToLegacy(shareResult.data);
   const shareRouteQuery = buildPublicShareRouteQuery(shareResult.shareId, shareResult.query);
   const seriesId = firstSearchParamValue(searchParams.series)?.trim();
   if (seriesId) {
     shareRouteQuery.set('series', seriesId);
   }
 
-  const shareQuery = shareRouteQuery.toString();
-
   return (
-    <PublicFeedPage
-      demo={false}
+    <PublicShareMePage
       shareToken={params.shareToken}
-      shareQuery={shareQuery}
-      initialSeriesId={seriesId}
-      series={legacyData.series}
-      breeders={legacyData.breeders}
+      shareQuery={shareRouteQuery.toString()}
       presentation={shareResult.data.presentation}
-      tenantSlug={shareResult.data.tenant.slug}
     />
   );
 }

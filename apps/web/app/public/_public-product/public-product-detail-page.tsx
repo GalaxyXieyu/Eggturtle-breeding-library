@@ -5,7 +5,9 @@ import Link from 'next/link';
 import type { PublicSharePresentation } from '@eggturtle/shared';
 
 import { UiPreferenceControls } from '../../../components/ui-preferences';
+import PublicBottomDock from '../_shared/public-bottom-dock';
 import PublicFloatingActions from '../_shared/public-floating-actions';
+import { appendPublicShareQuery } from '../_shared/public-share-api';
 
 import type { Breeder, BreederEventItem, FamilyTree, MaleMateLoadItem, Series } from './types';
 import {
@@ -61,15 +63,23 @@ export default function PublicProductDetailPage({
     typeof window !== 'undefined' && window.location?.origin
       ? `${window.location.origin}/public/s/${shareToken}/products/${breederId}`
       : `/public/s/${shareToken}/products/${breederId}`;
+  const onboardingHref = appendPublicShareQuery(`/public/s/${shareToken}/me#free-plan`, shareQuery);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-stone-100 via-white to-amber-50/40 text-black dark:from-neutral-950 dark:via-neutral-950 dark:to-neutral-900/40 dark:text-neutral-100">
-      <div className="w-full px-0 pb-8 pt-[env(safe-area-inset-top)] sm:px-0 lg:px-0 2xl:px-0">
+      <div className="w-full px-0 pb-[calc(env(safe-area-inset-bottom)+94px)] pt-[env(safe-area-inset-top)] sm:px-0 lg:px-0 2xl:px-0">
         <div className="fixed right-3 top-[calc(env(safe-area-inset-top)+10px)] z-50 rounded-full border border-black/5 bg-white/80 p-1 shadow backdrop-blur-sm dark:border-white/10 dark:bg-neutral-900/70">
           <UiPreferenceControls />
         </div>
         <div className="px-3 sm:px-4 lg:px-5 2xl:px-6">
           <DemoHint demo={demo} />
+          <section className="mb-3 rounded-2xl border border-[#FFD400]/50 bg-[#FFFBE7]/90 px-4 py-3 text-xs text-neutral-700 shadow-[0_4px_16px_rgba(255,212,0,0.16)] dark:border-[#FFD400]/35 dark:bg-[#2b2410]/70 dark:text-[#ffe8a6]">
+            想把这套图鉴开成自己的？
+            <Link href={onboardingHref} className="ml-2 font-semibold text-neutral-900 underline decoration-[#FFD400]/80 underline-offset-2 dark:text-[#FFD400]">
+              去“我的”看免费开通权益
+            </Link>
+            <span className="mt-1 block text-xs text-neutral-600 dark:text-[#ffdf94]">免费版可先管理 10 只，后续升级不影响已发布内容。</span>
+          </section>
         </div>
 
         {isNotFound ? (
@@ -185,7 +195,8 @@ export default function PublicProductDetailPage({
           </>
         ) : null}
       </div>
-      <PublicFloatingActions permalink={permalink} homeHref={homeHref ?? '/app'} />
+      <PublicFloatingActions permalink={permalink} homeHref={homeHref ?? '/app'} showHomeButton={false} />
+      <PublicBottomDock shareToken={shareToken} shareQuery={shareQuery} activeTab="pets" />
     </div>
   );
 }

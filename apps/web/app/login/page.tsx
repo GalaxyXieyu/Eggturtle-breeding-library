@@ -24,6 +24,9 @@ import { UiPreferenceControls, type UiLocale, useUiPreferences } from '../../com
 type LoginMode = 'password' | 'code';
 type EntryView = 'signin' | 'activation' | 'register';
 type RegisterStep = 'email' | 'verify' | 'complete';
+type ShareSource = 'share' | 'direct';
+
+const SHARE_SOURCE_DEFAULT_NEXT = '/app?intent=dashboard&source=share';
 
 type LoginCopy = {
   title: string;
@@ -276,8 +279,10 @@ export default function LoginPage() {
   const [activationLoading, setActivationLoading] = useState(false);
   const [registerLoading, setRegisterLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
+    setHydrated(true);
     const params = new URLSearchParams(window.location.search);
     const view = params.get('view');
 
@@ -292,7 +297,7 @@ export default function LoginPage() {
     }
 
     if (getAccessToken()) {
-      router.replace('/app');
+      router.replace(resolvePostAuthRedirect('/app', window.location.search));
     }
   }, [router]);
 
@@ -324,6 +329,14 @@ export default function LoginPage() {
     }
 
     resetRegisterFlow();
+  }
+
+  function getPostAuthRedirect(defaultPath: string): string {
+    if (typeof window === 'undefined') {
+      return defaultPath;
+    }
+
+    return resolvePostAuthRedirect(defaultPath, window.location.search);
   }
 
   function resetRegisterFlow() {
@@ -410,7 +423,7 @@ export default function LoginPage() {
       });
 
       setAccessToken(response.accessToken);
-      router.replace(`/app/${response.tenant.slug}`);
+      router.replace(getPostAuthRedirect(`/app/${response.tenant.slug}`));
     } catch (requestError) {
       setError(formatError(requestError, locale));
     } finally {
@@ -448,7 +461,7 @@ export default function LoginPage() {
       });
 
       setAccessToken(response.accessToken);
-      router.replace('/app');
+      router.replace(getPostAuthRedirect('/app'));
     } catch (requestError) {
       setError(formatError(requestError, locale));
     } finally {
@@ -506,7 +519,7 @@ export default function LoginPage() {
       });
 
       setAccessToken(response.accessToken);
-      router.replace('/app');
+      router.replace(getPostAuthRedirect('/app'));
     } catch (requestError) {
       setError(formatError(requestError, locale));
     } finally {
@@ -607,6 +620,7 @@ export default function LoginPage() {
                       value={email}
                       placeholder={copy.passwordIdentifierPlaceholder}
                       onChange={(event) => setEmail(event.target.value)}
+                      disabled={!hydrated || loading}
                       required
                     />
                     <label htmlFor="password">{copy.passwordLabel}</label>
@@ -617,9 +631,10 @@ export default function LoginPage() {
                       value={password}
                       placeholder={copy.passwordPlaceholder}
                       onChange={(event) => setPassword(event.target.value)}
+                      disabled={!hydrated || loading}
                       required
                     />
-                    <button type="submit" disabled={loading}>
+                    <button type="submit" disabled={loading || !hydrated}>
                       {loading ? copy.verifying : copy.passwordLogin}
                     </button>
                   </form>
@@ -635,7 +650,7 @@ export default function LoginPage() {
                       onChange={(event) => setEmail(event.target.value)}
                       required
                     />
-                    <button type="submit" disabled={loading}>
+                    <button type="submit" disabled={loading || !hydrated}>
                       {loading ? copy.sending : copy.requestCode}
                     </button>
                   </form>
@@ -673,13 +688,13 @@ export default function LoginPage() {
                     />
                     <p className="muted">{copy.setPasswordHint}</p>
                     <div className="row">
-                      <button type="submit" disabled={loading}>
+                      <button type="submit" disabled={loading || !hydrated}>
                         {loading ? copy.verifying : copy.verifyCode}
                       </button>
                       <button
                         className="secondary"
                         type="button"
-                        disabled={loading}
+                        disabled={loading || !hydrated}
                         onClick={resetCodeFlow}
                       >
                         {copy.changeEmail}
@@ -714,7 +729,7 @@ export default function LoginPage() {
                   onChange={(event) => setActivationCode(event.target.value)}
                   required
                 />
-                <button type="submit" disabled={activationLoading}>
+                <button type="submit" disabled={activationLoading || !hydrated}>
                   {activationLoading ? copy.activationSubmitting : copy.activationSubmit}
                 </button>
 
@@ -768,7 +783,7 @@ export default function LoginPage() {
                       required
                     />
                     <div className="row">
-                      <button type="submit" disabled={loading}>
+                      <button type="submit" disabled={loading || !hydrated}>
                         {loading ? copy.sending : copy.registerNext}
                       </button>
                       <button type="button" className="secondary" onClick={() => switchEntryView('signin')}>
@@ -802,7 +817,7 @@ export default function LoginPage() {
                       required
                     />
                     <div className="row">
-                      <button type="submit" disabled={loading}>
+                      <button type="submit" disabled={loading || !hydrated}>
                         {loading ? copy.verifying : copy.registerNext}
                       </button>
                       <button
@@ -874,7 +889,7 @@ export default function LoginPage() {
                     />
 
                     <div className="row">
-                      <button type="submit" disabled={registerLoading}>
+                      <button type="submit" disabled={registerLoading || !hydrated}>
                         {registerLoading ? copy.registerCreating : copy.registerSubmit}
                       </button>
                       <button
@@ -898,6 +913,47 @@ export default function LoginPage() {
       </section>
     </main>
   );
+}
+
+function resolvePostAuthRedirect(defaultPath: string, search: string): string {
+  const searchParams = new URLSearchParams(search);
+  const safeNext = sanitizeInternalNext(searchParams.get('next'));
+  if (safeNext) {
+    return safeNext;
+  }
+
+  const source = normalizeShareSource(searchParams.get('source'));
+  if (source === 'share') {
+    return SHARE_SOURCE_DEFAULT_NEXT;
+  }
+
+  return defaultPath;
+}
+
+function normalizeShareSource(value: string | null): ShareSource {
+  if (value?.trim().toLowerCase() === 'share') {
+    return 'share';
+  }
+
+  return 'direct';
+}
+
+function sanitizeInternalNext(value: string | null): string | null {
+  const normalized = value?.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  if (!normalized.startsWith('/')) {
+    return null;
+  }
+
+  // Reject protocol-relative and escaped absolute paths.
+  if (normalized.startsWith('//') || normalized.startsWith('/\\')) {
+    return null;
+  }
+
+  return normalized;
 }
 
 function formatError(error: unknown, locale: UiLocale) {

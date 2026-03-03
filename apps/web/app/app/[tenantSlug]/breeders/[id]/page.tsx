@@ -1,8 +1,7 @@
-/* eslint-disable @next/next/no-img-element */
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   getProductFamilyTreeResponseSchema,
   getProductResponseSchema,
@@ -34,12 +33,16 @@ type FamilyTreeNode = ProductFamilyTree['self'];
 export default function BreederDetailPage() {
   const router = useRouter();
   const params = useParams<{ id: string; tenantSlug: string }>();
+  const searchParams = useSearchParams();
   const breederId = useMemo(() => params.id ?? '', [params.id]);
   const tenantSlug = useMemo(() => params.tenantSlug ?? '', [params.tenantSlug]);
+  const fromProducts = searchParams.get('from') === 'products';
+  const isDemoMode = searchParams.get('demo') === '1';
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeImageId, setActiveImageId] = useState<string | null>(null);
+  const [eventFilter, setEventFilter] = useState<'all' | 'mating' | 'egg' | 'change_mate'>('all');
   const [data, setData] = useState<DetailState>({
     breeder: null,
     events: [],
@@ -47,6 +50,11 @@ export default function BreederDetailPage() {
     images: []
   });
   const currentBreeder = data.breeder;
+
+  const filteredEvents = useMemo(() => {
+    if (eventFilter === 'all') return data.events;
+    return data.events.filter((e) => e.eventType === eventFilter);
+  }, [data.events, eventFilter]);
 
   useEffect(() => {
     if (!getAccessToken()) {
@@ -108,6 +116,38 @@ export default function BreederDetailPage() {
   }, [breederId, router, tenantSlug]);
 
   const activeImage = data.images.find((image) => image.id === activeImageId) ?? data.images[0] ?? null;
+  const listHref = useMemo(() => {
+    const query = new URLSearchParams();
+    if (isDemoMode) {
+      query.set('demo', '1');
+    }
+
+    if (fromProducts) {
+      query.set('view', 'preview');
+    }
+
+    const queryString = query.toString();
+    if (fromProducts) {
+      return queryString ? `/app/${tenantSlug}/products?${queryString}` : `/app/${tenantSlug}/products`;
+    }
+
+    return queryString ? `/app/${tenantSlug}/breeders?${queryString}` : `/app/${tenantSlug}/breeders`;
+  }, [fromProducts, isDemoMode, tenantSlug]);
+
+  const openBreederDetail = useMemo(() => {
+    return (nextBreederId: string) => {
+      const query = new URLSearchParams();
+      if (fromProducts) {
+        query.set('from', 'products');
+      }
+      if (isDemoMode) {
+        query.set('demo', '1');
+      }
+
+      const queryString = query.toString();
+      router.push(queryString ? `/app/${tenantSlug}/breeders/${nextBreederId}?${queryString}` : `/app/${tenantSlug}/breeders/${nextBreederId}`);
+    };
+  }, [fromProducts, isDemoMode, router, tenantSlug]);
 
   return (
     <main className="space-y-4 pb-10 sm:space-y-6">
@@ -145,13 +185,13 @@ export default function BreederDetailPage() {
               <MetaItem label="配偶" value={currentBreeder?.mateCode ?? 'N/A'} />
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button variant="secondary" onClick={() => router.push(`/app/${tenantSlug}/breeders`)}>
+              <Button variant="secondary" onClick={() => router.push(listHref)}>
                 返回列表
               </Button>
               {currentBreeder ? (
                 <Button variant="primary" onClick={() => router.push(`/app/${tenantSlug}/products/${currentBreeder.id}`)}>
                   <PencilRuler size={16} />
-                  管理图片
+                  编辑资料
                 </Button>
               ) : null}
             </div>
@@ -198,22 +238,35 @@ export default function BreederDetailPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-2xl">
               <Network size={18} />
-              家族关系
+              家族谱系
             </CardTitle>
             <CardDescription>{data.tree.limitations}</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 gap-3 xl:grid-cols-4">
-              <TreeCard title="当前个体" node={data.tree.self} tenantSlug={tenantSlug} />
-              <TreeCard title="父本" node={data.tree.sire} tenantSlug={tenantSlug} />
-              <TreeCard title="母本" node={data.tree.dam} tenantSlug={tenantSlug} />
-              <TreeCard title="配偶" node={data.tree.mate} tenantSlug={tenantSlug} />
+          <CardContent className="space-y-6">
+            <div className="overflow-x-auto rounded-2xl border border-neutral-200/90 bg-neutral-50/50 p-4 shadow-[0_4px_12px_rgba(0,0,0,0.04)]">
+              <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:gap-6">
+                <div className="flex flex-col gap-2">
+                  <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">父本 / 母本</p>
+                  <div className="flex gap-3">
+                    <TreeCard title="父本" node={data.tree.sire} onOpen={openBreederDetail} />
+                    <TreeCard title="母本" node={data.tree.dam} onOpen={openBreederDetail} />
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">当前个体 / 配偶</p>
+                  <div className="flex gap-3">
+                    <TreeCard title="当前个体" node={data.tree.self} onOpen={openBreederDetail} />
+                    <TreeCard title="配偶" node={data.tree.mate} onOpen={openBreederDetail} />
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="rounded-2xl border border-neutral-200 p-4">
-              <h3 className="mb-3 text-base font-semibold text-neutral-900">子代</h3>
-              {data.tree.children.length === 0 ? <p className="text-sm text-neutral-500">未找到直系子代。</p> : null}
-              {data.tree.children.length > 0 ? (
+            <div className="rounded-2xl border border-neutral-200/90 bg-white p-4 shadow-[0_4px_12px_rgba(0,0,0,0.04)]">
+              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-neutral-500">子代</h3>
+              {data.tree.children.length === 0 ? (
+                <p className="text-sm text-neutral-500">未找到直系子代。</p>
+              ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -230,7 +283,7 @@ export default function BreederDetailPage() {
                         <TableCell>{child.name ?? '未命名种龟'}</TableCell>
                         <TableCell>{formatSex(child.sex)}</TableCell>
                         <TableCell>
-                          <Button size="sm" variant="secondary" onClick={() => router.push(`/app/${tenantSlug}/breeders/${child.id}`)}>
+                          <Button size="sm" variant="secondary" onClick={() => openBreederDetail(child.id)}>
                             打开
                           </Button>
                         </TableCell>
@@ -238,7 +291,7 @@ export default function BreederDetailPage() {
                     ))}
                   </TableBody>
                 </Table>
-              ) : null}
+              )}
             </div>
           </CardContent>
         </Card>
@@ -249,31 +302,76 @@ export default function BreederDetailPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-2xl">
               <CalendarClock size={18} />
-              事件记录
+              种龟事件
             </CardTitle>
+            <CardDescription>交配、产蛋、换公等记录，与分享页展示一致。</CardDescription>
           </CardHeader>
-          <CardContent>
-            {data.events.length === 0 ? <p className="text-sm text-neutral-500">暂无事件记录。</p> : null}
-            {data.events.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>事件类型</TableHead>
-                    <TableHead>时间</TableHead>
-                    <TableHead>备注</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.events.map((event) => (
-                    <TableRow key={event.id}>
-                      <TableCell>{event.eventType}</TableCell>
-                      <TableCell>{new Date(event.eventDate).toLocaleString('zh-CN')}</TableCell>
-                      <TableCell>{event.note ?? '-'}</TableCell>
-                    </TableRow>
+          <CardContent className="space-y-4">
+            {data.events.length === 0 ? (
+              <p className="rounded-2xl border border-neutral-200 bg-neutral-50/80 px-4 py-6 text-center text-sm text-neutral-500">暂无事件记录。</p>
+            ) : (
+              <>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { key: 'all' as const, title: '全部' },
+                    { key: 'mating' as const, title: '交配' },
+                    { key: 'egg' as const, title: '产蛋' },
+                    { key: 'change_mate' as const, title: '换公' }
+                  ].map((item) => (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => setEventFilter(item.key)}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                        eventFilter === item.key
+                          ? 'border-neutral-900 bg-neutral-900 text-white'
+                          : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300'
+                      }`}
+                    >
+                      {item.title}
+                    </button>
                   ))}
-                </TableBody>
-              </Table>
-            ) : null}
+                </div>
+                <div className="overflow-x-auto rounded-2xl border border-neutral-200/90 bg-neutral-50/50 p-3 shadow-[0_4px_12px_rgba(0,0,0,0.04)]">
+                  <div className="flex w-max flex-row items-center gap-2">
+                    {filteredEvents.map((event) => (
+                      <div
+                        key={event.id}
+                        className="flex w-[80px] shrink-0 flex-col items-center gap-1 rounded-xl border border-neutral-200 bg-white px-2 py-2.5 shadow-sm"
+                      >
+                        <span className="text-sm leading-none">{eventTypeIcon(event.eventType)}</span>
+                        <span className="text-[10px] font-semibold leading-tight text-neutral-900">
+                          {formatEventShortDate(event.eventDate)}
+                        </span>
+                        <span className="text-[10px] font-semibold leading-tight text-neutral-600">
+                          {eventTypeLabel(event.eventType)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="divide-y divide-neutral-200 overflow-hidden rounded-2xl border border-neutral-200/90 bg-white">
+                  {filteredEvents.map((event) => (
+                    <div key={event.id} className="px-4 py-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm leading-none">{eventTypeIcon(event.eventType)}</span>
+                            <span className="text-sm font-semibold text-neutral-900">{eventTypeLabel(event.eventType)}</span>
+                            <span className="text-xs font-medium text-neutral-500">
+                              {new Date(event.eventDate).toLocaleDateString('zh-CN')}
+                            </span>
+                          </div>
+                          {event.note ? (
+                            <p className="mt-1.5 whitespace-pre-wrap text-sm text-neutral-600">{event.note}</p>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       ) : null}
@@ -296,18 +394,18 @@ function MetaItem({ label, value }: { label: string; value: string }) {
   );
 }
 
-function TreeCard(props: { title: string; node: FamilyTreeNode | null; tenantSlug: string }) {
-  const router = useRouter();
+function TreeCard(props: { title: string; node: FamilyTreeNode | null; onOpen: (id: string) => void }) {
+  const node = props.node;
 
   return (
-    <div className="rounded-2xl border border-neutral-200 p-4">
-      <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">{props.title}</p>
-      {props.node ? (
+    <div className="rounded-2xl border border-neutral-200/90 bg-white p-4 shadow-[0_4px_12px_rgba(0,0,0,0.04)] transition hover:shadow-[0_6px_20px_rgba(0,0,0,0.08)]">
+      <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">{props.title}</p>
+      {node ? (
         <div className="mt-2 space-y-1">
-          <p className="text-sm font-semibold text-neutral-900">{props.node.code}</p>
-          <p className="text-xs text-neutral-500">{props.node.name ?? '未命名种龟'}</p>
+          <p className="text-sm font-semibold text-neutral-900">{node.code}</p>
+          <p className="text-xs text-neutral-500">{node.name ?? '未命名种龟'}</p>
           <div className="pt-2">
-            <Button size="sm" variant="secondary" onClick={() => router.push(`/app/${props.tenantSlug}/breeders/${props.node?.id}`)}>
+            <Button size="sm" variant="secondary" className="rounded-xl" onClick={() => props.onOpen(node.id)}>
               打开
             </Button>
           </div>
@@ -345,4 +443,25 @@ function formatError(error: unknown) {
   }
 
   return '未知错误';
+}
+
+function eventTypeLabel(eventType: string) {
+  if (eventType === 'mating') return '交配';
+  if (eventType === 'egg') return '产蛋';
+  if (eventType === 'change_mate') return '换公';
+  return eventType;
+}
+
+function eventTypeIcon(eventType: string) {
+  if (eventType === 'mating') return '🔞';
+  if (eventType === 'egg') return '🥚';
+  if (eventType === 'change_mate') return '🔁';
+  return '•';
+}
+
+function formatEventShortDate(isoDate: string) {
+  const d = new Date(isoDate);
+  const m = d.getMonth() + 1;
+  const day = d.getDate();
+  return `${m}.${day}`;
 }

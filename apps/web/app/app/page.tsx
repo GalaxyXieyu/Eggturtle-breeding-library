@@ -12,6 +12,9 @@ type PageState = {
   loading: boolean;
 };
 
+type ShareSource = 'share' | 'direct';
+type AppIntent = 'dashboard' | 'account' | 'subscription';
+
 const COPY = {
   zh: {
     title: '正在进入工作台',
@@ -54,8 +57,19 @@ export default function AppEntryPage() {
 
     async function resolveRoute() {
       try {
+        const params = new URLSearchParams(window.location.search);
+        const safeNext = sanitizeInternalNext(params.get('next'));
+        if (safeNext) {
+          router.replace(safeNext);
+          return;
+        }
+
+        const source = normalizeShareSource(params.get('source'));
+        const intent = normalizeAppIntent(params.get('intent'));
         const tenantSlug = await resolveCurrentTenantSlug();
-        const nextPath = tenantSlug ? `/app/${tenantSlug}` : '/tenant-select';
+        const nextPath = tenantSlug
+          ? resolveTenantIntentPath(tenantSlug, intent, source)
+          : '/tenant-select';
 
         if (!isCancelled) {
           router.replace(nextPath);
@@ -114,6 +128,58 @@ export default function AppEntryPage() {
       </section>
     </main>
   );
+}
+
+function normalizeShareSource(value: string | null): ShareSource {
+  if (value?.trim().toLowerCase() === 'share') {
+    return 'share';
+  }
+
+  return 'direct';
+}
+
+function normalizeAppIntent(value: string | null): AppIntent {
+  const normalized = value?.trim().toLowerCase();
+  if (normalized === 'account') {
+    return 'account';
+  }
+  if (normalized === 'subscription') {
+    return 'subscription';
+  }
+  return 'dashboard';
+}
+
+function resolveTenantIntentPath(tenantSlug: string, intent: AppIntent, source: ShareSource): string {
+  if (source === 'share' && intent === 'dashboard') {
+    return `/app/${tenantSlug}`;
+  }
+
+  if (intent === 'account') {
+    return `/app/${tenantSlug}/account`;
+  }
+
+  if (intent === 'subscription') {
+    return `/app/${tenantSlug}/subscription`;
+  }
+
+  return `/app/${tenantSlug}`;
+}
+
+function sanitizeInternalNext(value: string | null): string | null {
+  const normalized = value?.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  if (!normalized.startsWith('/')) {
+    return null;
+  }
+
+  if (normalized.startsWith('//') || normalized.startsWith('/\\')) {
+    return null;
+  }
+
+  return normalized;
 }
 
 function formatError(error: unknown, fallback: string) {

@@ -2,7 +2,7 @@
 'use client';
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   listSeriesResponseSchema,
   seriesSchema,
@@ -46,6 +46,8 @@ type SeriesUpdatePayload = {
   sortOrder: number;
 };
 
+type SeriesViewMode = 'preview' | 'manage';
+
 const seriesResponseParser = {
   parse(value: unknown): Series {
     if (value && typeof value === 'object' && 'series' in value) {
@@ -58,8 +60,11 @@ const seriesResponseParser = {
 
 export default function SeriesListPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const params = useParams<{ tenantSlug: string }>();
   const tenantSlug = useMemo(() => params.tenantSlug ?? '', [params.tenantSlug]);
+  const viewMode = useMemo<SeriesViewMode>(() => normalizeSeriesViewMode(searchParams.get('view')), [searchParams]);
+  const isManageMode = viewMode === 'manage';
 
   const [series, setSeries] = useState<SeriesItem[]>([]);
   const [search, setSearch] = useState('');
@@ -315,28 +320,14 @@ export default function SeriesListPage() {
                 <Layers3 size={24} />
                 系列列表
               </CardTitle>
-              <CardDescription className="mt-1">共 {meta.total} 条记录，卡片右上角可快速编辑。</CardDescription>
+              <CardDescription className="mt-1">
+                共 {meta.total} 条记录，卡片右上角可快速编辑。
+              </CardDescription>
             </div>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="rounded-xl"
-              disabled={loading}
-              onClick={() => {
-                void handleRefresh();
-              }}
-            >
-              <RotateCcw size={14} />
-              刷新
-            </Button>
           </div>
         </CardHeader>
         <CardContent className="pt-0">
           {renderFilterForm('desktop')}
-          <p className="mt-3 rounded-2xl border border-neutral-200 bg-neutral-50/90 px-3 py-2 text-xs text-neutral-600 lg:hidden">
-            移动端筛选已收纳到右下角悬浮按钮，点击可打开筛选弹窗。
-          </p>
           <div className="mt-3 flex flex-wrap gap-2 text-xs text-neutral-600">
             <span className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5">
               当前第 {meta.page}/{meta.totalPages} 页
@@ -368,44 +359,41 @@ export default function SeriesListPage() {
                 >
                   <div className="relative">
                     <SeriesCover item={item} />
-                    <Button
+                    {isManageMode ? (
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="secondary"
+                        className="absolute right-3 top-3 h-8 w-8 rounded-full border border-white/50 bg-white/90"
+                        onClick={() => openEditor(item)}
+                      >
+                        <Pencil size={14} />
+                        <span className="sr-only">编辑 {item.code}</span>
+                      </Button>
+                    ) : null}
+                  </div>
+                  {isManageMode ? (
+                    <button
                       type="button"
-                      size="icon"
-                      variant="secondary"
-                      className="absolute right-3 top-3 h-8 w-8 rounded-full border border-white/50 bg-white/90"
+                      className="block w-full bg-white/95 p-4 text-left transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD400]/70 dark:bg-[#0f1623] dark:hover:bg-[#141f32]"
                       onClick={() => openEditor(item)}
                     >
-                      <Pencil size={14} />
-                      <span className="sr-only">编辑 {item.code}</span>
-                    </Button>
-                  </div>
-                  <button
-                    type="button"
-                    className="block w-full bg-white/95 p-4 text-left transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD400]/70 dark:bg-[#0f1623] dark:hover:bg-[#141f32]"
-                    onClick={() => openEditor(item)}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="truncate text-[15px] font-semibold tracking-tight text-neutral-950 dark:text-neutral-50">{item.code}</p>
-                        <p className="truncate text-sm font-medium text-neutral-800 dark:text-neutral-100">{item.name || '未命名系列'}</p>
-                      </div>
-                      <Badge variant={item.isActive ? 'success' : 'default'}>{item.isActive ? '启用' : '停用'}</Badge>
+                      <SeriesCardMeta item={item} />
+                    </button>
+                  ) : (
+                    <div className="bg-white/95 p-4 dark:bg-[#0f1623]">
+                      <SeriesCardMeta item={item} />
                     </div>
-                    <p className="mt-2 line-clamp-2 min-h-10 text-sm leading-relaxed text-neutral-700 dark:text-neutral-200">{item.description || '暂无描述'}</p>
-                    <div className="mt-3 flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-300">
-                      <span>排序 #{item.sortOrder}</span>
-                      <span className="truncate">ID {item.id.slice(0, 8)}</span>
-                    </div>
-                  </button>
+                  )}
                   <div className="flex items-center justify-end border-t border-neutral-200/80 bg-white/92 px-4 py-3 dark:border-white/10 dark:bg-[#0d1420]">
                     <Button
                       type="button"
                       variant="secondary"
                       size="sm"
                       className="h-9 rounded-lg"
-                      onClick={() => router.push(`/app/${tenantSlug}/products?seriesId=${item.id}`)}
+                      onClick={() => router.push(`/app/${tenantSlug}/products?seriesId=${item.id}${isManageMode ? '&view=manage' : ''}`)}
                     >
-                      进入宠物
+                      {isManageMode ? '进入宠物' : '查看该系列宠物'}
                       <ArrowUpRight size={14} />
                     </Button>
                   </div>
@@ -417,17 +405,19 @@ export default function SeriesListPage() {
         </CardContent>
       </Card>
 
-      <Button
-        type="button"
-        size="icon"
-        className="fixed bottom-6 right-5 z-40 h-12 w-12 rounded-full shadow-[0_10px_24px_rgba(0,0,0,0.22)] lg:hidden"
-        aria-label="打开系列筛选弹窗"
-        onClick={() => setIsFilterModalOpen(true)}
-      >
-        <SlidersHorizontal size={18} />
-      </Button>
+      {isManageMode ? (
+        <Button
+          type="button"
+          size="icon"
+          className="mobile-fab fixed right-5 z-40 h-12 w-12 rounded-full shadow-[0_10px_24px_rgba(0,0,0,0.22)] lg:hidden"
+          aria-label="打开系列筛选弹窗"
+          onClick={() => setIsFilterModalOpen(true)}
+        >
+          <SlidersHorizontal size={18} />
+        </Button>
+      ) : null}
 
-      {isFilterModalOpen ? (
+      {isFilterModalOpen && isManageMode ? (
         <div
           className="fixed inset-0 z-50 flex items-end bg-black/35 p-3 sm:items-center sm:justify-center sm:p-4"
           role="dialog"
@@ -461,7 +451,7 @@ export default function SeriesListPage() {
         </div>
       ) : null}
 
-      {editor ? (
+      {editor && isManageMode ? (
         <div className="fixed inset-0 z-50">
           <button
             type="button"
@@ -609,6 +599,32 @@ function SeriesCover({ item }: { item: SeriesItem }) {
       <div className="absolute bottom-3 left-4 rounded-full bg-black/55 px-2.5 py-1 text-xs text-white">系列封面</div>
     </div>
   );
+}
+
+function SeriesCardMeta({ item }: { item: SeriesItem }) {
+  return (
+    <>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="truncate text-[15px] font-semibold tracking-tight text-neutral-950 dark:text-neutral-50">{item.code}</p>
+          <p className="truncate text-sm font-medium text-neutral-800 dark:text-neutral-100">{item.name || '未命名系列'}</p>
+        </div>
+        <Badge variant={item.isActive ? 'success' : 'default'}>{item.isActive ? '启用' : '停用'}</Badge>
+      </div>
+      <p className="mt-2 line-clamp-2 min-h-10 text-sm leading-relaxed text-neutral-700 dark:text-neutral-200">{item.description || '暂无描述'}</p>
+      <div className="mt-3 flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-300">
+        <span>排序 #{item.sortOrder}</span>
+        <span className="truncate">ID {item.id.slice(0, 8)}</span>
+      </div>
+    </>
+  );
+}
+
+function normalizeSeriesViewMode(value: string | null): SeriesViewMode {
+  if (value === 'preview') {
+    return 'preview';
+  }
+  return 'manage';
 }
 
 function formatError(error: unknown) {

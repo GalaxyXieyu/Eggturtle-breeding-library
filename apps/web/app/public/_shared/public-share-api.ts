@@ -77,8 +77,19 @@ export function buildPublicShareRouteQuery(shareId: string, query: PublicShareAu
   return params;
 }
 
+export function appendPublicShareQuery(path: string, shareQuery?: string): string {
+  if (!shareQuery) {
+    return path;
+  }
+
+  const [basePath, hashFragment] = path.split('#', 2);
+  const hashSuffix = hashFragment ? `#${hashFragment}` : '';
+
+  return `${basePath}${basePath.includes('?') ? '&' : '?'}${shareQuery}${hashSuffix}`;
+}
+
 function parseShareRequest(searchParams: PublicSearchParams): ShareRequestParseResult {
-  const sid = firstValue(searchParams.sid);
+  const sid = firstSearchParamValue(searchParams.sid);
 
   if (!sid) {
     return {
@@ -88,11 +99,11 @@ function parseShareRequest(searchParams: PublicSearchParams): ShareRequestParseR
   }
 
   const parsedQuery = publicShareQuerySchema.safeParse({
-    tenantId: firstValue(searchParams.tenantId),
-    resourceType: firstValue(searchParams.resourceType),
-    resourceId: firstValue(searchParams.resourceId),
-    exp: firstValue(searchParams.exp),
-    sig: firstValue(searchParams.sig)
+    tenantId: firstSearchParamValue(searchParams.tenantId),
+    resourceType: firstSearchParamValue(searchParams.resourceType),
+    resourceId: firstSearchParamValue(searchParams.resourceId),
+    exp: firstSearchParamValue(searchParams.exp),
+    sig: firstSearchParamValue(searchParams.sig)
   });
 
   if (!parsedQuery.success) {
@@ -247,7 +258,7 @@ export async function refreshPublicShareEntryLocation(shareToken: string): Promi
   }
 }
 
-function firstValue(value: string | string[] | undefined): string | undefined {
+export function firstSearchParamValue(value: string | string[] | undefined): string | undefined {
   if (typeof value === 'string') {
     return value;
   }

@@ -1,10 +1,14 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import type { PublicSharePresentation } from '@eggturtle/shared';
+import { SlidersHorizontal, X } from 'lucide-react';
 
 import { UiPreferenceControls } from '../../../components/ui-preferences';
+import PublicBottomDock from '../_shared/public-bottom-dock';
 import PublicFloatingActions from '../_shared/public-floating-actions';
+import { appendPublicShareQuery } from '../_shared/public-share-api';
 
 import type { Breeder, NeedMatingStatus, Series } from './types';
 import { BreederCard, DemoHint, PublicEmptyState, SeriesIntroCard, ShareContactCard } from './components';
@@ -14,6 +18,7 @@ type Props = {
   demo: boolean;
   shareToken: string;
   shareQuery?: string;
+  initialSeriesId?: string;
   series: Series[];
   breeders: Breeder[];
   presentation?: PublicSharePresentation | null;
@@ -24,10 +29,21 @@ function rankStatus(status: NeedMatingStatus) {
   return status === 'warning' ? 1 : 0;
 }
 
-export default function PublicFeedPage({ demo, shareToken, shareQuery, series, breeders, presentation, tenantSlug }: Props) {
-  const [seriesId, setSeriesId] = useState<string>(series[0]?.id || '');
+export default function PublicFeedPage({
+  demo,
+  shareToken,
+  shareQuery,
+  initialSeriesId,
+  series,
+  breeders,
+  presentation,
+  tenantSlug
+}: Props) {
+  const [seriesId, setSeriesId] = useState<string>(resolveSeriesId(initialSeriesId, series));
   const [sex, setSex] = useState<'all' | 'male' | 'female'>('all');
   const [status, setStatus] = useState<'all' | NeedMatingStatus>('all');
+  const [showMobileFilterFab, setShowMobileFilterFab] = useState(false);
+  const [isMobileFilterModalOpen, setIsMobileFilterModalOpen] = useState(false);
 
   const resolvedPresentation = resolvePublicSharePresentation(presentation);
   const heroImages = resolvedPresentation.hero.images;
@@ -51,6 +67,36 @@ export default function PublicFeedPage({ demo, shareToken, shareQuery, series, b
       window.clearInterval(timer);
     };
   }, [heroImages]);
+
+  useEffect(() => {
+    setSeriesId(resolveSeriesId(initialSeriesId, series));
+  }, [initialSeriesId, series]);
+
+  useEffect(() => {
+    function updateFilterFloatingState() {
+      const isMobileViewport = window.matchMedia('(max-width: 1023px)').matches;
+      if (!isMobileViewport) {
+        setShowMobileFilterFab(false);
+        setIsMobileFilterModalOpen(false);
+        return;
+      }
+
+      const nextFloating = window.scrollY > 420;
+      setShowMobileFilterFab(nextFloating);
+      if (!nextFloating) {
+        setIsMobileFilterModalOpen(false);
+      }
+    }
+
+    updateFilterFloatingState();
+    window.addEventListener('scroll', updateFilterFloatingState, { passive: true });
+    window.addEventListener('resize', updateFilterFloatingState);
+
+    return () => {
+      window.removeEventListener('scroll', updateFilterFloatingState);
+      window.removeEventListener('resize', updateFilterFloatingState);
+    };
+  }, []);
 
   const list = useMemo(() => {
     const bySeries = seriesId ? breeders.filter((item) => item.seriesId === seriesId) : breeders;
@@ -79,10 +125,112 @@ export default function PublicFeedPage({ demo, shareToken, shareQuery, series, b
       ? `${window.location.origin}/public/s/${shareToken}`
       : `/public/s/${shareToken}`;
   const homeHref = tenantSlug ? `/app/${tenantSlug}` : '/app';
+  const onboardingHref = appendPublicShareQuery(`/public/s/${shareToken}/me#free-plan`, shareQuery);
+
+  function renderFilterContent() {
+    return (
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="text-xs font-medium text-neutral-600">系列</div>
+          <div className="flex flex-wrap gap-2">
+            {series.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setSeriesId(item.id)}
+                className={`h-8 rounded-full border px-3 text-xs shadow-[0_1px_0_rgba(0,0,0,0.04)] transition lg:h-9 lg:px-4 lg:text-sm ${
+                  seriesId === item.id
+                    ? 'bg-white font-semibold'
+                    : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:shadow-sm'
+                }`}
+                style={
+                  seriesId === item.id
+                    ? {
+                        borderColor: brandPrimary,
+                        color: brandSecondary,
+                        boxShadow: activeButtonShadow
+                      }
+                    : undefined
+                }
+              >
+                {item.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="text-xs font-medium text-neutral-600">性别</div>
+          <div className="flex gap-2">
+            {[
+              { key: 'all' as const, label: '全部' },
+              { key: 'female' as const, label: '种母' },
+              { key: 'male' as const, label: '种公' }
+            ].map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setSex(item.key)}
+                className={`h-8 rounded-full border px-3 text-xs shadow-[0_1px_0_rgba(0,0,0,0.04)] transition lg:h-9 lg:px-4 lg:text-sm ${
+                  sex === item.key
+                    ? 'bg-white font-semibold'
+                    : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:shadow-sm'
+                }`}
+                style={
+                  sex === item.key
+                    ? {
+                        borderColor: brandPrimary,
+                        color: brandSecondary,
+                        boxShadow: activeButtonShadow
+                      }
+                    : undefined
+                }
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="text-xs font-medium text-neutral-600">状态</div>
+          <div className="flex gap-2">
+            {[
+              { key: 'all' as const, label: '全部' },
+              { key: 'need_mating' as const, label: '待配' },
+              { key: 'warning' as const, label: '⚠️逾期未交配' }
+            ].map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setStatus(item.key)}
+                className={`h-8 rounded-full border px-3 text-xs shadow-[0_1px_0_rgba(0,0,0,0.04)] transition lg:h-9 lg:px-4 lg:text-sm ${
+                  status === item.key
+                    ? 'bg-white font-semibold'
+                    : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:shadow-sm'
+                }`}
+                style={
+                  status === item.key
+                    ? {
+                        borderColor: brandPrimary,
+                        color: brandSecondary,
+                        boxShadow: activeButtonShadow
+                      }
+                    : undefined
+                }
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-stone-100 via-white to-amber-50/40 text-black dark:from-neutral-950 dark:via-neutral-950 dark:to-neutral-900/40 dark:text-neutral-100">
-      <div className="w-full px-1 pb-8 pt-[calc(env(safe-area-inset-top)+8px)] sm:px-3 lg:px-5 2xl:px-6">
+      <div className="w-full px-1 pb-[calc(env(safe-area-inset-bottom)+94px)] pt-[calc(env(safe-area-inset-top)+8px)] sm:px-3 lg:px-5 2xl:px-6">
         <header className="mb-3 overflow-hidden bg-neutral-900 shadow-[0_18px_50px_rgba(0,0,0,0.22)] sm:rounded-2xl">
           <div className="relative h-[240px] lg:h-[320px]">
             <div
@@ -140,104 +288,69 @@ export default function PublicFeedPage({ demo, shareToken, shareQuery, series, b
 
         <DemoHint demo={demo} />
 
-        <div className="sticky z-30 mb-3 border border-black/5 bg-white/95 px-3 py-3 shadow-[0_4px_20px_rgba(0,0,0,0.06)] backdrop-blur-md supports-[backdrop-filter]:bg-white/90 sm:rounded-2xl dark:border-white/10 dark:bg-neutral-900/70 supports-[backdrop-filter]:dark:bg-neutral-900/60" style={{ top: 'calc(env(safe-area-inset-top) + 10px)' }}>
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="text-xs font-medium text-neutral-600">系列</div>
-              <div className="flex flex-wrap gap-2">
-                {series.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => setSeriesId(item.id)}
-                    className={`h-8 rounded-full border px-3 text-xs shadow-[0_1px_0_rgba(0,0,0,0.04)] transition lg:h-9 lg:px-4 lg:text-sm ${
-                      seriesId === item.id
-                        ? 'bg-white font-semibold'
-                        : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:shadow-sm'
-                    }`}
-                    style={
-                      seriesId === item.id
-                        ? {
-                            borderColor: brandPrimary,
-                            color: brandSecondary,
-                            boxShadow: activeButtonShadow
-                          }
-                        : undefined
-                    }
-                  >
-                    {item.name}
-                  </button>
-                ))}
-              </div>
-            </div>
+        <section className="mb-3 rounded-2xl border border-[#FFD400]/55 bg-[#FFFBE7]/90 px-4 py-3 text-sm text-neutral-800 shadow-[0_4px_16px_rgba(255,212,0,0.18)] dark:border-[#FFD400]/35 dark:bg-[#2b2410]/70 dark:text-[#ffe8a6]">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-neutral-500 dark:text-[#ffda73]">想做自己的图鉴？</p>
+            <Link href={onboardingHref} className="rounded-full bg-neutral-900 px-3 py-1 text-xs font-semibold text-white transition hover:bg-neutral-800 dark:bg-[#FFD400] dark:text-neutral-900 dark:hover:bg-[#f1ca00]">
+              去“我的”看开通权益
+            </Link>
+          </div>
+          <p className="mt-2 text-sm leading-relaxed">
+            在“我的”页可以看到免费版（可管理 10 只）与核心功能，确认后再注册开通，不影响当前浏览。
+          </p>
+        </section>
 
-            <div className="flex items-center gap-2">
-              <div className="text-xs font-medium text-neutral-600">性别</div>
-              <div className="flex gap-2">
-                {[
-                  { key: 'all' as const, label: '全部' },
-                  { key: 'female' as const, label: '种母' },
-                  { key: 'male' as const, label: '种公' }
-                ].map((item) => (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => setSex(item.key)}
-                    className={`h-8 rounded-full border px-3 text-xs shadow-[0_1px_0_rgba(0,0,0,0.04)] transition lg:h-9 lg:px-4 lg:text-sm ${
-                      sex === item.key
-                        ? 'bg-white font-semibold'
-                        : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:shadow-sm'
-                    }`}
-                    style={
-                      sex === item.key
-                        ? {
-                            borderColor: brandPrimary,
-                            color: brandSecondary,
-                            boxShadow: activeButtonShadow
-                          }
-                        : undefined
-                    }
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+        {!showMobileFilterFab ? (
+          <div className="z-20 mb-3 border border-black/5 bg-white/95 px-3 py-3 shadow-[0_4px_20px_rgba(0,0,0,0.06)] backdrop-blur-md supports-[backdrop-filter]:bg-white/90 sm:rounded-2xl dark:border-white/10 dark:bg-neutral-900/70 supports-[backdrop-filter]:dark:bg-neutral-900/60">
+            {renderFilterContent()}
+          </div>
+        ) : (
+          <div className="mb-3 hidden border border-black/5 bg-white/95 px-3 py-3 shadow-[0_4px_20px_rgba(0,0,0,0.06)] backdrop-blur-md supports-[backdrop-filter]:bg-white/90 lg:block lg:rounded-2xl dark:border-white/10 dark:bg-neutral-900/70 supports-[backdrop-filter]:dark:bg-neutral-900/60">
+            {renderFilterContent()}
+          </div>
+        )}
 
-            <div className="flex items-center gap-2">
-              <div className="text-xs font-medium text-neutral-600">状态</div>
-              <div className="flex gap-2">
-                {[
-                  { key: 'all' as const, label: '全部' },
-                  { key: 'need_mating' as const, label: '待配' },
-                  { key: 'warning' as const, label: '⚠️逾期未交配' }
-                ].map((item) => (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => setStatus(item.key)}
-                    className={`h-8 rounded-full border px-3 text-xs shadow-[0_1px_0_rgba(0,0,0,0.04)] transition lg:h-9 lg:px-4 lg:text-sm ${
-                      status === item.key
-                        ? 'bg-white font-semibold'
-                        : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:shadow-sm'
-                    }`}
-                    style={
-                      status === item.key
-                        ? {
-                            borderColor: brandPrimary,
-                            color: brandSecondary,
-                            boxShadow: activeButtonShadow
-                          }
-                        : undefined
-                    }
-                  >
-                    {item.label}
-                  </button>
-                ))}
+        {showMobileFilterFab ? (
+          <button
+            type="button"
+            className="mobile-fab fixed left-5 z-40 flex h-12 w-12 items-center justify-center rounded-full border border-black/10 bg-white/95 text-neutral-900 shadow-[0_10px_24px_rgba(0,0,0,0.2)] lg:hidden dark:border-white/10 dark:bg-neutral-900/92 dark:text-neutral-100"
+            aria-label="打开筛选"
+            onClick={() => setIsMobileFilterModalOpen(true)}
+          >
+            <SlidersHorizontal size={18} />
+          </button>
+        ) : null}
+
+        {isMobileFilterModalOpen ? (
+          <div
+            className="fixed inset-0 z-50 flex items-end bg-black/35 p-3 sm:items-center sm:justify-center sm:p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-label="筛选宠物"
+            onClick={() => setIsMobileFilterModalOpen(false)}
+          >
+            <div
+              className="w-full max-h-[86vh] overflow-y-auto rounded-3xl border border-neutral-200 bg-white p-4 shadow-2xl sm:max-w-xl dark:border-white/10 dark:bg-neutral-900"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-base font-semibold text-neutral-900 dark:text-neutral-100">筛选宠物</p>
+                  <p className="text-xs text-neutral-600 dark:text-neutral-400">选择条件后会实时更新列表。</p>
+                </div>
+                <button
+                  type="button"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-neutral-200 text-neutral-700 dark:border-white/10 dark:text-neutral-200"
+                  aria-label="关闭筛选"
+                  onClick={() => setIsMobileFilterModalOpen(false)}
+                >
+                  <X size={16} />
+                </button>
               </div>
+              {renderFilterContent()}
             </div>
           </div>
-        </div>
+        ) : null}
 
         <SeriesIntroCard series={activeSeries} breeders={list} />
 
@@ -259,9 +372,18 @@ export default function PublicFeedPage({ demo, shareToken, shareQuery, series, b
 
         <ShareContactCard presentation={resolvedPresentation} className="mt-4" />
       </div>
-      <PublicFloatingActions permalink={permalink} homeHref={homeHref} />
+      <PublicFloatingActions permalink={permalink} homeHref={homeHref} showHomeButton={false} />
+      <PublicBottomDock shareToken={shareToken} shareQuery={shareQuery} activeTab="pets" />
     </div>
   );
+}
+
+function resolveSeriesId(initialSeriesId: string | undefined, series: Series[]): string {
+  if (initialSeriesId && series.some((item) => item.id === initialSeriesId)) {
+    return initialSeriesId;
+  }
+
+  return series[0]?.id || '';
 }
 
 function hexToRgba(hex: string, alpha: number): string {
