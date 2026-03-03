@@ -8,23 +8,34 @@ import QRCode from 'qrcode';
 import { cn } from '../../../lib/utils';
 
 type PublicFloatingActionsProps = {
-  permalink: string;
+  permalink?: string;
+  useCurrentUrl?: boolean;
   homeHref?: string;
   showHomeButton?: boolean;
   className?: string;
 };
 
 export default function PublicFloatingActions({
-  permalink,
+  permalink: permalinkProp,
+  useCurrentUrl = false,
   homeHref = '/app',
   showHomeButton = true,
   className
 }: PublicFloatingActionsProps) {
   const [qrOpen, setQrOpen] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [currentUrl, setCurrentUrl] = useState('');
+
+  useEffect(() => {
+    if (!useCurrentUrl) return;
+    setCurrentUrl(typeof window !== 'undefined' ? window.location.href : '');
+  }, [useCurrentUrl]);
+
+  const permalink = useCurrentUrl ? currentUrl : (permalinkProp ?? '');
 
   // Generate QR locally to avoid leaking share links to third-party QR services.
   useEffect(() => {
+    if (!permalink) return;
     let cancelled = false;
 
     void (async () => {
@@ -55,8 +66,8 @@ export default function PublicFloatingActions({
     <>
       <div
         className={cn(
-          'fixed right-4 z-40 flex flex-col gap-2 sm:right-6',
-          showHomeButton ? 'bottom-5 sm:bottom-6' : 'bottom-[calc(env(safe-area-inset-bottom)+68px)] sm:bottom-[calc(env(safe-area-inset-bottom)+76px)]',
+          'fixed right-4 z-50 flex flex-col gap-2 sm:right-6',
+          showHomeButton ? 'bottom-5 sm:bottom-6' : 'bottom-[calc(85px+env(safe-area-inset-bottom)+12px)] sm:bottom-[calc(85px+env(safe-area-inset-bottom)+12px)]',
           className
         )}
       >
@@ -65,9 +76,9 @@ export default function PublicFloatingActions({
           aria-label="当前页二维码"
           title="当前页二维码"
           onClick={() => setQrOpen(true)}
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-white/92 text-neutral-800 shadow-[0_8px_24px_rgba(0,0,0,0.16)] backdrop-blur transition hover:scale-[1.03] hover:bg-white dark:border-white/15 dark:bg-neutral-900/88 dark:text-neutral-100"
+          className="tenant-fab-button"
         >
-          <QrCode size={18} />
+          <QrCode size={20} />
         </button>
 
         {showHomeButton ? (
@@ -75,7 +86,7 @@ export default function PublicFloatingActions({
             href={homeHref}
             aria-label="进入后台"
             title="进入后台"
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-white/92 text-neutral-800 shadow-[0_8px_24px_rgba(0,0,0,0.16)] backdrop-blur transition hover:scale-[1.03] hover:bg-white dark:border-white/15 dark:bg-neutral-900/88 dark:text-neutral-100"
+            className="tenant-fab-button flex h-11 w-11 items-center justify-center"
           >
             <Home size={18} />
           </a>

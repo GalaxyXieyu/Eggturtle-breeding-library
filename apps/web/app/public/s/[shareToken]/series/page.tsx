@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 
 import { mapTenantFeedToLegacy } from '../../../_public-product/public-share-adapter';
 import PublicBottomDock from '../../../_shared/public-bottom-dock';
+import PublicFloatingActions from '../../../_shared/public-floating-actions';
 import PublicShareErrorPanel from '../../../_shared/public-share-error-panel';
 import {
   buildPublicShareRouteQuery,
@@ -152,6 +153,7 @@ export default async function PublicShareSeriesPage({
         )}
       </main>
 
+      <PublicFloatingActions useCurrentUrl showHomeButton={false} />
       <PublicBottomDock shareToken={params.shareToken} shareQuery={shareQuery} activeTab="series" />
     </div>
   );

@@ -126,7 +126,7 @@ export function SeriesIntroCard({
   const [isCollapsed, setIsCollapsed] = useState(true);
   const firstImage = breeders[0]?.images[0]?.url;
 
-  if (!series?.description) return null;
+  if (!series) return null;
 
   const counts = breeders.reduce(
     (acc, breeder) => {
@@ -136,6 +136,8 @@ export function SeriesIntroCard({
     },
     { male: 0, female: 0 }
   );
+
+  const hasDescription = Boolean(series.description?.trim());
 
   return (
     <div className="mb-3 overflow-hidden rounded-2xl border border-black/5 shadow-[0_12px_30px_rgba(0,0,0,0.08)]">
@@ -178,7 +180,11 @@ export function SeriesIntroCard({
 
           <div className={`overflow-hidden transition-all duration-300 ${isCollapsed ? 'max-h-0 opacity-0' : 'max-h-[600px] opacity-100'}`}>
             <div className="px-4 pb-3 sm:px-5">
-              <div className="whitespace-pre-wrap text-sm leading-relaxed text-white/90">{series.description}</div>
+              {hasDescription ? (
+                <div className="whitespace-pre-wrap text-sm leading-relaxed text-white/90">{series.description}</div>
+              ) : (
+                <p className="text-sm leading-relaxed text-white/70">暂无系列介绍</p>
+              )}
             </div>
           </div>
         </div>
