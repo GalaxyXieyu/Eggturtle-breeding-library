@@ -226,14 +226,48 @@ jobs:
           kubectl set image "$WORKLOAD_KIND"/"$WORKLOAD_NAME" "$CONTAINER_NAME"="$IMAGE_REF" -n "$NAMESPACE"
           if ! kubectl rollout status "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE" --timeout="${ROLLOUT_TIMEOUT_SECONDS}s"; then
             echo "::warning::Rollout timed out after ${ROLLOUT_TIMEOUT_SECONDS}s. Collecting diagnostics..."
-            kubectl get pods -n "$NAMESPACE" -o wide | sed -n '1,220p' || true
+            echo "Workload summary:"
+            kubectl get "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE" -o wide || true
+
+            echo "Workload conditions:"
+            kubectl get "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE" -o json \
+              | jq -r '.status.conditions[]? | "\(.type)\t\(.status)\t\(.reason // "-")\t\(.message // "-")"' || true
+
+            echo "ReplicaSets:"
             kubectl get rs -n "$NAMESPACE" | sed -n '1,220p' || true
-            kubectl describe "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE" | sed -n '1,320p' || true
+
+            APP_PODS=$(kubectl get pods -n "$NAMESPACE" -l "app=$WORKLOAD_NAME" \
+              -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | sort -u)
+            if [ -z "$APP_PODS" ]; then
+              echo "No pods found by label app=$WORKLOAD_NAME"
+            else
+              echo "Pod diagnostics (status + events):"
+              while IFS= read -r pod; do
+                [ -n "$pod" ] || continue
+                echo "--- pod: $pod ---"
+                kubectl get pod "$pod" -n "$NAMESPACE" -o json \
+                  | jq -r '
+                      "phase=\(.status.phase // "-")",
+                      (.status.containerStatuses[]? | "container=\(.name) ready=\(.ready) restart=\(.restartCount) state=\(
+                        if .state.waiting then "waiting:" + .state.waiting.reason
+                        elif .state.terminated then "terminated:" + (.state.terminated.reason // "unknown")
+                        elif .state.running then "running"
+                        else "unknown"
+                        end
+                      )"),
+                      (.status.containerStatuses[]?
+                        | select(.state.waiting != null and .state.waiting.message != null)
+                        | "message=\(.state.waiting.message)")
+                    ' || true
+                kubectl describe pod "$pod" -n "$NAMESPACE" | sed -n '/^Events:/,$p' || true
+              done <<< "$APP_PODS"
+            fi
 
             OLD_PODS=$(kubectl get pods -n "$NAMESPACE" -o json \
               | jq -r --arg workload "$WORKLOAD_NAME" --arg container "$CONTAINER_NAME" --arg image "$IMAGE_REF" '
                   .items[]
-                  | select((.metadata.name | startswith($workload + "-")))
+                  | select(any(.metadata.ownerReferences[]?; .kind == "ReplicaSet" or .kind == "StatefulSet"))
+                  | select(.metadata.labels.app == $workload)
                   | select(any(.spec.containers[]?; .name == $container and .image != $image))
                   | .metadata.name
                 ' \
