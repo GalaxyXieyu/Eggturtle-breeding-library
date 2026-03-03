@@ -779,17 +779,20 @@ export default function TenantProductsPage() {
                       <div className="absolute left-2 top-2 rounded-full border border-white/70 bg-white/90 px-2.5 py-1 text-xs font-medium text-neutral-800 shadow-[0_2px_12px_rgba(0,0,0,0.12)] backdrop-blur-sm dark:border-white/40 dark:bg-neutral-800/90 dark:text-neutral-200">
                         {formatSex(item.sex)}
                       </div>
-                      <button
-                        type="button"
-                        className="absolute right-2 top-2 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-white/70 bg-white/90 text-neutral-700 shadow-[0_2px_12px_rgba(0,0,0,0.12)] backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:border-[#FFD400]/80 hover:bg-[#FFD400] hover:text-white hover:shadow-[0_4px_16px_rgba(255,212,0,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD400]/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent dark:border-white/40 dark:bg-neutral-800/90 dark:text-neutral-200 dark:hover:bg-[#FFD400] dark:hover:text-white"
-                        aria-label={`编辑 ${item.code}`}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          openEdit(item.id);
-                        }}
-                      >
-                        <SquarePen size={14} strokeWidth={2.25} className="shrink-0" />
-                      </button>
+                      <span className="absolute right-2 top-2 flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full shadow-[0_2px_12px_rgba(0,0,0,0.12)] transition-transform duration-200 hover:scale-105">
+                        <button
+                          type="button"
+                          data-ui="button"
+                          className="h-full w-full flex items-center justify-center rounded-full border border-white/70 bg-white/90 p-0 text-neutral-700 backdrop-blur-sm transition-all duration-200 hover:border-[#FFD400]/80 hover:bg-[#FFD400] hover:text-white hover:shadow-[0_4px_16px_rgba(255,212,0,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD400]/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent dark:border-white/40 dark:bg-neutral-800/90 dark:text-neutral-200 dark:hover:bg-[#FFD400] dark:hover:text-white [&_svg]:shrink-0"
+                          aria-label={`编辑 ${item.code}`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openEdit(item.id);
+                          }}
+                        >
+                          <SquarePen size={14} strokeWidth={2.25} />
+                        </button>
+                      </span>
                     </div>
 
                     <div className="space-y-2 p-3">
