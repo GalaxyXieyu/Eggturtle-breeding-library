@@ -43,7 +43,11 @@ import {
   parseEventDateInput,
   processPairTransitionDescription
 } from './breeding-rules';
-import { calculateDaysSince, resolveNeedMatingStatus } from './product-event-utils';
+import {
+  calculateDaysSince,
+  parseTaggedProductEventNote,
+  resolveNeedMatingStatus
+} from './product-event-utils';
 
 export type UploadedBinaryFile = {
   originalname: string;
@@ -1417,12 +1421,19 @@ export class ProductsService {
   }
 
   private toProductEvent(event: PrismaProductEvent): ProductEvent {
+    const parsedNote = parseTaggedProductEventNote(event.note);
+
     return {
       id: event.id,
       tenantId: event.tenantId,
       productId: event.productId,
       eventType: event.eventType,
       eventDate: event.eventDate.toISOString(),
+      maleCode: parsedNote.maleCode,
+      eggCount: parsedNote.eggCount,
+      oldMateCode: parsedNote.oldMateCode,
+      newMateCode: parsedNote.newMateCode,
+      // Keep raw note for now to avoid behavior changes; UI can choose to ignore tagged lines.
       note: event.note,
       createdAt: event.createdAt.toISOString(),
       updatedAt: event.updatedAt.toISOString()
