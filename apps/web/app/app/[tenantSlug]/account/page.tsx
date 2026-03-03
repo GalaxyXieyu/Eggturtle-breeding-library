@@ -3,34 +3,36 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
-  createShareRequestSchema,
-  createShareResponseSchema,
   meProfileResponseSchema,
-  meResponseSchema,
   type MeProfile,
   updateMeProfileRequestSchema,
   updateMeProfileResponseSchema,
   updateMyPasswordRequestSchema,
-  updateMyPasswordResponseSchema
+  updateMyPasswordResponseSchema,
 } from '@eggturtle/shared';
-import { Copy, KeyRound, Link2, UserRound } from 'lucide-react';
+import { KeyRound, UserRound } from 'lucide-react';
 
 import { Button } from '../../../../components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '../../../../components/ui/card';
 import { Input } from '../../../../components/ui/input';
 import { Label } from '../../../../components/ui/label';
-import { ApiError, apiRequest, getAccessToken } from '../../../../lib/api-client';
-import { switchTenantBySlug } from '../../../../lib/tenant-session';
+import { apiRequest } from '../../../../lib/api-client';
+import { formatApiError } from '../../../../lib/error-utils';
+import { ensureTenantRouteSession } from '../../../../lib/tenant-route-session';
 import { cn } from '../../../../lib/utils';
-import SharePresentationPageContent from '../share-presentation/page';
 import SubscriptionPageContent from '../subscription/page';
 
-type AccountTab = 'profile' | 'subscription' | 'share';
+type AccountTab = 'profile' | 'subscription';
 
 const ACCOUNT_TABS: Array<{ key: AccountTab; label: string }> = [
   { key: 'profile', label: '账号' },
   { key: 'subscription', label: '订阅' },
-  { key: 'share', label: '分享' }
 ];
 
 export default function AccountPage() {
@@ -44,11 +46,8 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
-  const [generatingShare, setGeneratingShare] = useState(false);
 
   const [profile, setProfile] = useState<MeProfile | null>(null);
-  const [tenantId, setTenantId] = useState<string | null>(null);
-  const [shareLink, setShareLink] = useState<string | null>(null);
 
   const [nameDraft, setNameDraft] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
@@ -59,21 +58,17 @@ export default function AccountPage() {
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    setActiveTab(normalizeAccountTab(searchParams.get('tab')));
-  }, [searchParams]);
+    const rawTab = searchParams.get('tab');
+    if (rawTab === 'share') {
+      if (tenantSlug) {
+        router.replace(`/app/${tenantSlug}/share-presentation`);
+      }
+      return;
+    }
+    setActiveTab(normalizeAccountTab(rawTab));
+  }, [router, searchParams, tenantSlug]);
 
   useEffect(() => {
-    if (!tenantSlug) {
-      setLoading(false);
-      setError('缺少 tenantSlug。');
-      return;
-    }
-
-    if (!getAccessToken()) {
-      router.replace('/login');
-      return;
-    }
-
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -81,22 +76,35 @@ export default function AccountPage() {
 
     void (async () => {
       try {
-        await switchTenantBySlug(tenantSlug);
-        const [me, profileResponse] = await Promise.all([
-          apiRequest('/me', { responseSchema: meResponseSchema }),
-          apiRequest('/me/profile', { responseSchema: meProfileResponseSchema })
-        ]);
+        const access = await ensureTenantRouteSession({
+          tenantSlug,
+          missingTenantMessage: '缺少 tenantSlug。',
+          router,
+        });
+
+        if (!access.ok) {
+          if (!cancelled) {
+            if (access.reason === 'missing-tenant') {
+              setError(access.message ?? '缺少 tenantSlug。');
+            }
+            setLoading(false);
+          }
+          return;
+        }
+
+        const profileResponse = await apiRequest('/me/profile', {
+          responseSchema: meProfileResponseSchema,
+        });
 
         if (cancelled) {
           return;
         }
 
-        setTenantId(me.tenantId ?? null);
         setProfile(profileResponse.profile);
         setNameDraft(profileResponse.profile.name ?? '');
       } catch (requestError) {
         if (!cancelled) {
-          setError(formatError(requestError));
+          setError(formatApiError(requestError));
         }
       } finally {
         if (!cancelled) {
@@ -134,20 +142,20 @@ export default function AccountPage() {
 
     try {
       const payload = updateMeProfileRequestSchema.parse({
-        name: nameDraft.trim() ? nameDraft.trim() : null
+        name: nameDraft.trim() ? nameDraft.trim() : null,
       });
       const response = await apiRequest('/me/profile', {
         method: 'PUT',
         body: payload,
         requestSchema: updateMeProfileRequestSchema,
-        responseSchema: updateMeProfileResponseSchema
+        responseSchema: updateMeProfileResponseSchema,
       });
 
       setProfile(response.profile);
       setNameDraft(response.profile.name ?? '');
       setMessage('账户资料已更新。');
     } catch (requestError) {
-      setError(formatError(requestError));
+      setError(formatApiError(requestError));
     } finally {
       setSavingProfile(false);
     }
@@ -166,13 +174,13 @@ export default function AccountPage() {
     try {
       const payload = updateMyPasswordRequestSchema.parse({
         currentPassword: currentPassword.trim() ? currentPassword.trim() : undefined,
-        newPassword
+        newPassword,
       });
       await apiRequest('/me/password', {
         method: 'PUT',
         body: payload,
         requestSchema: updateMyPasswordRequestSchema,
-        responseSchema: updateMyPasswordResponseSchema
+        responseSchema: updateMyPasswordResponseSchema,
       });
 
       setCurrentPassword('');
@@ -180,54 +188,9 @@ export default function AccountPage() {
       setConfirmPassword('');
       setMessage('密码已更新。');
     } catch (requestError) {
-      setError(formatError(requestError));
+      setError(formatApiError(requestError));
     } finally {
       setSavingPassword(false);
-    }
-  }
-
-  async function handleGenerateShareLink() {
-    if (!tenantId) {
-      setError('当前会话没有 tenantId，无法生成分享链接。');
-      return;
-    }
-
-    setGeneratingShare(true);
-    setError(null);
-    setMessage(null);
-
-    try {
-      const payload = createShareRequestSchema.parse({
-        resourceType: 'tenant_feed',
-        resourceId: tenantId
-      });
-      const response = await apiRequest('/shares', {
-        method: 'POST',
-        body: payload,
-        requestSchema: createShareRequestSchema,
-        responseSchema: createShareResponseSchema
-      });
-
-      setShareLink(response.share.entryUrl);
-      setMessage('分享链接已生成，可直接复制。');
-    } catch (requestError) {
-      setError(formatError(requestError));
-    } finally {
-      setGeneratingShare(false);
-    }
-  }
-
-  async function handleCopyShareLink() {
-    if (!shareLink) {
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(shareLink);
-      setMessage('分享链接已复制。');
-      setError(null);
-    } catch (requestError) {
-      setError(formatError(requestError));
     }
   }
 
@@ -243,7 +206,7 @@ export default function AccountPage() {
               'rounded-full border px-4 py-1.5 text-sm font-semibold transition',
               activeTab === item.key
                 ? 'border-neutral-900 bg-neutral-900 text-white'
-                : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:text-neutral-900'
+                : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:text-neutral-900',
             )}
           >
             {item.label}
@@ -285,7 +248,11 @@ export default function AccountPage() {
                 <p>账号创建时间：{formatDate(profile?.createdAt)}</p>
                 <p>最近改密时间：{formatDate(profile?.passwordUpdatedAt)}</p>
               </div>
-              <Button variant="primary" disabled={savingProfile} onClick={() => void handleSaveProfile()}>
+              <Button
+                variant="primary"
+                disabled={savingProfile}
+                onClick={() => void handleSaveProfile()}
+              >
                 {savingProfile ? '保存中...' : '保存资料'}
               </Button>
             </CardContent>
@@ -297,7 +264,9 @@ export default function AccountPage() {
                 <KeyRound size={18} />
                 修改密码
               </CardTitle>
-              <CardDescription>首次设置可直接填写新密码；已有密码需先输入当前密码。</CardDescription>
+              <CardDescription>
+                首次设置可直接填写新密码；已有密码需先输入当前密码。
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-2">
@@ -330,7 +299,11 @@ export default function AccountPage() {
                   onChange={(event) => setConfirmPassword(event.target.value)}
                 />
               </div>
-              <Button variant="secondary" disabled={savingPassword} onClick={() => void handleChangePassword()}>
+              <Button
+                variant="secondary"
+                disabled={savingPassword}
+                onClick={() => void handleChangePassword()}
+              >
                 {savingPassword ? '更新中...' : '更新密码'}
               </Button>
             </CardContent>
@@ -341,38 +314,6 @@ export default function AccountPage() {
       {!loading && activeTab === 'subscription' ? (
         <section className="rounded-3xl border border-neutral-200/90 bg-white p-2">
           <SubscriptionPageContent />
-        </section>
-      ) : null}
-
-      {!loading && activeTab === 'share' ? (
-        <section className="grid grid-cols-1 gap-4">
-          <Card id="share-link" className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-2xl">
-                <Link2 size={18} />
-                创建分享链接
-              </CardTitle>
-              <CardDescription>一键生成租户公开图鉴入口。</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="break-all rounded-2xl border border-neutral-200 bg-neutral-50 p-3 text-xs text-neutral-700">
-                {shareLink ?? '还未生成分享链接，点击下面按钮即可创建。'}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <Button variant="primary" disabled={generatingShare} onClick={() => void handleGenerateShareLink()}>
-                  {generatingShare ? '生成中...' : '生成分享链接'}
-                </Button>
-                <Button variant="secondary" disabled={!shareLink} onClick={() => void handleCopyShareLink()}>
-                  <Copy size={14} />
-                  复制链接
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <section className="rounded-3xl border border-neutral-200/90 bg-white p-2">
-            <SharePresentationPageContent />
-          </section>
         </section>
       ) : null}
 
@@ -395,10 +336,6 @@ function normalizeAccountTab(value: string | null): AccountTab {
     return 'subscription';
   }
 
-  if (value === 'share') {
-    return 'share';
-  }
-
   return 'profile';
 }
 
@@ -413,16 +350,4 @@ function formatDate(value: string | null | undefined) {
   }
 
   return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
-}
-
-function formatError(error: unknown) {
-  if (error instanceof ApiError) {
-    return error.message;
-  }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return '未知错误';
 }

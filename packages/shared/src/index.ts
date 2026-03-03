@@ -22,7 +22,7 @@ export {
   updateMyPasswordRequestSchema,
   updateMyPasswordResponseSchema,
   verifyCodeRequestSchema,
-  verifyCodeResponseSchema
+  verifyCodeResponseSchema,
 } from './auth';
 export type {
   AuthUser,
@@ -41,7 +41,7 @@ export type {
   UpdateMyPasswordRequest,
   UpdateMyPasswordResponse,
   VerifyCodeRequest,
-  VerifyCodeResponse
+  VerifyCodeResponse,
 } from './auth';
 export {
   createTenantRequestSchema,
@@ -56,7 +56,7 @@ export {
   tenantNameSchema,
   tenantRoleSchema,
   tenantSchema,
-  tenantSlugSchema
+  tenantSlugSchema,
 } from './tenant';
 export type {
   CreateTenantRequest,
@@ -68,7 +68,7 @@ export type {
   SwitchTenantResponse,
   Tenant,
   TenantMembership,
-  TenantRole
+  TenantRole,
 } from './tenant';
 export {
   createEggRecordRequestSchema,
@@ -104,7 +104,7 @@ export {
   getProductPublicClicksResponseSchema,
   updateProductRequestSchema,
   setMainProductImageResponseSchema,
-  uploadProductImageResponseSchema
+  uploadProductImageResponseSchema,
 } from './product';
 export type {
   CreateEggRecordRequest,
@@ -122,9 +122,11 @@ export type {
   ProductPublicClicksQuery,
   ProductPublicClicksSummary,
   ReorderProductImagesRequest,
-  UpdateProductRequest
+  UpdateProductRequest,
 } from './product';
 export {
+  createSeriesRequestSchema,
+  createSeriesResponseSchema,
   getSeriesResponseSchema,
   listSeriesQuerySchema,
   listSeriesResponseSchema,
@@ -133,14 +135,16 @@ export {
   seriesSchema,
   seriesSummarySchema,
   updateSeriesRequestSchema,
-  updateSeriesResponseSchema
+  updateSeriesResponseSchema,
 } from './series';
 export type {
+  CreateSeriesRequest,
+  CreateSeriesResponse,
   ListSeriesQuery,
   Series,
   SeriesSummary,
   UpdateSeriesRequest,
-  UpdateSeriesResponse
+  UpdateSeriesResponse,
 } from './series';
 export {
   breederCodeSchema,
@@ -154,14 +158,14 @@ export {
   getBreederResponseSchema,
   listBreederEventsResponseSchema,
   listBreedersQuerySchema,
-  listBreedersResponseSchema
+  listBreedersResponseSchema,
 } from './breeder';
 export type {
   Breeder,
   BreederEvent,
   BreederFamilyTree,
   BreederFamilyTreeLink,
-  ListBreedersQuery
+  ListBreedersQuery,
 } from './breeder';
 export {
   createFeaturedProductRequestSchema,
@@ -172,34 +176,39 @@ export {
   listPublicFeaturedProductsQuerySchema,
   listPublicFeaturedProductsResponseSchema,
   reorderFeaturedProductsRequestSchema,
-  reorderFeaturedProductsResponseSchema
+  reorderFeaturedProductsResponseSchema,
 } from './featured';
 export type {
   CreateFeaturedProductRequest,
   FeaturedProductItem,
   ListPublicFeaturedProductsQuery,
-  ReorderFeaturedProductsRequest
+  ReorderFeaturedProductsRequest,
 } from './featured';
 export {
   AuditAction,
   auditActionSchema,
   auditLogSchema,
   listAuditLogsQuerySchema,
-  listAuditLogsResponseSchema
+  listAuditLogsResponseSchema,
 } from './audit';
-export type { AuditAction as AuditActionType, AuditLog, ListAuditLogsQuery, ListAuditLogsResponse } from './audit';
+export type {
+  AuditAction as AuditActionType,
+  AuditLog,
+  ListAuditLogsQuery,
+  ListAuditLogsResponse,
+} from './audit';
 export { healthDbResponseSchema, healthResponseSchema } from './health';
 export type { HealthDbResponse, HealthResponse } from './health';
 export {
   storageGetSignedUrlResponseSchema,
   storageObjectKeySchema,
   storagePutObjectRequestSchema,
-  storagePutObjectResponseSchema
+  storagePutObjectResponseSchema,
 } from './storage';
 export type {
   StorageGetSignedUrlResponse,
   StoragePutObjectRequest,
-  StoragePutObjectResponse
+  StoragePutObjectResponse,
 } from './storage';
 export {
   createShareRequestSchema,
@@ -223,7 +232,7 @@ export {
   updateTenantSharePresentationResponseSchema,
   uploadTenantSharePresentationImageResponseSchema,
   shareResourceTypeSchema,
-  shareSchema
+  shareSchema,
 } from './share';
 export type {
   CreateShareRequest,
@@ -239,21 +248,21 @@ export type {
   TenantSharePresentation,
   UpdateTenantSharePresentationRequest,
   UploadTenantSharePresentationImageResponse,
-  ShareResourceType
+  ShareResourceType,
 } from './share';
 export {
   dashboardOverviewChartItemSchema,
   dashboardOverviewProductClicksTopItemSchema,
   dashboardOverviewQuerySchema,
   dashboardOverviewResponseSchema,
-  dashboardOverviewWindowSchema
+  dashboardOverviewWindowSchema,
 } from './dashboard';
 export type {
   DashboardOverviewChartItem,
   DashboardOverviewProductClicksTopItem,
   DashboardOverviewQuery,
   DashboardOverviewResponse,
-  DashboardOverviewWindow
+  DashboardOverviewWindow,
 } from './dashboard';
 export {
   createTenantSubscriptionActivationCodeRequestSchema,
@@ -266,7 +275,7 @@ export {
   tenantSubscriptionSchema,
   tenantSubscriptionStatusSchema,
   updateTenantSubscriptionRequestSchema,
-  updateTenantSubscriptionResponseSchema
+  updateTenantSubscriptionResponseSchema,
 } from './subscription';
 export type {
   CreateTenantSubscriptionActivationCodeRequest,
@@ -279,7 +288,7 @@ export type {
   TenantSubscriptionPlan,
   TenantSubscriptionStatus,
   UpdateTenantSubscriptionRequest,
-  UpdateTenantSubscriptionResponse
+  UpdateTenantSubscriptionResponse,
 } from './subscription';
 export {
   aiAssistantCapabilitySchema,
@@ -317,7 +326,7 @@ export {
   turtleAnalysisImageInputSchema,
   turtleAnalysisRequestSchema,
   turtleAnalysisResponseSchema,
-  turtleAnalysisResultSchema
+  turtleAnalysisResultSchema,
 } from './ai';
 export type {
   AiAssistantCapability,
@@ -341,7 +350,7 @@ export type {
   AiTopUpOrder,
   AiTopUpPack,
   TurtleAnalysisRequest,
-  TurtleAnalysisResponse
+  TurtleAnalysisResponse,
 } from './ai';
 export {
   SuperAdminAuditAction,
@@ -382,7 +391,7 @@ export {
   superAdminAuditActionSchema,
   superAdminAuditLogSchema,
   upsertTenantMemberRequestSchema,
-  upsertTenantMemberResponseSchema
+  upsertTenantMemberResponseSchema,
 } from './admin';
 export type {
   AdminTenant,
@@ -423,5 +432,5 @@ export type {
   SuperAdminAuditActionType,
   SuperAdminAuditLog,
   UpsertTenantMemberRequest,
-  UpsertTenantMemberResponse
+  UpsertTenantMemberResponse,
 } from './admin';

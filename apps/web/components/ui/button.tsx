@@ -15,35 +15,42 @@ const buttonVariants = cva(
           'bg-gradient-to-r from-amber-300 via-[#FFD400] to-yellow-400 text-neutral-900 shadow-[0_6px_20px_rgba(255,212,0,0.28)] hover:brightness-95 dark:from-amber-300 dark:via-[#FFD400] dark:to-yellow-400 dark:text-neutral-900',
         secondary:
           'border-0 bg-neutral-100 text-neutral-800 shadow-none hover:bg-neutral-200 dark:bg-[#253247] dark:text-[#e8eef8] dark:hover:bg-[#304261]',
-        ghost: 'bg-transparent text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800',
+        ghost:
+          'bg-transparent text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800',
         outline:
-          'bg-transparent text-neutral-700 border border-neutral-300 hover:bg-neutral-100 dark:text-neutral-300 dark:border-neutral-700 dark:hover:bg-neutral-800'
+          'bg-transparent text-neutral-700 border border-neutral-300 hover:bg-neutral-100 dark:text-neutral-300 dark:border-neutral-700 dark:hover:bg-neutral-800',
       },
       size: {
         default: 'h-10 px-4 py-2',
         sm: 'h-9 rounded-md px-3',
         lg: 'h-11 rounded-lg px-6',
-        icon: 'h-10 w-10'
-      }
+        icon: 'h-10 w-10',
+      },
     },
     defaultVariants: {
       variant: 'default',
-      size: 'default'
-    }
-  }
+      size: 'default',
+    },
+  },
 );
 
 export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {
   asChild?: boolean;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : 'button';
-    return <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />;
-  }
+    return (
+      <Comp
+        data-ui="button"
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={ref}
+        {...props}
+      />
+    );
+  },
 );
 Button.displayName = 'Button';
 

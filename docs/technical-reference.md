@@ -1,6 +1,6 @@
 # Technical Reference（业务口径 + 规则）
 
-更新时间：2026-03-03（V4：分享端获客闭环 + 后台导航收敛）  
+更新时间：2026-03-03（V4.1：分享入口浮动化 + 公开系列页交互补全）  
 范围：`apps/api`、`packages/shared`、`legacy/backend`
 
 ## 0. 业务主线（先讲清楚我们在卖什么）
@@ -77,6 +77,23 @@
 - 仅当用户主动点击“我的页 CTA”时进入鉴权流程。
 - 登录回流默认：`/app?intent=dashboard&source=share`。
 - `next` 只接受站内相对路径；外链或非法值必须回退 `/app?intent=dashboard`。
+
+### 2.5 租户侧分享入口与意图映射（V4.1）
+
+- 移动端租户后台已移除 Dock 内“分享”一级项，改为 Dock 上方悬浮按钮。
+- 悬浮按钮行为（前端）：
+  1. `GET /me` 读取当前 `tenantId`
+  2. `POST /shares` 创建 `tenant_feed` 分享链接
+  3. 按当前页面意图跳转公开页
+- 公开页意图映射：
+  - 默认：`/public/s/{shareToken}`
+  - 系列页：`/public/s/{shareToken}/series`
+  - 宠物详情页（`products/:id` 或 `breeders/:id`）：`/public/s/{shareToken}/products/{id}`
+- 本次只调整入口与跳转策略，无新增后端 API、无数据模型变更。
+
+代码证据：
+- `apps/web/app/app/[tenantSlug]/layout.tsx`
+- `apps/web/components/tenant-floating-share-button.tsx`
 
 ## 3. 已继承并在 Node 生效的繁育规则
 
@@ -186,6 +203,17 @@
 2. 访客转化：进入 `我的` 查看免费卡片与能力介绍。
 3. 访客鉴权：点击 `注册并开始` 或 `已有账号登录` 后再进入 `/login`。
 4. 成功回流：注册/登录完成后进入 `/app?intent=dashboard&source=share`。
+
+### 4.4 公开系列页交互补全（V4.1）
+
+- 系列页新增“当前页二维码”浮动操作，位置与底部 Dock 安全区对齐。
+- 二维码在本地生成（浏览器侧），不依赖第三方二维码服务。
+- 系列说明为空时展示“暂无系列介绍”占位，不再整卡隐藏。
+
+代码证据：
+- `apps/web/app/public/s/[shareToken]/series/page.tsx`
+- `apps/web/app/public/_shared/public-floating-actions.tsx`
+- `apps/web/app/public/_public-product/components.tsx`
 
 ## 5. 数据模型字段与业务关联（Prisma）
 

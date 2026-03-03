@@ -131,10 +131,14 @@ export class AuthService {
       });
     });
 
-    const accessToken = this.issueAccessToken({
-      id: user.id,
-      email: user.email
-    });
+    const tenantId = await this.resolveDefaultTenantId(user.id);
+    const accessToken = this.issueAccessToken(
+      {
+        id: user.id,
+        email: user.email
+      },
+      tenantId
+    );
 
     return {
       accessToken,
@@ -191,10 +195,14 @@ export class AuthService {
       this.throwInvalidCredentials();
     }
 
-    const accessToken = this.issueAccessToken({
-      id: user.id,
-      email: user.email
-    });
+    const tenantId = await this.resolveDefaultTenantId(user.id);
+    const accessToken = this.issueAccessToken(
+      {
+        id: user.id,
+        email: user.email
+      },
+      tenantId
+    );
 
     return {
       accessToken,
@@ -228,6 +236,22 @@ export class AuthService {
     }
 
     return candidates[0];
+  }
+
+  private async resolveDefaultTenantId(userId: string): Promise<string | undefined> {
+    const membership = await this.prisma.tenantMember.findFirst({
+      where: {
+        userId
+      },
+      orderBy: {
+        createdAt: 'asc'
+      },
+      select: {
+        tenantId: true
+      }
+    });
+
+    return membership?.tenantId;
   }
 
   async switchTenant(user: AuthUser, payload: SwitchTenantRequest): Promise<SwitchTenantResponse> {
@@ -336,6 +360,26 @@ export class AuthService {
           }
         });
 
+        const existingMembership = await tx.tenantMember.findFirst({
+          where: {
+            userId: user.id
+          },
+          include: {
+            tenant: {
+              select: {
+                slug: true
+              }
+            }
+          }
+        });
+
+        if (existingMembership) {
+          throw new ConflictException({
+            message: `User is already bound to tenant "${existingMembership.tenant.slug}".`,
+            errorCode: ErrorCode.InvalidRequestPayload
+          });
+        }
+
         // Create tenant
         const tenant = await tx.tenant.create({
           data: {
@@ -395,6 +439,14 @@ export class AuthService {
           errorCode: ErrorCode.TenantSlugConflict
         });
       }
+
+      if (this.isTenantMemberUserConflict(error)) {
+        throw new ConflictException({
+          message: 'User is already bound to a tenant.',
+          errorCode: ErrorCode.InvalidRequestPayload
+        });
+      }
+
       throw error;
     }
   }
@@ -617,5 +669,24 @@ export class AuthService {
 
     const target = Array.isArray(error.meta?.target) ? error.meta.target : [];
     return target.includes('slug');
+  }
+
+  private isTenantMemberUserConflict(error: unknown): boolean {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
+      return false;
+    }
+
+    if (error.code !== 'P2002') {
+      return false;
+    }
+
+    const target = Array.isArray(error.meta?.target) ? error.meta.target : [];
+    const normalized = new Set(target.map((value) => String(value)));
+
+    return (
+      normalized.has('userId') ||
+      normalized.has('user_id') ||
+      normalized.has('tenant_members_user_id_key')
+    );
   }
 }

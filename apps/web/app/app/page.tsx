@@ -4,7 +4,12 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { useUiPreferences } from '../../components/ui-preferences';
-import { ApiError, getAccessToken } from '../../lib/api-client';
+import { ApiError, clearAccessToken, getAccessToken } from '../../lib/api-client';
+import {
+  normalizeShareSource,
+  sanitizeInternalNext,
+  type ShareSource,
+} from '../../lib/post-auth-redirect';
 import { resolveCurrentTenantSlug } from '../../lib/tenant-session';
 
 type PageState = {
@@ -12,7 +17,6 @@ type PageState = {
   loading: boolean;
 };
 
-type ShareSource = 'share' | 'direct';
 type AppIntent = 'dashboard' | 'account' | 'subscription';
 
 const COPY = {
@@ -22,7 +26,8 @@ const COPY = {
     loading: '正在解析租户信息...',
     loadingDetail: '正在同步租户权限与工作台配置，通常只需几秒。',
     loadingStage: '连接工作台服务',
-    openTenantSelect: '打开租户选择',
+    noTenantContext: '当前账号未绑定租户，请重新登录后重试。',
+    retryLogin: '重新登录',
     backToLogin: '返回登录',
     unknownError: '未知错误'
   },
@@ -32,7 +37,8 @@ const COPY = {
     loading: 'Resolving tenant information...',
     loadingDetail: 'Syncing tenant permissions and workspace settings. This should only take a few seconds.',
     loadingStage: 'Connecting workspace services',
-    openTenantSelect: 'Open tenant selector',
+    noTenantContext: 'No tenant is bound to this account. Please sign in again.',
+    retryLogin: 'Sign in again',
     backToLogin: 'Back to login',
     unknownError: 'Unknown error'
   }
@@ -67,9 +73,17 @@ export default function AppEntryPage() {
         const source = normalizeShareSource(params.get('source'));
         const intent = normalizeAppIntent(params.get('intent'));
         const tenantSlug = await resolveCurrentTenantSlug();
-        const nextPath = tenantSlug
-          ? resolveTenantIntentPath(tenantSlug, intent, source)
-          : '/tenant-select';
+        if (!tenantSlug) {
+          if (!isCancelled) {
+            setState({
+              loading: false,
+              error: copy.noTenantContext
+            });
+          }
+          return;
+        }
+
+        const nextPath = resolveTenantIntentPath(tenantSlug, intent, source);
 
         if (!isCancelled) {
           router.replace(nextPath);
@@ -86,7 +100,7 @@ export default function AppEntryPage() {
     return () => {
       isCancelled = true;
     };
-  }, [copy.unknownError, router]);
+  }, [copy.noTenantContext, copy.unknownError, router]);
 
   return (
     <main className="workspace-shell tenant-entry-shell">
@@ -116,8 +130,14 @@ export default function AppEntryPage() {
 
           {!state.loading && state.error ? (
             <div className="row">
-              <button type="button" onClick={() => router.push('/tenant-select')}>
-                {copy.openTenantSelect}
+              <button
+                type="button"
+                onClick={() => {
+                  clearAccessToken();
+                  router.push('/login');
+                }}
+              >
+                {copy.retryLogin}
               </button>
               <button type="button" className="secondary" onClick={() => router.push('/login')}>
                 {copy.backToLogin}
@@ -128,14 +148,6 @@ export default function AppEntryPage() {
       </section>
     </main>
   );
-}
-
-function normalizeShareSource(value: string | null): ShareSource {
-  if (value?.trim().toLowerCase() === 'share') {
-    return 'share';
-  }
-
-  return 'direct';
 }
 
 function normalizeAppIntent(value: string | null): AppIntent {
@@ -164,24 +176,6 @@ function resolveTenantIntentPath(tenantSlug: string, intent: AppIntent, source: 
 
   return `/app/${tenantSlug}`;
 }
-
-function sanitizeInternalNext(value: string | null): string | null {
-  const normalized = value?.trim();
-  if (!normalized) {
-    return null;
-  }
-
-  if (!normalized.startsWith('/')) {
-    return null;
-  }
-
-  if (normalized.startsWith('//') || normalized.startsWith('/\\')) {
-    return null;
-  }
-
-  return normalized;
-}
-
 function formatError(error: unknown, fallback: string) {
   if (error instanceof ApiError) {
     return error.message;

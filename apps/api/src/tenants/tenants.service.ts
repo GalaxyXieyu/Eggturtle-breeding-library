@@ -15,6 +15,26 @@ export class TenantsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async createTenant(user: AuthUser, payload: CreateTenantRequest) {
+    const existingMembership = await this.prisma.tenantMember.findFirst({
+      where: {
+        userId: user.id
+      },
+      include: {
+        tenant: {
+          select: {
+            slug: true
+          }
+        }
+      }
+    });
+
+    if (existingMembership) {
+      throw new ConflictException({
+        message: `User is already bound to tenant "${existingMembership.tenant.slug}".`,
+        errorCode: ErrorCode.InvalidRequestPayload
+      });
+    }
+
     try {
       return await this.prisma.$transaction(async (tx) => {
         const tenant = await tx.tenant.create({
@@ -46,6 +66,13 @@ export class TenantsService {
         throw new ConflictException({
           message: 'Tenant slug already exists.',
           errorCode: ErrorCode.TenantSlugConflict
+        });
+      }
+
+      if (this.isTenantMemberUserConflict(error)) {
+        throw new ConflictException({
+          message: 'User is already bound to a tenant.',
+          errorCode: ErrorCode.InvalidRequestPayload
         });
       }
 
@@ -124,5 +151,24 @@ export class TenantsService {
 
     const target = Array.isArray(error.meta?.target) ? error.meta.target : [];
     return target.includes('slug');
+  }
+
+  private isTenantMemberUserConflict(error: unknown): boolean {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
+      return false;
+    }
+
+    if (error.code !== 'P2002') {
+      return false;
+    }
+
+    const target = Array.isArray(error.meta?.target) ? error.meta.target : [];
+    const normalized = new Set(target.map((value) => String(value)));
+
+    return (
+      normalized.has('userId') ||
+      normalized.has('user_id') ||
+      normalized.has('tenant_members_user_id_key')
+    );
   }
 }

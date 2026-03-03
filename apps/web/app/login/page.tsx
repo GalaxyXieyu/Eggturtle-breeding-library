@@ -19,14 +19,12 @@ import {
 } from '@eggturtle/shared/auth';
 
 import { ApiError, apiRequest, getAccessToken, setAccessToken } from '../../lib/api-client';
+import { resolvePostAuthRedirect } from '../../lib/post-auth-redirect';
 import { UiPreferenceControls, type UiLocale, useUiPreferences } from '../../components/ui-preferences';
 
 type LoginMode = 'password' | 'code';
 type EntryView = 'signin' | 'activation' | 'register';
 type RegisterStep = 'email' | 'verify' | 'complete';
-type ShareSource = 'share' | 'direct';
-
-const SHARE_SOURCE_DEFAULT_NEXT = '/app?intent=dashboard&source=share';
 
 type LoginCopy = {
   title: string;
@@ -913,47 +911,6 @@ export default function LoginPage() {
       </section>
     </main>
   );
-}
-
-function resolvePostAuthRedirect(defaultPath: string, search: string): string {
-  const searchParams = new URLSearchParams(search);
-  const safeNext = sanitizeInternalNext(searchParams.get('next'));
-  if (safeNext) {
-    return safeNext;
-  }
-
-  const source = normalizeShareSource(searchParams.get('source'));
-  if (source === 'share') {
-    return SHARE_SOURCE_DEFAULT_NEXT;
-  }
-
-  return defaultPath;
-}
-
-function normalizeShareSource(value: string | null): ShareSource {
-  if (value?.trim().toLowerCase() === 'share') {
-    return 'share';
-  }
-
-  return 'direct';
-}
-
-function sanitizeInternalNext(value: string | null): string | null {
-  const normalized = value?.trim();
-  if (!normalized) {
-    return null;
-  }
-
-  if (!normalized.startsWith('/')) {
-    return null;
-  }
-
-  // Reject protocol-relative and escaped absolute paths.
-  if (normalized.startsWith('//') || normalized.startsWith('/\\')) {
-    return null;
-  }
-
-  return normalized;
 }
 
 function formatError(error: unknown, locale: UiLocale) {

@@ -11,7 +11,13 @@ import PublicFloatingActions from '../_shared/public-floating-actions';
 import { appendPublicShareQuery } from '../_shared/public-share-api';
 
 import type { Breeder, NeedMatingStatus, Series } from './types';
-import { BreederCard, DemoHint, PublicEmptyState, SeriesIntroCard, ShareContactCard } from './components';
+import {
+  BreederCard,
+  DemoHint,
+  PublicEmptyState,
+  SeriesIntroCard,
+  ShareContactCard,
+} from './components';
 import { resolvePublicSharePresentation } from './presentation';
 
 type Props = {
@@ -37,7 +43,7 @@ export default function PublicFeedPage({
   series,
   breeders,
   presentation,
-  tenantSlug
+  tenantSlug,
 }: Props) {
   const [seriesId, setSeriesId] = useState<string>(resolveSeriesId(initialSeriesId, series));
   const [sex, setSex] = useState<'all' | 'male' | 'female'>('all');
@@ -101,24 +107,38 @@ export default function PublicFeedPage({
   const list = useMemo(() => {
     const bySeries = seriesId ? breeders.filter((item) => item.seriesId === seriesId) : breeders;
     const bySex = sex === 'all' ? bySeries : bySeries.filter((item) => item.sex === sex);
-    const byStatus = status === 'all' ? bySex : bySex.filter((item) => (item.needMatingStatus || 'normal') === status);
+    const byStatus =
+      status === 'all'
+        ? bySex
+        : bySex.filter((item) => (item.needMatingStatus || 'normal') === status);
 
     if (status !== 'all') return byStatus;
 
     return byStatus
       .map((item, index) => ({ item, index }))
       .sort((a, b) => {
-        const bySeverity = rankStatus(b.item.needMatingStatus || 'normal') - rankStatus(a.item.needMatingStatus || 'normal');
+        const bySeverity =
+          rankStatus(b.item.needMatingStatus || 'normal') -
+          rankStatus(a.item.needMatingStatus || 'normal');
         if (bySeverity !== 0) return bySeverity;
         return a.index - b.index;
       })
       .map((item) => item.item);
   }, [breeders, seriesId, sex, status]);
 
-  const activeSeries = useMemo(() => series.find((item) => item.id === seriesId) || null, [series, seriesId]);
+  const activeSeries = useMemo(
+    () => series.find((item) => item.id === seriesId) || null,
+    [series, seriesId],
+  );
 
   const brandPrimary = resolvedPresentation.theme.brandPrimary;
   const brandSecondary = resolvedPresentation.theme.brandSecondary;
+  const contactQrImageUrl = resolvedPresentation.contact.showWechatBlock
+    ? resolvedPresentation.contact.wechatQrImageUrl
+    : null;
+  const contactWechatId = resolvedPresentation.contact.showWechatBlock
+    ? resolvedPresentation.contact.wechatId
+    : null;
   const activeButtonShadow = `0 6px 20px ${hexToRgba(brandPrimary, 0.22)}`;
   const permalink =
     typeof window !== 'undefined' && window.location?.origin
@@ -148,7 +168,7 @@ export default function PublicFeedPage({
                     ? {
                         borderColor: brandPrimary,
                         color: brandSecondary,
-                        boxShadow: activeButtonShadow
+                        boxShadow: activeButtonShadow,
                       }
                     : undefined
                 }
@@ -165,7 +185,7 @@ export default function PublicFeedPage({
             {[
               { key: 'all' as const, label: '全部' },
               { key: 'female' as const, label: '种母' },
-              { key: 'male' as const, label: '种公' }
+              { key: 'male' as const, label: '种公' },
             ].map((item) => (
               <button
                 key={item.key}
@@ -181,7 +201,7 @@ export default function PublicFeedPage({
                     ? {
                         borderColor: brandPrimary,
                         color: brandSecondary,
-                        boxShadow: activeButtonShadow
+                        boxShadow: activeButtonShadow,
                       }
                     : undefined
                 }
@@ -198,7 +218,7 @@ export default function PublicFeedPage({
             {[
               { key: 'all' as const, label: '全部' },
               { key: 'need_mating' as const, label: '待配' },
-              { key: 'warning' as const, label: '⚠️逾期未交配' }
+              { key: 'warning' as const, label: '⚠️逾期未交配' },
             ].map((item) => (
               <button
                 key={item.key}
@@ -214,7 +234,7 @@ export default function PublicFeedPage({
                     ? {
                         borderColor: brandPrimary,
                         color: brandSecondary,
-                        boxShadow: activeButtonShadow
+                        boxShadow: activeButtonShadow,
                       }
                     : undefined
                 }
@@ -236,19 +256,28 @@ export default function PublicFeedPage({
             <div
               className="absolute inset-0 bg-cover bg-center transition-all duration-500"
               style={{
-                backgroundImage: `url(${heroImages[heroIndex] || '/images/mg_04.jpg'})`
+                backgroundImage: `url(${heroImages[heroIndex] || '/images/mg_04.jpg'})`,
               }}
             />
             <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-black/25 to-black/40" />
-            <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${hexToRgba(brandSecondary, 0.18)}, transparent 52%)` }} />
+            <div
+              className="absolute inset-0"
+              style={{
+                background: `linear-gradient(135deg, ${hexToRgba(brandSecondary, 0.18)}, transparent 52%)`,
+              }}
+            />
             <div className="absolute inset-0">
               <div className="absolute right-3 top-3 z-30 rounded-full border border-white/15 bg-black/35 p-1 backdrop-blur-sm">
                 <UiPreferenceControls />
               </div>
               <div className="flex h-full flex-col justify-end p-5 lg:p-8">
                 <div className="text-xs uppercase tracking-widest text-white/70">public share</div>
-                <h1 className="mt-2 text-[26px] font-semibold leading-tight text-white drop-shadow-sm lg:text-[34px]">{resolvedPresentation.feedTitle}</h1>
-                <div className="mt-2 text-sm leading-relaxed text-white/80 lg:text-base">{resolvedPresentation.feedSubtitle}</div>
+                <h1 className="mt-2 text-[26px] font-semibold leading-tight text-white drop-shadow-sm lg:text-[34px]">
+                  {resolvedPresentation.feedTitle}
+                </h1>
+                <div className="mt-2 text-sm leading-relaxed text-white/80 lg:text-base">
+                  {resolvedPresentation.feedSubtitle}
+                </div>
               </div>
             </div>
 
@@ -258,7 +287,9 @@ export default function PublicFeedPage({
                   type="button"
                   aria-label="上一张"
                   className="absolute left-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/90 px-2.5 py-1.5 text-sm font-semibold text-neutral-900 shadow hover:bg-white"
-                  onClick={() => setHeroIndex((index) => (index - 1 + heroImages.length) % heroImages.length)}
+                  onClick={() =>
+                    setHeroIndex((index) => (index - 1 + heroImages.length) % heroImages.length)
+                  }
                 >
                   ‹
                 </button>
@@ -290,8 +321,13 @@ export default function PublicFeedPage({
 
         <section className="mb-3 rounded-2xl border border-[#FFD400]/55 bg-[#FFFBE7]/90 px-4 py-3 text-sm text-neutral-800 shadow-[0_4px_16px_rgba(255,212,0,0.18)] dark:border-[#FFD400]/35 dark:bg-[#2b2410]/70 dark:text-[#ffe8a6]">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-neutral-500 dark:text-[#ffda73]">想做自己的图鉴？</p>
-            <Link href={onboardingHref} className="rounded-full bg-neutral-900 px-3 py-1 text-xs font-semibold text-white transition hover:bg-neutral-800 dark:bg-[#FFD400] dark:text-neutral-900 dark:hover:bg-[#f1ca00]">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-neutral-500 dark:text-[#ffda73]">
+              想做自己的图鉴？
+            </p>
+            <Link
+              href={onboardingHref}
+              className="rounded-full bg-neutral-900 px-3 py-1 text-xs font-semibold text-white transition hover:bg-neutral-800 dark:bg-[#FFD400] dark:text-neutral-900 dark:hover:bg-[#f1ca00]"
+            >
               去“我的”看开通权益
             </Link>
           </div>
@@ -300,25 +336,15 @@ export default function PublicFeedPage({
           </p>
         </section>
 
-        {!showMobileFilterFab ? (
+        {showMobileFilterFab ? null : (
           <div className="z-20 mb-3 border border-black/5 bg-white/95 px-3 py-3 shadow-[0_4px_20px_rgba(0,0,0,0.06)] backdrop-blur-md supports-[backdrop-filter]:bg-white/90 sm:rounded-2xl dark:border-white/10 dark:bg-neutral-900/70 supports-[backdrop-filter]:dark:bg-neutral-900/60">
             {renderFilterContent()}
           </div>
-        ) : (
+        )}
+        {showMobileFilterFab ? (
           <div className="mb-3 hidden border border-black/5 bg-white/95 px-3 py-3 shadow-[0_4px_20px_rgba(0,0,0,0.06)] backdrop-blur-md supports-[backdrop-filter]:bg-white/90 lg:block lg:rounded-2xl dark:border-white/10 dark:bg-neutral-900/70 supports-[backdrop-filter]:dark:bg-neutral-900/60">
             {renderFilterContent()}
           </div>
-        )}
-
-        {showMobileFilterFab ? (
-          <button
-            type="button"
-            className="mobile-fab fixed left-5 z-40 flex h-12 w-12 items-center justify-center rounded-full border border-black/10 bg-white/95 text-neutral-900 shadow-[0_10px_24px_rgba(0,0,0,0.2)] lg:hidden dark:border-white/10 dark:bg-neutral-900/92 dark:text-neutral-100"
-            aria-label="打开筛选"
-            onClick={() => setIsMobileFilterModalOpen(true)}
-          >
-            <SlidersHorizontal size={18} />
-          </button>
         ) : null}
 
         {isMobileFilterModalOpen ? (
@@ -335,12 +361,16 @@ export default function PublicFeedPage({
             >
               <div className="mb-3 flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-base font-semibold text-neutral-900 dark:text-neutral-100">筛选宠物</p>
-                  <p className="text-xs text-neutral-600 dark:text-neutral-400">选择条件后会实时更新列表。</p>
+                  <p className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
+                    筛选宠物
+                  </p>
+                  <p className="text-xs text-neutral-600 dark:text-neutral-400">
+                    选择条件后会实时更新列表。
+                  </p>
                 </div>
                 <button
                   type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-neutral-200 text-neutral-700 dark:border-white/10 dark:text-neutral-200"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-700 transition hover:bg-neutral-100 dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
                   aria-label="关闭筛选"
                   onClick={() => setIsMobileFilterModalOpen(false)}
                 >
@@ -372,7 +402,29 @@ export default function PublicFeedPage({
 
         <ShareContactCard presentation={resolvedPresentation} className="mt-4" />
       </div>
-      <PublicFloatingActions permalink={permalink} homeHref={homeHref} showHomeButton={false} />
+      <PublicFloatingActions
+        permalink={permalink}
+        homeHref={homeHref}
+        showHomeButton={false}
+        tenantQrImageUrl={contactQrImageUrl}
+        tenantWechatId={contactWechatId}
+        shareCardTitle={resolvedPresentation.feedTitle}
+        shareCardSubtitle={resolvedPresentation.feedSubtitle}
+        shareCardPrimaryColor={brandPrimary}
+        shareCardSecondaryColor={brandSecondary}
+        shareCardHeroImageUrl={heroImages[heroIndex] ?? heroImages[0] ?? null}
+      >
+        {showMobileFilterFab ? (
+          <button
+            type="button"
+            className="tenant-fab-button flex h-11 w-11 items-center justify-center lg:hidden"
+            aria-label="打开筛选"
+            onClick={() => setIsMobileFilterModalOpen(true)}
+          >
+            <SlidersHorizontal size={18} />
+          </button>
+        ) : null}
+      </PublicFloatingActions>
       <PublicBottomDock shareToken={shareToken} shareQuery={shareQuery} activeTab="pets" />
     </div>
   );
@@ -388,12 +440,13 @@ function resolveSeriesId(initialSeriesId: string | undefined, series: Series[]):
 
 function hexToRgba(hex: string, alpha: number): string {
   const normalized = hex.replace('#', '');
-  const value = normalized.length === 3
-    ? normalized
-        .split('')
-        .map((char) => `${char}${char}`)
-        .join('')
-    : normalized;
+  const value =
+    normalized.length === 3
+      ? normalized
+          .split('')
+          .map((char) => `${char}${char}`)
+          .join('')
+      : normalized;
 
   const red = Number.parseInt(value.slice(0, 2), 16);
   const green = Number.parseInt(value.slice(2, 4), 16);

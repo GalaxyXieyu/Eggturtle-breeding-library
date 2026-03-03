@@ -59,6 +59,10 @@ export default function PublicProductDetailPage({
   const resolvedHomeHref = withDemo(homeHref ?? `/public/s/${shareToken}`, demo, shareQuery);
   const resolvedPresentation = resolvePublicSharePresentation(presentation);
   const brandPrimary = resolvedPresentation.theme.brandPrimary;
+  const brandSecondary = resolvedPresentation.theme.brandSecondary;
+  const contactQrImageUrl = resolvedPresentation.contact.showWechatBlock ? resolvedPresentation.contact.wechatQrImageUrl : null;
+  const contactWechatId = resolvedPresentation.contact.showWechatBlock ? resolvedPresentation.contact.wechatId : null;
+  const shareCardHeroImageUrl = breeder?.images[0]?.url ?? resolvedPresentation.hero.images[0] ?? null;
   const permalink =
     typeof window !== 'undefined' && window.location?.origin
       ? `${window.location.origin}/public/s/${shareToken}/products/${breederId}`
@@ -195,7 +199,18 @@ export default function PublicProductDetailPage({
           </>
         ) : null}
       </div>
-      <PublicFloatingActions permalink={permalink} homeHref={homeHref ?? '/app'} showHomeButton={false} />
+      <PublicFloatingActions
+        permalink={permalink}
+        homeHref={homeHref ?? '/app'}
+        showHomeButton={false}
+        tenantQrImageUrl={contactQrImageUrl}
+        tenantWechatId={contactWechatId}
+        shareCardTitle={resolvedPresentation.feedTitle}
+        shareCardSubtitle={resolvedPresentation.feedSubtitle}
+        shareCardPrimaryColor={brandPrimary}
+        shareCardSecondaryColor={brandSecondary}
+        shareCardHeroImageUrl={shareCardHeroImageUrl}
+      />
       <PublicBottomDock shareToken={shareToken} shareQuery={shareQuery} activeTab="pets" />
     </div>
   );

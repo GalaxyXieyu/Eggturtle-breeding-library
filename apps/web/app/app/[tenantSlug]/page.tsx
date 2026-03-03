@@ -3,12 +3,10 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
-  createShareRequestSchema,
-  createShareResponseSchema,
   dashboardOverviewResponseSchema,
   meResponseSchema,
   type DashboardOverviewResponse,
-  type DashboardOverviewWindow
+  type DashboardOverviewWindow,
 } from '@eggturtle/shared';
 import {
   AlertTriangle,
@@ -20,14 +18,23 @@ import {
   QrCode,
   Share2,
   Shell,
-  Workflow
+  Workflow,
 } from 'lucide-react';
 
-import { ApiError, apiRequest, getAccessToken } from '../../../lib/api-client';
-import { switchTenantBySlug } from '../../../lib/tenant-session';
+import { apiRequest } from '../../../lib/api-client';
+import { formatApiError } from '../../../lib/error-utils';
+import { ensureTenantRouteSession } from '../../../lib/tenant-route-session';
+import { createTenantFeedShareLink } from '../../../lib/tenant-share';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '../../../components/ui/card';
+import TenantFloatingShareButton from '../../../components/tenant-floating-share-button';
 
 type ShareLinks = {
   shareToken: string;
@@ -38,7 +45,7 @@ type ShareLinks = {
 const WINDOW_OPTIONS: Array<{ key: DashboardOverviewWindow; label: string; shortLabel: string }> = [
   { key: 'today', label: '今日', shortLabel: '今日' },
   { key: '7d', label: '近 7 天', shortLabel: '近 7 天' },
-  { key: '30d', label: '近 30 天', shortLabel: '近 30 天' }
+  { key: '30d', label: '近 30 天', shortLabel: '近 30 天' },
 ];
 
 export default function TenantAppPage() {
@@ -49,7 +56,9 @@ export default function TenantAppPage() {
   const [tenantReady, setTenantReady] = useState(false);
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [activeWindow, setActiveWindow] = useState<DashboardOverviewWindow>('30d');
-  const [overviewByWindow, setOverviewByWindow] = useState<Partial<Record<DashboardOverviewWindow, DashboardOverviewResponse>>>({});
+  const [overviewByWindow, setOverviewByWindow] = useState<
+    Partial<Record<DashboardOverviewWindow, DashboardOverviewResponse>>
+  >({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,17 +71,6 @@ export default function TenantAppPage() {
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
 
   useEffect(() => {
-    if (!getAccessToken()) {
-      router.replace('/login');
-      return;
-    }
-
-    if (!tenantSlug) {
-      setError('缺少 tenantSlug。');
-      setLoading(false);
-      return;
-    }
-
     let cancelled = false;
     setTenantReady(false);
     setTenantId(null);
@@ -83,7 +81,19 @@ export default function TenantAppPage() {
 
     void (async () => {
       try {
-        await switchTenantBySlug(tenantSlug);
+        const access = await ensureTenantRouteSession({
+          tenantSlug,
+          missingTenantMessage: '缺少 tenantSlug。',
+          router,
+        });
+        if (!access.ok) {
+          if (!cancelled && access.reason === 'missing-tenant') {
+            setError(access.message ?? '缺少 tenantSlug。');
+            setLoading(false);
+          }
+          return;
+        }
+
         const me = await apiRequest('/me', { responseSchema: meResponseSchema });
 
         if (cancelled) {
@@ -94,7 +104,7 @@ export default function TenantAppPage() {
         setTenantReady(true);
       } catch (nextError) {
         if (!cancelled) {
-          setError(formatError(nextError));
+          setError(formatApiError(nextError));
           setLoading(false);
         }
       }
@@ -122,7 +132,7 @@ export default function TenantAppPage() {
     void (async () => {
       try {
         const nextOverview = await apiRequest(`/dashboard/overview?window=${activeWindow}`, {
-          responseSchema: dashboardOverviewResponseSchema
+          responseSchema: dashboardOverviewResponseSchema,
         });
 
         if (cancelled) {
@@ -131,12 +141,12 @@ export default function TenantAppPage() {
 
         setOverviewByWindow((current) => ({
           ...current,
-          [activeWindow]: nextOverview
+          [activeWindow]: nextOverview,
         }));
         setLoading(false);
       } catch (nextError) {
         if (!cancelled) {
-          setError(formatError(nextError));
+          setError(formatApiError(nextError));
           setLoading(false);
         }
       }
@@ -163,28 +173,20 @@ export default function TenantAppPage() {
     setShareMessage(null);
 
     try {
-      const payload = createShareRequestSchema.parse({
-        resourceType: 'tenant_feed',
-        resourceId: tenantId
-      });
-
-      const response = await apiRequest('/shares', {
-        method: 'POST',
-        body: payload,
-        requestSchema: createShareRequestSchema,
-        responseSchema: createShareResponseSchema
+      const share = await createTenantFeedShareLink({
+        tenantId,
       });
 
       const nextLinks: ShareLinks = {
-        shareToken: response.share.shareToken,
-        entryUrl: response.share.entryUrl,
-        permanentUrl: buildPermanentShareLink(response.share.shareToken)
+        shareToken: share.shareToken,
+        entryUrl: share.entryUrl,
+        permanentUrl: share.permanentUrl,
       };
 
       setShareLinks(nextLinks);
       return nextLinks;
     } catch (nextError) {
-      setShareError(formatError(nextError));
+      setShareError(formatApiError(nextError));
       return null;
     } finally {
       setShareLoading(false);
@@ -214,7 +216,7 @@ export default function TenantAppPage() {
       setShareMessage(`已复制：${fallback}`);
       setShareError(null);
     } catch (nextError) {
-      setShareError(formatError(nextError));
+      setShareError(formatApiError(nextError));
     }
   }
 
@@ -260,8 +262,12 @@ export default function TenantAppPage() {
                   <Badge variant="accent" className="w-fit">
                     数据总览
                   </Badge>
-                  <CardTitle className="text-2xl text-neutral-900 sm:text-3xl">核心指标看板</CardTitle>
-                  <CardDescription className="text-neutral-600">使用同一套视图切换时间窗口，快速对比趋势变化。</CardDescription>
+                  <CardTitle className="text-2xl text-neutral-900 sm:text-3xl">
+                    核心指标看板
+                  </CardTitle>
+                  <CardDescription className="text-neutral-600">
+                    使用同一套视图切换时间窗口，快速对比趋势变化。
+                  </CardDescription>
                 </div>
                 <div className="hidden shrink-0 items-center gap-1 rounded-2xl border border-neutral-200/90 bg-gradient-to-b from-white to-neutral-100/85 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_1px_2px_rgba(15,23,42,0.08)] sm:flex">
                   {WINDOW_OPTIONS.map((item) => (
@@ -300,7 +306,8 @@ export default function TenantAppPage() {
                   ))}
                 </div>
                 <p className="mt-2 px-2 text-[11px] text-neutral-600">
-                  当前窗口：产蛋 {overview.eggs.totalEggCount} · 配对 {overview.matings.eventCount} · 访问 UV {overview.share.uv}
+                  当前窗口：产蛋 {overview.eggs.totalEggCount} · 配对 {overview.matings.eventCount}{' '}
+                  · 访问 UV {overview.share.uv}
                 </p>
               </div>
             </CardHeader>
@@ -319,20 +326,70 @@ export default function TenantAppPage() {
               </CardContent>
             </Card>
             <div className="grid grid-cols-2 gap-3">
-              <CompactKpiCard label="待配对" value={overview.needMating.needMatingCount} hint="优先处理" icon={<HeartHandshake size={14} />} />
-              <CompactKpiCard label="预警" value={overview.needMating.warningCount} hint="风险项" icon={<AlertTriangle size={14} />} />
-              <CompactKpiCard label="分享 UV" value={overview.share.uv} hint="访问人数" icon={<Share2 size={14} />} />
-              <CompactKpiCard label="页面访问" value={overview.share.pv} hint="总访问量" icon={<QrCode size={14} />} />
+              <CompactKpiCard
+                label="待配对"
+                value={overview.needMating.needMatingCount}
+                hint="优先处理"
+                icon={<HeartHandshake size={14} />}
+              />
+              <CompactKpiCard
+                label="预警"
+                value={overview.needMating.warningCount}
+                hint="风险项"
+                icon={<AlertTriangle size={14} />}
+              />
+              <CompactKpiCard
+                label="分享 UV"
+                value={overview.share.uv}
+                hint="访问人数"
+                icon={<Share2 size={14} />}
+              />
+              <CompactKpiCard
+                label="页面访问"
+                value={overview.share.pv}
+                hint="总访问量"
+                icon={<QrCode size={14} />}
+              />
             </div>
           </section>
 
           <section className="hidden grid-cols-2 gap-3 sm:grid sm:grid-cols-3 lg:grid-cols-6">
-            <KpiCard label="产蛋总数" value={overview.eggs.totalEggCount} hint="产蛋总量" icon={<Shell size={16} />} />
-            <KpiCard label="产蛋事件" value={overview.eggs.eventCount} hint="产蛋次数" icon={<CalendarDays size={16} />} />
-            <KpiCard label="配对事件" value={overview.matings.eventCount} hint="配对次数" icon={<Workflow size={16} />} />
-            <KpiCard label="需配对" value={overview.needMating.needMatingCount} hint="待配对数量" icon={<HeartHandshake size={16} />} />
-            <KpiCard label="预警" value={overview.needMating.warningCount} hint="预警数量" icon={<AlertTriangle size={16} />} />
-            <KpiCard label="分享 UV" value={overview.share.uv} hint={`页面访问 ${overview.share.pv}`} icon={<Share2 size={16} />} />
+            <KpiCard
+              label="产蛋总数"
+              value={overview.eggs.totalEggCount}
+              hint="产蛋总量"
+              icon={<Shell size={16} />}
+            />
+            <KpiCard
+              label="产蛋事件"
+              value={overview.eggs.eventCount}
+              hint="产蛋次数"
+              icon={<CalendarDays size={16} />}
+            />
+            <KpiCard
+              label="配对事件"
+              value={overview.matings.eventCount}
+              hint="配对次数"
+              icon={<Workflow size={16} />}
+            />
+            <KpiCard
+              label="需配对"
+              value={overview.needMating.needMatingCount}
+              hint="待配对数量"
+              icon={<HeartHandshake size={16} />}
+            />
+            <KpiCard
+              label="预警"
+              value={overview.needMating.warningCount}
+              hint="预警数量"
+              icon={<AlertTriangle size={16} />}
+            />
+            <KpiCard
+              label="分享 UV"
+              value={overview.share.uv}
+              hint={`页面访问 ${overview.share.pv}`}
+              icon={<Share2 size={16} />}
+            />
           </section>
 
           <section className="grid grid-cols-1 gap-4">
@@ -358,9 +415,14 @@ export default function TenantAppPage() {
                   <p className="text-sm text-neutral-500">当前窗口暂无点击数据。</p>
                 ) : null}
                 {overview.share.productClicksTop.map((item, index) => (
-                  <div key={item.productId} className="flex items-center justify-between rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2">
+                  <div
+                    key={item.productId}
+                    className="flex items-center justify-between rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2"
+                  >
                     <div>
-                      <p className="text-sm font-semibold text-neutral-900">#{index + 1} · {item.code}</p>
+                      <p className="text-sm font-semibold text-neutral-900">
+                        #{index + 1} · {item.code}
+                      </p>
                       <p className="text-xs text-neutral-500">产品 ID：{item.productId}</p>
                     </div>
                     <p className="text-lg font-bold text-neutral-900">{item.clicks}</p>
@@ -369,19 +431,21 @@ export default function TenantAppPage() {
               </CardContent>
             </Card>
           </section>
-
         </>
       ) : null}
 
-      <Button
-        type="button"
-        size="icon"
-        className="mobile-fab fixed right-5 z-50 h-11 w-11 rounded-full lg:hidden tenant-fab-button"
-        aria-label="打开快捷操作"
-        onClick={() => setIsActionSheetOpen(true)}
-      >
-        <Plus size={18} />
-      </Button>
+      <div className="mobile-fab fixed right-6 z-50 flex flex-col-reverse gap-2 lg:hidden">
+        <Button
+          type="button"
+          size="icon"
+          className="tenant-fab-button h-11 w-11"
+          aria-label="打开快捷操作"
+          onClick={() => setIsActionSheetOpen(true)}
+        >
+          <Plus size={18} />
+        </Button>
+        <TenantFloatingShareButton intent="feed" inline className="h-11 w-11" />
+      </div>
 
       {isActionSheetOpen ? (
         <div
@@ -391,7 +455,10 @@ export default function TenantAppPage() {
           aria-label="快捷操作"
           onClick={() => setIsActionSheetOpen(false)}
         >
-          <Card className="w-full rounded-3xl border-neutral-200 bg-white" onClick={(event) => event.stopPropagation()}>
+          <Card
+            className="w-full rounded-3xl border-neutral-200 bg-white"
+            onClick={(event) => event.stopPropagation()}
+          >
             <CardHeader>
               <CardTitle className="text-xl">快捷操作</CardTitle>
               <CardDescription>面向移动端：分享、二维码、快速记录。</CardDescription>
@@ -450,7 +517,10 @@ export default function TenantAppPage() {
           aria-label="二维码卡片"
           onClick={() => setIsQrModalOpen(false)}
         >
-          <Card className="w-full max-w-sm rounded-2xl border-neutral-200 bg-white shadow-2xl" onClick={(event) => event.stopPropagation()}>
+          <Card
+            className="w-full max-w-sm rounded-2xl border-neutral-200 bg-white shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
             <CardHeader>
               <CardTitle className="text-xl">二维码卡片</CardTitle>
               <CardDescription>M1 先提供占位与可复制链接，M2 接入本地二维码渲染。</CardDescription>
@@ -485,7 +555,9 @@ function KpiCard(props: { label: string; value: number | string; hint: string; i
       <CardHeader className="p-0">
         <div className="flex items-center justify-between">
           <p className="text-[11px] uppercase tracking-[0.18em] text-neutral-500">{props.hint}</p>
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#FFD400]/15 text-neutral-800">{props.icon}</span>
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#FFD400]/15 text-neutral-800">
+            {props.icon}
+          </span>
         </div>
       </CardHeader>
       <CardContent className="mt-4 p-0">
@@ -505,13 +577,20 @@ function CompactStat(props: { label: string; value: number | string }) {
   );
 }
 
-function CompactKpiCard(props: { label: string; value: number | string; hint: string; icon: ReactNode }) {
+function CompactKpiCard(props: {
+  label: string;
+  value: number | string;
+  hint: string;
+  icon: ReactNode;
+}) {
   return (
     <Card className="rounded-2xl border-neutral-200/90 bg-white p-3">
       <CardHeader className="p-0">
         <div className="flex items-center justify-between">
           <p className="text-[11px] text-neutral-500">{props.hint}</p>
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#FFD400]/18 text-neutral-800">{props.icon}</span>
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#FFD400]/18 text-neutral-800">
+            {props.icon}
+          </span>
         </div>
       </CardHeader>
       <CardContent className="mt-3 p-0">
@@ -523,10 +602,7 @@ function CompactKpiCard(props: { label: string; value: number | string; hint: st
 }
 
 function SimpleBarChart(props: { chart: DashboardOverviewResponse['chart'] }) {
-  const maxValue = Math.max(
-    1,
-    ...props.chart.flatMap((item) => [item.eggCount, item.matingCount])
-  );
+  const maxValue = Math.max(1, ...props.chart.flatMap((item) => [item.eggCount, item.matingCount]));
 
   return (
     <div className="space-y-3">
@@ -592,24 +668,4 @@ function formatChartDate(value: string, isSingle: boolean) {
   }
 
   return `${segments[1]}-${segments[2]}`;
-}
-
-function buildPermanentShareLink(shareToken: string) {
-  if (typeof window !== 'undefined' && window.location?.origin) {
-    return `${window.location.origin}/public/s/${shareToken}`;
-  }
-
-  return `/public/s/${shareToken}`;
-}
-
-function formatError(error: unknown) {
-  if (error instanceof ApiError) {
-    return error.message;
-  }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return '未知错误';
 }

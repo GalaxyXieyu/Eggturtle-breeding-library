@@ -15,10 +15,10 @@
 }
 
 .auth-shell::before {
-  content: "";
+  content: '';
   position: fixed;
   inset: 0;
-  background-image: url("/images/login-hero.webp");
+  background-image: url('/images/login-hero.webp');
   background-size: cover;
   background-position: center;
   transform: scale(1.02);
@@ -26,11 +26,16 @@
 }
 
 .auth-shell::after {
-  content: "";
+  content: '';
   position: fixed;
   inset: 0;
   background:
-    linear-gradient(120deg, rgba(4, 6, 11, 0.84) 0%, rgba(10, 17, 25, 0.68) 46%, rgba(14, 17, 23, 0.74) 100%),
+    linear-gradient(
+      120deg,
+      rgba(4, 6, 11, 0.84) 0%,
+      rgba(10, 17, 25, 0.68) 46%,
+      rgba(14, 17, 23, 0.74) 100%
+    ),
     radial-gradient(circle at 15% 15%, rgba(255, 212, 0, 0.2) 0%, rgba(255, 212, 0, 0) 45%);
   z-index: -2;
 }
@@ -197,7 +202,9 @@
 
 .ui-pref-icon-btn:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(255, 212, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.2) inset;
+  box-shadow:
+    0 0 0 2px rgba(255, 212, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.2) inset;
 }
 
 .locale-btn {
@@ -240,7 +247,9 @@
 }
 
 :root[data-theme='dark'] .ui-pref-icon-btn:focus-visible {
-  box-shadow: 0 0 0 2px rgba(255, 212, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.2) inset;
+  box-shadow:
+    0 0 0 2px rgba(255, 212, 0, 0.7),
+    0 0 0 1px rgba(255, 255, 255, 0.2) inset;
 }
 
 :root[data-theme='light'] .tenant-sidebar-pref .ui-pref-icon-btn,
@@ -324,12 +333,16 @@
 }
 
 .login-card::before {
-  content: "";
+  content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  background: radial-gradient(circle at 20% -8%, rgba(255, 212, 0, 0.16) 0%, rgba(255, 212, 0, 0) 46%);
+  background: radial-gradient(
+    circle at 20% -8%,
+    rgba(255, 212, 0, 0.16) 0%,
+    rgba(255, 212, 0, 0) 46%
+  );
 }
 
 .login-card-head {
@@ -465,7 +478,7 @@
     0 8px 18px rgba(0, 0, 0, 0.32);
 }
 
-.login-card button[type="submit"] {
+.login-card button[type='submit'] {
   width: 100%;
   min-height: 50px;
   border: none;
@@ -483,14 +496,14 @@
   transition: all 0.2s ease;
 }
 
-.login-card button[type="submit"]:hover:not(:disabled) {
+.login-card button[type='submit']:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow:
     0 14px 30px rgba(255, 212, 0, 0.4),
     0 0 0 1px rgba(255, 255, 255, 0.18) inset;
 }
 
-.login-card button[type="submit"]:disabled {
+.login-card button[type='submit']:disabled {
   opacity: 0.62;
   cursor: not-allowed;
   transform: none;
@@ -612,7 +625,7 @@
   border: 1px solid rgba(255, 212, 0, 0.25);
   background: rgba(0, 0, 0, 0.28);
   color: #fffbe8;
-  font-family: "SF Mono", "Monaco", "Inconsolata", monospace;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
   font-size: 15px;
   font-weight: 700;
 }
@@ -752,33 +765,83 @@ button.auth-action {
 }
 
 @media (max-width: 1080px) {
+  .auth-shell-login {
+    padding-top: max(22px, env(safe-area-inset-top));
+    padding-right: max(18px, env(safe-area-inset-right));
+    padding-bottom: max(22px, env(safe-area-inset-bottom));
+    padding-left: max(18px, env(safe-area-inset-left));
+  }
+
   .login-layout {
+    width: min(860px, 100%);
     grid-template-columns: 1fr;
-    min-height: calc(100vh - 56px);
-    min-height: calc(100svh - 56px);
+    min-height: calc(100vh - 44px);
+    min-height: calc(100svh - 44px);
     justify-items: center;
     align-content: start;
-    padding: 10px 0 20px;
-    text-align: center;
+    gap: clamp(16px, 3.2vw, 28px);
+    padding: 8px 0 18px;
+    text-align: left;
   }
 
   .login-showcase {
-    align-items: center;
-    max-width: 680px;
+    width: 100%;
+    max-width: 760px;
+    min-height: 240px;
+    padding: clamp(24px, 4vw, 36px) clamp(20px, 4vw, 34px);
+    border-radius: 28px;
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    background:
+      linear-gradient(140deg, rgba(6, 10, 16, 0.34) 0%, rgba(8, 12, 18, 0.76) 100%),
+      url('/images/login-hero.webp');
+    background-size: cover;
+    background-position: center;
+    box-shadow: 0 24px 52px rgba(0, 0, 0, 0.44);
+    justify-content: center;
+  }
+
+  .login-showcase-glow {
+    display: none;
+  }
+
+  .login-brand-copy {
+    max-width: 620px;
+    min-height: auto;
+  }
+
+  .login-showcase h1 {
+    margin-bottom: 10px;
+    max-width: none;
+    font-size: clamp(42px, 8.2vw, 66px);
+    line-height: 0.98;
   }
 
   .login-brand-copy .muted {
-    margin: 0 auto;
+    margin: 0;
+    max-width: 36ch;
+    font-size: clamp(16px, 2.2vw, 19px);
+    line-height: 1.52;
   }
 
   .login-showcase-chips {
-    margin-top: 30px;
-    align-items: center;
+    margin-top: clamp(16px, 2.8vw, 24px);
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .login-showcase-chips span {
+    min-height: 32px;
+    padding: 8px 14px;
+    font-size: 13px;
   }
 
   .login-card {
     justify-self: center;
-    max-width: 520px;
+    width: 100%;
+    max-width: 620px;
+    gap: 20px;
+    padding: clamp(22px, 3.6vw, 34px);
     text-align: left;
   }
 }
@@ -815,7 +878,7 @@ button.auth-action {
     border: 1px solid rgba(255, 255, 255, 0.2);
     background:
       linear-gradient(145deg, rgba(6, 10, 16, 0.32) 0%, rgba(6, 10, 16, 0.72) 100%),
-      url("/images/login-hero.webp");
+      url('/images/login-hero.webp');
     background-size: cover;
     background-position: center;
     box-shadow: 0 18px 36px rgba(0, 0, 0, 0.4);
@@ -914,7 +977,7 @@ button.auth-action {
     font-size: 15px;
   }
 
-  .login-card button[type="submit"] {
+  .login-card button[type='submit'] {
     min-height: 48px;
     font-size: 14px;
   }
@@ -1515,7 +1578,7 @@ button.auth-action {
   font: inherit;
 }
 
-.workspace-shell button {
+.workspace-shell button:not([data-ui='button']) {
   min-height: 40px;
   padding: 0 14px;
   border: none;
@@ -1527,12 +1590,12 @@ button.auth-action {
   cursor: pointer;
 }
 
-.workspace-shell button:disabled {
+.workspace-shell button:not([data-ui='button']):disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
 
-.workspace-shell button.secondary {
+.workspace-shell button.secondary:not([data-ui='button']) {
   border: 1px solid #d1d5db;
   background: #ffffff;
   color: #111827;
@@ -1708,7 +1771,13 @@ button.auth-action {
   margin: 0;
   min-height: 100vh;
   min-height: 100svh;
-  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Segoe UI', sans-serif;
+  font-family:
+    var(--font-sans),
+    -apple-system,
+    BlinkMacSystemFont,
+    'PingFang SC',
+    'Segoe UI',
+    sans-serif;
   color: #171717;
 }
 
@@ -1729,22 +1798,29 @@ button.auth-action {
 .tenant-shell-bg {
   min-height: 100vh;
   min-height: 100svh;
-  background: linear-gradient(135deg, var(--ui-bg-start) 0%, var(--ui-bg-mid) 55%, var(--ui-bg-end) 100%);
+  --tenant-mobile-nav-height: 56px;
+  --tenant-mobile-nav-safe-bottom: max(24px, env(safe-area-inset-bottom));
+  background: linear-gradient(
+    135deg,
+    var(--ui-bg-start) 0%,
+    var(--ui-bg-mid) 55%,
+    var(--ui-bg-end) 100%
+  );
 }
 
 .tenant-mobile-content-safe {
-  padding-bottom: calc(env(safe-area-inset-bottom) + 66px);
+  padding-bottom: calc(var(--tenant-mobile-nav-height) + var(--tenant-mobile-nav-safe-bottom));
 }
 
-/* 悬浮按钮：统一在底部导航(85px)之上，避免被遮挡；多 FAB 时用同一容器垂直堆叠 */
+/* 悬浮按钮：统一在底部导航之上，避免被遮挡；多 FAB 时用同一容器垂直堆叠 */
 .mobile-fab {
-  bottom: calc(85px + env(safe-area-inset-bottom) + 12px);
+  bottom: calc(var(--tenant-mobile-nav-height) + var(--tenant-mobile-nav-safe-bottom) + 12px);
   z-index: 50;
 }
 
 /* 统一悬浮按钮外观（与 TenantFloatingShareButton / PublicFloatingActions 一致） */
 .tenant-fab-button {
-  @apply flex h-11 w-11 items-center justify-center rounded-full border border-black/10 bg-white/95 text-neutral-800 shadow-[0_8px_24px_rgba(0,0,0,0.18)] backdrop-blur transition hover:scale-[1.05] hover:bg-white dark:border-white/15 dark:bg-neutral-900/92 dark:text-neutral-100;
+  @apply flex h-11 w-11 items-center justify-center rounded-full border border-black/10 bg-white/95 text-neutral-800 shadow-[0_8px_24px_rgba(0,0,0,0.18)] backdrop-blur transition hover:scale-[1.05] hover:bg-white dark:border-white/15 dark:bg-neutral-900/95 dark:text-neutral-100;
 }
 
 @media (min-width: 1024px) {
@@ -1819,7 +1895,12 @@ button.auth-action {
 
 :root[data-theme='light'] .auth-shell::after {
   background:
-    linear-gradient(120deg, rgba(240, 245, 253, 0.56) 0%, rgba(247, 250, 255, 0.38) 46%, rgba(250, 252, 255, 0.52) 100%),
+    linear-gradient(
+      120deg,
+      rgba(240, 245, 253, 0.56) 0%,
+      rgba(247, 250, 255, 0.38) 46%,
+      rgba(250, 252, 255, 0.52) 100%
+    ),
     radial-gradient(circle at 15% 15%, rgba(255, 212, 0, 0.24) 0%, rgba(255, 212, 0, 0) 45%);
 }
 
@@ -1831,7 +1912,7 @@ button.auth-action {
 }
 
 :root[data-theme='light'] .login-brand-copy::before {
-  content: "";
+  content: '';
   position: absolute;
   inset: -10px -12px;
   border-radius: 28px;
@@ -1940,7 +2021,12 @@ button.auth-action {
 
 :root[data-theme='dark'] .auth-shell::after {
   background:
-    linear-gradient(120deg, rgba(2, 6, 14, 0.9) 0%, rgba(5, 12, 22, 0.82) 46%, rgba(7, 14, 24, 0.9) 100%),
+    linear-gradient(
+      120deg,
+      rgba(2, 6, 14, 0.9) 0%,
+      rgba(5, 12, 22, 0.82) 46%,
+      rgba(7, 14, 24, 0.9) 100%
+    ),
     radial-gradient(circle at 15% 15%, rgba(255, 212, 0, 0.18) 0%, rgba(255, 212, 0, 0) 45%);
 }
 

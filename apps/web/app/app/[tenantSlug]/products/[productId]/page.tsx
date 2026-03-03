@@ -5,20 +5,83 @@ import { ChangeEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   deleteProductImageResponseSchema,
+  getProductResponseSchema,
   listProductImagesResponseSchema,
+  listSeriesResponseSchema,
   reorderProductImagesRequestSchema,
   reorderProductImagesResponseSchema,
   setMainProductImageResponseSchema,
+  updateProductRequestSchema,
   uploadProductImageResponseSchema,
-  type ProductImage
+  type Product,
+  type ProductImage,
 } from '@eggturtle/shared';
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ImagePlus, Star, Trash2 } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronLeft,
+  ChevronRight,
+  ImagePlus,
+  Star,
+  Trash2,
+} from 'lucide-react';
 
-import { ApiError, apiRequest, getAccessToken, getApiBaseUrl, resolveAuthenticatedAssetUrl } from '../../../../../lib/api-client';
-import { switchTenantBySlug } from '../../../../../lib/tenant-session';
+import {
+  apiRequest,
+  resolveAuthenticatedAssetUrl,
+} from '../../../../../lib/api-client';
+import { formatApiError } from '../../../../../lib/error-utils';
+import { ensureTenantRouteSession } from '../../../../../lib/tenant-route-session';
+import { uploadSingleFileWithAuth } from '../../../../../lib/upload-client';
 import { Badge } from '../../../../../components/ui/badge';
 import { Button } from '../../../../../components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../../components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '../../../../../components/ui/card';
+import { Input } from '../../../../../components/ui/input';
+import { NativeSelect } from '../../../../../components/ui/native-select';
+
+type SeriesOption = {
+  id: string;
+  code: string;
+  name: string;
+};
+
+type ProductEditFormState = {
+  code: string;
+  description: string;
+  seriesId: string;
+  sex: '' | 'male' | 'female';
+  offspringUnitPrice: string;
+  sireCode: string;
+  damCode: string;
+  mateCode: string;
+  excludeFromBreeding: boolean;
+  hasSample: boolean;
+  inStock: boolean;
+  popularityScore: string;
+  isFeatured: boolean;
+};
+
+const DEFAULT_PRODUCT_EDIT_FORM: ProductEditFormState = {
+  code: '',
+  description: '',
+  seriesId: '',
+  sex: '',
+  offspringUnitPrice: '',
+  sireCode: '',
+  damCode: '',
+  mateCode: '',
+  excludeFromBreeding: false,
+  hasSample: false,
+  inStock: true,
+  popularityScore: '0',
+  isFeatured: false,
+};
 
 export default function ProductImagesPage() {
   const router = useRouter();
@@ -29,8 +92,12 @@ export default function ProductImagesPage() {
   const isDemoMode = searchParams.get('demo') === '1';
 
   const [images, setImages] = useState<ProductImage[]>([]);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [seriesOptions, setSeriesOptions] = useState<SeriesOption[]>([]);
+  const [form, setForm] = useState<ProductEditFormState>(DEFAULT_PRODUCT_EDIT_FORM);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -40,11 +107,43 @@ export default function ProductImagesPage() {
 
   const loadImages = useCallback(async () => {
     const response = await apiRequest(`/products/${productId}/images`, {
-      responseSchema: listProductImagesResponseSchema
+      responseSchema: listProductImagesResponseSchema,
     });
 
     setImages(response.images);
   }, [productId]);
+
+  const loadProductMeta = useCallback(async () => {
+    if (isDemoMode) {
+      const demoProduct = createDemoProduct(productId);
+      setProduct(demoProduct);
+      setForm(toProductEditFormState(demoProduct));
+      setSeriesOptions([
+        { id: 'demo-series-mg', code: 'MG', name: '曼谷系' },
+        { id: 'demo-series-hb', code: 'HB', name: '花背系' },
+      ]);
+      return;
+    }
+
+    const [productResponse, seriesResponse] = await Promise.all([
+      apiRequest(`/products/${productId}`, {
+        responseSchema: getProductResponseSchema,
+      }),
+      apiRequest('/series?page=1&pageSize=100', {
+        responseSchema: listSeriesResponseSchema,
+      }),
+    ]);
+
+    setProduct(productResponse.product);
+    setForm(toProductEditFormState(productResponse.product));
+    setSeriesOptions(
+      seriesResponse.items.map((item) => ({
+        id: item.id,
+        code: item.code,
+        name: item.name,
+      })),
+    );
+  }, [isDemoMode, productId]);
 
   useEffect(() => {
     if (!tenantSlug || !productId) {
@@ -55,29 +154,37 @@ export default function ProductImagesPage() {
 
     if (isDemoMode) {
       setImages(createDemoImages(productId));
+      void loadProductMeta();
       setError(null);
       setLoading(false);
       return;
     }
 
-    const token = getAccessToken();
-    if (!token) {
-      router.replace('/login');
-      return;
-    }
-
     void (async () => {
       try {
-        await switchTenantBySlug(tenantSlug);
-        await loadImages();
+        const access = await ensureTenantRouteSession({
+          tenantSlug,
+          missingTenantMessage: '缺少 tenantSlug。',
+          router,
+        });
+
+        if (!access.ok) {
+          if (access.reason === 'missing-tenant') {
+            setError(access.message ?? '缺少 tenantSlug。');
+            setLoading(false);
+          }
+          return;
+        }
+
+        await Promise.all([loadProductMeta(), loadImages()]);
         setError(null);
       } catch (requestError) {
-        setError(formatError(requestError));
+        setError(formatApiError(requestError));
       } finally {
         setLoading(false);
       }
     })();
-  }, [isDemoMode, loadImages, productId, router, tenantSlug]);
+  }, [isDemoMode, loadImages, loadProductMeta, productId, router, tenantSlug]);
 
   useEffect(() => {
     if (images.length === 0) {
@@ -110,12 +217,16 @@ export default function ProductImagesPage() {
     try {
       const files = Array.from(fileList);
       for (const file of files) {
-        await uploadSingleProductImage(productId, file);
+        await uploadSingleFileWithAuth(
+          `/products/${productId}/images`,
+          file,
+          uploadProductImageResponseSchema,
+        );
       }
       await loadImages();
       setMessage(`已上传 ${files.length} 张图片。`);
     } catch (requestError) {
-      setError(formatError(requestError));
+      setError(formatApiError(requestError));
     } finally {
       setSubmitting(false);
       event.target.value = '';
@@ -137,12 +248,12 @@ export default function ProductImagesPage() {
     try {
       await apiRequest(`/products/${productId}/images/${imageId}`, {
         method: 'DELETE',
-        responseSchema: deleteProductImageResponseSchema
+        responseSchema: deleteProductImageResponseSchema,
       });
       await loadImages();
       setMessage('图片已删除。');
     } catch (requestError) {
-      setError(formatError(requestError));
+      setError(formatApiError(requestError));
     } finally {
       setSubmitting(false);
     }
@@ -157,8 +268,8 @@ export default function ProductImagesPage() {
       setImages((currentImages) =>
         currentImages.map((item) => ({
           ...item,
-          isMain: item.id === imageId
-        }))
+          isMain: item.id === imageId,
+        })),
       );
       setSubmitting(false);
       setMessage('Demo 模式：主图标记已更新。');
@@ -168,7 +279,7 @@ export default function ProductImagesPage() {
     try {
       const response = await apiRequest(`/products/${productId}/images/${imageId}/main`, {
         method: 'PUT',
-        responseSchema: setMainProductImageResponseSchema
+        responseSchema: setMainProductImageResponseSchema,
       });
 
       setImages((currentImages) =>
@@ -182,11 +293,11 @@ export default function ProductImagesPage() {
           }
 
           return item;
-        })
+        }),
       );
       setMessage('主图已更新。');
     } catch (requestError) {
-      setError(formatError(requestError));
+      setError(formatApiError(requestError));
     } finally {
       setSubmitting(false);
     }
@@ -215,22 +326,107 @@ export default function ProductImagesPage() {
 
     try {
       const payload = reorderProductImagesRequestSchema.parse({
-        imageIds: reordered.map((item) => item.id)
+        imageIds: reordered.map((item) => item.id),
       });
 
       const response = await apiRequest(`/products/${productId}/images/reorder`, {
         method: 'PUT',
         body: payload,
         requestSchema: reorderProductImagesRequestSchema,
-        responseSchema: reorderProductImagesResponseSchema
+        responseSchema: reorderProductImagesResponseSchema,
       });
 
       setImages(response.images);
       setMessage('图片顺序已更新。');
     } catch (requestError) {
-      setError(formatError(requestError));
+      setError(formatApiError(requestError));
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleSaveProfile() {
+    if (!product) {
+      return;
+    }
+
+    const normalizedCode = form.code.trim().toUpperCase();
+    if (!normalizedCode) {
+      setError('编码不能为空。');
+      return;
+    }
+
+    const parsedPopularityScore = parsePopularityScore(form.popularityScore);
+    if (parsedPopularityScore === null) {
+      setError('热度分需要是 0-100 的整数。');
+      return;
+    }
+
+    const parsedOffspringPrice = parseOffspringUnitPrice(form.sex, form.offspringUnitPrice);
+    if (parsedOffspringPrice === 'invalid') {
+      setError('子代单价格式不正确，请输入非负数字。');
+      return;
+    }
+
+    setSavingProfile(true);
+    setMessage(null);
+    setError(null);
+
+    try {
+      const payload = updateProductRequestSchema.parse({
+        code: normalizedCode,
+        description: form.description.trim() ? form.description.trim() : null,
+        seriesId: form.seriesId.trim() ? form.seriesId.trim() : null,
+        sex: form.sex ? form.sex : null,
+        offspringUnitPrice: parsedOffspringPrice,
+        sireCode: form.sireCode.trim() ? form.sireCode.trim().toUpperCase() : null,
+        damCode: form.damCode.trim() ? form.damCode.trim().toUpperCase() : null,
+        mateCode: form.mateCode.trim() ? form.mateCode.trim().toUpperCase() : null,
+        excludeFromBreeding: form.excludeFromBreeding,
+        hasSample: form.hasSample,
+        inStock: form.inStock,
+        popularityScore: parsedPopularityScore,
+        isFeatured: form.isFeatured,
+      });
+
+      if (isDemoMode) {
+        const next: Product = {
+          ...product,
+          code: normalizedCode,
+          description: form.description.trim() ? form.description.trim() : null,
+          seriesId: form.seriesId.trim() ? form.seriesId.trim() : null,
+          sex: form.sex ? form.sex : null,
+          offspringUnitPrice: parsedOffspringPrice,
+          sireCode: form.sireCode.trim() ? form.sireCode.trim().toUpperCase() : null,
+          damCode: form.damCode.trim() ? form.damCode.trim().toUpperCase() : null,
+          mateCode: form.mateCode.trim() ? form.mateCode.trim().toUpperCase() : null,
+          excludeFromBreeding: form.excludeFromBreeding,
+          hasSample: form.hasSample,
+          inStock: form.inStock,
+          popularityScore: parsedPopularityScore,
+          isFeatured: form.isFeatured,
+          updatedAt: new Date().toISOString(),
+        };
+        setProduct(next);
+        setForm(toProductEditFormState(next));
+        setMessage('Demo 模式：产品资料已更新。');
+        return;
+      }
+
+      const response = await apiRequest(`/products/${productId}`, {
+        method: 'PUT',
+        body: payload,
+        requestSchema: updateProductRequestSchema,
+        responseSchema: getProductResponseSchema,
+      });
+
+      setProduct(response.product);
+      setForm(toProductEditFormState(response.product));
+      setMessage('产品资料已保存。');
+    } catch (requestError) {
+      setError(formatApiError(requestError));
+    } finally {
+      setSavingProfile(false);
     }
   }
 
@@ -251,6 +447,224 @@ export default function ProductImagesPage() {
       </Card>
 
       <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
+        <CardHeader>
+          <CardTitle className="text-2xl">产品资料</CardTitle>
+          <CardDescription>可直接编辑编码、系列、性别、谱系和业务参数。</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-1.5">
+              <label htmlFor="edit-product-code" className="text-xs font-semibold text-neutral-600">
+                编码
+              </label>
+              <Input
+                id="edit-product-code"
+                value={form.code}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, code: event.target.value }))
+                }
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <label
+                htmlFor="edit-product-series"
+                className="text-xs font-semibold text-neutral-600"
+              >
+                系列
+              </label>
+              <NativeSelect
+                id="edit-product-series"
+                value={form.seriesId}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, seriesId: event.target.value }))
+                }
+              >
+                <option value="">不选择系列</option>
+                {form.seriesId && !seriesOptions.some((item) => item.id === form.seriesId) ? (
+                  <option value={form.seriesId}>当前系列（{form.seriesId}）</option>
+                ) : null}
+                {seriesOptions.map((item) => (
+                  <option key={`edit-series-${item.id}`} value={item.id}>
+                    {item.name}（{item.code}）
+                  </option>
+                ))}
+              </NativeSelect>
+            </div>
+            <div className="grid gap-1.5">
+              <label htmlFor="edit-product-sex" className="text-xs font-semibold text-neutral-600">
+                性别
+              </label>
+              <NativeSelect
+                id="edit-product-sex"
+                value={form.sex}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    sex: event.target.value as ProductEditFormState['sex'],
+                  }))
+                }
+              >
+                <option value="">未知</option>
+                <option value="male">公</option>
+                <option value="female">母</option>
+              </NativeSelect>
+            </div>
+            {form.sex === 'female' ? (
+              <div className="grid gap-1.5">
+                <label
+                  htmlFor="edit-product-price"
+                  className="text-xs font-semibold text-neutral-600"
+                >
+                  子代单价
+                </label>
+                <Input
+                  id="edit-product-price"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={form.offspringUnitPrice}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      offspringUnitPrice: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+            ) : null}
+            <div className="grid gap-1.5">
+              <label htmlFor="edit-product-sire" className="text-xs font-semibold text-neutral-600">
+                父本编号
+              </label>
+              <Input
+                id="edit-product-sire"
+                value={form.sireCode}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, sireCode: event.target.value }))
+                }
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <label htmlFor="edit-product-dam" className="text-xs font-semibold text-neutral-600">
+                母本编号
+              </label>
+              <Input
+                id="edit-product-dam"
+                value={form.damCode}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, damCode: event.target.value }))
+                }
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <label htmlFor="edit-product-mate" className="text-xs font-semibold text-neutral-600">
+                配偶编号
+              </label>
+              <Input
+                id="edit-product-mate"
+                value={form.mateCode}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, mateCode: event.target.value }))
+                }
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <label
+                htmlFor="edit-product-popularity"
+                className="text-xs font-semibold text-neutral-600"
+              >
+                热度分
+              </label>
+              <Input
+                id="edit-product-popularity"
+                type="number"
+                min={0}
+                max={100}
+                value={form.popularityScore}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    popularityScore: event.target.value,
+                  }))
+                }
+              />
+            </div>
+          </div>
+          <div className="grid gap-1.5">
+            <label
+              htmlFor="edit-product-description"
+              className="text-xs font-semibold text-neutral-600"
+            >
+              描述
+            </label>
+            <textarea
+              id="edit-product-description"
+              rows={3}
+              className="w-full rounded-md border border-neutral-200 px-3 py-2 text-sm"
+              value={form.description}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, description: event.target.value }))
+              }
+            />
+          </div>
+          <div className="flex flex-wrap gap-4 text-sm text-neutral-700">
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={form.excludeFromBreeding}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    excludeFromBreeding: event.target.checked,
+                  }))
+                }
+              />
+              不参与繁殖
+            </label>
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={form.hasSample}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, hasSample: event.target.checked }))
+                }
+              />
+              有样本
+            </label>
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={form.inStock}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, inStock: event.target.checked }))
+                }
+              />
+              在库
+            </label>
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={form.isFeatured}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, isFeatured: event.target.checked }))
+                }
+              />
+              精选
+            </label>
+          </div>
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              onClick={() => void handleSaveProfile()}
+              disabled={loading || savingProfile}
+            >
+              {savingProfile ? '保存中...' : '保存资料'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle className="flex items-center gap-2 text-2xl">
@@ -264,7 +678,9 @@ export default function ProductImagesPage() {
         <CardContent className="space-y-3">
           {isDemoMode ? (
             <Card className="rounded-2xl border-blue-200 bg-blue-50 p-3">
-              <p className="text-sm font-medium text-blue-700">Demo 模式：用于 UI 预览，不会写入真实数据。</p>
+              <p className="text-sm font-medium text-blue-700">
+                Demo 模式：用于 UI 预览，不会写入真实数据。
+              </p>
             </Card>
           ) : null}
           <input
@@ -289,7 +705,9 @@ export default function ProductImagesPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           {loading ? <p className="text-sm text-neutral-600">正在加载图片...</p> : null}
-          {!loading && images.length === 0 ? <p className="text-sm text-neutral-500">该产品暂无图片，先上传一张吧。</p> : null}
+          {!loading && images.length === 0 ? (
+            <p className="text-sm text-neutral-500">该产品暂无图片，先上传一张吧。</p>
+          ) : null}
 
           {!loading && currentImage ? (
             <>
@@ -358,7 +776,9 @@ export default function ProductImagesPage() {
                         className="absolute right-3 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full bg-white/90 shadow-sm"
                         disabled={currentImageIndex === images.length - 1}
                         onClick={() => {
-                          setCurrentImageIndex((current) => Math.min(images.length - 1, current + 1));
+                          setCurrentImageIndex((current) =>
+                            Math.min(images.length - 1, current + 1),
+                          );
                         }}
                       >
                         <ChevronRight size={16} />
@@ -367,7 +787,9 @@ export default function ProductImagesPage() {
                   ) : null}
 
                   <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/40 to-transparent" />
-                  <div className="absolute bottom-3 left-3 text-xs font-medium text-white/95">imageId: {currentImage.id}</div>
+                  <div className="absolute bottom-3 left-3 text-xs font-medium text-white/95">
+                    imageId: {currentImage.id}
+                  </div>
                 </div>
               </article>
 
@@ -409,9 +831,15 @@ export default function ProductImagesPage() {
                       }`}
                       onClick={() => setCurrentImageIndex(index)}
                     >
-                      <img src={resolveImageUrl(image.url)} alt={`缩略图 ${index + 1}`} className="h-full w-full object-cover" />
+                      <img
+                        src={resolveImageUrl(image.url)}
+                        alt={`缩略图 ${index + 1}`}
+                        className="h-full w-full object-cover"
+                      />
                       {image.isMain ? (
-                        <span className="absolute left-1 top-1 rounded bg-black/65 px-1 py-0.5 text-[10px] font-medium text-white">主图</span>
+                        <span className="absolute left-1 top-1 rounded bg-black/65 px-1 py-0.5 text-[10px] font-medium text-white">
+                          主图
+                        </span>
                       ) : null}
                     </button>
                   ))}
@@ -436,65 +864,56 @@ export default function ProductImagesPage() {
   );
 }
 
-async function uploadSingleProductImage(productId: string, file: File) {
-  const token = getAccessToken();
-  const headers = new Headers();
-
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
-
-  const formData = new FormData();
-  formData.append('file', file);
-
-  const response = await fetch(`${getApiBaseUrl()}/products/${productId}/images`, {
-    method: 'POST',
-    headers,
-    body: formData,
-    cache: 'no-store'
-  });
-
-  const payload = await parseJsonBody(response);
-
-  if (!response.ok) {
-    throw new ApiError(pickErrorMessage(payload, `Request failed with status ${response.status}`), response.status);
-  }
-
-  return uploadProductImageResponseSchema.parse(payload);
-}
-
-async function parseJsonBody(response: Response) {
-  const text = await response.text();
-
-  if (!text) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(text) as unknown;
-  } catch {
-    return { message: text };
-  }
-}
-
-function pickErrorMessage(payload: unknown, fallback: string) {
-  if (!payload || typeof payload !== 'object') {
-    return fallback;
-  }
-
-  if ('message' in payload && typeof payload.message === 'string') {
-    return payload.message;
-  }
-
-  if ('error' in payload && typeof payload.error === 'string') {
-    return payload.error;
-  }
-
-  return fallback;
-}
-
 function resolveImageUrl(imageUrl: string) {
   return resolveAuthenticatedAssetUrl(imageUrl);
+}
+
+function toProductEditFormState(product: Product): ProductEditFormState {
+  return {
+    code: product.code ?? '',
+    description: product.description ?? '',
+    seriesId: product.seriesId ?? '',
+    sex: product.sex === 'male' || product.sex === 'female' ? product.sex : '',
+    offspringUnitPrice:
+      product.offspringUnitPrice === null || product.offspringUnitPrice === undefined
+        ? ''
+        : String(product.offspringUnitPrice),
+    sireCode: product.sireCode ?? '',
+    damCode: product.damCode ?? '',
+    mateCode: product.mateCode ?? '',
+    excludeFromBreeding: !!product.excludeFromBreeding,
+    hasSample: !!product.hasSample,
+    inStock: product.inStock ?? true,
+    popularityScore: String(product.popularityScore ?? 0),
+    isFeatured: !!product.isFeatured,
+  };
+}
+
+function createDemoProduct(productId: string): Product {
+  const now = new Date().toISOString();
+
+  return {
+    id: productId,
+    tenantId: 'demo-tenant',
+    code: 'DEMO-PROD',
+    type: 'breeder',
+    name: 'Demo Product',
+    description: 'Demo 模式产品资料',
+    seriesId: 'demo-series-mg',
+    sex: 'female',
+    offspringUnitPrice: 12000,
+    sireCode: 'DEMO-SIRE',
+    damCode: 'DEMO-DAM',
+    mateCode: 'DEMO-MATE',
+    excludeFromBreeding: false,
+    hasSample: true,
+    inStock: true,
+    popularityScore: 80,
+    isFeatured: false,
+    coverImageUrl: '/images/mg_01.jpg',
+    createdAt: now,
+    updatedAt: now,
+  };
 }
 
 function createDemoImages(productId: string): ProductImage[] {
@@ -512,7 +931,7 @@ function createDemoImages(productId: string): ProductImage[] {
       sortOrder: 0,
       isMain: true,
       createdAt: nowIso,
-      updatedAt: nowIso
+      updatedAt: nowIso,
     },
     {
       id: `${productId}-demo-2`,
@@ -525,7 +944,7 @@ function createDemoImages(productId: string): ProductImage[] {
       sortOrder: 1,
       isMain: false,
       createdAt: nowIso,
-      updatedAt: nowIso
+      updatedAt: nowIso,
     },
     {
       id: `${productId}-demo-3`,
@@ -538,19 +957,42 @@ function createDemoImages(productId: string): ProductImage[] {
       sortOrder: 2,
       isMain: false,
       createdAt: nowIso,
-      updatedAt: nowIso
-    }
+      updatedAt: nowIso,
+    },
   ];
 }
 
-function formatError(error: unknown) {
-  if (error instanceof ApiError) {
-    return error.message;
+function parsePopularityScore(value: string): number | null {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return 0;
   }
 
-  if (error instanceof Error) {
-    return error.message;
+  const parsed = Number(trimmed);
+  if (!Number.isInteger(parsed) || parsed < 0 || parsed > 100) {
+    return null;
   }
 
-  return '未知错误';
+  return parsed;
+}
+
+function parseOffspringUnitPrice(
+  sex: ProductEditFormState['sex'],
+  value: string,
+): number | null | 'invalid' {
+  if (sex !== 'female') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return 'invalid';
+  }
+
+  return parsed;
 }

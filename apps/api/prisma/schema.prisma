@@ -128,8 +128,8 @@ model TenantMember {
   user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, userId], map: "tenant_members_tenant_id_user_id_key")
+  @@unique([userId], map: "tenant_members_user_id_key")
   @@index([tenantId], map: "tenant_members_tenant_id_idx")
-  @@index([userId], map: "tenant_members_user_id_idx")
   @@map("tenant_members")
 }
 

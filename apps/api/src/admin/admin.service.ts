@@ -715,69 +715,110 @@ export class AdminService {
       });
     }
 
-    const result = await this.prisma.$transaction(async (tx) => {
-      const user = await tx.user.upsert({
-        where: {
-          email: payload.email
-        },
-        update: {},
-        create: {
-          email: payload.email
-        }
-      });
+    let result: {
+      user: { id: string; email: string; name: string | null };
+      membership: { role: TenantMemberRole; createdAt: Date };
+      created: boolean;
+      previousRole: TenantMemberRole | null;
+      auditLogId: string;
+    };
+    try {
+      result = await this.prisma.$transaction(async (tx) => {
+        const user = await tx.user.upsert({
+          where: {
+            email: payload.email
+          },
+          update: {},
+          create: {
+            email: payload.email
+          }
+        });
 
-      const existingMembership = await tx.tenantMember.findUnique({
-        where: {
-          tenantId_userId: {
+        const existingMembership = await tx.tenantMember.findUnique({
+          where: {
+            tenantId_userId: {
+              tenantId: tenant.id,
+              userId: user.id
+            }
+          }
+        });
+
+        const membershipInOtherTenant = await tx.tenantMember.findFirst({
+          where: {
+            userId: user.id,
+            NOT: {
+              tenantId: tenant.id
+            }
+          },
+          include: {
+            tenant: {
+              select: {
+                slug: true
+              }
+            }
+          }
+        });
+
+        if (membershipInOtherTenant) {
+          throw new ConflictException({
+            message: `User is already bound to tenant "${membershipInOtherTenant.tenant.slug}".`,
+            errorCode: ErrorCode.InvalidRequestPayload
+          });
+        }
+
+        const membership = await tx.tenantMember.upsert({
+          where: {
+            tenantId_userId: {
+              tenantId: tenant.id,
+              userId: user.id
+            }
+          },
+          create: {
             tenantId: tenant.id,
-            userId: user.id
+            userId: user.id,
+            role: payload.role as TenantMemberRole
+          },
+          update: {
+            role: payload.role as TenantMemberRole
           }
-        }
+        });
+
+        const created = !existingMembership;
+        const auditLogId = await this.superAdminAuditLogsService.createLog(
+          {
+            actorUserId,
+            targetTenantId: tenant.id,
+            action: SuperAdminAuditAction.UpsertTenantMember,
+            metadata: {
+              tenantSlug: tenant.slug,
+              memberUserId: user.id,
+              memberEmail: user.email,
+              role: membership.role,
+              previousRole: existingMembership?.role ?? null,
+              created
+            }
+          },
+          tx
+        );
+
+        return {
+          user,
+          membership,
+          created,
+          previousRole: existingMembership?.role ?? null,
+          auditLogId
+        };
       });
+    } catch (error) {
+      if (this.isTenantMemberUserConflict(error)) {
+        throw new ConflictException({
+          message: 'User is already bound to a tenant.',
+          errorCode: ErrorCode.InvalidRequestPayload
+        });
+      }
 
-      const membership = await tx.tenantMember.upsert({
-        where: {
-          tenantId_userId: {
-            tenantId: tenant.id,
-            userId: user.id
-          }
-        },
-        create: {
-          tenantId: tenant.id,
-          userId: user.id,
-          role: payload.role as TenantMemberRole
-        },
-        update: {
-          role: payload.role as TenantMemberRole
-        }
-      });
-
-      const created = !existingMembership;
-      const auditLogId = await this.superAdminAuditLogsService.createLog(
-        {
-          actorUserId,
-          targetTenantId: tenant.id,
-          action: SuperAdminAuditAction.UpsertTenantMember,
-          metadata: {
-            tenantSlug: tenant.slug,
-            memberUserId: user.id,
-            memberEmail: user.email,
-            role: membership.role,
-            previousRole: existingMembership?.role ?? null,
-            created
-          }
-        },
-        tx
-      );
-
-      return {
-        user,
-        membership,
-        created,
-        previousRole: existingMembership?.role ?? null,
-        auditLogId
-      };
-    });
+      throw error;
+    }
 
     return {
       tenantId: tenant.id,
@@ -1703,5 +1744,24 @@ export class AdminService {
 
     const target = Array.isArray(error.meta?.target) ? error.meta.target : [];
     return target.includes('slug');
+  }
+
+  private isTenantMemberUserConflict(error: unknown): boolean {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
+      return false;
+    }
+
+    if (error.code !== 'P2002') {
+      return false;
+    }
+
+    const target = Array.isArray(error.meta?.target) ? error.meta.target : [];
+    const normalized = new Set(target.map((value) => String(value)));
+
+    return (
+      normalized.has('userId') ||
+      normalized.has('user_id') ||
+      normalized.has('tenant_members_user_id_key')
+    );
   }
 }

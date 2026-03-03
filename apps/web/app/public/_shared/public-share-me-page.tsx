@@ -53,6 +53,10 @@ const FREE_PLAN_BENEFITS = [
 export default function PublicShareMePage({ shareToken, shareQuery, presentation }: PublicShareMePageProps) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const resolvedPresentation = resolvePublicSharePresentation(presentation);
+  const brandPrimary = resolvedPresentation.theme.brandPrimary;
+  const brandSecondary = resolvedPresentation.theme.brandSecondary;
+  const contactQrImageUrl = resolvedPresentation.contact.showWechatBlock ? resolvedPresentation.contact.wechatQrImageUrl : null;
+  const contactWechatId = resolvedPresentation.contact.showWechatBlock ? resolvedPresentation.contact.wechatId : null;
   const collageImages = useMemo(() => buildCollageImages(resolvedPresentation.hero.images), [resolvedPresentation.hero.images]);
   const permalink = useMemo(
     () =>
@@ -252,7 +256,17 @@ export default function PublicShareMePage({ shareToken, shareQuery, presentation
         </section>
       </main>
 
-      <PublicFloatingActions permalink={permalink} showHomeButton={false} />
+      <PublicFloatingActions
+        permalink={permalink}
+        showHomeButton={false}
+        tenantQrImageUrl={contactQrImageUrl}
+        tenantWechatId={contactWechatId}
+        shareCardTitle={resolvedPresentation.feedTitle}
+        shareCardSubtitle={resolvedPresentation.feedSubtitle}
+        shareCardPrimaryColor={brandPrimary}
+        shareCardSecondaryColor={brandSecondary}
+        shareCardHeroImageUrl={collageImages[0] ?? null}
+      />
       <PublicBottomDock shareToken={shareToken} shareQuery={shareQuery} activeTab="me" />
     </div>
   );

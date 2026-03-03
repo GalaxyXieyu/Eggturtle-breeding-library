@@ -11,20 +11,20 @@ export const seriesSummarySchema = z.object({
   code: seriesCodeSchema,
   name: seriesNameSchema,
   sortOrder: z.number().int(),
-  isActive: z.boolean()
+  isActive: z.boolean(),
 });
 
 export const seriesSchema = seriesSummarySchema.extend({
   description: z.string().nullable(),
   coverImageUrl: z.string().nullable().optional(),
   createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime()
+  updatedAt: z.string().datetime(),
 });
 
 export const listSeriesQuerySchema = z.object({
   search: z.string().trim().min(1).max(120).optional(),
   page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().min(1).max(100).default(20)
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });
 
 export const listSeriesResponseSchema = z.object({
@@ -32,11 +32,23 @@ export const listSeriesResponseSchema = z.object({
   total: z.number().int().nonnegative(),
   page: z.number().int().min(1),
   pageSize: z.number().int().min(1),
-  totalPages: z.number().int().min(1)
+  totalPages: z.number().int().min(1),
 });
 
 export const getSeriesResponseSchema = z.object({
-  series: seriesSchema
+  series: seriesSchema,
+});
+
+export const createSeriesRequestSchema = z.object({
+  code: seriesCodeSchema,
+  name: seriesNameSchema,
+  description: seriesDescriptionSchema,
+  sortOrder: z.number().int().optional(),
+  isActive: z.boolean().optional(),
+});
+
+export const createSeriesResponseSchema = z.object({
+  series: seriesSchema,
 });
 
 export const updateSeriesRequestSchema = z
@@ -44,18 +56,20 @@ export const updateSeriesRequestSchema = z
     name: seriesNameSchema.optional(),
     description: seriesDescriptionSchema,
     isActive: z.boolean().optional(),
-    sortOrder: z.number().int().optional()
+    sortOrder: z.number().int().optional(),
   })
   .refine((payload) => Object.keys(payload).length > 0, {
-    message: 'At least one field must be provided for update.'
+    message: 'At least one field must be provided for update.',
   });
 
 export const updateSeriesResponseSchema = z.object({
-  series: seriesSchema
+  series: seriesSchema,
 });
 
 export type Series = z.infer<typeof seriesSchema>;
 export type SeriesSummary = z.infer<typeof seriesSummarySchema>;
 export type ListSeriesQuery = z.infer<typeof listSeriesQuerySchema>;
+export type CreateSeriesRequest = z.infer<typeof createSeriesRequestSchema>;
 export type UpdateSeriesRequest = z.infer<typeof updateSeriesRequestSchema>;
+export type CreateSeriesResponse = z.infer<typeof createSeriesResponseSchema>;
 export type UpdateSeriesResponse = z.infer<typeof updateSeriesResponseSchema>;

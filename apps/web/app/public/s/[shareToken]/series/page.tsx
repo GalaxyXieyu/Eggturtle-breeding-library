@@ -82,6 +82,9 @@ export default async function PublicShareSeriesPage({
 
   const shareQuery = shareRouteQuery.toString();
   const petsAllHref = `/public/s/${params.shareToken}?${buildPetsQuery(shareRouteQuery).toString()}`;
+  const presentation = shareResult.data.presentation;
+  const contactQrImageUrl = presentation.contact.showWechatBlock ? presentation.contact.wechatQrImageUrl : null;
+  const contactWechatId = presentation.contact.showWechatBlock ? presentation.contact.wechatId : null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-stone-100 via-white to-amber-50/40 text-black dark:from-neutral-950 dark:via-neutral-950 dark:to-neutral-900/40 dark:text-neutral-100">
@@ -153,7 +156,17 @@ export default async function PublicShareSeriesPage({
         )}
       </main>
 
-      <PublicFloatingActions useCurrentUrl showHomeButton={false} />
+      <PublicFloatingActions
+        useCurrentUrl
+        showHomeButton={false}
+        tenantQrImageUrl={contactQrImageUrl}
+        tenantWechatId={contactWechatId}
+        shareCardTitle={presentation.feedTitle}
+        shareCardSubtitle={presentation.feedSubtitle}
+        shareCardPrimaryColor={presentation.theme.brandPrimary}
+        shareCardSecondaryColor={presentation.theme.brandSecondary}
+        shareCardHeroImageUrl={presentation.hero.images[0] ?? null}
+      />
       <PublicBottomDock shareToken={params.shareToken} shareQuery={shareQuery} activeTab="series" />
     </div>
   );

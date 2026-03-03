@@ -1,6 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ErrorCode } from '@eggturtle/shared';
-import type { ListSeriesQuery, Series, UpdateSeriesRequest } from '@eggturtle/shared';
+import type {
+  CreateSeriesRequest,
+  ListSeriesQuery,
+  Series,
+  UpdateSeriesRequest,
+} from '@eggturtle/shared';
 import { Prisma } from '@prisma/client';
 import type { Series as PrismaSeries } from '@prisma/client';
 
@@ -10,9 +15,37 @@ import { PrismaService } from '../prisma.service';
 export class SeriesService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async createSeries(tenantId: string, payload: CreateSeriesRequest): Promise<Series> {
+    const nextSortOrder = payload.sortOrder ?? (await this.getNextSortOrder(tenantId));
+
+    try {
+      const series = await this.prisma.series.create({
+        data: {
+          tenantId,
+          code: payload.code,
+          name: payload.name,
+          description: this.normalizeNullableText(payload.description ?? null),
+          sortOrder: nextSortOrder,
+          isActive: payload.isActive ?? true,
+        },
+      });
+
+      return this.toSeries(series);
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new BadRequestException({
+          message: 'Series code already exists in current tenant.',
+          errorCode: ErrorCode.InvalidRequestPayload,
+        });
+      }
+
+      throw error;
+    }
+  }
+
   async listSeries(tenantId: string, query: ListSeriesQuery) {
     const where: Prisma.SeriesWhereInput = {
-      tenantId
+      tenantId,
     };
 
     if (query.search) {
@@ -20,15 +53,15 @@ export class SeriesService {
         {
           code: {
             contains: query.search,
-            mode: 'insensitive'
-          }
+            mode: 'insensitive',
+          },
         },
         {
           name: {
             contains: query.search,
-            mode: 'insensitive'
-          }
-        }
+            mode: 'insensitive',
+          },
+        },
       ];
     }
 
@@ -39,26 +72,26 @@ export class SeriesService {
         where,
         orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
         skip,
-        take: query.pageSize
+        take: query.pageSize,
       }),
-      this.prisma.series.count({ where })
+      this.prisma.series.count({ where }),
     ]);
 
     const coverImageUrlsBySeriesId = await this.getCoverImageUrlsBySeriesId(
       tenantId,
-      items.map((item) => item.id)
+      items.map((item) => item.id),
     );
 
     return {
       items: items.map((item) =>
         this.toSeries(item, {
-          coverImageUrl: coverImageUrlsBySeriesId.get(item.id) ?? null
-        })
+          coverImageUrl: coverImageUrlsBySeriesId.get(item.id) ?? null,
+        }),
       ),
       total,
       page: query.page,
       pageSize: query.pageSize,
-      totalPages: Math.max(1, Math.ceil(total / query.pageSize))
+      totalPages: Math.max(1, Math.ceil(total / query.pageSize)),
     };
   }
 
@@ -66,14 +99,14 @@ export class SeriesService {
     const series = await this.prisma.series.findFirst({
       where: {
         id,
-        tenantId
-      }
+        tenantId,
+      },
     });
 
     if (!series) {
       throw new NotFoundException({
         message: 'Series not found.',
-        errorCode: ErrorCode.SeriesNotFound
+        errorCode: ErrorCode.SeriesNotFound,
       });
     }
 
@@ -84,22 +117,22 @@ export class SeriesService {
     const existing = await this.prisma.series.findFirst({
       where: {
         id,
-        tenantId
+        tenantId,
       },
       select: {
-        id: true
-      }
+        id: true,
+      },
     });
 
     if (!existing) {
       throw new NotFoundException({
         message: 'Series not found.',
-        errorCode: ErrorCode.SeriesNotFound
+        errorCode: ErrorCode.SeriesNotFound,
       });
     }
 
     const updateData: Prisma.SeriesUpdateInput = {
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     if (payload.name !== undefined) {
@@ -120,16 +153,21 @@ export class SeriesService {
 
     const series = await this.prisma.series.update({
       where: {
-        id
+        id,
       },
-      data: updateData
+      data: updateData,
     });
 
     return this.toSeries(series);
   }
 
-  private async getCoverImageUrlsBySeriesId(tenantId: string, seriesIds: string[]): Promise<Map<string, string | null>> {
-    const uniqueSeriesIds = Array.from(new Set(seriesIds.filter((seriesId) => seriesId.length > 0)));
+  private async getCoverImageUrlsBySeriesId(
+    tenantId: string,
+    seriesIds: string[],
+  ): Promise<Map<string, string | null>> {
+    const uniqueSeriesIds = Array.from(
+      new Set(seriesIds.filter((seriesId) => seriesId.length > 0)),
+    );
     const coverImageUrlsBySeriesId = new Map<string, string | null>();
 
     for (const seriesId of uniqueSeriesIds) {
@@ -145,27 +183,27 @@ export class SeriesService {
         tenantId,
         inStock: true,
         seriesId: {
-          in: uniqueSeriesIds
+          in: uniqueSeriesIds,
         },
         images: {
           some: {
-            isMain: true
-          }
-        }
+            isMain: true,
+          },
+        },
       },
       orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
       include: {
         images: {
           where: {
-            isMain: true
+            isMain: true,
           },
           orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
           take: 1,
           select: {
-            id: true
-          }
-        }
-      }
+            id: true,
+          },
+        },
+      },
     });
 
     for (const product of products) {
@@ -182,7 +220,10 @@ export class SeriesService {
         continue;
       }
 
-      coverImageUrlsBySeriesId.set(product.seriesId, this.buildImageAccessPath(product.id, coverImage.id));
+      coverImageUrlsBySeriesId.set(
+        product.seriesId,
+        this.buildImageAccessPath(product.id, coverImage.id),
+      );
     }
 
     return coverImageUrlsBySeriesId;
@@ -199,7 +240,7 @@ export class SeriesService {
       isActive: series.isActive,
       coverImageUrl: options.coverImageUrl ?? null,
       createdAt: series.createdAt.toISOString(),
-      updatedAt: series.updatedAt.toISOString()
+      updatedAt: series.updatedAt.toISOString(),
     };
   }
 
@@ -210,6 +251,15 @@ export class SeriesService {
 
     const trimmed = value.trim();
     return trimmed.length > 0 ? trimmed : null;
+  }
+
+  private async getNextSortOrder(tenantId: string): Promise<number> {
+    const aggregate = await this.prisma.series.aggregate({
+      where: { tenantId },
+      _max: { sortOrder: true },
+    });
+
+    return (aggregate._max.sortOrder ?? 0) + 1;
   }
 
   private buildImageAccessPath(productId: string, imageId: string): string {

@@ -14,6 +14,7 @@ export default async function TenantPublicDetailPage({
   params: { tenantSlug: string; productId: string };
   searchParams: PublicSearchParams;
 }) {
+  const routeTenantSlug = normalizeTenantSlug(params.tenantSlug);
   const shareResult = await fetchPublicShareFromSearchParams(searchParams, {
     productId: params.productId
   });
@@ -52,6 +53,17 @@ export default async function TenantPublicDetailPage({
   }
 
   const { tenant, product, presentation } = shareResult.data;
+  if (!isSameTenantSlug(routeTenantSlug, tenant.slug)) {
+    return (
+      <main className="share-shell">
+        <section className="card panel stack">
+          <h1>公开详情不可用</h1>
+          <p className="notice notice-warning">链接租户与分享租户不一致，请检查访问地址。</p>
+        </section>
+      </main>
+    );
+  }
+
   const routeQuery = buildPublicShareRouteQuery(shareResult.shareId, shareResult.query).toString();
   const feedHref = `/public/${encodeURIComponent(tenant.slug)}?${routeQuery}`;
 
@@ -169,4 +181,16 @@ function formatPrice(value: number) {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2
   });
+}
+
+function normalizeTenantSlug(value: string | null | undefined) {
+  return decodeURIComponent(value ?? '').trim().toLowerCase();
+}
+
+function isSameTenantSlug(routeTenantSlug: string, shareTenantSlug: string) {
+  if (!routeTenantSlug) {
+    return false;
+  }
+
+  return routeTenantSlug === normalizeTenantSlug(shareTenantSlug);
 }

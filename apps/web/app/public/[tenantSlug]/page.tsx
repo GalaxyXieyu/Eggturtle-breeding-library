@@ -8,11 +8,13 @@ import {
 } from '../_shared/public-share-api';
 
 export default async function TenantPublicFeedPage({
+  params,
   searchParams
 }: {
   params: { tenantSlug: string };
   searchParams: PublicSearchParams;
 }) {
+  const routeTenantSlug = normalizeTenantSlug(params.tenantSlug);
   const shareResult = await fetchPublicShareFromSearchParams(searchParams);
 
   if (!shareResult.ok) {
@@ -38,6 +40,17 @@ export default async function TenantPublicFeedPage({
   }
 
   const { tenant, items, presentation } = shareResult.data;
+  if (!isSameTenantSlug(routeTenantSlug, tenant.slug)) {
+    return (
+      <main className="share-shell">
+        <section className="card panel stack">
+          <h1>公开图鉴不可用</h1>
+          <p className="notice notice-warning">链接租户与分享租户不一致，请检查访问地址。</p>
+        </section>
+      </main>
+    );
+  }
+
   const routeQuery = buildPublicShareRouteQuery(shareResult.shareId, shareResult.query).toString();
 
   return (
@@ -139,4 +152,16 @@ function formatPrice(value: number) {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2
   });
+}
+
+function normalizeTenantSlug(value: string | null | undefined) {
+  return decodeURIComponent(value ?? '').trim().toLowerCase();
+}
+
+function isSameTenantSlug(routeTenantSlug: string, shareTenantSlug: string) {
+  if (!routeTenantSlug) {
+    return false;
+  }
+
+  return routeTenantSlug === normalizeTenantSlug(shareTenantSlug);
 }

@@ -1,11 +1,24 @@
-import { BadRequestException, Body, Controller, Get, Param, Put, Query, Req, UseGuards } from '@nestjs/common';
 import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Put,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  createSeriesRequestSchema,
+  createSeriesResponseSchema,
   ErrorCode,
   getSeriesResponseSchema,
   listSeriesQuerySchema,
   listSeriesResponseSchema,
   updateSeriesRequestSchema,
-  updateSeriesResponseSchema
+  updateSeriesResponseSchema,
 } from '@eggturtle/shared';
 
 import { AuthGuard } from '../auth/auth.guard';
@@ -21,6 +34,16 @@ import { SeriesService } from './series.service';
 @RequireTenantRole('VIEWER')
 export class SeriesController {
   constructor(private readonly seriesService: SeriesService) {}
+
+  @Post()
+  @RequireTenantRole('EDITOR')
+  async createSeries(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const payload = parseOrThrow(createSeriesRequestSchema, body);
+    const series = await this.seriesService.createSeries(tenantId, payload);
+
+    return createSeriesResponseSchema.parse({ series });
+  }
 
   @Get()
   async listSeries(@Req() request: AuthenticatedRequest, @Query() query: unknown) {
@@ -44,7 +67,7 @@ export class SeriesController {
   async updateSeries(
     @Req() request: AuthenticatedRequest,
     @Param('id') id: string,
-    @Body() body: unknown
+    @Body() body: unknown,
   ) {
     const tenantId = this.requireTenantId(request.tenantId);
     const payload = parseOrThrow(updateSeriesRequestSchema, body);
@@ -57,7 +80,7 @@ export class SeriesController {
     if (!tenantId) {
       throw new BadRequestException({
         message: 'No tenant selected in access token.',
-        errorCode: ErrorCode.TenantNotSelected
+        errorCode: ErrorCode.TenantNotSelected,
       });
     }
 

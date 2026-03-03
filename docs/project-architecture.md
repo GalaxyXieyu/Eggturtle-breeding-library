@@ -1,6 +1,6 @@
 # Project Architecture（租户后台 vs 平台管理后台）
 
-更新时间：2026-03-03（V4：分享端获客闭环 + 后台导航收敛）  
+更新时间：2026-03-03（V4.1：分享端获客闭环 + 租户端分享入口浮动化）  
 范围：`apps/web`、`apps/admin`、`apps/api`、`packages/shared`
 
 ## 1. 平台边界（必须严格隔离）
@@ -23,12 +23,15 @@
 
 1. `apps/web` 页面发起请求（如 `/products`、`/shares`、`/tenants/current`）。
 2. `apps/api` 通过访问令牌解析 `tenantId`，执行租户内权限校验。
-3. 写操作受订阅写保护与配额保护。
+3. 移动端通过 `layout` 层悬浮分享按钮触发 `POST /shares`，按当前路由跳转对应公开页（feed / series / product detail）。
+4. 写操作受订阅写保护与配额保护。
 
 关键证据：
 - `apps/api/src/tenants/tenants.controller.ts`
 - `apps/api/src/products/products.controller.ts`
 - `apps/api/src/auth/tenant-subscription.guard.ts`
+- `apps/web/app/app/[tenantSlug]/layout.tsx`
+- `apps/web/components/tenant-floating-share-button.tsx`
 
 ### 2.2 平台管理后台链路
 
@@ -116,3 +119,5 @@ apps/api (统一后端)
 
 - 订阅：`/app/[tenantSlug]/subscription`
 - 分享配置：`/app/[tenantSlug]/share-presentation`
+
+分享动作不作为一级导航项，统一通过 Dock 上方悬浮按钮触发（移动端）。

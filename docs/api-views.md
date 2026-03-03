@@ -1,6 +1,6 @@
 # API Views（主线 + Legacy 映射）
 
-更新时间：2026-03-03（V4：分享端获客闭环 + 后台导航收敛）  
+更新时间：2026-03-03（V4.1：租户端分享入口浮动化 + 公开系列页交互补全）  
 范围：`apps/web`、`apps/admin`、`apps/api`、`legacy/backend`
 
 ## 1. 前端页面 -> API 映射
@@ -23,9 +23,10 @@
 | `/app/[tenantSlug]/share-presentation` | `apps/web/app/app/[tenantSlug]/share-presentation/page.tsx` | 分享页品牌配置 | `GET /tenant-share-presentation`、`PUT /tenant-share-presentation` |
 | `/app/[tenantSlug]/account` | `apps/web/app/app/[tenantSlug]/account/page.tsx` | 账户设置 + 订阅/分享配置入口聚合 | `GET /me/profile`、`PUT /me/profile`、`PUT /me/password` |
 | `/app/[tenantSlug]/tenants` | `apps/web/app/app/[tenantSlug]/tenants/page.tsx` | 当前账号租户管理 | `GET /tenants/me`、`POST /tenants`、`POST /auth/switch-tenant` |
+| `/app/[tenantSlug]/*`（移动端壳层） | `apps/web/app/app/[tenantSlug]/layout.tsx` | 底部主导航 + Dock 上方悬浮分享按钮（按上下文打开公开页） | `GET /me`、`POST /shares` |
 | `/public/s/[shareToken]` | `apps/web/app/public/s/[shareToken]/page.tsx` | 分享页入口 | `GET /s/:shareToken`、`GET /shares/:shareId/public` |
-| `/public/s/[shareToken]/series` | `apps/web/app/public/s/[shareToken]/series/page.tsx` | 分享系列页（只读，V4 新增） | `GET /shares/:shareId/public`（附 `view=series`） |
-| `/public/s/[shareToken]/me` | `apps/web/app/public/s/[shareToken]/me/page.tsx` | 分享“我的”转化页（只读 + CTA，V4 新增） | `GET /shares/:shareId/public`（用于品牌文案与公开信息） |
+| `/public/s/[shareToken]/series` | `apps/web/app/public/s/[shareToken]/series/page.tsx` | 分享系列页（只读，含当前页二维码浮动操作） | `GET /shares/:shareId/public`（签名参数：`sid/tenantId/resourceType/resourceId/exp/sig`） |
+| `/public/s/[shareToken]/me` | `apps/web/app/public/s/[shareToken]/me/page.tsx` | 分享“我的”转化页（只读 + CTA） | `GET /shares/:shareId/public`（签名参数同上） |
 | `/public/s/[shareToken]/products/[id]` | `apps/web/app/public/s/[shareToken]/products/[id]/page.tsx` | 分享详情 | `GET /shares/:shareId/public`（附 `productId`） |
 | `/public/[tenantSlug]` | `apps/web/app/public/[tenantSlug]/page.tsx` | 租户公开页 | `GET /shares/:shareId/public`（签名参数模式） |
 | `/public/[tenantSlug]/products/[productId]` | `apps/web/app/public/[tenantSlug]/products/[productId]/page.tsx` | 租户公开详情 | `GET /shares/:shareId/public`（签名参数模式） |
@@ -166,4 +167,6 @@
 - 分享端 IA（V4）：底部仅 `系列 / 宠物 / 我的` 三 Tab，`/public/s/[shareToken]` 与 `/series`、`/me` 均为只读浏览链路。
 - 分享来源登录回流：标准参数为 `source=share`、`next=/app?intent=dashboard&source=share`，`next` 仅允许站内相对路径。
 - 后台移动端主导航（V4）：收敛为 `看板 / 系列 / 宠物 / 我的`；订阅与分享配置入口并入 `/app/[tenantSlug]/account`。
+- 租户移动端“分享”入口（V4.1）：已从 Dock 一级项移除，改为 Dock 上方悬浮按钮；按钮按当前页面意图打开 `feed / series / product detail` 对应公开页。
+- 公开系列页（V4.1）：新增当前页二维码浮动操作，二维码本地生成（无新增后端接口）。
 - AI 次数策略：三档都有次数上限，可多次充值叠加；当前“充值/问数/自动记录”仍为占位接口。
