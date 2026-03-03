@@ -1,6 +1,10 @@
 import {
+  adminActivityOverviewResponseSchema,
+  adminRevenueOverviewResponseSchema,
+  adminUsageOverviewResponseSchema,
   createAdminTenantResponseSchema,
   deleteTenantMemberResponseSchema,
+  getAdminTenantUsageResponseSchema,
   listAdminTenantMembersResponseSchema,
   listAdminTenantsResponseSchema,
   offboardAdminTenantResponseSchema,
@@ -72,6 +76,59 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
 
     if (superAdminResponse.status === 200) {
       listAdminTenantsResponseSchema.parse(superAdminResponse.body);
+      const activityOverviewResponse = await ctx.request({
+        method: 'GET',
+        path: '/admin/analytics/activity/overview',
+        token: superAdminLogin.token,
+        query: {
+          window: '30d',
+        },
+      });
+      assertStatus(activityOverviewResponse, 200, 'admin.analytics.activity.overview');
+      const activityOverviewPayload = adminActivityOverviewResponseSchema.parse(activityOverviewResponse.body);
+      if (activityOverviewPayload.trend.length === 0) {
+        throw new ApiTestError('admin.analytics.activity.overview trend should not be empty');
+      }
+      checks += 1;
+
+      const usageOverviewResponse = await ctx.request({
+        method: 'GET',
+        path: '/admin/analytics/usage/overview',
+        token: superAdminLogin.token,
+        query: {
+          topN: 10,
+        },
+      });
+      assertStatus(usageOverviewResponse, 200, 'admin.analytics.usage.overview');
+      const usageOverviewPayload = adminUsageOverviewResponseSchema.parse(usageOverviewResponse.body);
+      if (usageOverviewPayload.topTenants.length > 0) {
+        const firstTenant = usageOverviewPayload.topTenants[0];
+        const tenantUsageResponse = await ctx.request({
+          method: 'GET',
+          path: `/admin/tenants/${firstTenant.tenantId}/usage`,
+          token: superAdminLogin.token,
+        });
+        assertStatus(tenantUsageResponse, 200, 'admin.tenants.usage.detail');
+        const tenantUsagePayload = getAdminTenantUsageResponseSchema.parse(tenantUsageResponse.body);
+        if (tenantUsagePayload.tenant.tenantId !== firstTenant.tenantId) {
+          throw new ApiTestError('admin.tenants.usage.detail tenantId mismatch');
+        }
+        checks += 1;
+      }
+      checks += 1;
+
+      const revenueOverviewResponse = await ctx.request({
+        method: 'GET',
+        path: '/admin/analytics/revenue/overview',
+        token: superAdminLogin.token,
+        query: {
+          window: '30d',
+        },
+      });
+      assertStatus(revenueOverviewResponse, 200, 'admin.analytics.revenue.overview');
+      adminRevenueOverviewResponseSchema.parse(revenueOverviewResponse.body);
+      checks += 1;
+
       const superAdminUser = asObject(superAdminLogin.user, 'auth.verify-code.user');
       const superAdminUserId = readString(superAdminUser, 'id', 'auth.verify-code.user.id');
 
