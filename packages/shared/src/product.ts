@@ -203,6 +203,13 @@ export const productEventSchema = z.object({
   productId: productIdParamSchema,
   eventType: z.string().min(1),
   eventDate: z.string().datetime(),
+
+  // Computed from tagged lines in note (e.g. "#maleCode=GH-M01").
+  maleCode: z.string().trim().max(120).nullable().optional(),
+  eggCount: z.number().int().min(0).max(999).nullable().optional(),
+  oldMateCode: z.string().trim().max(120).nullable().optional(),
+  newMateCode: z.string().trim().max(120).nullable().optional(),
+
   note: z.string().nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime()
