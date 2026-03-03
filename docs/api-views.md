@@ -1,6 +1,6 @@
 # API Views（主线 + Legacy 映射）
 
-更新时间：2026-03-03  
+更新时间：2026-03-03（V4：分享端获客闭环 + 后台导航收敛）  
 范围：`apps/web`、`apps/admin`、`apps/api`、`legacy/backend`
 
 ## 1. 前端页面 -> API 映射
@@ -10,8 +10,8 @@
 | 路由 | 页面文件 | 页面功能 | 主要调用 API |
 |---|---|---|---|
 | `/` | `apps/web/app/page.tsx` | 官网落地页 | 无 |
-| `/login` | `apps/web/app/login/page.tsx` | 登录/注册/激活码兑换 | `POST /auth/request-code`、`POST /auth/register`、`POST /auth/password-login`、`POST /auth/verify-code`、`POST /subscriptions/activation-codes/redeem` |
-| `/app` | `apps/web/app/app/page.tsx` | 自动进入租户工作台 | `POST /auth/switch-tenant`、`GET /tenants/current`、`GET /tenants/me` |
+| `/login` | `apps/web/app/login/page.tsx` | 登录/注册/激活码兑换（支持 `source`、`next` 回流） | `POST /auth/request-code`、`POST /auth/register`、`POST /auth/password-login`、`POST /auth/verify-code`、`POST /subscriptions/activation-codes/redeem` |
+| `/app` | `apps/web/app/app/page.tsx` | 应用入口分流（支持 `intent=dashboard` + `source=share`） | `POST /auth/switch-tenant`、`GET /tenants/current`、`GET /tenants/me` |
 | `/tenant-select` | `apps/web/app/tenant-select/page.tsx` | 选择/创建租户 | `GET /tenants/me`、`POST /tenants`、`POST /auth/switch-tenant` |
 | `/app/[tenantSlug]` | `apps/web/app/app/[tenantSlug]/page.tsx` | 工作台概览（含 AI 次数） | `GET /me`、`GET /me/subscription`、`GET /products`、`GET /series`、`GET /featured-products`、`GET /ai-assistant/quota` |
 | `/app/[tenantSlug]/products` | `apps/web/app/app/[tenantSlug]/products/page.tsx` | 种龟/产品列表与创建 | `GET /products`、`POST /products` |
@@ -21,9 +21,11 @@
 | `/app/[tenantSlug]/breeders/[id]` | `apps/web/app/app/[tenantSlug]/breeders/[id]/page.tsx` | 种龟详情（事件/家族树/图片） | `GET /products/:id`、`GET /products/:id/events`、`GET /products/:id/family-tree`、`GET /products/:id/images` |
 | `/app/[tenantSlug]/featured-products` | `apps/web/app/app/[tenantSlug]/featured-products/page.tsx` | 活动推荐位 | `GET /featured-products`、`POST /featured-products`、`DELETE /featured-products/:id`、`PUT /featured-products/reorder` |
 | `/app/[tenantSlug]/share-presentation` | `apps/web/app/app/[tenantSlug]/share-presentation/page.tsx` | 分享页品牌配置 | `GET /tenant-share-presentation`、`PUT /tenant-share-presentation` |
-| `/app/[tenantSlug]/account` | `apps/web/app/app/[tenantSlug]/account/page.tsx` | 账户设置 | `GET /me/profile`、`PUT /me/profile`、`PUT /me/password` |
+| `/app/[tenantSlug]/account` | `apps/web/app/app/[tenantSlug]/account/page.tsx` | 账户设置 + 订阅/分享配置入口聚合 | `GET /me/profile`、`PUT /me/profile`、`PUT /me/password` |
 | `/app/[tenantSlug]/tenants` | `apps/web/app/app/[tenantSlug]/tenants/page.tsx` | 当前账号租户管理 | `GET /tenants/me`、`POST /tenants`、`POST /auth/switch-tenant` |
 | `/public/s/[shareToken]` | `apps/web/app/public/s/[shareToken]/page.tsx` | 分享页入口 | `GET /s/:shareToken`、`GET /shares/:shareId/public` |
+| `/public/s/[shareToken]/series` | `apps/web/app/public/s/[shareToken]/series/page.tsx` | 分享系列页（只读，V4 新增） | `GET /shares/:shareId/public`（附 `view=series`） |
+| `/public/s/[shareToken]/me` | `apps/web/app/public/s/[shareToken]/me/page.tsx` | 分享“我的”转化页（只读 + CTA，V4 新增） | `GET /shares/:shareId/public`（用于品牌文案与公开信息） |
 | `/public/s/[shareToken]/products/[id]` | `apps/web/app/public/s/[shareToken]/products/[id]/page.tsx` | 分享详情 | `GET /shares/:shareId/public`（附 `productId`） |
 | `/public/[tenantSlug]` | `apps/web/app/public/[tenantSlug]/page.tsx` | 租户公开页 | `GET /shares/:shareId/public`（签名参数模式） |
 | `/public/[tenantSlug]/products/[productId]` | `apps/web/app/public/[tenantSlug]/products/[productId]/page.tsx` | 租户公开详情 | `GET /shares/:shareId/public`（签名参数模式） |
@@ -161,4 +163,7 @@
 
 - `product` 是主实体；`breeders` 仅作为前端展示语义，不再新增独立后端域。
 - 分享已简化：不限制分享链接数量，按订阅写状态与种龟数量控制。
+- 分享端 IA（V4）：底部仅 `系列 / 宠物 / 我的` 三 Tab，`/public/s/[shareToken]` 与 `/series`、`/me` 均为只读浏览链路。
+- 分享来源登录回流：标准参数为 `source=share`、`next=/app?intent=dashboard&source=share`，`next` 仅允许站内相对路径。
+- 后台移动端主导航（V4）：收敛为 `看板 / 系列 / 宠物 / 我的`；订阅与分享配置入口并入 `/app/[tenantSlug]/account`。
 - AI 次数策略：三档都有次数上限，可多次充值叠加；当前“充值/问数/自动记录”仍为占位接口。

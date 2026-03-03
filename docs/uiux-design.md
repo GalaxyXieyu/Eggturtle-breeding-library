@@ -2,6 +2,8 @@
 
 本文件定义了整个系统的 UI 设计语言，作为所有新页面开发的参考依据。
 
+更新时间：2026-03-03（V4：分享端获客闭环 + 后台导航收敛）
+
 ---
 
 ## 设计理念
@@ -260,7 +262,6 @@ body, p, span, div { font-family: 'Inter', sans-serif; }
 - 容器滚动：`overflow-x-auto overflow-y-hidden`
 - 内容排布：`inline-flex gap-8 px-4 py-6`
 
----
 
 ## 动效系统
 
@@ -635,14 +636,3 @@ CDN 引入清单：
 - 文字色: `neutral-900` / `neutral-600` / `neutral-500`
 - 网格线: `neutral-100` / `neutral-200`
 - 禁用渐变色，只使用同色透明度
-
----
-
-## 关键文件索引
-
-| 用途 | 文件路径 |
-|------|----------|
-| Tailwind 配置 | `legacy/frontend/tailwind.config.ts` |
-| 全局样式 | `legacy/frontend/src/index.css` |
-| 瀑布流参考 | `legacy/frontend/src/pages/SeriesFeed.tsx` |
-| 详情页参考 | `legacy/frontend/src/pages/BreederDetail.tsx` |

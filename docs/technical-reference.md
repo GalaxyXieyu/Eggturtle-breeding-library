@@ -1,6 +1,6 @@
 # Technical Reference（业务口径 + 规则）
 
-更新时间：2026-03-02  
+更新时间：2026-03-03（V4：分享端获客闭环 + 后台导航收敛）  
 范围：`apps/api`、`packages/shared`、`legacy/backend`
 
 ## 0. 业务主线（先讲清楚我们在卖什么）
@@ -65,6 +65,18 @@
 - 支持单独购买次数包，支持多次充值叠加。
 - 免费用户可体验自动记录（10 次）作为转化入口。
 - 现阶段 `ai-assistant` 相关接口为占位实现，后续接管理员智能体自动入库与智能问数。
+
+### 2.4 分享端 IA 与回流契约（V4 冻结）
+
+- 分享端底部导航固定三项：`系列 / 宠物 / 我的`（`宠物`为中间高亮）。
+- 分享端读链路固定为：
+  - `/public/s/[shareToken]`（宠物）
+  - `/public/s/[shareToken]/series`（系列）
+  - `/public/s/[shareToken]/me`（转化页）
+- 分享端默认不打断：进入页面不弹鉴权，不强制登录。
+- 仅当用户主动点击“我的页 CTA”时进入鉴权流程。
+- 登录回流默认：`/app?intent=dashboard&source=share`。
+- `next` 只接受站内相对路径；外链或非法值必须回退 `/app?intent=dashboard`。
 
 ## 3. 已继承并在 Node 生效的繁育规则
 
@@ -168,6 +180,13 @@
 2. 访问公开页：`GET /s/:shareToken` 或 `GET /shares/:shareId/public`。
 3. 公龟负载与待配预警：在公开域按 25 天规则返回 `normal/need_mating/warning`。
 
+### 4.3 分享端转化链路（V4）
+
+1. 访客浏览：在 `宠物/系列` 页面完成内容消费（只读）。
+2. 访客转化：进入 `我的` 查看免费卡片与能力介绍。
+3. 访客鉴权：点击 `注册并开始` 或 `已有账号登录` 后再进入 `/login`。
+4. 成功回流：注册/登录完成后进入 `/app?intent=dashboard&source=share`。
+
 ## 5. 数据模型字段与业务关联（Prisma）
 
 来源：`apps/api/prisma/schema.prisma`
@@ -222,6 +241,7 @@
 2. 图片水印：高级版能力口径已定，尚未在主链路实现。
 3. AI 自动记录：目标是管理员智能体意图识别后自动写库，当前为占位接口阶段。
 4. 智能问数：后续可复用 AI 次数体系，接口可预留，查询引擎待实现。
+5. 分享端 V4 新页面（`/public/s/[shareToken]/series`、`/public/s/[shareToken]/me`）与 Dock 组件仍需完整落地。
 
 ## 7. 文档分工（避免重复）
 
