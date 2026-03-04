@@ -12,9 +12,11 @@ import {
 } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
+  getTenantSharePresentationResponseSchema,
   listProductsResponseSchema,
   listSeriesResponseSchema,
   type Product,
+  type TenantSharePresentation,
 } from '@eggturtle/shared';
 import { Plus, Search, SquarePen, X } from 'lucide-react';
 
@@ -52,6 +54,16 @@ type ListMeta = {
   total: number;
   totalPages: number;
 };
+
+type SharePreviewState = {
+  feedTitle: string;
+  feedSubtitle: string;
+  brandPrimary: string;
+  brandSecondary: string;
+  heroImages: string[];
+};
+
+const DEFAULT_SHARE_PREVIEW_HERO = '/images/mg_04.jpg';
 
 const SEX_FILTER_OPTIONS = [
   { value: '', label: '全部' },
@@ -148,6 +160,10 @@ export default function TenantProductsPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [continueEditProductId, setContinueEditProductId] = useState<string | null>(null);
+  const [sharePreview, setSharePreview] = useState<SharePreviewState>(() =>
+    buildFallbackSharePreview(''),
+  );
+  const [shareHeroIndex, setShareHeroIndex] = useState(0);
 
   const [searchInput, setSearchInput] = useState(listQuery.search);
   const [sexFilter, setSexFilter] = useState(listQuery.sex);
@@ -156,6 +172,36 @@ export default function TenantProductsPage() {
     () => items.find((item) => item.id === editingProductId) ?? null,
     [editingProductId, items],
   );
+  const shareHeroSignature = useMemo(() => sharePreview.heroImages.join('|'), [sharePreview.heroImages]);
+  const shareHeroImageUrl = resolveAuthenticatedAssetUrl(
+    sharePreview.heroImages[shareHeroIndex] ??
+      sharePreview.heroImages[0] ??
+      DEFAULT_SHARE_PREVIEW_HERO,
+  );
+  const shareOverlayColor = hexToRgba(sharePreview.brandSecondary, 0.4);
+  const shareAccentShadow = `0 8px 24px ${hexToRgba(sharePreview.brandPrimary, 0.3)}`;
+
+  useEffect(() => {
+    setSharePreview(buildFallbackSharePreview(tenantSlug));
+  }, [tenantSlug]);
+
+  useEffect(() => {
+    setShareHeroIndex(0);
+  }, [shareHeroSignature]);
+
+  useEffect(() => {
+    if (sharePreview.heroImages.length <= 1) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setShareHeroIndex((current) => (current + 1) % sharePreview.heroImages.length);
+    }, 5000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [sharePreview.heroImages]);
 
   useEffect(() => {
     if (!isFilterPopoverOpen) {
@@ -470,6 +516,22 @@ export default function TenantProductsPage() {
     );
   }, [isDemoMode]);
 
+  const loadSharePreview = useCallback(async () => {
+    if (isDemoMode) {
+      setSharePreview(buildDemoSharePreview(tenantSlug));
+      return;
+    }
+
+    try {
+      const response = await apiRequest('/tenant-share-presentation', {
+        responseSchema: getTenantSharePresentationResponseSchema,
+      });
+      setSharePreview(buildSharePreviewFromPresentation(response.presentation, tenantSlug));
+    } catch {
+      setSharePreview(buildFallbackSharePreview(tenantSlug));
+    }
+  }, [isDemoMode, tenantSlug]);
+
   useEffect(() => {
     if (isDemoMode) {
       setTenantReady(true);
@@ -519,7 +581,7 @@ export default function TenantProductsPage() {
 
     void (async () => {
       try {
-        await Promise.all([loadProducts(listQuery), loadSeriesOptions()]);
+        await Promise.all([loadProducts(listQuery), loadSeriesOptions(), loadSharePreview()]);
       } catch (requestError) {
         if (!isCancelled) {
           setError(formatApiError(requestError));
@@ -531,7 +593,7 @@ export default function TenantProductsPage() {
     return () => {
       isCancelled = true;
     };
-  }, [listQuery, loadProducts, loadSeriesOptions, tenantReady]);
+  }, [listQuery, loadProducts, loadSeriesOptions, loadSharePreview, tenantReady]);
 
   const buildDraftQuery = useCallback(() => {
     return {
@@ -920,16 +982,87 @@ export default function TenantProductsPage() {
   return (
     <>
       <main className="space-y-4 pb-10 sm:space-y-6">
-        <Card className="rounded-3xl border-neutral-200/90 bg-white/92 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">宠物</p>
-              <h2 className="mt-1 text-xl font-semibold text-neutral-900">宠物视图</h2>
-              <p className="mt-1 text-xs text-neutral-600">
-                瀑布流预览 + 抽屉创建流程（先图片，后资料）。
-                {isDemoMode ? '（演示模式：仅演示界面，不写入真实数据）' : ''}
-              </p>
+        <Card className="overflow-hidden rounded-3xl border-neutral-200/90 bg-neutral-900 p-0 shadow-[0_18px_42px_rgba(0,0,0,0.2)]">
+          <div className="relative h-[230px] sm:h-[260px]">
+            <div
+              className="absolute inset-0 bg-cover bg-center transition-all duration-500"
+              style={{ backgroundImage: `url(${shareHeroImageUrl})` }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/35 to-black/65" />
+            <div
+              className="absolute inset-0"
+              style={{
+                background: `linear-gradient(135deg, ${shareOverlayColor} 10%, transparent 58%)`,
+              }}
+            />
+
+            <div className="relative z-10 flex h-full flex-col justify-between p-4 sm:p-5">
+              <div className="flex items-start justify-between gap-3">
+                <span className="inline-flex rounded-full border border-white/30 bg-black/30 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-white/90 backdrop-blur-sm">
+                  分享端同款预览
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  className="border-white/40 bg-white/15 text-white backdrop-blur hover:bg-white/25 lg:hidden"
+                  onClick={() => router.push(`/app/${tenantSlug}/share-presentation`)}
+                >
+                  分享配置
+                </Button>
+              </div>
+
+              <div className="max-w-3xl text-white">
+                <p className="text-[11px] uppercase tracking-[0.24em] text-white/75">
+                  public share preview
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold leading-tight drop-shadow-sm sm:text-3xl">
+                  {sharePreview.feedTitle}
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/85 sm:text-base">
+                  {sharePreview.feedSubtitle}
+                </p>
+              </div>
+
+              {sharePreview.heroImages.length > 1 ? (
+                <div className="flex gap-1.5">
+                  {sharePreview.heroImages.map((_, index) => (
+                    <button
+                      key={`hero-dot-${index}`}
+                      type="button"
+                      aria-label={`切换第 ${index + 1} 张预览图`}
+                      onClick={() => setShareHeroIndex(index)}
+                      className={`h-1.5 rounded-full transition-all ${
+                        index === shareHeroIndex ? 'w-5 bg-white' : 'w-1.5 bg-white/55'
+                      }`}
+                    />
+                  ))}
+                </div>
+              ) : null}
             </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/15 bg-white/92 px-4 py-3 backdrop-blur">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-700">
+              <span className="rounded-full border border-neutral-300 bg-white px-2 py-1">
+                分享配置实时映射
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full border border-neutral-300 bg-white px-2 py-1">
+                <span
+                  className="h-2.5 w-2.5 rounded-full"
+                  style={{ backgroundColor: sharePreview.brandPrimary, boxShadow: shareAccentShadow }}
+                />
+                主色
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full border border-neutral-300 bg-white px-2 py-1">
+                <span
+                  className="h-2.5 w-2.5 rounded-full"
+                  style={{ backgroundColor: sharePreview.brandSecondary }}
+                />
+                辅色
+              </span>
+            </div>
+
             <div className="hidden items-center gap-2 lg:flex">
               <div className="relative" data-products-filter-root="true">
                 <Button
@@ -953,6 +1086,13 @@ export default function TenantProductsPage() {
               >
                 <Plus size={14} />
                 新建产品
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => router.push(`/app/${tenantSlug}/share-presentation`)}
+              >
+                分享配置
               </Button>
             </div>
           </div>
@@ -1245,4 +1385,73 @@ export default function TenantProductsPage() {
 
 function normalizeText(value: string | null | undefined) {
   return (value ?? '').trim().toLowerCase();
+}
+
+function buildDemoSharePreview(tenantSlug: string): SharePreviewState {
+  return {
+    ...buildFallbackSharePreview(tenantSlug),
+    feedTitle: '蛋龟图鉴 · 公开分享',
+    feedSubtitle: '长期专注蛋龟繁育与选育记录',
+  };
+}
+
+function buildFallbackSharePreview(tenantSlug: string): SharePreviewState {
+  const tenantName = tenantSlug.trim() || '租户';
+  return {
+    feedTitle: `${tenantName} · 公开图鉴`,
+    feedSubtitle: '管理端顶部已切换为分享端视觉，可直接预览分享配置效果。',
+    brandPrimary: '#FFD400',
+    brandSecondary: '#1f2937',
+    heroImages: [DEFAULT_SHARE_PREVIEW_HERO],
+  };
+}
+
+function buildSharePreviewFromPresentation(
+  presentation: TenantSharePresentation,
+  tenantSlug: string,
+): SharePreviewState {
+  const fallback = buildFallbackSharePreview(tenantSlug);
+  const heroImages = presentation.heroImages
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+
+  return {
+    feedTitle: normalizeNonEmptyText(presentation.feedTitle) ?? fallback.feedTitle,
+    feedSubtitle: normalizeNonEmptyText(presentation.feedSubtitle) ?? fallback.feedSubtitle,
+    brandPrimary: normalizeHexColor(presentation.brandPrimary) ?? fallback.brandPrimary,
+    brandSecondary: normalizeHexColor(presentation.brandSecondary) ?? fallback.brandSecondary,
+    heroImages: heroImages.length > 0 ? heroImages : fallback.heroImages,
+  };
+}
+
+function normalizeNonEmptyText(value: string | null | undefined): string | null {
+  const normalized = value?.trim() ?? '';
+  return normalized.length > 0 ? normalized : null;
+}
+
+function normalizeHexColor(value: string | null | undefined): string | null {
+  const normalized = value?.trim() ?? '';
+  if (!normalized) {
+    return null;
+  }
+
+  const validHex = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+  return validHex.test(normalized) ? normalized : null;
+}
+
+function hexToRgba(color: string, alpha: number): string {
+  const normalized = normalizeHexColor(color);
+  if (!normalized) {
+    return `rgba(31,41,55,${alpha})`;
+  }
+
+  const hex =
+    normalized.length === 4
+      ? `#${normalized[1]}${normalized[1]}${normalized[2]}${normalized[2]}${normalized[3]}${normalized[3]}`
+      : normalized;
+  const red = Number.parseInt(hex.slice(1, 3), 16);
+  const green = Number.parseInt(hex.slice(3, 5), 16);
+  const blue = Number.parseInt(hex.slice(5, 7), 16);
+
+  return `rgba(${red},${green},${blue},${alpha})`;
 }
