@@ -1,7 +1,15 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+} from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   listProductsResponseSchema,
@@ -103,7 +111,7 @@ export default function TenantProductsPage() {
   const [isCreateDrawerOpen, setIsCreateDrawerOpen] = useState(false);
   const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
   const [showMobileFilterFab, setShowMobileFilterFab] = useState(false);
-  const mobileFilterSentinelRef = useRef<HTMLDivElement | null>(null);
+  const mobileTopFilterRef = useRef<HTMLDivElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [continueEditProductId, setContinueEditProductId] = useState<string | null>(null);
@@ -149,45 +157,43 @@ export default function TenantProductsPage() {
   }, [isFilterPopoverOpen]);
 
   useEffect(() => {
-    const sentinel = mobileFilterSentinelRef.current;
-    if (!sentinel) {
-      return;
-    }
-
     let rafId: number | null = null;
 
-    function update() {
+    const update = () => {
       rafId = null;
-      const element = mobileFilterSentinelRef.current;
-      if (!element) {
-        return;
-      }
 
-      const top = element.getBoundingClientRect().top;
+      const topFilter = mobileTopFilterRef.current;
+      const scrollY = window.scrollY;
 
       setShowMobileFilterFab((current) => {
         if (current) {
-          return top < -80;
+          // When FAB is visible, show top filter again only after user scrolls back up.
+          return scrollY > 140;
         }
 
-        return top < -180;
-      });
-    }
+        if (!topFilter) {
+          return scrollY > 220;
+        }
 
-    function handleScroll() {
+        const bottom = topFilter.getBoundingClientRect().bottom;
+        return bottom < 8;
+      });
+    };
+
+    const onScroll = () => {
       if (rafId !== null) {
         return;
       }
       rafId = window.requestAnimationFrame(update);
-    }
+    };
 
     update();
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    window.addEventListener('resize', handleScroll);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
 
     return () => {
-      window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('resize', handleScroll);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
       if (rafId !== null) {
         window.cancelAnimationFrame(rafId);
       }
@@ -615,6 +621,20 @@ export default function TenantProductsPage() {
 
   const filterPopoverAnchorRef = useRef<HTMLElement | null>(null);
   const [filterPopoverAnchorRect, setFilterPopoverAnchorRect] = useState<DOMRect | null>(null);
+  const [filterPopoverPlacement, setFilterPopoverPlacement] = useState<'above' | 'below'>('below');
+
+  const openFilterPopover = (
+    event: ReactMouseEvent<HTMLElement>,
+    placement: 'above' | 'below',
+    options?: { toggle?: boolean },
+  ) => {
+    filterPopoverAnchorRef.current = event.currentTarget;
+    setFilterPopoverAnchorRect(event.currentTarget.getBoundingClientRect());
+    setFilterPopoverPlacement(placement);
+
+    const shouldToggle = options?.toggle ?? false;
+    setIsFilterPopoverOpen((current) => (shouldToggle ? !current : true));
+  };
 
   useEffect(() => {
     if (!isFilterPopoverOpen) {
@@ -658,7 +678,7 @@ export default function TenantProductsPage() {
             };
 
     return (
-      <div className={placementClass} style={placementStyle}>
+      <div className={placementClass} style={placementStyle} data-products-filter-root="true" role="dialog">
         <div className="grid gap-3">
           <div className="grid gap-1.5">
             <p className="text-xs font-semibold text-neutral-600">关键词</p>
@@ -784,16 +804,13 @@ export default function TenantProductsPage() {
                   type="button"
                   variant="secondary"
                   onClick={(event) => {
-                    filterPopoverAnchorRef.current = event.currentTarget;
-                    setFilterPopoverAnchorRect(event.currentTarget.getBoundingClientRect());
                     setIsCreateDrawerOpen(false);
-                    setIsFilterPopoverOpen((current) => !current);
+                    openFilterPopover(event, 'below', { toggle: true });
                   }}
                 >
                   <SlidersHorizontal size={14} />
                   筛选{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
                 </Button>
-                {isFilterPopoverOpen ? renderFilterPopover('below') : null}
               </div>
               <Button
                 type="button"
@@ -817,10 +834,12 @@ export default function TenantProductsPage() {
               </span>
             </div>
 
-            <div ref={mobileFilterSentinelRef} className="h-px lg:hidden" aria-hidden="true" />
 
             {!showMobileFilterFab ? (
-              <div className="rounded-2xl border border-neutral-200 bg-gradient-to-b from-white to-neutral-50/80 p-3 lg:hidden">
+              <div
+                ref={mobileTopFilterRef}
+                className="rounded-2xl border border-neutral-200 bg-gradient-to-b from-white to-neutral-50/80 p-3 lg:hidden"
+              >
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs font-semibold text-neutral-700">顶部筛选</p>
                 <div className="relative" data-products-filter-root="true">
@@ -829,16 +848,11 @@ export default function TenantProductsPage() {
                     variant="secondary"
                     size="sm"
                     className="bg-neutral-900 text-white hover:bg-neutral-800"
-                    onClick={(event) => {
-                      filterPopoverAnchorRef.current = event.currentTarget;
-                      setFilterPopoverAnchorRect(event.currentTarget.getBoundingClientRect());
-                      setIsFilterPopoverOpen((current) => !current);
-                    }}
+                    onClick={(event) => openFilterPopover(event, 'below', { toggle: true })}
                   >
                     <SlidersHorizontal size={14} />
                     筛选{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
                   </Button>
-                  {isFilterPopoverOpen ? renderFilterPopover('below') : null}
                 </div>
               </div>
 
@@ -879,7 +893,7 @@ export default function TenantProductsPage() {
                       <button
                         type="button"
                         className="shrink-0 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 transition hover:border-neutral-300"
-                        onClick={() => setIsFilterPopoverOpen(true)}
+                        onClick={(event) => openFilterPopover(event, 'below')}
                       >
                         更多…
                       </button>
@@ -916,6 +930,7 @@ export default function TenantProductsPage() {
                 </div>
 
               </div>
+
             </div>
             ) : null}
 
@@ -1164,11 +1179,7 @@ export default function TenantProductsPage() {
                   variant="secondary"
                   className="tenant-fab-button bg-white/95 shadow-[0_14px_30px_rgba(0,0,0,0.18)] ring-1 ring-black/10"
                   aria-label="打开筛选"
-                  onClick={(event) => {
-                    filterPopoverAnchorRef.current = event.currentTarget;
-                    setFilterPopoverAnchorRect(event.currentTarget.getBoundingClientRect());
-                    setIsFilterPopoverOpen((current) => !current);
-                  }}
+                  onClick={(event) => openFilterPopover(event, 'above', { toggle: true })}
                 >
                   <SlidersHorizontal size={18} />
                 </Button>
@@ -1177,12 +1188,13 @@ export default function TenantProductsPage() {
                     {activeFilterCount}
                   </span>
                 ) : null}
-                {isFilterPopoverOpen ? renderFilterPopover('above') : null}
               </div>
             ) : null}
           </div>
         ) : null}
       </main>
+
+      {isFilterPopoverOpen ? renderFilterPopover(filterPopoverPlacement) : null}
 
       <ProductCreateDrawer
         open={isCreateDrawerOpen}
