@@ -14,6 +14,7 @@ import type {
   ProductEvent,
   ProductFamilyTree,
   ProductFamilyTreeLink,
+  ProductListStats,
   ProductPublicClicksItem,
   ProductPublicClicksSummary,
   ProductImage,
@@ -586,6 +587,7 @@ export class ProductsService {
       tenantId,
       items.map((item) => item.id)
     );
+    const stats = await this.loadListStats(tenantId, where);
 
     return {
       products: items.map((item) =>
@@ -597,8 +599,133 @@ export class ProductsService {
       total,
       page: query.page,
       pageSize: query.pageSize,
-      totalPages: Math.max(1, Math.ceil(total / query.pageSize))
+      totalPages: Math.max(1, Math.ceil(total / query.pageSize)),
+      stats
     };
+  }
+
+  private async loadListStats(
+    tenantId: string,
+    where: Prisma.ProductWhereInput
+  ): Promise<ProductListStats> {
+    const products = await this.prisma.product.findMany({
+      where,
+      select: {
+        id: true,
+        sex: true
+      }
+    });
+
+    if (products.length === 0) {
+      return {
+        maleCount: 0,
+        femaleCount: 0,
+        unknownCount: 0,
+        yearEggCount: 0,
+        needMatingCount: 0,
+        warningCount: 0
+      };
+    }
+
+    let maleCount = 0;
+    let femaleCount = 0;
+    let unknownCount = 0;
+    const productIds: string[] = [];
+    const femaleProductIds: string[] = [];
+
+    for (const product of products) {
+      productIds.push(product.id);
+      const normalizedSex = product.sex?.trim().toLowerCase() ?? '';
+      if (normalizedSex === 'male') {
+        maleCount += 1;
+      } else if (normalizedSex === 'female') {
+        femaleCount += 1;
+        femaleProductIds.push(product.id);
+      } else {
+        unknownCount += 1;
+      }
+    }
+
+    const [{ needMatingCount, warningCount }, yearEggCount] = await Promise.all([
+      this.loadNeedMatingCounters(tenantId, femaleProductIds),
+      this.loadCurrentYearEggCount(tenantId, productIds)
+    ]);
+
+    return {
+      maleCount,
+      femaleCount,
+      unknownCount,
+      yearEggCount,
+      needMatingCount,
+      warningCount
+    };
+  }
+
+  private async loadNeedMatingCounters(tenantId: string, femaleProductIds: string[]): Promise<{
+    needMatingCount: number;
+    warningCount: number;
+  }> {
+    if (femaleProductIds.length === 0) {
+      return {
+        needMatingCount: 0,
+        warningCount: 0
+      };
+    }
+
+    const summaryByProductId = await this.loadNeedMatingSummaryByProductIds(
+      tenantId,
+      femaleProductIds
+    );
+    let needMatingCount = 0;
+    let warningCount = 0;
+
+    for (const summary of summaryByProductId.values()) {
+      if (summary.status === 'need_mating') {
+        needMatingCount += 1;
+      } else if (summary.status === 'warning') {
+        warningCount += 1;
+      }
+    }
+
+    return {
+      needMatingCount,
+      warningCount
+    };
+  }
+
+  private async loadCurrentYearEggCount(tenantId: string, productIds: string[]): Promise<number> {
+    if (productIds.length === 0) {
+      return 0;
+    }
+
+    const currentYear = new Date().getUTCFullYear();
+    const yearStart = new Date(Date.UTC(currentYear, 0, 1, 0, 0, 0, 0));
+    const yearEnd = new Date(Date.UTC(currentYear + 1, 0, 1, 0, 0, 0, 0));
+
+    const events = await this.prisma.productEvent.findMany({
+      where: {
+        tenantId,
+        productId: {
+          in: productIds
+        },
+        eventType: 'egg',
+        eventDate: {
+          gte: yearStart,
+          lt: yearEnd
+        }
+      },
+      select: {
+        note: true
+      }
+    });
+
+    let yearEggCount = 0;
+    for (const event of events) {
+      const parsedEggCount = parseTaggedProductEventNote(event.note).eggCount ?? 0;
+      yearEggCount += parsedEggCount;
+    }
+
+    return yearEggCount;
   }
 
   async getProductByCode(tenantId: string, code: string): Promise<Product> {

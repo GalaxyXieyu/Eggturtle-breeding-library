@@ -877,7 +877,7 @@ export default function ProductEditDrawer({
               {!loadingImages && currentImage ? (
                 <>
                   <article className="relative overflow-hidden rounded-xl border border-neutral-200 bg-white">
-                    <div className="relative aspect-[4/3] bg-neutral-100">
+                    <div className="relative aspect-square bg-neutral-100">
                       <img
                         src={resolveDrawerImageUrl(currentImage.url)}
                         alt={`抽屉图片 ${currentImageIndex + 1}`}

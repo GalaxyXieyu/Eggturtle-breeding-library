@@ -118,6 +118,7 @@ export type {
   ProductFamilyTree,
   ProductFamilyTreeLink,
   ProductImage,
+  ProductListStats,
   ProductPublicClicksItem,
   ProductPublicClicksQuery,
   ProductPublicClicksSummary,

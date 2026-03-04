@@ -580,7 +580,7 @@ export default function ProductCreateDrawer({
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <article className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-100">
-                    <div className="relative aspect-[4/3] sm:aspect-video">
+                    <div className="relative aspect-square">
                       <img
                         src={currentImage.previewUrl}
                         alt={`待上传图片 ${currentImageIndex + 1}`}

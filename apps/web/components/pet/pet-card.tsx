@@ -82,7 +82,7 @@ export default function PetCard(props: PetCardProps) {
 
   const content = (
     <>
-      <div className="relative aspect-[4/5] bg-neutral-100">
+      <div className="relative aspect-square bg-neutral-100">
         {resolvedCover ? (
           <img
             src={resolvedCover}

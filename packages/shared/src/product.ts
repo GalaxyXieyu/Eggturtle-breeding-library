@@ -155,7 +155,15 @@ export const listProductsResponseSchema = z.object({
   total: z.number().int().nonnegative(),
   page: z.number().int().min(1),
   pageSize: z.number().int().min(1),
-  totalPages: z.number().int().min(1)
+  totalPages: z.number().int().min(1),
+  stats: z.object({
+    maleCount: z.number().int().nonnegative(),
+    femaleCount: z.number().int().nonnegative(),
+    unknownCount: z.number().int().nonnegative(),
+    yearEggCount: z.number().int().nonnegative(),
+    needMatingCount: z.number().int().nonnegative(),
+    warningCount: z.number().int().nonnegative()
+  })
 });
 
 export const productImageSchema = z.object({
@@ -295,6 +303,7 @@ export type CreateMatingRecordRequest = z.infer<typeof createMatingRecordRequest
 export type CreateEggRecordRequest = z.infer<typeof createEggRecordRequestSchema>;
 export type CreateProductEventRequest = z.infer<typeof createProductEventRequestSchema>;
 export type ListProductsQuery = z.infer<typeof listProductsQuerySchema>;
+export type ProductListStats = z.infer<typeof listProductsResponseSchema.shape.stats>;
 export type ProductImage = z.infer<typeof productImageSchema>;
 export type ReorderProductImagesRequest = z.infer<typeof reorderProductImagesRequestSchema>;
 export type ProductEvent = z.infer<typeof productEventSchema>;
