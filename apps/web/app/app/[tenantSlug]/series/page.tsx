@@ -487,7 +487,7 @@ export default function SeriesListPage() {
             onClick={() => setIsFilterModalOpen(false)}
           >
             <Card
-              className="w-full max-h-[86vh] overflow-y-auto rounded-3xl border-neutral-200 bg-white shadow-2xl sm:max-w-xl"
+              className="mx-auto w-[min(92vw,38rem)] max-h-[86vh] overflow-y-auto rounded-3xl border-neutral-200 bg-white shadow-2xl"
               onClick={(event) => event.stopPropagation()}
             >
               <CardHeader className="sticky top-0 z-10 border-b border-neutral-200/80 bg-white/95 backdrop-blur">
@@ -515,14 +515,14 @@ export default function SeriesListPage() {
 
         {editor && isManageMode ? (
           <div
-            className="fixed inset-0 z-50 flex items-end bg-black/45"
+            className="fixed inset-0 z-50 flex items-end bg-black/45 p-3 sm:items-center sm:p-4"
             role="dialog"
             aria-modal="true"
             aria-label="编辑系列"
             onClick={closeEditor}
           >
             <section
-              className="relative flex h-[100svh] w-full flex-col rounded-t-3xl bg-white shadow-2xl sm:mx-auto sm:h-[96svh] sm:max-w-2xl sm:rounded-3xl"
+              className="relative mx-auto flex h-[88svh] w-[min(92vw,42rem)] flex-col rounded-3xl border border-neutral-200 bg-white shadow-2xl sm:h-[92svh]"
               onClick={(event) => event.stopPropagation()}
             >
               <header className="sticky top-0 z-20 border-b border-neutral-200 bg-white/95 px-4 py-3 backdrop-blur sm:px-6">

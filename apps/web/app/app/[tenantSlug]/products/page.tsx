@@ -871,7 +871,7 @@ export default function TenantProductsPage() {
         onClick={() => setIsFilterPopoverOpen(false)}
       >
         <div
-          className="w-full max-h-[86vh] overflow-y-auto rounded-3xl border border-neutral-200 bg-white p-4 shadow-2xl sm:max-w-xl dark:border-white/10 dark:bg-neutral-900"
+          className="mx-auto w-[min(92vw,38rem)] max-h-[86vh] overflow-y-auto rounded-3xl border border-neutral-200 bg-white p-4 shadow-2xl dark:border-white/10 dark:bg-neutral-900"
           data-products-filter-root="true"
           onClick={(event) => event.stopPropagation()}
         >

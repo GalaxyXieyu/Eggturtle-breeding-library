@@ -594,7 +594,7 @@ export default function SubscriptionPage() {
           }}
         >
           <section
-            className="w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-4 shadow-[0_22px_60px_rgba(15,23,42,0.22)]"
+            className="mx-auto w-[min(92vw,28rem)] rounded-2xl border border-neutral-200 bg-white p-4 shadow-[0_22px_60px_rgba(15,23,42,0.22)]"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3">

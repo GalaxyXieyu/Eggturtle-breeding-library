@@ -536,14 +536,14 @@ export default function ProductEditDrawer({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end bg-black/45"
+      className="fixed inset-0 z-50 flex items-end bg-black/45 p-3 sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-label="编辑产品资料"
       onClick={closeDrawer}
     >
       <section
-        className="relative flex h-[76svh] w-full flex-col rounded-t-3xl bg-white shadow-2xl sm:mx-auto sm:h-[88svh] sm:max-w-3xl sm:rounded-3xl"
+        className="relative mx-auto flex h-[76svh] w-[min(92vw,48rem)] flex-col rounded-3xl border border-neutral-200 bg-white shadow-2xl sm:h-[88svh]"
         onClick={(event) => event.stopPropagation()}
       >
         <header className="sticky top-0 z-20 border-b border-neutral-200 bg-white/95 px-4 py-3 backdrop-blur sm:px-6">

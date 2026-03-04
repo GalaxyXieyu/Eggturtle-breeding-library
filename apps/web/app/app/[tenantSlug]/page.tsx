@@ -457,7 +457,7 @@ export default function TenantAppPage() {
           onClick={() => setIsActionSheetOpen(false)}
         >
           <Card
-            className="w-full rounded-3xl border-neutral-200 bg-white"
+            className="mx-auto w-[min(92vw,34rem)] rounded-3xl border-neutral-200 bg-white shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
             <CardHeader>
