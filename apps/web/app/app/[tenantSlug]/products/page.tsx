@@ -45,6 +45,22 @@ type ListMeta = {
   totalPages: number;
 };
 
+function resolveTenantScrollRoot(): HTMLElement | null {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+
+  return document.querySelector<HTMLElement>('[data-tenant-scroll-root="true"]');
+}
+
+function readScrollTop(target: HTMLElement | Window) {
+  if (target instanceof Window) {
+    return target.scrollY;
+  }
+
+  return target.scrollTop;
+}
+
 
 const DEMO_PRODUCTS: Product[] = [
   {
@@ -125,6 +141,8 @@ export default function TenantProductsPage() {
       return;
     }
 
+    const scrollTarget = resolveTenantScrollRoot() ?? window;
+
     const handleClickAway = (event: MouseEvent) => {
       const target = event.target;
       if (target instanceof Element && target.closest('[data-products-filter-root="true"]')) {
@@ -147,23 +165,25 @@ export default function TenantProductsPage() {
 
     document.addEventListener('click', handleClickAway, clickOptions);
     document.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('scroll', handleScroll, { passive: true });
+    scrollTarget.addEventListener('scroll', handleScroll, { passive: true });
 
     return () => {
       document.removeEventListener('click', handleClickAway, clickOptions);
       document.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('scroll', handleScroll);
+      scrollTarget.removeEventListener('scroll', handleScroll);
     };
   }, [isFilterPopoverOpen]);
 
   useEffect(() => {
     let rafId: number | null = null;
+    const syncTimerIds: number[] = [];
+    const scrollTarget = resolveTenantScrollRoot() ?? window;
 
     const update = () => {
       rafId = null;
 
       const topFilter = mobileTopFilterRef.current;
-      const scrollY = window.scrollY;
+      const scrollY = readScrollTop(scrollTarget);
 
       setShowMobileFilterFab((current) => {
         if (current) {
@@ -180,20 +200,39 @@ export default function TenantProductsPage() {
       });
     };
 
-    const onScroll = () => {
+    const scheduleUpdate = () => {
       if (rafId !== null) {
         return;
       }
       rafId = window.requestAnimationFrame(update);
     };
 
-    update();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        scheduleUpdate();
+      }
+    };
+
+    // 滚动容器在路由切换后可能异步恢复 scrollTop，这里补几次重算避免首屏状态错位。
+    scheduleUpdate();
+    syncTimerIds.push(window.setTimeout(scheduleUpdate, 120));
+    syncTimerIds.push(window.setTimeout(scheduleUpdate, 320));
+
+    scrollTarget.addEventListener('scroll', scheduleUpdate, { passive: true });
+    window.addEventListener('resize', scheduleUpdate);
+    window.addEventListener('orientationchange', scheduleUpdate);
+    window.addEventListener('pageshow', scheduleUpdate);
+    window.addEventListener('focus', scheduleUpdate);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
+      scrollTarget.removeEventListener('scroll', scheduleUpdate);
+      window.removeEventListener('resize', scheduleUpdate);
+      window.removeEventListener('orientationchange', scheduleUpdate);
+      window.removeEventListener('pageshow', scheduleUpdate);
+      window.removeEventListener('focus', scheduleUpdate);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      syncTimerIds.forEach((timerId) => window.clearTimeout(timerId));
       if (rafId !== null) {
         window.cancelAnimationFrame(rafId);
       }

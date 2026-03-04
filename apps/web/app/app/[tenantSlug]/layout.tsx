@@ -293,7 +293,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
         </aside>
 
         <section className="flex h-full min-w-0 flex-1 flex-col">
-          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+          <div data-tenant-scroll-root="true" className="min-h-0 flex-1 overflow-y-auto pr-1">
             <div className="tenant-mobile-content-safe pb-3 sm:pb-4 lg:pb-4">{children}</div>
           </div>
         </section>
