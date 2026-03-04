@@ -9,7 +9,7 @@ import {
   type Product,
   type Series
 } from '@eggturtle/shared';
-import { ArrowRight, Search, SlidersHorizontal } from 'lucide-react';
+import { ArrowRight, Search } from 'lucide-react';
 
 import { ApiError, apiRequest, getAccessToken, resolveAuthenticatedAssetUrl } from '../../../../lib/api-client';
 import { formatSex } from '../../../../lib/pet-format';
@@ -231,7 +231,7 @@ export default function BreedersListPage() {
       <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-2xl">
-            <SlidersHorizontal size={18} />
+            <Search size={18} />
             筛选条件
           </CardTitle>
           <CardDescription>按系列、编码和关键词过滤，支持有图/无图快速筛查。</CardDescription>

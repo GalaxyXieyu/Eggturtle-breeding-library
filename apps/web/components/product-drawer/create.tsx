@@ -490,7 +490,7 @@ export default function ProductCreateDrawer({
       onClick={closeDrawer}
     >
       <section
-        className="relative mx-auto flex h-[78svh] w-[min(92vw,48rem)] flex-col rounded-3xl border border-neutral-200 bg-white shadow-2xl sm:h-[88svh]"
+        className="relative mx-auto flex h-[78svh] w-[min(92vw,48rem)] flex-col overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-2xl sm:h-[88svh]"
         onClick={(event) => event.stopPropagation()}
       >
         <header className="sticky top-0 z-20 border-b border-neutral-200 bg-white/95 px-4 py-3 backdrop-blur sm:px-6">

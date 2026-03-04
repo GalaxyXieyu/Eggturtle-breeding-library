@@ -16,7 +16,7 @@ import {
   listSeriesResponseSchema,
   type Product,
 } from '@eggturtle/shared';
-import { Plus, SlidersHorizontal, SquarePen, X } from 'lucide-react';
+import { Plus, Search, SquarePen, X } from 'lucide-react';
 
 import { apiRequest, resolveAuthenticatedAssetUrl } from '../../../../lib/api-client';
 import { formatApiError } from '../../../../lib/error-utils';
@@ -940,7 +940,7 @@ export default function TenantProductsPage() {
                     openFilterPopover(event, 'below', { toggle: true });
                   }}
                 >
-                  <SlidersHorizontal size={14} />
+                  <Search size={14} />
                   筛选{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
                 </Button>
               </div>
@@ -981,7 +981,7 @@ export default function TenantProductsPage() {
                       size="sm"
                       onClick={(event) => openFilterPopover(event, 'below', { toggle: true })}
                     >
-                      <SlidersHorizontal size={14} />
+                      <Search size={14} />
                       筛选{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
                     </Button>
                   </div>
@@ -1188,7 +1188,7 @@ export default function TenantProductsPage() {
                   aria-label="打开筛选"
                   onClick={(event) => openFilterPopover(event, 'above', { toggle: true })}
                 >
-                  <SlidersHorizontal size={18} />
+                  <Search size={18} />
                 </Button>
                 {activeFilterCount > 0 ? (
                   <span className="pointer-events-none absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#FFD400] px-1 text-[11px] font-semibold text-neutral-900 shadow-[0_10px_18px_rgba(0,0,0,0.18)] ring-1 ring-black/10">

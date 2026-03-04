@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import type { PublicSharePresentation } from '@eggturtle/shared';
-import { SlidersHorizontal, X } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 
 import { buildFilterPillClass } from '../../../components/filter-pill';
 import {
@@ -428,7 +428,7 @@ export default function PublicFeedPage({
             aria-label="打开筛选"
             onClick={() => setIsMobileFilterModalOpen(true)}
           >
-            <SlidersHorizontal size={18} />
+            <Search size={18} />
           </FloatingActionButton>
         ) : null}
       </PublicFloatingActions>

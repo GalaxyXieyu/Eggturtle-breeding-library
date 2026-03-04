@@ -17,7 +17,6 @@ import {
   Pencil,
   RotateCcw,
   Search,
-  SlidersHorizontal,
   X,
 } from 'lucide-react';
 
@@ -472,7 +471,7 @@ export default function SeriesListPage() {
               aria-label="打开系列筛选弹窗"
               onClick={() => setIsFilterModalOpen(true)}
             >
-              <SlidersHorizontal size={18} />
+              <Search size={18} />
             </FloatingActionButton>
             <TenantFloatingShareButton intent="series" inline className="h-11 w-11" />
           </FloatingActionDock>
