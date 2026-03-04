@@ -37,7 +37,6 @@ import {
   toSuggestedSeriesCode,
   type ProductSeriesOption
 } from './shared';
-import ProductStatusToggleGroup from './status-toggle-group';
 import { Button } from '../ui/button';
 import { modalCloseButtonClass } from '../ui/floating-actions';
 import { Input } from '../ui/input';
@@ -568,7 +567,7 @@ export default function ProductEditDrawer({
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
-          <div className="space-y-4 pb-2">
+          <div className="space-y-4 pb-[calc(env(safe-area-inset-bottom)+6.5rem)]">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="grid gap-1.5">
                 <label htmlFor="edit-drawer-code" className="text-xs font-semibold text-neutral-600">
@@ -801,21 +800,29 @@ export default function ProductEditDrawer({
               />
             </div>
 
-            <ProductStatusToggleGroup
-              values={{
-                excludeFromBreeding: form.excludeFromBreeding,
-                hasSample: form.hasSample,
-                inStock: form.inStock,
-                isFeatured: form.isFeatured
-              }}
-              disabled={submitting}
-              onToggle={(field, nextValue) =>
-                setForm((current) => ({
-                  ...current,
-                  [field]: nextValue
-                }))
-              }
-            />
+            <section className="rounded-2xl border border-neutral-200 bg-neutral-50/70 p-3">
+              <p className="text-xs font-semibold text-neutral-600">繁殖状态</p>
+              <label className="mt-2 inline-flex cursor-pointer items-start gap-2 text-sm text-neutral-800">
+                <input
+                  type="checkbox"
+                  checked={form.excludeFromBreeding}
+                  disabled={submitting}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      excludeFromBreeding: event.target.checked
+                    }))
+                  }
+                  className="mt-0.5 h-4 w-4 rounded border-neutral-300"
+                />
+                <span className="leading-5">
+                  不参与繁殖
+                  <span className="block text-xs text-neutral-500">
+                    备注：已退休或者已死亡的个体需要勾选
+                  </span>
+                </span>
+              </label>
+            </section>
 
             <section className="space-y-3 rounded-2xl border border-neutral-200/90 bg-neutral-50/70 p-3">
               <div className="flex items-center justify-between gap-3">
@@ -1007,7 +1014,7 @@ export default function ProductEditDrawer({
           </div>
         </div>
 
-        <footer className="sticky bottom-0 z-20 border-t border-neutral-200 bg-white px-4 py-3 sm:px-6">
+        <footer className="z-20 border-t border-neutral-200 bg-white px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] sm:px-6">
           <div className="flex items-center justify-end gap-2">
             <Button
               type="button"
