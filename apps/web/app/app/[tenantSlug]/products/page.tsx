@@ -892,6 +892,7 @@ export default function TenantProductsPage() {
                     type="button"
                     variant="secondary"
                     size="sm"
+                    className="bg-neutral-900 text-white hover:bg-neutral-800"
                     onClick={() => setIsFilterPopoverOpen((current) => !current)}
                   >
                     <SlidersHorizontal size={14} />
