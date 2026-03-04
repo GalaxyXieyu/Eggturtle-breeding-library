@@ -882,7 +882,7 @@ export default function TenantProductsPage() {
             </div>
 
             {!showMobileFilterFab ? (
-              <div className="rounded-2xl border border-neutral-200 bg-gradient-to-b from-white to-neutral-50/80 p-3 lg:hidden">
+              <div className="rounded-2xl border border-neutral-200 bg-gradient-to-b from-white to-neutral-50/80 p-3 lg:hidden overflow-hidden">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs font-semibold text-neutral-700">顶部筛选</p>
                 <div className="relative" data-products-filter-root="true">
@@ -900,9 +900,9 @@ export default function TenantProductsPage() {
               </div>
 
               <div className="mt-2 grid gap-2">
-                <div className="flex items-start gap-2">
+                <div className="flex min-w-0 items-start gap-2">
                   <p className="mt-1 w-10 shrink-0 text-[11px] font-semibold text-neutral-500">系列</p>
-                  <div className="flex flex-1 gap-2 overflow-x-auto pb-1">
+                  <div className="flex min-w-0 max-w-full flex-1 gap-2 overflow-x-auto overscroll-x-contain pb-1">
                     <button
                       type="button"
                       className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
@@ -943,9 +943,9 @@ export default function TenantProductsPage() {
                   </div>
                 </div>
 
-                <div className="flex items-start gap-2">
+                <div className="flex min-w-0 items-start gap-2">
                   <p className="mt-1 w-10 shrink-0 text-[11px] font-semibold text-neutral-500">性别</p>
-                  <div className="flex flex-1 gap-2 overflow-x-auto pb-1">
+                  <div className="flex min-w-0 max-w-full flex-1 gap-2 overflow-x-auto overscroll-x-contain pb-1">
                     {[
                       { value: '', label: '全部' },
                       { value: 'male', label: '公' },
@@ -971,9 +971,9 @@ export default function TenantProductsPage() {
                   </div>
                 </div>
 
-                <div className="flex items-start gap-2">
+                <div className="flex min-w-0 items-start gap-2">
                   <p className="mt-1 w-10 shrink-0 text-[11px] font-semibold text-neutral-500">封面</p>
-                  <div className="flex flex-1 gap-2 overflow-x-auto pb-1">
+                  <div className="flex min-w-0 max-w-full flex-1 gap-2 overflow-x-auto overscroll-x-contain pb-1">
                     {[
                       { value: 'all', label: '全部' },
                       { value: 'with-cover', label: '有封面' },
