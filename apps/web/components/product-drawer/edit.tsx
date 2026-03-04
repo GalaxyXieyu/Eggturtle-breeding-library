@@ -39,7 +39,9 @@ import {
 } from './shared';
 import ProductStatusToggleGroup from './status-toggle-group';
 import { Button } from '../ui/button';
+import { modalCloseButtonClass } from '../ui/floating-actions';
 import { Input } from '../ui/input';
+import { buildInteractivePillClass } from '../ui/pill';
 
 type ProductEditFormState = {
   code: string;
@@ -67,11 +69,6 @@ type ProductEditDrawerProps = {
   onSaved: (product: Product) => void;
   onSeriesCreated?: (series: ProductSeriesOption) => void;
 };
-
-const MODAL_CLOSE_BUTTON_CLASS =
-  'inline-flex !h-10 !w-10 !min-h-10 !min-w-10 !shrink-0 !items-center !justify-center !rounded-full !border-0 !p-0 !leading-none bg-neutral-900 text-white shadow-[0_10px_24px_rgba(0,0,0,0.34)] ring-1 ring-black/20 transition hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/35 disabled:cursor-not-allowed disabled:opacity-45 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200';
-const PILL_BASE_CLASS =
-  'inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition';
 
 export default function ProductEditDrawer({
   open,
@@ -560,7 +557,7 @@ export default function ProductEditDrawer({
             </div>
             <button
               type="button"
-              className={MODAL_CLOSE_BUTTON_CLASS}
+              className={modalCloseButtonClass}
               onClick={closeDrawer}
               aria-label="关闭抽屉"
               disabled={submitting}
@@ -590,11 +587,7 @@ export default function ProductEditDrawer({
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    className={`${PILL_BASE_CLASS} ${
-                      isCreatingSeries
-                        ? 'border-[#FFD400]/70 bg-[#FFD400] text-neutral-900 shadow-[0_6px_16px_rgba(255,212,0,0.28)]'
-                        : 'border-neutral-200 bg-white text-neutral-700 hover:border-[#FFD400]/60 hover:text-neutral-900'
-                    }`}
+                    className={buildInteractivePillClass(isCreatingSeries)}
                     onClick={() => {
                       setIsCreatingSeries(true);
                       setForm((current) => ({ ...current, seriesId: '' }));
@@ -606,11 +599,7 @@ export default function ProductEditDrawer({
                   </button>
                   <button
                     type="button"
-                    className={`${PILL_BASE_CLASS} ${
-                      !isCreatingSeries && !form.seriesId
-                        ? 'border-[#FFD400]/70 bg-[#FFD400] text-neutral-900 shadow-[0_6px_16px_rgba(255,212,0,0.28)]'
-                        : 'border-neutral-200 bg-white text-neutral-700 hover:border-[#FFD400]/60 hover:text-neutral-900'
-                    }`}
+                    className={buildInteractivePillClass(!isCreatingSeries && !form.seriesId)}
                     onClick={() => {
                       setIsCreatingSeries(false);
                       setForm((current) => ({ ...current, seriesId: '' }));
@@ -623,11 +612,9 @@ export default function ProductEditDrawer({
                     <button
                       key={`edit-drawer-series-pill-${item.id}`}
                       type="button"
-                      className={`${PILL_BASE_CLASS} ${
+                      className={buildInteractivePillClass(
                         !isCreatingSeries && form.seriesId === item.id
-                          ? 'border-[#FFD400]/70 bg-[#FFD400] text-neutral-900 shadow-[0_6px_16px_rgba(255,212,0,0.28)]'
-                          : 'border-neutral-200 bg-white text-neutral-700 hover:border-[#FFD400]/60 hover:text-neutral-900'
-                      }`}
+                      )}
                       onClick={() => {
                         setIsCreatingSeries(false);
                         setForm((current) => ({ ...current, seriesId: item.id }));
@@ -701,11 +688,7 @@ export default function ProductEditDrawer({
                     <button
                       key={`sex-pill-${option.value || 'unknown'}`}
                       type="button"
-                      className={`${PILL_BASE_CLASS} ${
-                        form.sex === option.value
-                          ? 'border-[#FFD400]/70 bg-[#FFD400] text-neutral-900 shadow-[0_6px_16px_rgba(255,212,0,0.28)]'
-                          : 'border-neutral-200 bg-white text-neutral-700 hover:border-[#FFD400]/60 hover:text-neutral-900'
-                      }`}
+                      className={buildInteractivePillClass(form.sex === option.value)}
                       onClick={() => {
                         setForm((current) => ({
                           ...current,

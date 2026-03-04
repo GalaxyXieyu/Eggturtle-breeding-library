@@ -30,6 +30,11 @@ import ProductDrawer, {
 import TenantFloatingShareButton from '../../../../components/tenant-floating-share-button';
 import { Button } from '../../../../components/ui/button';
 import { Card, CardContent } from '../../../../components/ui/card';
+import {
+  FloatingActionButton,
+  FloatingActionDock,
+  modalCloseButtonClass,
+} from '../../../../components/ui/floating-actions';
 import { Input } from '../../../../components/ui/input';
 import { NativeSelect } from '../../../../components/ui/native-select';
 import {
@@ -54,9 +59,6 @@ const SEX_FILTER_OPTIONS = [
   { value: 'male', label: '公' },
   { value: 'unknown', label: '未知' },
 ] as const;
-
-const FILTER_SHEET_CLOSE_BUTTON_CLASS =
-  'inline-flex !h-10 !w-10 !min-h-10 !min-w-10 !shrink-0 !items-center !justify-center !rounded-full !border-0 !p-0 !leading-none bg-neutral-900 text-white shadow-[0_10px_24px_rgba(0,0,0,0.34)] ring-1 ring-black/20 transition hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/35 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200';
 
 function resolveTenantScrollRoot(): HTMLElement | null {
   if (typeof document === 'undefined') {
@@ -880,7 +882,7 @@ export default function TenantProductsPage() {
             </div>
             <button
               type="button"
-              className={FILTER_SHEET_CLOSE_BUTTON_CLASS}
+              className={modalCloseButtonClass}
               aria-label="关闭筛选"
               onClick={() => setIsFilterPopoverOpen(false)}
             >
@@ -1165,11 +1167,8 @@ export default function TenantProductsPage() {
         ) : null}
 
         {!isCreateDrawerOpen ? (
-          <div className="mobile-fab fixed right-6 z-50 flex flex-col-reverse gap-2 lg:hidden">
-            <Button
-              type="button"
-              size="icon"
-              className="tenant-fab-button h-11 w-11"
+          <FloatingActionDock className="lg:hidden">
+            <FloatingActionButton
               aria-label="新建产品"
               onClick={() => {
                 setIsFilterPopoverOpen(false);
@@ -1177,7 +1176,7 @@ export default function TenantProductsPage() {
               }}
             >
               <Plus size={18} />
-            </Button>
+            </FloatingActionButton>
             <TenantFloatingShareButton intent="feed" inline className="h-11 w-11" />
             {showMobileFilterFab ? (
               <div className="relative" data-products-filter-root="true">
@@ -1198,7 +1197,7 @@ export default function TenantProductsPage() {
                 ) : null}
               </div>
             ) : null}
-          </div>
+          </FloatingActionDock>
         ) : null}
       </main>
 

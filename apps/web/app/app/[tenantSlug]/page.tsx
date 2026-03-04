@@ -34,6 +34,10 @@ import {
   CardHeader,
   CardTitle,
 } from '../../../components/ui/card';
+import {
+  FloatingActionButton,
+  FloatingActionDock,
+} from '../../../components/ui/floating-actions';
 import TenantFloatingShareButton from '../../../components/tenant-floating-share-button';
 
 type ShareLinks = {
@@ -434,18 +438,15 @@ export default function TenantAppPage() {
         </>
       ) : null}
 
-      <div className="mobile-fab fixed right-6 z-50 flex flex-col-reverse gap-2 lg:hidden">
-        <Button
-          type="button"
-          size="icon"
-          className="tenant-fab-button h-11 w-11"
+      <FloatingActionDock className="lg:hidden">
+        <FloatingActionButton
           aria-label="打开快捷操作"
           onClick={() => setIsActionSheetOpen(true)}
         >
           <Plus size={18} />
-        </Button>
+        </FloatingActionButton>
         <TenantFloatingShareButton intent="feed" inline className="h-11 w-11" />
-      </div>
+      </FloatingActionDock>
 
       {isActionSheetOpen ? (
         <div
@@ -648,10 +649,12 @@ function ActionButton(props: { icon: ReactNode; label: string; onClick: () => vo
   return (
     <button
       type="button"
-      className="flex w-full items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-left text-sm text-neutral-800 transition hover:bg-neutral-100"
+      className="group flex w-full items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-left text-sm text-neutral-700 transition hover:border-neutral-300 hover:bg-white hover:text-neutral-900"
       onClick={props.onClick}
     >
-      <span className="text-neutral-500">{props.icon}</span>
+      <span className="text-neutral-500 transition-colors group-hover:text-neutral-700">
+        {props.icon}
+      </span>
       <span>{props.label}</span>
     </button>
   );

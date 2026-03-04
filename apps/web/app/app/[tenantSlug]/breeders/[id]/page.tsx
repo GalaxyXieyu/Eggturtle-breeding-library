@@ -22,6 +22,7 @@ import ProductDrawer from '../../../../../components/product-drawer';
 import { Badge } from '../../../../../components/ui/badge';
 import { Button } from '../../../../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../../components/ui/card';
+import { buildInteractivePillClass } from '../../../../../components/ui/pill';
 
 type DetailState = {
   breeder: Product | null;
@@ -344,11 +345,12 @@ export default function BreederDetailPage() {
                       key={item.key}
                       type="button"
                       onClick={() => setEventFilter(item.key)}
-                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                        eventFilter === item.key
-                          ? 'border-neutral-900 bg-neutral-900 text-white dark:border-white/15 dark:bg-neutral-50 dark:text-neutral-950'
-                          : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 dark:border-white/10 dark:bg-neutral-950/30 dark:text-neutral-200 dark:hover:border-white/20'
-                      }`}
+                      className={buildInteractivePillClass(eventFilter === item.key, {
+                        activeClassName:
+                          'border-neutral-900 bg-neutral-900 text-white dark:border-white/15 dark:bg-neutral-50 dark:text-neutral-950',
+                        idleClassName:
+                          'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 dark:border-white/10 dark:bg-neutral-950/30 dark:text-neutral-200 dark:hover:border-white/20'
+                      })}
                     >
                       {item.title}
                     </button>

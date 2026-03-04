@@ -15,6 +15,7 @@ import { Button } from '../../../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../components/ui/card';
 import { Input } from '../../../../components/ui/input';
 import { Label } from '../../../../components/ui/label';
+import { buildInteractivePillClass } from '../../../../components/ui/pill';
 import { ApiError, apiRequest, getAccessToken } from '../../../../lib/api-client';
 import { switchTenantBySlug } from '../../../../lib/tenant-session';
 
@@ -372,11 +373,11 @@ export default function SubscriptionPage() {
                   <button
                     key={`mobile-plan-tab-${item.tier}`}
                     type="button"
-                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition ${
-                      activeMobilePlanIndex === index
-                        ? 'border-neutral-900 bg-neutral-900 text-white'
-                        : 'border-neutral-200 bg-white text-neutral-700'
-                    }`}
+                    className={buildInteractivePillClass(activeMobilePlanIndex === index, {
+                      className: 'whitespace-nowrap',
+                      activeClassName: 'border-neutral-900 bg-neutral-900 text-white',
+                      idleClassName: 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300'
+                    })}
                     onClick={() => scrollToMobilePlan(index)}
                   >
                     {item.name}

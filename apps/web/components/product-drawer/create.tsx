@@ -40,6 +40,7 @@ import {
 import ProductStatusToggleGroup from './status-toggle-group';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import { modalCloseButtonClass } from '../ui/floating-actions';
 import { Input } from '../ui/input';
 import { NativeSelect } from '../ui/native-select';
 
@@ -72,8 +73,6 @@ type ProductCreateDrawerProps = {
 };
 
 const DEFAULT_POPULARITY_SCORE = '0';
-const MODAL_CLOSE_BUTTON_CLASS =
-  'inline-flex !h-10 !w-10 !min-h-10 !min-w-10 !shrink-0 !items-center !justify-center !rounded-full !border-0 !p-0 !leading-none bg-neutral-900 text-white shadow-[0_10px_24px_rgba(0,0,0,0.34)] ring-1 ring-black/20 transition hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/35 disabled:cursor-not-allowed disabled:opacity-45 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200';
 
 export default function ProductCreateDrawer({
   open,
@@ -491,7 +490,7 @@ export default function ProductCreateDrawer({
       onClick={closeDrawer}
     >
       <section
-        className="relative flex h-[100svh] w-full flex-col rounded-t-3xl bg-white shadow-2xl sm:mx-auto sm:h-[96svh] sm:max-w-3xl sm:rounded-3xl"
+        className="relative flex h-[78svh] w-full flex-col rounded-t-3xl bg-white shadow-2xl sm:mx-auto sm:h-[88svh] sm:max-w-3xl sm:rounded-3xl"
         onClick={(event) => event.stopPropagation()}
       >
         <header className="sticky top-0 z-20 border-b border-neutral-200 bg-white/95 px-4 py-3 backdrop-blur sm:px-6">
@@ -505,7 +504,7 @@ export default function ProductCreateDrawer({
             </div>
             <button
               type="button"
-              className={MODAL_CLOSE_BUTTON_CLASS}
+              className={modalCloseButtonClass}
               onClick={closeDrawer}
               aria-label="关闭抽屉"
               disabled={submitting}

@@ -6,6 +6,7 @@ import { Share2 } from 'lucide-react';
 import { formatApiError } from '../lib/error-utils';
 import { createTenantFeedShareLink } from '../lib/tenant-share';
 import { cn } from '../lib/utils';
+import { FloatingActionButton, FloatingActionDock } from './ui/floating-actions';
 
 export type TenantShareIntent = 'feed' | 'series' | { productId: string };
 
@@ -74,34 +75,27 @@ export default function TenantFloatingShareButton({
   return (
     <>
       {inline ? (
-        <button
-          type="button"
+        <FloatingActionButton
           onClick={() => void handleOpenShare()}
           disabled={pending}
           aria-label="打开当前页分享链接"
           title={pending ? '正在打开...' : '打开分享页'}
-          className={cn('tenant-fab-button disabled:opacity-60', className)}
+          className={cn('disabled:opacity-60', className)}
         >
           <Share2 size={20} />
-        </button>
+        </FloatingActionButton>
       ) : (
-        <div
-          className={cn(
-            'mobile-fab fixed right-6 z-50 sm:right-6 lg:right-8 lg:bottom-6',
-            className,
-          )}
-        >
-          <button
-            type="button"
+        <FloatingActionDock className={className}>
+          <FloatingActionButton
             onClick={() => void handleOpenShare()}
             disabled={pending}
             aria-label="打开当前页分享链接"
             title={pending ? '正在打开...' : '打开分享页'}
-            className="tenant-fab-button disabled:opacity-60"
+            className="disabled:opacity-60"
           >
             <Share2 size={20} />
-          </button>
-        </div>
+          </FloatingActionButton>
+        </FloatingActionDock>
       )}
       {error ? (
         <div

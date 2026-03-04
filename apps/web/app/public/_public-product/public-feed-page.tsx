@@ -6,6 +6,10 @@ import type { PublicSharePresentation } from '@eggturtle/shared';
 import { SlidersHorizontal, X } from 'lucide-react';
 
 import { buildFilterPillClass } from '../../../components/filter-pill';
+import {
+  FloatingActionButton,
+  modalCloseButtonClass,
+} from '../../../components/ui/floating-actions';
 import { UiPreferenceControls } from '../../../components/ui-preferences';
 import PublicBottomDock from '../_shared/public-bottom-dock';
 import PublicFloatingActions from '../_shared/public-floating-actions';
@@ -35,9 +39,6 @@ type Props = {
 function rankStatus(status: NeedMatingStatus) {
   return status === 'warning' ? 1 : 0;
 }
-
-const MODAL_CLOSE_BUTTON_CLASS =
-  'inline-flex !h-10 !w-10 !min-h-10 !min-w-10 !shrink-0 !items-center !justify-center !rounded-full !border-0 !p-0 !leading-none bg-neutral-900 text-white shadow-[0_10px_24px_rgba(0,0,0,0.34)] ring-1 ring-black/20 transition hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/35 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200';
 
 export default function PublicFeedPage({
   demo,
@@ -377,7 +378,7 @@ export default function PublicFeedPage({
                 </div>
                 <button
                   type="button"
-                  className={MODAL_CLOSE_BUTTON_CLASS}
+                  className={modalCloseButtonClass}
                   aria-label="关闭筛选"
                   onClick={() => setIsMobileFilterModalOpen(false)}
                 >
@@ -422,14 +423,13 @@ export default function PublicFeedPage({
         shareCardHeroImageUrl={heroImages[heroIndex] ?? heroImages[0] ?? null}
       >
         {showMobileFilterFab ? (
-          <button
-            type="button"
-            className="tenant-fab-button flex h-11 w-11 items-center justify-center lg:hidden"
+          <FloatingActionButton
+            className="lg:hidden"
             aria-label="打开筛选"
             onClick={() => setIsMobileFilterModalOpen(true)}
           >
             <SlidersHorizontal size={18} />
-          </button>
+          </FloatingActionButton>
         ) : null}
       </PublicFloatingActions>
       <PublicBottomDock shareToken={shareToken} shareQuery={shareQuery} activeTab="pets" />

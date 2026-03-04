@@ -38,6 +38,11 @@ import {
   CardHeader,
   CardTitle,
 } from '../../../../components/ui/card';
+import {
+  FloatingActionButton,
+  FloatingActionDock,
+  modalCloseButtonClass,
+} from '../../../../components/ui/floating-actions';
 import { Input } from '../../../../components/ui/input';
 import { Textarea } from '../../../../components/ui/textarea';
 
@@ -79,9 +84,6 @@ const seriesResponseParser = {
     return seriesSchema.parse(value);
   },
 };
-
-const MODAL_CLOSE_BUTTON_CLASS =
-  '!h-10 !w-10 !min-h-10 !min-w-10 !rounded-full !border-0 !p-0 !leading-none bg-neutral-900 text-white shadow-[0_10px_24px_rgba(0,0,0,0.34)] ring-1 ring-black/20 transition hover:bg-neutral-800 focus-visible:ring-2 focus-visible:ring-black/35 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200';
 
 export default function SeriesListPage() {
   const router = useRouter();
@@ -465,18 +467,15 @@ export default function SeriesListPage() {
         </Card>
 
         {isManageMode && !isFilterModalOpen && !editor ? (
-          <div className="mobile-fab fixed right-6 z-50 flex flex-col-reverse gap-2 lg:hidden">
-            <Button
-              type="button"
-              size="icon"
-              className="tenant-fab-button h-11 w-11"
+          <FloatingActionDock className="lg:hidden">
+            <FloatingActionButton
               aria-label="打开系列筛选弹窗"
               onClick={() => setIsFilterModalOpen(true)}
             >
               <SlidersHorizontal size={18} />
-            </Button>
+            </FloatingActionButton>
             <TenantFloatingShareButton intent="series" inline className="h-11 w-11" />
-          </div>
+          </FloatingActionDock>
         ) : null}
 
         {isFilterModalOpen && isManageMode ? (
@@ -501,7 +500,7 @@ export default function SeriesListPage() {
                     type="button"
                     variant="secondary"
                     size="icon"
-                    className={MODAL_CLOSE_BUTTON_CLASS}
+                    className={modalCloseButtonClass}
                     onClick={() => setIsFilterModalOpen(false)}
                     aria-label="关闭筛选"
                   >

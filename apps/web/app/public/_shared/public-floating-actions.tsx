@@ -6,6 +6,12 @@ import type { ReactNode } from 'react';
 import { Home, QrCode, Share2, Sparkles, X } from 'lucide-react';
 import QRCode from 'qrcode';
 
+import {
+  FloatingActionButton,
+  FloatingActionDock,
+  floatingActionButtonClass,
+  modalCloseButtonClass
+} from '../../../components/ui/floating-actions';
 import { cn } from '../../../lib/utils';
 
 type PublicFloatingActionsProps = {
@@ -28,8 +34,6 @@ type PublicFloatingActionsProps = {
 
 const DEFAULT_SHARE_TITLE = '蛋龟选育库 · 公开图鉴';
 const DEFAULT_SHARE_SUBTITLE = '扫码查看完整公开图鉴与更新动态';
-const MODAL_CLOSE_BUTTON_CLASS =
-  'inline-flex !h-10 !w-10 !min-h-10 !min-w-10 !shrink-0 !items-center !justify-center !rounded-full !border-0 !p-0 !leading-none bg-neutral-900 text-white shadow-[0_10px_24px_rgba(0,0,0,0.34)] ring-1 ring-black/20 transition hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/35 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200';
 
 export default function PublicFloatingActions({
   permalink: permalinkProp,
@@ -215,48 +219,44 @@ export default function PublicFloatingActions({
 
   return (
     <>
-      <div
+      <FloatingActionDock
         className={cn(
-          'mobile-fab fixed right-6 !z-[55] !bottom-[calc(56px+max(24px,env(safe-area-inset-bottom))+12px)] lg:!bottom-[calc(56px+max(24px,env(safe-area-inset-bottom))+12px)] flex flex-col-reverse gap-2 sm:right-6 lg:right-8',
+          '!z-[55] !bottom-[calc(56px+max(24px,env(safe-area-inset-bottom))+12px)] lg:!bottom-[calc(56px+max(24px,env(safe-area-inset-bottom))+12px)]',
           className
         )}
       >
         {children}
 
-        <button
-          type="button"
+        <FloatingActionButton
           aria-label="生成分享卡片"
           title="生成分享卡片"
           onClick={() => {
             setShareOpen(true);
             setError(null);
           }}
-          className="tenant-fab-button flex h-11 w-11 items-center justify-center"
         >
           <Share2 size={20} />
-        </button>
+        </FloatingActionButton>
 
-        <button
-          type="button"
+        <FloatingActionButton
           aria-label="租户联系二维码"
           title="租户联系二维码"
           onClick={() => setTenantQrOpen(true)}
-          className="tenant-fab-button flex h-11 w-11 items-center justify-center"
         >
           <QrCode size={20} />
-        </button>
+        </FloatingActionButton>
 
         {showHomeButton ? (
           <a
             href={homeHref}
             aria-label="进入后台"
             title="进入后台"
-            className="tenant-fab-button flex h-11 w-11 items-center justify-center"
+            className={floatingActionButtonClass}
           >
             <Home size={18} />
           </a>
         ) : null}
-      </div>
+      </FloatingActionDock>
 
       {tenantQrOpen ? (
         <div
@@ -278,7 +278,7 @@ export default function PublicFloatingActions({
               <button
                 type="button"
                 aria-label="关闭二维码"
-                className={MODAL_CLOSE_BUTTON_CLASS}
+                className={modalCloseButtonClass}
                 onClick={() => setTenantQrOpen(false)}
               >
                 <X size={17} strokeWidth={2.6} />
@@ -331,7 +331,7 @@ export default function PublicFloatingActions({
               <button
                 type="button"
                 aria-label="关闭分享卡片"
-                className={MODAL_CLOSE_BUTTON_CLASS}
+                className={modalCloseButtonClass}
                 onClick={() => setShareOpen(false)}
               >
                 <X size={17} strokeWidth={2.6} />

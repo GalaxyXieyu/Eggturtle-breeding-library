@@ -6,6 +6,7 @@ import {
   PRODUCT_BOOLEAN_TOGGLES,
   type ProductBooleanField
 } from './shared';
+import { buildInteractivePillClass } from '../ui/pill';
 
 type ProductStatusValues = Record<ProductBooleanField, boolean>;
 
@@ -31,11 +32,12 @@ export default function ProductStatusToggleGroup({
             <button
               key={`toggle-${item.field}`}
               type="button"
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                isActive
-                  ? item.activeClassName
-                  : 'border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300 hover:text-neutral-800'
-              }`}
+              className={buildInteractivePillClass(isActive, {
+                className: 'gap-1.5',
+                activeClassName: item.activeClassName,
+                idleClassName:
+                  'border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300 hover:text-neutral-800'
+              })}
               onClick={() => onToggle(item.field, !isActive)}
               disabled={disabled}
             >
