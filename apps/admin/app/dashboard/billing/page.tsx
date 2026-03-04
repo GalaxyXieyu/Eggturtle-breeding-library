@@ -12,6 +12,7 @@ import {
   AdminPanel,
   AdminTableFrame
 } from '../../../components/dashboard/polish-primitives';
+import { formatPlanLabel } from '../../../lib/admin-labels';
 import { useUiPreferences } from '../../../components/ui-preferences';
 import { getAdminRevenueOverview } from '../../../lib/api-client';
 import { formatUnknownError } from '../../../lib/formatters';
@@ -24,7 +25,7 @@ type RevenueState = {
 
 const COPY = {
   zh: {
-    eyebrow: 'Revenue Analytics',
+    eyebrow: '营收分析',
     title: '付费看板',
     description: '基于订阅套餐映射金额估算 MRR/ARR，并追踪升级、降级、流失趋势。',
     metricMrr: 'MRR',
@@ -209,7 +210,12 @@ export default function DashboardBillingPage() {
               <tbody>
                 {state.data.planBreakdown.map((item) => (
                   <tr key={item.plan}>
-                    <td>{item.plan}</td>
+                    <td>
+                      <div className="stack row-tight">
+                        <span>{formatPlanLabel(item.plan)}</span>
+                        <span className="mono muted">{item.plan}</span>
+                      </div>
+                    </td>
                     <td>{item.activeTenantCount}</td>
                     <td>{item.payingTenantCount}</td>
                     <td>{formatCurrency(item.mrrCents)}</td>

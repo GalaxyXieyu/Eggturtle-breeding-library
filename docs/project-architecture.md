@@ -1,123 +1,97 @@
-# Project Architecture（租户后台 vs 平台管理后台）
+# Project Architecture（V4.2）
 
-更新时间：2026-03-03（V4.1：分享端获客闭环 + 租户端分享入口浮动化）  
+更新时间：2026-03-04
 范围：`apps/web`、`apps/admin`、`apps/api`、`packages/shared`
 
-## 1. 平台边界（必须严格隔离）
+## 1. 平台边界
 
 | 平台域 | 主要职责 | 代码入口 | 边界约束 |
 |---|---|---|---|
-| 租户后台（Tenant Workspace） | 租户内业务操作：产品/种龟、系列、公开分享、账号设置 | `apps/web/app/app/[tenantSlug]/*` | 只处理“当前租户”上下文，不做跨租户运维 |
-| 公开分享端（Public Share Surface） | 对外只读展示与转化入口（系列/宠物/我的） | `apps/web/app/public/s/[shareToken]/*` | 默认只读；不允许新增/编辑/删除写操作 |
-| 平台管理后台（Platform Admin） | 跨租户治理：租户管理、成员管理、订阅与平台审计 | `apps/admin/app/dashboard/*` | 只服务超级管理员，不承载租户业务页面 |
-| API（统一业务后端） | 提供租户域和平台域 API；执行鉴权、RBAC、审计、订阅守卫 | `apps/api/src/*` | `/admin/*` 与普通租户 API 严格分域 |
+| 租户后台（Tenant Workspace） | 租户内管理：宠物/系列/账户/分享配置 | `apps/web/app/app/[tenantSlug]/*` | 仅操作当前租户数据，不做跨租户治理 |
+| 公开分享端（Public Share） | 面向访客的只读浏览与转化入口 | `apps/web/app/public/s/[shareToken]/*` | 不提供写操作 |
+| 平台管理后台（Platform Admin） | 跨租户治理、审计、分析 | `apps/admin/app/dashboard/*` | 仅 super admin 可访问 |
+| API（统一后端） | 认证、租户隔离、业务接口、审计 | `apps/api/src/*` | `/admin/*` 与租户业务接口分域 |
 
-关键证据：
-- `apps/web/app/admin/page.tsx` 已将旧后台入口跳转到 `apps/admin`。
-- `apps/api/src/admin/admin.controller.ts` 使用 `AuthGuard + SuperAdminGuard + RequireSuperAdmin` 保护平台端接口。
-- `apps/admin/components/dashboard/nav-config.ts` 已包含平台级治理与分析导航：`总览/租户/成员/审计/分析/用量/计费`。
+## 2. 本轮架构收敛（核心）
 
-## 2. 运行链路（请求视角）
+### 2.1 产品管理入口收敛为“列表 + 抽屉”
 
-### 2.1 租户后台链路
+- 统一入口组件：`apps/web/components/product-drawer.tsx`
+- 抽屉实现拆分：
+  - 创建：`apps/web/components/product-drawer/create.tsx`
+  - 编辑：`apps/web/components/product-drawer/edit.tsx`
+  - 共享逻辑：`apps/web/components/product-drawer/shared.ts`
+- 旧管理页已退场：
+  - `apps/web/app/app/[tenantSlug]/products/[productId]/page.tsx` 仅做重定向回列表
 
-1. `apps/web` 页面发起请求（如 `/products`、`/shares`、`/tenants/current`）。
-2. `apps/api` 通过访问令牌解析 `tenantId`，执行租户内权限校验。
-3. 移动端通过 `layout` 层悬浮分享按钮触发 `POST /shares`，按当前路由跳转对应公开页（feed / series / product detail）。
-4. 写操作受订阅写保护与配额保护。
+结论：产品域从“列表 + 详情编辑页 + 图片页”收敛为“列表页内抽屉完成全流程”。
 
-关键证据：
-- `apps/api/src/tenants/tenants.controller.ts`
-- `apps/api/src/products/products.controller.ts`
-- `apps/api/src/auth/tenant-subscription.guard.ts`
-- `apps/web/app/app/[tenantSlug]/layout.tsx`
-- `apps/web/components/tenant-floating-share-button.tsx`
+### 2.2 列表卡片与格式化能力共享化
 
-### 2.2 平台管理后台链路
+- 共享卡片组件：
+  - `apps/web/components/pet/pet-card.tsx`
+  - `apps/web/components/pet/pet-card-badges.tsx`
+- 共享格式化工具：`apps/web/lib/pet-format.ts`
+- 共享筛选药丸样式：`apps/web/components/filter-pill.ts`
 
-1. `apps/admin` 页面调用 `/admin/*` 接口。
-2. `apps/api` 仅允许 super admin 调用跨租户能力。
-3. 操作记录进入 `super_admin_audit_logs`。
+结论：后台与公开页在卡片、标签、格式化层已建立可复用基线，降低重复 CSS 与平行实现。
 
-关键证据：
-- `apps/admin/app/dashboard/page.tsx`
-- `apps/api/src/admin/admin.controller.ts`
-- `apps/api/src/admin/super-admin-audit-logs.service.ts`
+### 2.3 移动端筛选交互分支明确化
 
-### 2.3 分享端转化链路（V4）
+产品列表页（`apps/web/app/app/[tenantSlug]/products/page.tsx`）采用双分支策略：
 
-1. 访客进入 `/public/s/[shareToken]`，默认可浏览宠物与系列，不强制登录。
-2. 访客主动进入 `/public/s/[shareToken]/me` 才触发注册/登录 CTA。
-3. 登录成功后回流 `/app?intent=dashboard&source=share`；若 `next` 非法则回退 `/app?intent=dashboard`。
+- 顶部筛选按钮：锚点弹层（Popover）
+- 悬浮筛选按钮（FAB）：底部抽屉（Bottom Sheet）
 
-关键证据：
-- `apps/web/app/public/s/[shareToken]/page.tsx`
-- `apps/web/app/login/page.tsx`
-- `apps/web/app/app/page.tsx`
+该分支直接由 `isMobileFilterLayout + showMobileFilterFab` 控制，避免交互歧义。
 
-## 3. 当前架构能力图（简版）
+### 2.4 分享按钮打开策略稳态化
 
-```text
-apps/web (租户后台)
-  -> /auth/*, /tenants/*, /products/*, /shares/*, /me/*
-  -> /public/s/:shareToken/*
+- 组件：`apps/web/components/tenant-floating-share-button.tsx`
+- 策略：
+  1. 先创建分享链接并尝试复制
+  2. `window.open` 成功则直接打开
+  3. 失败时降级为动态 `<a target="_blank">` 点击
 
-apps/admin (平台管理后台)
-  -> /admin/tenants*
-  -> /admin/tenants/:tenantId/subscription*
-  -> /admin/tenants/:tenantId/members*
-  -> /admin/audit-logs
-  -> /admin/users
+结论：修复了“已打开但误报被拦截”的体验问题。
 
-apps/api (统一后端)
-  -> 租户域 Controller + 平台域 Controller + 守卫与审计服务
-```
+## 3. 请求链路（简版）
 
-## 4. 代码要求（MUST / SHOULD）
+### 3.1 租户产品链路
+
+1. 列表页加载：`GET /products`、`GET /series`
+2. 新建抽屉：`POST /products` -> 上传/排序/主图设置（同抽屉内）
+3. 编辑抽屉：`PUT /products/:id` + 图片 CRUD（同抽屉内）
+4. 成功后局部刷新列表状态
+
+### 3.2 公开分享链路
+
+1. 租户端创建分享：`POST /shares`
+2. 访客浏览：`GET /s/:shareToken` 或 `GET /shares/:shareId/public`
+3. 公开页仅读，不触发写接口
+
+### 3.3 平台管理链路
+
+1. `apps/admin` 发起 `/admin/*` 请求
+2. `apps/api` 通过 super admin 守卫鉴权
+3. 写操作进入平台审计日志
+
+## 4. 架构规则（MUST / SHOULD）
 
 ### MUST
 
-- 平台管理能力必须落在 `apps/admin`，并通过 `apps/api/src/admin/*` 暴露。
-- 租户业务能力必须落在 `apps/web`，禁止在 `apps/admin` 实现租户业务页面。
-- 分享端必须保持只读浏览模型，不可直接触发租户写接口。
-- 跨租户统计（活跃度、付费看板、平台级告警）必须定义为 `/admin/*` 接口。
-- 平台端写操作必须记录 `super_admin_audit_logs`。
-- `apps/web/app/admin/page.tsx` 仅保留迁移跳转职责，不再扩展管理功能。
+- 产品创建、编辑、图片管理必须在统一抽屉流程内完成，不再新增独立管理页。
+- 公共 UI 样式必须优先复用共享组件（`filter-pill`、`pet-card`、`pet-format`）。
+- 公开分享端必须保持只读模型。
+- 平台管理能力只能在 `apps/admin` + `/admin/*` 接口内实现。
 
 ### SHOULD
 
-- 新增请求/响应 schema 统一放在 `packages/shared`，避免双端口径分叉。
-- 新增平台模块优先按领域分目录（`analytics`、`billing`、`governance`、`security`）。
-- 平台端与租户端 UI 组件不互相依赖，避免边界污染。
+- 新增产品交互优先扩展 `product-drawer/shared.ts`，避免 create/edit 再次分叉。
+- 后续若扩展筛选项，优先扩展当前药丸体系，不回退到原生低保真控件。
+- 文档口径与实现保持同步，避免“页面已重构但文档仍描述旧页面”。
 
-## 5. 下一阶段架构补齐方向（平台端）
+## 5. 当前已知边界风险
 
-建议在 `apps/api/src/admin` 下继续补齐领域模块（Phase 2+）：
-
-- `analytics`：补齐留存分层、可钻取明细与口径版本化。
-- `billing`：补齐支付回调入账、对账、退款与催缴状态。
-- `governance`：补齐工单化审批与批量治理编排。
-- `security`：补齐平台会话治理、风控审计导出与二次验证。
-
-对应前端建议目录：
-
-- `apps/admin/app/dashboard/analytics/*`
-- `apps/admin/app/dashboard/billing/*`
-- `apps/admin/app/dashboard/governance/*`
-- `apps/admin/app/dashboard/security/*`
-
-## 6. V4 信息架构冻结（Web 租户端）
-
-移动端主导航收敛为 4 个一级入口：
-
-1. 看板：`/app/[tenantSlug]`
-2. 系列：`/app/[tenantSlug]/series`
-3. 宠物：`/app/[tenantSlug]/products`
-4. 我的：`/app/[tenantSlug]/account`
-
-订阅与分享配置不再占用一级导航，统一并入“我的”页作为入口卡片跳转：
-
-- 订阅：`/app/[tenantSlug]/subscription`
-- 分享配置：`/app/[tenantSlug]/share-presentation`
-
-分享动作不作为一级导航项，统一通过 Dock 上方悬浮按钮触发（移动端）。
+- `docs/spec/*` 中仍存在旧版产品页面叙述，后续需统一归档或更新。
+- 旧路径虽然已重定向，但外部历史链接仍可能引用，需继续观察访问日志。

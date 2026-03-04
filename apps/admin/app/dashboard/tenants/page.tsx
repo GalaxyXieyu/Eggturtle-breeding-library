@@ -24,7 +24,7 @@ type PageState = {
 
 const COPY = {
   zh: {
-    eyebrow: 'Tenant Directory',
+    eyebrow: '租户治理',
     title: '租户目录',
     description: '统一查看平台租户，支持按名称或 slug 快速检索。',
     metricTenant: '租户总数',
@@ -37,7 +37,7 @@ const COPY = {
     apply: '应用',
     reset: '重置',
     tableTitle: '租户列表',
-    tableDesc: '点击详情可进入 Subscription、配额与成员信息视图。',
+    tableDesc: '点击详情可进入订阅、配额与成员信息视图。',
     loading: '加载租户中...',
     empty: '当前筛选下未找到租户。',
     thName: '名称',

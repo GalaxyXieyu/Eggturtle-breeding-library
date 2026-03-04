@@ -1,7 +1,6 @@
 'use client';
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
   ErrorCode,
@@ -16,6 +15,13 @@ import {
   type TenantRole
 } from '@eggturtle/shared';
 
+import {
+  AdminActionLink,
+  AdminPageHeader,
+  AdminPanel,
+  AdminTableFrame
+} from '../../../components/dashboard/polish-primitives';
+import { formatTenantRoleLabel } from '../../../lib/admin-labels';
 import { ApiError, apiRequest } from '../../../lib/api-client';
 import { formatDateTime, formatUnknownError } from '../../../lib/formatters';
 
@@ -253,7 +259,7 @@ export default function DashboardMembershipsPage() {
       setMembers((previous) => previous.filter((item) => item.user.id !== response.userId));
       setStatus((previous) => ({
         ...previous,
-        actionMessage: `Removed ${member.user.email}. Audit: ${response.auditLogId}`
+        actionMessage: `已移除成员 ${member.user.email}。审计ID：${response.auditLogId}`
       }));
 
       shouldReload = true;
@@ -293,14 +299,18 @@ export default function DashboardMembershipsPage() {
   }
 
   return (
-    <section className="page">
-      <header className="page-header">
-        <h2>租户成员管理</h2>
-        <p>按租户查看成员并调整角色，所有写操作都会记录审计日志。</p>
-      </header>
+    <section className="page admin-page">
+      <AdminPageHeader
+        eyebrow="租户治理"
+        title="成员权限管理"
+        description="按租户查看成员并调整角色，所有写操作都会记录审计日志。"
+      />
 
-      <article className="card stack">
-        <h3>租户范围</h3>
+      <AdminPanel className="stack">
+        <div className="admin-section-head">
+          <h3>租户范围</h3>
+          <p>先选择租户，再执行成员检索与权限调整。</p>
+        </div>
         {status.loadingTenants ? <p className="muted">加载租户中...</p> : null}
         {!status.loadingTenants && tenants.length === 0 ? (
           <p className="muted">暂无可用租户。</p>
@@ -324,16 +334,18 @@ export default function DashboardMembershipsPage() {
             ))}
           </select>
           {selectedTenant ? (
-            <Link className="nav-link" href={`/dashboard/tenants/${selectedTenant.id}`}>
+            <AdminActionLink href={`/dashboard/tenants/${selectedTenant.id}`}>
               查看租户详情
-            </Link>
+            </AdminActionLink>
           ) : null}
         </div>
-      </article>
+      </AdminPanel>
 
-      <form className="card stack" onSubmit={handleAddMember}>
-        <h3>新增成员 / 按邮箱更新角色</h3>
-        <div className="inline-actions">
+      <AdminPanel className="stack">
+        <div className="admin-section-head">
+          <h3>新增成员 / 按邮箱更新角色</h3>
+        </div>
+        <form className="inline-actions admin-inline-form" onSubmit={handleAddMember}>
           <input
             type="email"
             value={newMemberEmail}
@@ -344,19 +356,22 @@ export default function DashboardMembershipsPage() {
           <select value={newMemberRole} onChange={(event) => setNewMemberRole(event.target.value as TenantRole)}>
             {tenantRoleOptions.map((role) => (
               <option key={role} value={role}>
-                {role}
+                {formatTenantRoleLabel(role)}
               </option>
             ))}
           </select>
           <button type="submit" disabled={!selectedTenantId || status.saving || Boolean(removingUserId)}>
             {status.saving ? '保存中...' : '应用角色'}
           </button>
-        </div>
-      </form>
+        </form>
+      </AdminPanel>
 
-      <article className="card stack">
-        <h3>成员列表</h3>
-        <form className="inline-actions" onSubmit={handleSearchSubmit}>
+      <AdminPanel className="stack">
+        <div className="admin-section-head">
+          <h3>成员列表</h3>
+          <p>支持按邮箱筛选，角色修改即时生效。</p>
+        </div>
+        <form className="inline-actions admin-inline-form" onSubmit={handleSearchSubmit}>
           <input
             type="search"
             value={searchInput}
@@ -382,7 +397,7 @@ export default function DashboardMembershipsPage() {
         ) : null}
 
         {members.length > 0 ? (
-          <table className="data-table">
+          <AdminTableFrame>
             <thead>
               <tr>
                 <th>邮箱</th>
@@ -407,7 +422,7 @@ export default function DashboardMembershipsPage() {
                     >
                       {tenantRoleOptions.map((role) => (
                         <option key={role} value={role}>
-                          {role}
+                          {formatTenantRoleLabel(role)}
                         </option>
                       ))}
                     </select>
@@ -453,9 +468,9 @@ export default function DashboardMembershipsPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </AdminTableFrame>
         ) : null}
-      </article>
+      </AdminPanel>
 
       {status.error ? <p className="error">{status.error}</p> : null}
       {status.actionMessage ? <p className="success">{status.actionMessage}</p> : null}
@@ -471,11 +486,11 @@ function buildActionMessage(response: {
   auditLogId: string;
 }) {
   if (response.created) {
-    return `已新增成员 ${response.user.email}，角色：${response.role}。审计ID：${response.auditLogId}`;
+    return `已新增成员 ${response.user.email}，角色：${formatTenantRoleLabel(response.role)}。审计ID：${response.auditLogId}`;
   }
 
-  const previousRoleLabel = response.previousRole ?? 'UNKNOWN';
-  return `已将 ${response.user.email} 从 ${previousRoleLabel} 调整为 ${response.role}。审计ID：${response.auditLogId}`;
+  const previousRoleLabel = response.previousRole ? formatTenantRoleLabel(response.previousRole) : '未知角色';
+  return `已将 ${response.user.email} 从 ${previousRoleLabel} 调整为 ${formatTenantRoleLabel(response.role)}。审计ID：${response.auditLogId}`;
 }
 
 function isTenantMemberNotFoundError(error: unknown) {

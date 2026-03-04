@@ -21,7 +21,7 @@ type PageState = {
 
 const COPY = {
   zh: {
-    eyebrow: 'Platform Analytics',
+    eyebrow: '数据分析',
     title: '活跃度看板',
     description: '按窗口查看 DAU/WAU/MAU、活跃租户和 7 天留存，支持回溯趋势与口径说明。',
     metricDau: 'DAU',

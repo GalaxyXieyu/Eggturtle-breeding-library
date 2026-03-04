@@ -21,6 +21,11 @@ import {
   getAdminTenantUsage,
   getAdminUsageOverview
 } from '../../../lib/api-client';
+import {
+  formatPlanLabel,
+  formatUsageMetricLabel,
+  formatUsageStatusLabel
+} from '../../../lib/admin-labels';
 import { formatUnknownError } from '../../../lib/formatters';
 
 type UsagePageState = {
@@ -37,10 +42,13 @@ type TenantUsageState = {
 
 const COPY = {
   zh: {
-    eyebrow: 'Tenant Usage',
+    eyebrow: '用量分析',
     title: '用量看板',
     description: '聚合跨租户 TopN 与单租户明细，优先定位配额风险与异常增长。',
-    topNLabel: 'TopN',
+    topNLabel: '展示数量',
+    top5: '前 5 名',
+    top10: '前 10 名',
+    top20: '前 20 名',
     metricTenants: '租户总数',
     metricNearLimit: '逼近阈值租户',
     metricExceeded: '已超限租户',
@@ -55,7 +63,7 @@ const COPY = {
     thActions: '操作',
     select: '查看明细',
     detailTitle: '租户明细',
-    detailDesc: '展示 products/images/shares/storage 使用与阈值状态。',
+    detailDesc: '展示产品、图片、分享与存储的使用情况及阈值状态。',
     metricType: '指标',
     metricUsed: '已用',
     metricLimit: '上限',
@@ -71,6 +79,9 @@ const COPY = {
     title: 'Usage Analytics',
     description: 'Track cross-tenant TopN and drill into per-tenant usage to catch quota risks early.',
     topNLabel: 'TopN',
+    top5: 'Top 5',
+    top10: 'Top 10',
+    top20: 'Top 20',
     metricTenants: 'Total Tenants',
     metricNearLimit: 'Near Limit Tenants',
     metricExceeded: 'Exceeded Tenants',
@@ -233,9 +244,9 @@ export default function DashboardUsagePage() {
               value={topN}
               onChange={(event) => setTopN(Number(event.target.value))}
             >
-              <option value={5}>Top 5</option>
-              <option value={10}>Top 10</option>
-              <option value={20}>Top 20</option>
+              <option value={5}>{copy.top5}</option>
+              <option value={10}>{copy.top10}</option>
+              <option value={20}>{copy.top20}</option>
             </select>
           </div>
         )}
@@ -292,19 +303,19 @@ export default function DashboardUsagePage() {
                       <p className="mono">{tenant.tenantSlug}</p>
                     </td>
                     <td>
-                      <AdminBadge tone="info">{tenant.plan}</AdminBadge>
+                      <AdminBadge tone="info">{formatPlanLabel(tenant.plan)}</AdminBadge>
                     </td>
                     <td>{tenant.usageScore.toFixed(2)}</td>
                     <td>
                       {tenant.alerts.length === 0 ? (
-                        <AdminBadge tone="success">OK</AdminBadge>
+                        <AdminBadge tone="success">{formatUsageStatusLabel('ok')}</AdminBadge>
                       ) : (
                         tenant.alerts.map((alert) => (
                           <AdminBadge
                             key={`${tenant.tenantId}-${alert.metric}-${alert.status}`}
                             tone={alert.status === 'exceeded' ? 'danger' : 'warning'}
                           >
-                            {alert.metric}
+                            {formatUsageMetricLabel(alert.metric)} · {formatUsageStatusLabel(alert.status)}
                           </AdminBadge>
                         ))
                       )}
@@ -344,10 +355,10 @@ export default function DashboardUsagePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  <UsageCountRow label="products" metric={tenantState.data.usage.products} />
-                  <UsageCountRow label="images" metric={tenantState.data.usage.images} />
-                  <UsageCountRow label="shares" metric={tenantState.data.usage.shares} />
-                  <UsageStorageRow label="storageBytes" metric={tenantState.data.usage.storageBytes} />
+                  <UsageCountRow label={formatUsageMetricLabel('products')} metric={tenantState.data.usage.products} />
+                  <UsageCountRow label={formatUsageMetricLabel('images')} metric={tenantState.data.usage.images} />
+                  <UsageCountRow label={formatUsageMetricLabel('shares')} metric={tenantState.data.usage.shares} />
+                  <UsageStorageRow label={formatUsageMetricLabel('storageBytes')} metric={tenantState.data.usage.storageBytes} />
                 </tbody>
               </AdminTableFrame>
             ) : null}
@@ -366,7 +377,7 @@ function UsageCountRow({ label, metric }: { label: string; metric: AdminUsageCou
     <tr>
       <td>{label}</td>
       <td>{metric.used}</td>
-      <td>{metric.limit === null ? 'Unlimited' : metric.limit}</td>
+      <td>{metric.limit === null ? '不限制' : metric.limit}</td>
       <td>
         <div className="admin-meter">
           <span style={{ width: `${toPercent(metric.utilization)}%` }} />
@@ -374,7 +385,7 @@ function UsageCountRow({ label, metric }: { label: string; metric: AdminUsageCou
         <p className="mono">{formatUtilization(metric.utilization)}</p>
       </td>
       <td>
-        <AdminBadge tone={toUsageTone(metric.status)}>{metric.status}</AdminBadge>
+        <AdminBadge tone={toUsageTone(metric.status)}>{formatUsageStatusLabel(metric.status)}</AdminBadge>
       </td>
     </tr>
   );
@@ -385,7 +396,7 @@ function UsageStorageRow({ label, metric }: { label: string; metric: AdminUsageS
     <tr>
       <td>{label}</td>
       <td>{formatBytes(metric.usedBytes)}</td>
-      <td>{metric.limitBytes === null ? 'Unlimited' : formatBytes(metric.limitBytes)}</td>
+      <td>{metric.limitBytes === null ? '不限制' : formatBytes(metric.limitBytes)}</td>
       <td>
         <div className="admin-meter">
           <span style={{ width: `${toPercent(metric.utilization)}%` }} />
@@ -393,7 +404,7 @@ function UsageStorageRow({ label, metric }: { label: string; metric: AdminUsageS
         <p className="mono">{formatUtilization(metric.utilization)}</p>
       </td>
       <td>
-        <AdminBadge tone={toUsageTone(metric.status)}>{metric.status}</AdminBadge>
+        <AdminBadge tone={toUsageTone(metric.status)}>{formatUsageStatusLabel(metric.status)}</AdminBadge>
       </td>
     </tr>
   );
@@ -408,7 +419,7 @@ function toPercent(value: number | null) {
 
 function formatUtilization(value: number | null) {
   if (value === null) {
-    return 'Unlimited';
+    return '不限制';
   }
   return `${(value * 100).toFixed(1)}%`;
 }

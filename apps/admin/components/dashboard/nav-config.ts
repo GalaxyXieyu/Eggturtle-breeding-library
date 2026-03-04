@@ -3,8 +3,18 @@ export type DashboardLocaleText = {
   en: string;
 };
 
+export type DashboardNavIcon =
+  | 'overview'
+  | 'activity'
+  | 'usage'
+  | 'revenue'
+  | 'tenants'
+  | 'memberships'
+  | 'audit';
+
 export type DashboardNavItem = {
   href: string;
+  icon: DashboardNavIcon;
   label: DashboardLocaleText;
   description: DashboardLocaleText;
   matchStrategy?: 'exact' | 'prefix';
@@ -23,7 +33,8 @@ export const dashboardNavGroups: DashboardNavGroup[] = [
     items: [
       {
         href: '/dashboard',
-        label: { zh: '总览首页', en: 'Overview Home' },
+        icon: 'overview',
+        label: { zh: '平台总览', en: 'Platform Overview' },
         description: {
           zh: '跨租户关键指标与最近操作。',
           en: 'Cross-tenant key metrics and recent activities.'
@@ -33,102 +44,67 @@ export const dashboardNavGroups: DashboardNavGroup[] = [
     ]
   },
   {
-    id: 'tenants',
-    title: { zh: '租户', en: 'Tenants' },
-    items: [
-      {
-        href: '/dashboard/tenants',
-        label: { zh: '租户目录', en: 'Tenant Directory' },
-        description: {
-          zh: '浏览租户工作区并查看详情。',
-          en: 'Browse tenant workspaces and inspect details.'
-        }
-      }
-    ]
-  },
-  {
-    id: 'memberships',
-    title: { zh: '成员', en: 'Memberships' },
-    items: [
-      {
-        href: '/dashboard/memberships',
-        label: { zh: '成员关系', en: 'Membership Matrix' },
-        description: {
-          zh: '查看成员并调整租户角色。',
-          en: 'Review members and adjust tenant roles.'
-        }
-      }
-    ]
-  },
-  {
-    id: 'audit',
-    title: { zh: '审计', en: 'Audit' },
-    items: [
-      {
-        href: '/dashboard/audit-logs',
-        label: { zh: '审计日志', en: 'Audit Logs' },
-        description: {
-          zh: '按条件追踪平台级操作。',
-          en: 'Trace platform operations with filters.'
-        }
-      }
-    ]
-  },
-  {
-    id: 'analytics',
-    title: { zh: '分析', en: 'Analytics' },
+    id: 'data',
+    title: { zh: '数据', en: 'Data' },
     items: [
       {
         href: '/dashboard/analytics',
-        label: { zh: '分析总览', en: 'Analytics Overview' },
-        description: {
-          zh: '平台分析能力入口。',
-          en: 'Entry point for platform analytics views.'
-        },
-        matchStrategy: 'exact'
-      },
-      {
-        href: '/dashboard/analytics/activity',
+        icon: 'activity',
         label: { zh: '活跃度', en: 'Activity' },
         description: {
-          zh: '查看活跃租户与成员趋势。',
-          en: 'Inspect tenant and membership activity trends.'
+          zh: '查看 DAU/WAU/MAU 与活跃租户趋势。',
+          en: 'Track DAU/WAU/MAU and tenant activity trends.'
         }
       },
       {
-        href: '/dashboard/analytics/revenue',
-        label: { zh: '营收', en: 'Revenue' },
-        description: {
-          zh: '分析订阅和营收结构。',
-          en: 'Track subscription and revenue structure.'
-        }
-      }
-    ]
-  },
-  {
-    id: 'usage',
-    title: { zh: '用量', en: 'Usage' },
-    items: [
-      {
         href: '/dashboard/usage',
-        label: { zh: '用量总览', en: 'Usage Overview' },
+        icon: 'usage',
+        label: { zh: '用量', en: 'Usage' },
         description: {
-          zh: '观测配额与调用消耗。',
-          en: 'Observe quota and API consumption.'
+          zh: '观测配额与调用消耗风险。',
+          en: 'Observe quota and API consumption risks.'
         }
-      }
-    ]
-  },
-  {
-    id: 'billing',
-    title: { zh: '计费', en: 'Billing' },
-    items: [
+      },
       {
         href: '/dashboard/billing',
-        label: { zh: '计费中心', en: 'Billing Center' },
+        icon: 'revenue',
+        label: { zh: '营收', en: 'Revenue' },
         description: {
-          zh: '管理账单、发票与支付状态。',
-          en: 'Manage invoices, statements and payment status.'
+          zh: '分析订阅结构与营收变化。',
+          en: 'Analyze subscription mix and revenue changes.'
+        }
+      }
+    ]
+  },
+  {
+    id: 'governance',
+    title: { zh: '租户治理', en: 'Tenant Governance' },
+    items: [
+      {
+        href: '/dashboard/tenants',
+        icon: 'tenants',
+        label: { zh: '租户目录', en: 'Tenant Directory' },
+        description: {
+          zh: '浏览租户信息并进入详情治理。',
+          en: 'Browse tenants and open governance details.'
+        }
+      },
+      {
+        href: '/dashboard/memberships',
+        icon: 'memberships',
+        label: { zh: '成员权限', en: 'Member Access' },
+        description: {
+          zh: '按租户管理成员角色与权限。',
+          en: 'Manage tenant member roles and access.'
+        }
+      },
+      {
+        href: '/dashboard/audit-logs',
+        icon: 'audit',
+        label: { zh: '操作记录', en: 'Activity Logs' },
+        description: {
+          zh: '检索平台治理动作与审计证据。',
+          en: 'Search governance actions and audit evidence.'
         }
       }
     ]

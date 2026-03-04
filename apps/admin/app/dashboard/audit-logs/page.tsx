@@ -17,6 +17,7 @@ import {
   AdminPanel,
   AdminTableFrame
 } from '../../../components/dashboard/polish-primitives';
+import { formatAuditActionLabel } from '../../../lib/admin-labels';
 import { apiRequest } from '../../../lib/api-client';
 import { formatDateTime, formatUnknownError } from '../../../lib/formatters';
 
@@ -247,7 +248,7 @@ export default function DashboardAuditLogsPage() {
       ) : null}
 
       <AdminPageHeader
-        eyebrow="Audit Logs"
+        eyebrow="操作记录"
         title="审计日志"
         description="按租户、用户、动作和时间范围过滤平台级操作日志。"
         actions={
@@ -318,7 +319,7 @@ export default function DashboardAuditLogsPage() {
                 <option value="">全部动作</option>
                 {actionOptions.map((action) => (
                   <option key={action} value={action}>
-                    {action}
+                    {formatAuditActionLabel(action)}（{action}）
                   </option>
                 ))}
               </select>
@@ -400,7 +401,12 @@ export default function DashboardAuditLogsPage() {
             <tbody>
               {state.logs.map((log) => (
                 <tr key={log.id}>
-                  <td>{log.action}</td>
+                  <td>
+                    <div className="stack row-tight">
+                      <span>{formatAuditActionLabel(log.action)}</span>
+                      <span className="mono">{log.action}</span>
+                    </div>
+                  </td>
                   <td>
                     <div className="stack row-tight">
                       <span>{log.actorUserEmail ?? '-'}</span>

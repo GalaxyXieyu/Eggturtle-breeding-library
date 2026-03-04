@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import {
   listAdminTenantsResponseSchema,
   listSuperAdminAuditLogsResponseSchema,
@@ -9,6 +8,13 @@ import {
   type SuperAdminAuditLog
 } from '@eggturtle/shared';
 
+import {
+  AdminActionLink,
+  AdminMetricCard,
+  AdminPageHeader,
+  AdminPanel,
+  AdminTableFrame
+} from '../../components/dashboard/polish-primitives';
 import { useUiPreferences } from '../../components/ui-preferences';
 import { apiRequest } from '../../lib/api-client';
 import { formatDateTime, formatUnknownError } from '../../lib/formatters';
@@ -108,39 +114,37 @@ export default function DashboardOverviewPage() {
   }, [copy.unknownError]);
 
   return (
-    <section className="page">
-      <header className="page-header">
-        <h2>{copy.pageTitle}</h2>
-        <p>{copy.pageDesc}</p>
-      </header>
+    <section className="page admin-page">
+      <AdminPageHeader eyebrow="平台总览" title={copy.pageTitle} description={copy.pageDesc} />
 
-      <div className="grid">
-        <article className="card stack">
-          <h3>{copy.tenantTotal}</h3>
-          <p>
-            <span className="badge">{state.tenants.length}</span>
-          </p>
-          <Link className="nav-link" href="/dashboard/tenants">
-            {copy.openTenants}
-          </Link>
-        </article>
-
-        <article className="card stack">
-          <h3>{copy.recentOps}</h3>
-          <p>
-            <span className="badge">{state.logs.length}</span>
-          </p>
-          <Link className="nav-link" href="/dashboard/audit-logs">
-            {copy.openAudit}
-          </Link>
-        </article>
+      <div className="admin-metrics-grid">
+        <AdminMetricCard
+          label={copy.tenantTotal}
+          value={state.tenants.length}
+          meta={(
+            <AdminActionLink href="/dashboard/tenants">
+              {copy.openTenants}
+            </AdminActionLink>
+          )}
+        />
+        <AdminMetricCard
+          label={copy.recentOps}
+          value={state.logs.length}
+          meta={(
+            <AdminActionLink href="/dashboard/audit-logs">
+              {copy.openAudit}
+            </AdminActionLink>
+          )}
+        />
       </div>
 
-      <article className="card stack">
-        <h3>{copy.latestAudit}</h3>
+      <AdminPanel className="stack">
+        <div className="admin-section-head">
+          <h3>{copy.latestAudit}</h3>
+        </div>
         {state.logs.length === 0 ? <p className="muted">{copy.noAudit}</p> : null}
         {state.logs.length > 0 ? (
-          <table className="data-table">
+          <AdminTableFrame>
             <thead>
               <tr>
                 <th>{copy.thAction}</th>
@@ -169,9 +173,9 @@ export default function DashboardOverviewPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </AdminTableFrame>
         ) : null}
-      </article>
+      </AdminPanel>
 
       {state.loading ? <p className="muted">{copy.loading}</p> : null}
       {state.error ? <p className="error">{state.error}</p> : null}

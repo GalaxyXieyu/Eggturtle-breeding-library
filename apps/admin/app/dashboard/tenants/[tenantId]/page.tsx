@@ -28,6 +28,12 @@ import {
   suspendAdminTenant,
   updateAdminTenantSubscription
 } from '../../../../lib/api-client';
+import {
+  formatAuditActionLabel,
+  formatPlanLabel,
+  formatSubscriptionStatusLabel,
+  formatTenantRoleLabel
+} from '../../../../lib/admin-labels';
 import { formatDateTime, formatUnknownError } from '../../../../lib/formatters';
 
 type DetailState = {
@@ -238,21 +244,21 @@ export default function TenantDetailPage() {
     let maxStorageBytes: string | null;
 
     try {
-      maxImages = parseNullableInt(subscriptionMaxImagesInput, 'Max images');
-      maxShares = parseNullableInt(subscriptionMaxSharesInput, 'Max shares');
+      maxImages = parseNullableInt(subscriptionMaxImagesInput, '图片上限');
+      maxShares = parseNullableInt(subscriptionMaxSharesInput, '分享上限');
       maxStorageBytes = parseNullableStorageBytes(subscriptionMaxStorageBytesInput);
     } catch (error) {
       setSubscriptionState((previous) => ({
         ...previous,
-        error: error instanceof Error ? error.message : 'Invalid subscription input.'
+        error: error instanceof Error ? error.message : '订阅参数格式不正确。'
       }));
       return;
     }
 
     const confirmMessage = [
-      `Update subscription for tenant ${tenantId}?`,
-      `Plan: ${subscriptionPlan}`,
-      `Expiry: ${subscriptionExpiresAtInput ? subscriptionExpiresAtInput : 'Never'}`
+      `确认更新租户 ${tenantId} 的订阅配置吗？`,
+      `套餐：${formatPlanLabel(subscriptionPlan)}（${subscriptionPlan}）`,
+      `到期时间：${subscriptionExpiresAtInput ? subscriptionExpiresAtInput : '无到期'}`
     ].join('\n');
 
     if (!window.confirm(confirmMessage)) {
@@ -278,8 +284,8 @@ export default function TenantDetailPage() {
       applySubscriptionSnapshot(
         response.subscription,
         response.auditLogId
-          ? `Subscription updated. Audit: ${response.auditLogId}`
-          : 'Subscription updated successfully.'
+          ? `订阅已更新。审计ID：${response.auditLogId}`
+          : '订阅已更新。'
       );
       setLifecycleState((previous) => ({
         ...previous,
@@ -306,7 +312,7 @@ export default function TenantDetailPage() {
       return;
     }
 
-    const confirmMessage = [`Suspend tenant ${tenantId}?`, `Reason: ${reason}`].join('\n');
+    const confirmMessage = [`确认冻结租户 ${tenantId} 吗？`, `原因：${reason}`].join('\n');
     if (!window.confirm(confirmMessage)) {
       return;
     }
@@ -322,7 +328,7 @@ export default function TenantDetailPage() {
       const response = await suspendAdminTenant(tenantId, { reason });
       applySubscriptionSnapshot(
         response.subscription,
-        response.auditLogId ? `Lifecycle updated. Audit: ${response.auditLogId}` : 'Tenant suspended.'
+        response.auditLogId ? `生命周期状态已更新。审计ID：${response.auditLogId}` : '租户已冻结。'
       );
       setLifecycleState((previous) => ({
         ...previous,
@@ -330,8 +336,8 @@ export default function TenantDetailPage() {
         suspending: false,
         error: null,
         actionMessage: response.auditLogId
-          ? `Tenant suspended. Audit: ${response.auditLogId}`
-          : 'Tenant suspended.'
+          ? `租户已冻结。审计ID：${response.auditLogId}`
+          : '租户已冻结。'
       }));
     } catch (error) {
       setLifecycleState((previous) => ({
@@ -343,7 +349,7 @@ export default function TenantDetailPage() {
   }
 
   async function handleReactivateTenant() {
-    const confirmMessage = `Reactivate tenant ${tenantId}?`;
+    const confirmMessage = `确认恢复租户 ${tenantId} 吗？`;
     if (!window.confirm(confirmMessage)) {
       return;
     }
@@ -359,7 +365,7 @@ export default function TenantDetailPage() {
       const response = await reactivateAdminTenant(tenantId);
       applySubscriptionSnapshot(
         response.subscription,
-        response.auditLogId ? `Lifecycle updated. Audit: ${response.auditLogId}` : 'Tenant reactivated.'
+        response.auditLogId ? `生命周期状态已更新。审计ID：${response.auditLogId}` : '租户已恢复。'
       );
       setLifecycleState((previous) => ({
         ...previous,
@@ -367,8 +373,8 @@ export default function TenantDetailPage() {
         reactivating: false,
         error: null,
         actionMessage: response.auditLogId
-          ? `Tenant reactivated. Audit: ${response.auditLogId}`
-          : 'Tenant reactivated.'
+          ? `租户已恢复。审计ID：${response.auditLogId}`
+          : '租户已恢复。'
       }));
     } catch (error) {
       setLifecycleState((previous) => ({
@@ -382,9 +388,9 @@ export default function TenantDetailPage() {
   return (
     <section className="page admin-page">
       <AdminPageHeader
-        eyebrow="Tenant Detail"
+        eyebrow="租户治理"
         title="租户详情"
-        description="统一管理租户基础信息、Subscription 配额与成员关系。"
+        description="统一管理租户基础信息、订阅配额与成员关系。"
         actions={
           <div className="inline-actions">
             <AdminActionLink href="/dashboard/tenants">返回租户列表</AdminActionLink>
@@ -426,65 +432,68 @@ export default function TenantDetailPage() {
 
       <AdminPanel className="stack">
         <div className="admin-section-head">
-          <h3>Subscription &amp; quota</h3>
+          <h3>订阅与配额</h3>
           <p>查看当前订阅计划并按需调整资源配额。</p>
         </div>
 
-        {subscriptionState.loading ? <p className="muted">Loading subscription...</p> : null}
+        {subscriptionState.loading ? <p className="muted">加载订阅数据中...</p> : null}
 
         {subscriptionState.subscription ? (
           <dl className="detail-list admin-detail-list">
             <div>
-              <dt>Plan</dt>
+              <dt>套餐</dt>
               <dd>
-                <AdminBadge tone="accent">{subscriptionState.subscription.plan}</AdminBadge>
+                <div className="stack row-tight">
+                  <AdminBadge tone="accent">{formatPlanLabel(subscriptionState.subscription.plan)}</AdminBadge>
+                  <span className="mono muted">{subscriptionState.subscription.plan}</span>
+                </div>
               </dd>
             </div>
             <div>
-              <dt>Status</dt>
+              <dt>状态</dt>
               <dd>
                 <AdminBadge tone={toSubscriptionStatusTone(subscriptionState.subscription.status)}>
-                  {subscriptionState.subscription.status}
+                  {formatSubscriptionStatusLabel(subscriptionState.subscription.status)}
                 </AdminBadge>
               </dd>
             </div>
             {subscriptionState.subscription.disabledAt ? (
               <div>
-                <dt>Disabled at</dt>
+                <dt>冻结时间</dt>
                 <dd>{formatDateTime(subscriptionState.subscription.disabledAt)}</dd>
               </div>
             ) : null}
             {subscriptionState.subscription.disabledReason ? (
               <div>
-                <dt>Disabled reason</dt>
+                <dt>冻结原因</dt>
                 <dd>{subscriptionState.subscription.disabledReason}</dd>
               </div>
             ) : null}
             <div>
-              <dt>Expiry</dt>
+              <dt>到期时间</dt>
               <dd>{formatOptionalDate(subscriptionState.subscription.expiresAt)}</dd>
             </div>
             <div>
-              <dt>Max images</dt>
+              <dt>图片上限</dt>
               <dd>{formatNullableValue(subscriptionState.subscription.maxImages)}</dd>
             </div>
             <div>
-              <dt>Max storage (bytes)</dt>
+              <dt>存储上限（字节）</dt>
               <dd>{formatNullableValue(subscriptionState.subscription.maxStorageBytes)}</dd>
             </div>
             <div>
-              <dt>Max shares</dt>
+              <dt>分享上限</dt>
               <dd>{formatNullableValue(subscriptionState.subscription.maxShares)}</dd>
             </div>
           </dl>
         ) : null}
 
         <form className="stack admin-subscription-form" onSubmit={handleSubscriptionSubmit}>
-          <h3>Update subscription</h3>
+          <h3>更新订阅</h3>
 
           <div className="form-grid admin-subscription-grid">
             <label className="stack row-tight" htmlFor="subscription-plan">
-              <span>Plan</span>
+              <span>套餐</span>
               <select
                 id="subscription-plan"
                 value={subscriptionPlan}
@@ -493,14 +502,14 @@ export default function TenantDetailPage() {
               >
                 {subscriptionPlanOptions.map((plan) => (
                   <option key={plan} value={plan}>
-                    {plan}
+                    {formatPlanLabel(plan)}（{plan}）
                   </option>
                 ))}
               </select>
             </label>
 
             <label className="stack row-tight" htmlFor="subscription-expires-at">
-              <span>Expires at</span>
+              <span>到期时间</span>
               <div className="inline-actions admin-inline-form">
                 <input
                   id="subscription-expires-at"
@@ -515,13 +524,13 @@ export default function TenantDetailPage() {
                   onClick={() => setSubscriptionExpiresAtInput('')}
                   disabled={subscriptionState.saving}
                 >
-                  No expiry
+                  无到期
                 </button>
               </div>
             </label>
 
             <label className="stack row-tight" htmlFor="subscription-max-images">
-              <span>Max images</span>
+              <span>图片上限</span>
               <input
                 id="subscription-max-images"
                 type="number"
@@ -529,26 +538,26 @@ export default function TenantDetailPage() {
                 step={1}
                 value={subscriptionMaxImagesInput}
                 onChange={(event) => setSubscriptionMaxImagesInput(event.target.value)}
-                placeholder="Unlimited"
+                placeholder="不限制"
                 disabled={subscriptionState.saving}
               />
             </label>
 
             <label className="stack row-tight" htmlFor="subscription-max-storage-bytes">
-              <span>Max storage (bytes)</span>
+              <span>存储上限（字节）</span>
               <input
                 id="subscription-max-storage-bytes"
                 type="text"
                 inputMode="numeric"
                 value={subscriptionMaxStorageBytesInput}
                 onChange={(event) => setSubscriptionMaxStorageBytesInput(event.target.value)}
-                placeholder="Unlimited"
+                placeholder="不限制"
                 disabled={subscriptionState.saving}
               />
             </label>
 
             <label className="stack row-tight" htmlFor="subscription-max-shares">
-              <span>Max shares</span>
+              <span>分享上限</span>
               <input
                 id="subscription-max-shares"
                 type="number"
@@ -556,7 +565,7 @@ export default function TenantDetailPage() {
                 step={1}
                 value={subscriptionMaxSharesInput}
                 onChange={(event) => setSubscriptionMaxSharesInput(event.target.value)}
-                placeholder="Unlimited"
+                placeholder="不限制"
                 disabled={subscriptionState.saving}
               />
             </label>
@@ -564,13 +573,13 @@ export default function TenantDetailPage() {
 
           <div className="inline-actions">
             <button type="submit" disabled={subscriptionState.saving}>
-              {subscriptionState.saving ? 'Saving...' : 'Save subscription'}
+              {subscriptionState.saving ? '保存中...' : '保存订阅'}
             </button>
           </div>
         </form>
 
         <form className="stack admin-subscription-form" onSubmit={handleSuspendSubmit}>
-          <h3>Lifecycle control</h3>
+          <h3>生命周期控制</h3>
           <p className="muted">冻结后租户写操作会被拒绝，直至恢复。</p>
 
           <label className="stack row-tight" htmlFor="tenant-suspend-reason">
@@ -597,7 +606,7 @@ export default function TenantDetailPage() {
               type="submit"
               disabled={subscriptionState.saving || lifecycleState.suspending || lifecycleState.reactivating}
             >
-              {lifecycleState.suspending ? 'Suspending...' : 'Suspend tenant'}
+              {lifecycleState.suspending ? '冻结中...' : '冻结租户'}
             </button>
             <button
               className="secondary"
@@ -605,7 +614,7 @@ export default function TenantDetailPage() {
               onClick={handleReactivateTenant}
               disabled={subscriptionState.saving || lifecycleState.suspending || lifecycleState.reactivating}
             >
-              {lifecycleState.reactivating ? 'Reactivating...' : 'Reactivate tenant'}
+              {lifecycleState.reactivating ? '恢复中...' : '恢复租户'}
             </button>
           </div>
         </form>
@@ -663,7 +672,7 @@ export default function TenantDetailPage() {
                   <td>{member.user.email}</td>
                   <td>{member.user.name ?? '-'}</td>
                   <td>
-                    <AdminBadge tone={toRoleTone(member.role)}>{member.role}</AdminBadge>
+                    <AdminBadge tone={toRoleTone(member.role)}>{formatTenantRoleLabel(member.role)}</AdminBadge>
                   </td>
                   <td>{formatDateTime(member.joinedAt)}</td>
                 </tr>
@@ -692,7 +701,7 @@ export default function TenantDetailPage() {
             <tbody>
               {state.recentLogs.map((log) => (
                 <tr key={log.id}>
-                  <td>{log.action}</td>
+                  <td>{formatAuditActionLabel(log.action)}</td>
                   <td>{log.actorUserEmail ?? log.actorUserId}</td>
                   <td>{formatDateTime(log.createdAt)}</td>
                 </tr>
@@ -718,7 +727,7 @@ function parseNullableInt(value: string, label: string) {
 
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed < 0) {
-    throw new Error(`${label} must be a non-negative integer.`);
+    throw new Error(`${label} 必须是大于等于 0 的整数。`);
   }
 
   return parsed;
@@ -730,7 +739,7 @@ function parseNullableStorageBytes(value: string) {
   }
 
   if (!/^\d+$/.test(value.trim())) {
-    throw new Error('Max storage must be a non-negative integer in bytes.');
+    throw new Error('存储上限必须是大于等于 0 的整数（字节）。');
   }
 
   return value.trim();
@@ -766,7 +775,7 @@ function toIsoDateTimeOrNull(value: string) {
 
 function formatOptionalDate(value: string | null) {
   if (!value) {
-    return 'Never';
+    return '无到期';
   }
 
   return formatDateTime(value);
@@ -774,7 +783,7 @@ function formatOptionalDate(value: string | null) {
 
 function formatNullableValue(value: string | number | null) {
   if (value === null) {
-    return 'Unlimited';
+    return '不限制';
   }
 
   return String(value);
