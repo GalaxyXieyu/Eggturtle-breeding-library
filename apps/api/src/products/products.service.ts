@@ -1337,30 +1337,37 @@ export class ProductsService {
     right: PrismaProduct,
     sortDir: Prisma.SortOrder,
   ): number {
-    const leftOrder = this.parseProductOrder(left.code);
-    const rightOrder = this.parseProductOrder(right.code);
+    const leftPinned = this.isPinnedNewUploadCode(left.code);
+    const rightPinned = this.isPinnedNewUploadCode(right.code);
 
-    // "Unsortable" codes (e.g. Chinese-only) are treated as new uploads and pinned to top.
-    if (leftOrder === null && rightOrder !== null) {
+    // Codes with Chinese characters are treated as new uploads and pinned to top.
+    if (leftPinned && !rightPinned) {
       return -1;
     }
-    if (leftOrder !== null && rightOrder === null) {
+    if (!leftPinned && rightPinned) {
       return 1;
     }
 
-    if (leftOrder === null && rightOrder === null) {
-      const leftUpdatedAt = left.updatedAt?.getTime() ?? 0;
-      const rightUpdatedAt = right.updatedAt?.getTime() ?? 0;
-      if (leftUpdatedAt !== rightUpdatedAt) {
-        return rightUpdatedAt - leftUpdatedAt;
-      }
-      return this.compareProductCode(left.code, right.code, 'asc');
-    }
+    const leftOrder = this.parseProductOrder(left.code);
+    const rightOrder = this.parseProductOrder(right.code);
 
     const leftSexRank = this.getSexRank(left.sex);
     const rightSexRank = this.getSexRank(right.sex);
     if (leftSexRank !== rightSexRank) {
       return leftSexRank - rightSexRank;
+    }
+
+    // If both have no 1..100 order number, fall back to natural code compare.
+    if (leftOrder === null && rightOrder === null) {
+      return this.compareProductCode(left.code, right.code, sortDir);
+    }
+
+    // Items without numeric order come after numeric ones (unless pinned above).
+    if (leftOrder === null && rightOrder !== null) {
+      return 1;
+    }
+    if (leftOrder !== null && rightOrder === null) {
+      return -1;
     }
 
     const factor = sortDir === 'asc' ? 1 : -1;
@@ -1391,6 +1398,15 @@ export class ProductsService {
     }
 
     return value;
+  }
+
+  private isPinnedNewUploadCode(code: string | null): boolean {
+    const trimmed = (code ?? '').trim();
+    if (!trimmed) {
+      return false;
+    }
+
+    return /[\u4e00-\u9fff]/.test(trimmed);
   }
 
   private getSexRank(value: string | null): number {

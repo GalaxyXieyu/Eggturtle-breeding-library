@@ -81,30 +81,37 @@ function compareProductsByDefaultOrder(
   right: Product,
   sortDir: ProductSortDir,
 ): number {
-  const leftOrder = parseProductOrder(left.code);
-  const rightOrder = parseProductOrder(right.code);
+  const leftPinned = isPinnedNewUploadCode(left.code);
+  const rightPinned = isPinnedNewUploadCode(right.code);
 
-  // "Unsortable" codes are treated as new uploads and pinned to top.
-  if (leftOrder === null && rightOrder !== null) {
+  // Codes with Chinese characters are treated as new uploads and pinned to top.
+  if (leftPinned && !rightPinned) {
     return -1;
   }
-  if (leftOrder !== null && rightOrder === null) {
+  if (!leftPinned && rightPinned) {
     return 1;
   }
 
-  if (leftOrder === null && rightOrder === null) {
-    const leftUpdatedAt = Date.parse(left.updatedAt ?? '');
-    const rightUpdatedAt = Date.parse(right.updatedAt ?? '');
-    if (leftUpdatedAt !== rightUpdatedAt) {
-      return rightUpdatedAt - leftUpdatedAt;
-    }
-    return left.code.localeCompare(right.code, 'zh-CN');
-  }
+  const leftOrder = parseProductOrder(left.code);
+  const rightOrder = parseProductOrder(right.code);
 
   const leftSexRank = getSexRank(left.sex);
   const rightSexRank = getSexRank(right.sex);
   if (leftSexRank !== rightSexRank) {
     return leftSexRank - rightSexRank;
+  }
+
+  // If both have no 1..100 order number, fall back to natural code compare.
+  if (leftOrder === null && rightOrder === null) {
+    return left.code.localeCompare(right.code, 'zh-CN') * (sortDir === 'asc' ? 1 : -1);
+  }
+
+  // Items without numeric order come after numeric ones (unless pinned above).
+  if (leftOrder === null && rightOrder !== null) {
+    return 1;
+  }
+  if (leftOrder !== null && rightOrder === null) {
+    return -1;
   }
 
   const factor = sortDir === 'asc' ? 1 : -1;
@@ -116,6 +123,15 @@ function compareProductsByDefaultOrder(
   }
 
   return left.code.localeCompare(right.code, 'zh-CN') * factor;
+}
+
+function isPinnedNewUploadCode(code: string | null | undefined): boolean {
+  const trimmed = (code ?? '').trim();
+  if (!trimmed) {
+    return false;
+  }
+
+  return /[\u4e00-\u9fff]/.test(trimmed);
 }
 
 function parseProductOrder(code: string | null | undefined): number | null {
