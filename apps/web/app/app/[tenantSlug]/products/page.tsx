@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   listProductsResponseSchema,
@@ -648,14 +648,52 @@ export default function TenantProductsPage() {
           ? '编码 A-Z'
           : '编码 Z-A';
 
+  const filterPopoverAnchorRef = useRef<HTMLElement | null>(null);
+  const [filterPopoverAnchorRect, setFilterPopoverAnchorRect] = useState<DOMRect | null>(null);
+
+  useEffect(() => {
+    if (!isFilterPopoverOpen) {
+      return;
+    }
+
+    const anchor = filterPopoverAnchorRef.current;
+    if (!anchor) {
+      return;
+    }
+
+    const update = () => {
+      setFilterPopoverAnchorRect(anchor.getBoundingClientRect());
+    };
+
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('orientationchange', update);
+
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('orientationchange', update);
+    };
+  }, [isFilterPopoverOpen]);
+
   function renderFilterPopover(placement: 'above' | 'below' = 'below') {
     const placementClass =
-      placement === 'above'
-        ? 'absolute right-0 bottom-full z-40 mb-2 w-[min(96vw,620px)] max-h-[min(80vh,560px)] overflow-y-auto overscroll-contain rounded-2xl border border-neutral-200 bg-white/95 p-3 shadow-[0_18px_40px_rgba(15,23,42,0.16)] backdrop-blur'
-        : 'absolute right-0 top-full z-40 mt-2 w-[min(96vw,620px)] max-h-[min(80vh,560px)] overflow-y-auto overscroll-contain rounded-2xl border border-neutral-200 bg-white/95 p-3 shadow-[0_18px_40px_rgba(15,23,42,0.16)] backdrop-blur';
+      'fixed left-1/2 z-40 w-[min(96vw,620px)] -translate-x-1/2 max-h-[min(80vh,560px)] overflow-y-auto overscroll-contain rounded-2xl border border-neutral-200 bg-white/95 p-3 shadow-[0_18px_40px_rgba(15,23,42,0.16)] backdrop-blur';
+
+    const placementStyle: CSSProperties | undefined =
+      typeof window === 'undefined'
+        ? undefined
+        : placement === 'above'
+          ? {
+              bottom: filterPopoverAnchorRect
+                ? Math.round(window.innerHeight - filterPopoverAnchorRect.top + 8)
+                : 96,
+            }
+          : {
+              top: filterPopoverAnchorRect ? Math.round(filterPopoverAnchorRect.bottom + 8) : 96,
+            };
 
     return (
-      <div className={placementClass}>
+      <div className={placementClass} style={placementStyle}>
         <div className="grid gap-3">
           <div className="grid gap-1.5">
             <p className="text-xs font-semibold text-neutral-600">关键词</p>
@@ -834,7 +872,9 @@ export default function TenantProductsPage() {
                 <Button
                   type="button"
                   variant="secondary"
-                  onClick={() => {
+                  onClick={(event) => {
+                    filterPopoverAnchorRef.current = event.currentTarget;
+                    setFilterPopoverAnchorRect(event.currentTarget.getBoundingClientRect());
                     setIsCreateDrawerOpen(false);
                     setIsFilterPopoverOpen((current) => !current);
                   }}
@@ -878,7 +918,11 @@ export default function TenantProductsPage() {
                     variant="secondary"
                     size="sm"
                     className="bg-neutral-900 text-white hover:bg-neutral-800"
-                    onClick={() => setIsFilterPopoverOpen((current) => !current)}
+                    onClick={(event) => {
+                      filterPopoverAnchorRef.current = event.currentTarget;
+                      setFilterPopoverAnchorRect(event.currentTarget.getBoundingClientRect());
+                      setIsFilterPopoverOpen((current) => !current);
+                    }}
                   >
                     <SlidersHorizontal size={14} />
                     筛选{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
@@ -1253,7 +1297,11 @@ export default function TenantProductsPage() {
                   variant="secondary"
                   className="tenant-fab-button bg-white/95 shadow-[0_14px_30px_rgba(0,0,0,0.18)] ring-1 ring-black/10"
                   aria-label="打开筛选"
-                  onClick={() => setIsFilterPopoverOpen((current) => !current)}
+                  onClick={(event) => {
+                    filterPopoverAnchorRef.current = event.currentTarget;
+                    setFilterPopoverAnchorRect(event.currentTarget.getBoundingClientRect());
+                    setIsFilterPopoverOpen((current) => !current);
+                  }}
                 >
                   <SlidersHorizontal size={18} />
                 </Button>
