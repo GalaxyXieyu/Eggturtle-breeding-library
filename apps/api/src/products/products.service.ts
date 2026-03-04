@@ -555,12 +555,12 @@ export class ProductsService {
     > = [];
     let total = 0;
 
-    if (query.sortBy === 'code') {
+    if (query.sortBy !== 'updatedAt') {
       const all = await this.prisma.product.findMany({
         where,
         include
       });
-      all.sort((left, right) => this.compareProductCode(left.code, right.code, sortDir));
+      all.sort((left, right) => this.compareProductsDefault(left, right, sortDir));
       total = all.length;
       items = all.slice(skip, skip + query.pageSize);
     } else {
@@ -1330,6 +1330,78 @@ export class ProductsService {
   private compareProductCode(left: string, right: string, sortDir: Prisma.SortOrder): number {
     const compared = this.naturalCodeCollator.compare(left, right);
     return sortDir === 'desc' ? -compared : compared;
+  }
+
+  private compareProductsDefault(
+    left: PrismaProduct,
+    right: PrismaProduct,
+    sortDir: Prisma.SortOrder,
+  ): number {
+    const leftOrder = this.parseProductOrder(left.code);
+    const rightOrder = this.parseProductOrder(right.code);
+
+    // "Unsortable" codes (e.g. Chinese-only) are treated as new uploads and pinned to top.
+    if (leftOrder === null && rightOrder !== null) {
+      return -1;
+    }
+    if (leftOrder !== null && rightOrder === null) {
+      return 1;
+    }
+
+    if (leftOrder === null && rightOrder === null) {
+      const leftUpdatedAt = left.updatedAt?.getTime() ?? 0;
+      const rightUpdatedAt = right.updatedAt?.getTime() ?? 0;
+      if (leftUpdatedAt !== rightUpdatedAt) {
+        return rightUpdatedAt - leftUpdatedAt;
+      }
+      return this.compareProductCode(left.code, right.code, 'asc');
+    }
+
+    const leftSexRank = this.getSexRank(left.sex);
+    const rightSexRank = this.getSexRank(right.sex);
+    if (leftSexRank !== rightSexRank) {
+      return leftSexRank - rightSexRank;
+    }
+
+    const factor = sortDir === 'asc' ? 1 : -1;
+    const leftOrderValue = leftOrder ?? 0;
+    const rightOrderValue = rightOrder ?? 0;
+
+    if (leftOrderValue !== rightOrderValue) {
+      return (leftOrderValue - rightOrderValue) * factor;
+    }
+
+    return this.compareProductCode(left.code, right.code, sortDir);
+  }
+
+  private parseProductOrder(code: string): number | null {
+    const trimmed = (code ?? '').trim();
+    if (!trimmed) {
+      return null;
+    }
+
+    const match = trimmed.match(/\d+/);
+    if (!match) {
+      return null;
+    }
+
+    const value = Number(match[0]);
+    if (!Number.isFinite(value) || value < 1 || value > 100) {
+      return null;
+    }
+
+    return value;
+  }
+
+  private getSexRank(value: string | null): number {
+    const normalized = (value ?? '').trim().toLowerCase();
+    if (normalized === 'female') {
+      return 0;
+    }
+    if (normalized === 'male') {
+      return 1;
+    }
+    return 2;
   }
 
   private buildVisitorKey(ip: string | null, userAgent: string | null) {

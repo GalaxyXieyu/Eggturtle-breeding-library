@@ -27,10 +27,7 @@ import {
   compareProducts,
   formatSeriesLabelById,
   parseListQuery,
-  parseSortSelection,
-  toSortSelection,
   type ProductsListQuery,
-  type SortSelection,
 } from './products-page-utils';
 
 type ListMeta = {
@@ -40,7 +37,6 @@ type ListMeta = {
   totalPages: number;
 };
 
-type CoverFilter = 'all' | 'with-cover' | 'without-cover';
 
 const DEMO_PRODUCTS: Product[] = [
   {
@@ -115,10 +111,6 @@ export default function TenantProductsPage() {
   const [searchInput, setSearchInput] = useState(listQuery.search);
   const [sexFilter, setSexFilter] = useState(listQuery.sex);
   const [seriesFilterId, setSeriesFilterId] = useState(listQuery.seriesId);
-  const [sortFilter, setSortFilter] = useState<SortSelection>(
-    toSortSelection(listQuery.sortBy, listQuery.sortDir),
-  );
-  const [coverFilter, setCoverFilter] = useState<CoverFilter>('all');
 
   useEffect(() => {
     if (!isFilterPopoverOpen) {
@@ -166,7 +158,12 @@ export default function TenantProductsPage() {
 
     function update() {
       rafId = null;
-      const top = sentinel.getBoundingClientRect().top;
+      const element = mobileFilterSentinelRef.current;
+      if (!element) {
+        return;
+      }
+
+      const top = element.getBoundingClientRect().top;
 
       setShowMobileFilterFab((current) => {
         if (current) {
@@ -208,7 +205,6 @@ export default function TenantProductsPage() {
     setSearchInput(listQuery.search);
     setSexFilter(listQuery.sex);
     setSeriesFilterId(listQuery.seriesId);
-    setSortFilter(toSortSelection(listQuery.sortBy, listQuery.sortDir));
   }, [listQuery]);
 
   useEffect(() => {
@@ -224,19 +220,6 @@ export default function TenantProductsPage() {
     );
   }, [router, searchParams, tenantSlug]);
 
-  const filteredItems = useMemo(() => {
-    return items.filter((item) => {
-      if (coverFilter === 'with-cover' && !item.coverImageUrl) {
-        return false;
-      }
-
-      if (coverFilter === 'without-cover' && item.coverImageUrl) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [coverFilter, items]);
 
   const replaceListQuery = useCallback(
     (nextQuery: ProductsListQuery) => {
@@ -465,18 +448,16 @@ export default function TenantProductsPage() {
   }, [listQuery, loadProducts, loadSeriesOptions, tenantReady]);
 
   const buildDraftQuery = useCallback(() => {
-    const [sortBy, sortDir] = parseSortSelection(sortFilter);
-
     return {
       ...listQuery,
       page: 1,
       search: searchInput.trim(),
       sex: sexFilter.trim(),
       seriesId: seriesFilterId.trim(),
-      sortBy,
-      sortDir,
+      sortBy: 'code' as const,
+      sortDir: 'asc' as const,
     };
-  }, [listQuery, searchInput, seriesFilterId, sexFilter, sortFilter]);
+  }, [listQuery, searchInput, seriesFilterId, sexFilter]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -504,13 +485,10 @@ export default function TenantProductsPage() {
     };
   }, [buildDraftQuery, listQuery, replaceListQuery]);
 
-
   function handleResetSearch() {
     setSearchInput('');
     setSexFilter('');
     setSeriesFilterId('');
-    setSortFilter(defaultSortSelection);
-    setCoverFilter('all');
     setError(null);
     setMessage(null);
     setContinueEditProductId(null);
@@ -622,14 +600,9 @@ export default function TenantProductsPage() {
     return [selectedOption, ...base.slice(0, 5)];
   }, [seriesFilterId, seriesOptions]);
   const hasMoreSeriesOptions = seriesOptions.length > quickSeriesOptions.length;
-  const defaultSortSelection = toSortSelection(DEFAULT_LIST_QUERY.sortBy, DEFAULT_LIST_QUERY.sortDir);
 
   const activeFilterCount =
-    (searchInput.trim() ? 1 : 0) +
-    (sexFilter ? 1 : 0) +
-    (seriesFilterId ? 1 : 0) +
-    (sortFilter !== defaultSortSelection ? 1 : 0) +
-    (coverFilter !== 'all' ? 1 : 0);
+    (searchInput.trim() ? 1 : 0) + (sexFilter ? 1 : 0) + (seriesFilterId ? 1 : 0);
 
   const selectedSeriesLabel = useMemo(() => {
     if (!seriesFilterId) {
@@ -639,14 +612,6 @@ export default function TenantProductsPage() {
     return formatSeriesLabelById(seriesFilterId, seriesOptions);
   }, [seriesFilterId, seriesOptions]);
 
-  const selectedSortLabel =
-    sortFilter === 'updatedAt-desc'
-      ? '更新时间 新→旧'
-      : sortFilter === 'updatedAt-asc'
-        ? '更新时间 旧→新'
-        : sortFilter === 'code-asc'
-          ? '编码 A-Z'
-          : '编码 Z-A';
 
   const filterPopoverAnchorRef = useRef<HTMLElement | null>(null);
   const [filterPopoverAnchorRect, setFilterPopoverAnchorRect] = useState<DOMRect | null>(null);
@@ -711,8 +676,8 @@ export default function TenantProductsPage() {
             <div className="flex flex-wrap gap-2">
               {[
                 { value: '', label: '全部' },
-                { value: 'male', label: '公' },
                 { value: 'female', label: '母' },
+                { value: 'male', label: '公' },
                 { value: 'unknown', label: '未知' },
               ].map((item) => {
                 const selected = sexFilter === item.value;
@@ -783,60 +748,6 @@ export default function TenantProductsPage() {
             ) : null}
           </div>
 
-          <div className="grid gap-1.5">
-            <p className="text-xs font-semibold text-neutral-600">排序</p>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { value: 'updatedAt-desc', label: '更新时间 新→旧' },
-                { value: 'updatedAt-asc', label: '更新时间 旧→新' },
-                { value: 'code-asc', label: '编码 A-Z' },
-                { value: 'code-desc', label: '编码 Z-A' },
-              ].map((item) => {
-                const selected = sortFilter === item.value;
-                return (
-                  <button
-                    key={`sort-${item.value}`}
-                    type="button"
-                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                      selected
-                        ? 'border-[#FFD400] bg-[#FFF6BF] text-neutral-900'
-                        : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-neutral-300'
-                    }`}
-                    onClick={() => setSortFilter(item.value as SortSelection)}
-                  >
-                    {item.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="grid gap-1.5">
-            <p className="text-xs font-semibold text-neutral-600">封面筛选（当前页）</p>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { value: 'all', label: '全部' },
-                { value: 'with-cover', label: '仅有封面' },
-                { value: 'without-cover', label: '仅无封面' },
-              ].map((item) => {
-                const selected = coverFilter === item.value;
-                return (
-                  <button
-                    key={`cover-${item.value}`}
-                    type="button"
-                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                      selected
-                        ? 'border-[#FFD400] bg-[#FFF6BF] text-neutral-900'
-                        : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-neutral-300'
-                    }`}
-                    onClick={() => setCoverFilter(item.value as CoverFilter)}
-                  >
-                    {item.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
 
           <div className="flex items-center justify-between gap-2 border-t border-neutral-200 pt-2">
             <span className="text-xs text-neutral-500">点选即应用，输入关键词会在 200ms 后同步列表。</span>
@@ -902,7 +813,7 @@ export default function TenantProductsPage() {
           <CardContent className="space-y-4 pt-6">
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-600">
               <span className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5">
-                共 {meta.total} 条，当前页 {filteredItems.length} 条
+                共 {meta.total} 条，当前页 {items.length} 条
               </span>
             </div>
 
@@ -981,8 +892,8 @@ export default function TenantProductsPage() {
                   <div className="flex min-w-0 max-w-full flex-1 gap-2 overflow-x-auto overscroll-x-contain pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     {[
                       { value: '', label: '全部' },
-                      { value: 'male', label: '公' },
                       { value: 'female', label: '母' },
+                      { value: 'male', label: '公' },
                       { value: 'unknown', label: '未知' },
                     ].map((item) => {
                       const selected = sexFilter === item.value;
@@ -1004,32 +915,6 @@ export default function TenantProductsPage() {
                   </div>
                 </div>
 
-                <div className="flex min-w-0 items-start gap-2">
-                  <p className="mt-1 w-10 shrink-0 text-[11px] font-semibold text-neutral-500">封面</p>
-                  <div className="flex min-w-0 max-w-full flex-1 gap-2 overflow-x-auto overscroll-x-contain pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    {[
-                      { value: 'all', label: '全部' },
-                      { value: 'with-cover', label: '有封面' },
-                      { value: 'without-cover', label: '无封面' },
-                    ].map((item) => {
-                      const selected = coverFilter === item.value;
-                      return (
-                        <button
-                          key={`cover-top-${item.value}`}
-                          type="button"
-                          className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/15 focus-visible:ring-offset-2 active:scale-[0.98] ${
-                            selected
-                              ? 'border-[#FFD400] bg-[#FFF6BF] text-neutral-900'
-                              : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-neutral-300'
-                          }`}
-                          onClick={() => setCoverFilter(item.value as CoverFilter)}
-                        >
-                          {item.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
               </div>
             </div>
             ) : null}
@@ -1061,24 +946,6 @@ export default function TenantProductsPage() {
                     onClick={() => setSeriesFilterId('')}
                   >
                     系列：{selectedSeriesLabel} ×
-                  </button>
-                ) : null}
-                {sortFilter !== defaultSortSelection ? (
-                  <button
-                    type="button"
-                    className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5"
-                    onClick={() => setSortFilter(defaultSortSelection)}
-                  >
-                    排序：{selectedSortLabel} ×
-                  </button>
-                ) : null}
-                {coverFilter !== 'all' ? (
-                  <button
-                    type="button"
-                    className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5"
-                    onClick={() => setCoverFilter('all')}
-                  >
-                    封面：{coverFilter === 'with-cover' ? '仅有封面' : '仅无封面'} ×
                   </button>
                 ) : null}
               </div>
@@ -1130,13 +997,13 @@ export default function TenantProductsPage() {
             </div>
 
             {loading ? <p className="text-sm text-neutral-600">正在加载宠物预览...</p> : null}
-            {!loading && filteredItems.length === 0 ? (
+            {!loading && items.length === 0 ? (
               <p className="text-sm text-neutral-500">暂无产品，或当前筛选条件未命中结果。</p>
             ) : null}
 
-            {!loading && filteredItems.length > 0 ? (
+            {!loading && items.length > 0 ? (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] sm:gap-4 xl:grid-cols-[repeat(auto-fill,minmax(240px,1fr))]">
-                {filteredItems.map((item) => (
+                {items.map((item) => (
                   <article
                     key={`preview-${item.id}`}
                     className="group cursor-pointer overflow-hidden rounded-2xl border border-neutral-200/90 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)] transition hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-[0_12px_34px_rgba(0,0,0,0.14)]"

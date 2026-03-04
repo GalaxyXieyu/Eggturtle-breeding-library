@@ -28,8 +28,9 @@ export const DEFAULT_LIST_QUERY: ProductsListQuery = {
   search: '',
   sex: '',
   seriesId: '',
-  sortBy: 'updatedAt',
-  sortDir: 'desc',
+  // Default ordering: female -> male; then numeric code 1..100; "unsortable" codes treated as new uploads.
+  sortBy: 'code',
+  sortDir: 'asc',
 };
 
 export function parseListQuery(queryString: string): ProductsListQuery {
@@ -37,8 +38,8 @@ export function parseListQuery(queryString: string): ProductsListQuery {
   const page = parsePositiveInt(query.get('page'), DEFAULT_LIST_QUERY.page);
   const pageSize = parsePageSize(query.get('pageSize'));
 
-  const sortBy = query.get('sortBy') === 'code' ? 'code' : 'updatedAt';
-  const sortDir = query.get('sortDir') === 'asc' ? 'asc' : 'desc';
+  const sortBy = query.get('sortBy') === 'updatedAt' ? 'updatedAt' : 'code';
+  const sortDir = query.get('sortDir') === 'desc' ? 'desc' : 'asc';
 
   return {
     page,
@@ -65,15 +66,86 @@ export function compareProducts(
   sortBy: ProductSortBy,
   sortDir: ProductSortDir,
 ): number {
-  const factor = sortDir === 'asc' ? 1 : -1;
-
   if (sortBy === 'code') {
-    return left.code.localeCompare(right.code, 'zh-CN') * factor;
+    return compareProductsByDefaultOrder(left, right, sortDir);
   }
 
+  const factor = sortDir === 'asc' ? 1 : -1;
   const leftValue = Date.parse(left.updatedAt ?? '');
   const rightValue = Date.parse(right.updatedAt ?? '');
   return (leftValue - rightValue) * factor;
+}
+
+function compareProductsByDefaultOrder(
+  left: Product,
+  right: Product,
+  sortDir: ProductSortDir,
+): number {
+  const leftOrder = parseProductOrder(left.code);
+  const rightOrder = parseProductOrder(right.code);
+
+  // "Unsortable" codes are treated as new uploads and pinned to top.
+  if (leftOrder === null && rightOrder !== null) {
+    return -1;
+  }
+  if (leftOrder !== null && rightOrder === null) {
+    return 1;
+  }
+
+  if (leftOrder === null && rightOrder === null) {
+    const leftUpdatedAt = Date.parse(left.updatedAt ?? '');
+    const rightUpdatedAt = Date.parse(right.updatedAt ?? '');
+    if (leftUpdatedAt !== rightUpdatedAt) {
+      return rightUpdatedAt - leftUpdatedAt;
+    }
+    return left.code.localeCompare(right.code, 'zh-CN');
+  }
+
+  const leftSexRank = getSexRank(left.sex);
+  const rightSexRank = getSexRank(right.sex);
+  if (leftSexRank !== rightSexRank) {
+    return leftSexRank - rightSexRank;
+  }
+
+  const factor = sortDir === 'asc' ? 1 : -1;
+  const leftOrderValue = leftOrder ?? 0;
+  const rightOrderValue = rightOrder ?? 0;
+
+  if (leftOrderValue !== rightOrderValue) {
+    return (leftOrderValue - rightOrderValue) * factor;
+  }
+
+  return left.code.localeCompare(right.code, 'zh-CN') * factor;
+}
+
+function parseProductOrder(code: string | null | undefined): number | null {
+  const trimmed = (code ?? '').trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const match = trimmed.match(/\d+/);
+  if (!match) {
+    return null;
+  }
+
+  const value = Number(match[0]);
+  if (!Number.isFinite(value) || value < 1 || value > 100) {
+    return null;
+  }
+
+  return value;
+}
+
+function getSexRank(value: string | null | undefined): number {
+  const normalized = (value ?? '').trim().toLowerCase();
+  if (normalized === 'female') {
+    return 0;
+  }
+  if (normalized === 'male') {
+    return 1;
+  }
+  return 2;
 }
 
 export function findSeriesByInput(
