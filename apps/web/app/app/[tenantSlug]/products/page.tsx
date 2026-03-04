@@ -172,6 +172,7 @@ export default function TenantProductsPage() {
       {
         root: null,
         threshold: 0,
+        rootMargin: '-220px 0px 0px 0px',
       },
     );
 
@@ -665,8 +666,8 @@ export default function TenantProductsPage() {
   function renderFilterPopover(placement: 'above' | 'below' = 'below') {
     const placementClass =
       placement === 'above'
-        ? 'absolute right-0 bottom-full z-40 mb-2 w-[min(96vw,620px)] rounded-2xl border border-neutral-200 bg-white p-3 shadow-[0_18px_40px_rgba(15,23,42,0.16)]'
-        : 'absolute right-0 top-full z-40 mt-2 w-[min(96vw,620px)] rounded-2xl border border-neutral-200 bg-white p-3 shadow-[0_18px_40px_rgba(15,23,42,0.16)]';
+        ? 'absolute right-0 bottom-full z-40 mb-2 w-[min(96vw,620px)] max-h-[min(80vh,560px)] overflow-y-auto overscroll-contain rounded-2xl border border-neutral-200 bg-white/95 p-3 shadow-[0_18px_40px_rgba(15,23,42,0.16)] backdrop-blur'
+        : 'absolute right-0 top-full z-40 mt-2 w-[min(96vw,620px)] max-h-[min(80vh,560px)] overflow-y-auto overscroll-contain rounded-2xl border border-neutral-200 bg-white/95 p-3 shadow-[0_18px_40px_rgba(15,23,42,0.16)] backdrop-blur';
 
     return (
       <div className={placementClass}>
@@ -730,14 +731,15 @@ export default function TenantProductsPage() {
                   <button
                     key={`series-chip-${item.id}`}
                     type="button"
-                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                    title={`${item.code}${item.name ? ` · ${item.name}` : ''}`}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/15 focus-visible:ring-offset-2 active:scale-[0.98] ${
                       selected
                         ? 'border-[#FFD400] bg-[#FFF6BF] text-neutral-900'
                         : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-neutral-300'
                     }`}
                     onClick={() => setSeriesFilterId(item.id)}
                   >
-                    {item.code}
+                    <span className="max-w-[9.5rem] truncate">{item.code}</span>
                   </button>
                 );
               })}
@@ -882,7 +884,7 @@ export default function TenantProductsPage() {
             <div ref={mobileFilterSentinelRef} className="h-px lg:hidden" aria-hidden="true" />
 
             {!showMobileFilterFab ? (
-              <div className="rounded-2xl border border-neutral-200 bg-gradient-to-b from-white to-neutral-50/80 p-3 lg:hidden overflow-hidden">
+              <div className="rounded-2xl border border-neutral-200 bg-gradient-to-b from-white to-neutral-50/80 p-3 lg:hidden">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs font-semibold text-neutral-700">顶部筛选</p>
                 <div className="relative" data-products-filter-root="true">
@@ -893,7 +895,7 @@ export default function TenantProductsPage() {
                     onClick={() => setIsFilterPopoverOpen((current) => !current)}
                   >
                     <SlidersHorizontal size={14} />
-                    更多{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+                    筛选{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
                   </Button>
                   {isFilterPopoverOpen ? renderFilterPopover('below') : null}
                 </div>
@@ -902,7 +904,7 @@ export default function TenantProductsPage() {
               <div className="mt-2 grid gap-2">
                 <div className="flex min-w-0 items-start gap-2">
                   <p className="mt-1 w-10 shrink-0 text-[11px] font-semibold text-neutral-500">系列</p>
-                  <div className="flex min-w-0 max-w-full flex-1 gap-2 overflow-x-auto overscroll-x-contain pb-1">
+                  <div className="flex min-w-0 max-w-full flex-1 gap-2 overflow-x-auto overscroll-x-contain pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     <button
                       type="button"
                       className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
@@ -920,14 +922,15 @@ export default function TenantProductsPage() {
                         <button
                           key={`series-top-${item.id}`}
                           type="button"
-                          className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                          title={`${item.code}${item.name ? ` · ${item.name}` : ''}`}
+                          className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/15 focus-visible:ring-offset-2 active:scale-[0.98] ${
                             selected
                               ? 'border-[#FFD400] bg-[#FFF6BF] text-neutral-900'
                               : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-neutral-300'
                           }`}
                           onClick={() => setSeriesFilterId(item.id)}
                         >
-                          {item.code}
+                          <span className="max-w-[9.5rem] truncate">{item.code}</span>
                         </button>
                       );
                     })}
@@ -945,7 +948,7 @@ export default function TenantProductsPage() {
 
                 <div className="flex min-w-0 items-start gap-2">
                   <p className="mt-1 w-10 shrink-0 text-[11px] font-semibold text-neutral-500">性别</p>
-                  <div className="flex min-w-0 max-w-full flex-1 gap-2 overflow-x-auto overscroll-x-contain pb-1">
+                  <div className="flex min-w-0 max-w-full flex-1 gap-2 overflow-x-auto overscroll-x-contain pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     {[
                       { value: '', label: '全部' },
                       { value: 'male', label: '公' },
@@ -957,7 +960,7 @@ export default function TenantProductsPage() {
                         <button
                           key={`sex-top-${item.label}`}
                           type="button"
-                          className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                          className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/15 focus-visible:ring-offset-2 active:scale-[0.98] ${
                             selected
                               ? 'border-[#FFD400] bg-[#FFF6BF] text-neutral-900'
                               : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-neutral-300'
@@ -973,7 +976,7 @@ export default function TenantProductsPage() {
 
                 <div className="flex min-w-0 items-start gap-2">
                   <p className="mt-1 w-10 shrink-0 text-[11px] font-semibold text-neutral-500">封面</p>
-                  <div className="flex min-w-0 max-w-full flex-1 gap-2 overflow-x-auto overscroll-x-contain pb-1">
+                  <div className="flex min-w-0 max-w-full flex-1 gap-2 overflow-x-auto overscroll-x-contain pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     {[
                       { value: 'all', label: '全部' },
                       { value: 'with-cover', label: '有封面' },
@@ -984,7 +987,7 @@ export default function TenantProductsPage() {
                         <button
                           key={`cover-top-${item.value}`}
                           type="button"
-                          className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                          className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/15 focus-visible:ring-offset-2 active:scale-[0.98] ${
                             selected
                               ? 'border-[#FFD400] bg-[#FFF6BF] text-neutral-900'
                               : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-neutral-300'
@@ -1262,14 +1265,14 @@ export default function TenantProductsPage() {
                   type="button"
                   size="icon"
                   variant="secondary"
-                  className="tenant-fab-button bg-white/95"
+                  className="tenant-fab-button bg-white/95 shadow-[0_14px_30px_rgba(0,0,0,0.18)] ring-1 ring-black/10"
                   aria-label="打开筛选"
                   onClick={() => setIsFilterPopoverOpen((current) => !current)}
                 >
                   <SlidersHorizontal size={18} />
                 </Button>
                 {activeFilterCount > 0 ? (
-                  <span className="pointer-events-none absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#FFD400] px-1 text-[11px] font-semibold text-neutral-900">
+                  <span className="pointer-events-none absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#FFD400] px-1 text-[11px] font-semibold text-neutral-900 shadow-[0_10px_18px_rgba(0,0,0,0.18)] ring-1 ring-black/10">
                     {activeFilterCount}
                   </span>
                 ) : null}
