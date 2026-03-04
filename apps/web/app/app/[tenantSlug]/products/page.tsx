@@ -118,6 +118,39 @@ export default function TenantProductsPage() {
   );
   const [coverFilter, setCoverFilter] = useState<CoverFilter>('all');
 
+  useEffect(() => {
+    if (!isFilterPopoverOpen) {
+      return;
+    }
+
+    function handlePointerDown(event: PointerEvent) {
+      const target = event.target as HTMLElement | null;
+      if (!target) {
+        return;
+      }
+
+      if (target.closest('[data-products-filter-root="true"]')) {
+        return;
+      }
+
+      setIsFilterPopoverOpen(false);
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setIsFilterPopoverOpen(false);
+      }
+    }
+
+    window.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isFilterPopoverOpen]);
+
   const [meta, setMeta] = useState<ListMeta>({
     page: 1,
     pageSize: 20,
@@ -425,11 +458,41 @@ export default function TenantProductsPage() {
     };
   }, [buildDraftQuery, listQuery, replaceListQuery]);
 
+  useEffect(() => {
+    if (!isFilterPopoverOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target;
+      if (target instanceof Element && target.closest('[data-products-filter-root="true"]')) {
+        return;
+      }
+      setIsFilterPopoverOpen(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsFilterPopoverOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('touchstart', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('touchstart', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isFilterPopoverOpen]);
+
   function handleResetSearch() {
     setSearchInput('');
     setSexFilter('');
     setSeriesFilterId('');
-    setSortFilter(toSortSelection(DEFAULT_LIST_QUERY.sortBy, DEFAULT_LIST_QUERY.sortDir));
+    setSortFilter(defaultSortSelection);
     setCoverFilter('all');
     setError(null);
     setMessage(null);
@@ -523,14 +586,32 @@ export default function TenantProductsPage() {
     await loadProducts(listQuery);
   }
 
-  const quickSeriesOptions = useMemo(() => seriesOptions.slice(0, 6), [seriesOptions]);
+  const quickSeriesOptions = useMemo(() => {
+    const base = seriesOptions.slice(0, 6);
+
+    if (!seriesFilterId) {
+      return base;
+    }
+
+    const selectedOption = seriesOptions.find((item) => item.id === seriesFilterId);
+    if (!selectedOption) {
+      return base;
+    }
+
+    if (base.some((item) => item.id === selectedOption.id)) {
+      return base;
+    }
+
+    return [selectedOption, ...base.slice(0, 5)];
+  }, [seriesFilterId, seriesOptions]);
   const hasMoreSeriesOptions = seriesOptions.length > quickSeriesOptions.length;
+  const defaultSortSelection = toSortSelection(DEFAULT_LIST_QUERY.sortBy, DEFAULT_LIST_QUERY.sortDir);
 
   const activeFilterCount =
     (searchInput.trim() ? 1 : 0) +
     (sexFilter ? 1 : 0) +
     (seriesFilterId ? 1 : 0) +
-    (sortFilter !== toSortSelection(DEFAULT_LIST_QUERY.sortBy, DEFAULT_LIST_QUERY.sortDir) ? 1 : 0) +
+    (sortFilter !== defaultSortSelection ? 1 : 0) +
     (coverFilter !== 'all' ? 1 : 0);
 
   const selectedSeriesLabel = useMemo(() => {
@@ -540,6 +621,15 @@ export default function TenantProductsPage() {
 
     return formatSeriesLabelById(seriesFilterId, seriesOptions);
   }, [seriesFilterId, seriesOptions]);
+
+  const selectedSortLabel =
+    sortFilter === 'updatedAt-desc'
+      ? '更新时间 新→旧'
+      : sortFilter === 'updatedAt-asc'
+        ? '更新时间 旧→新'
+        : sortFilter === 'code-asc'
+          ? '编码 A-Z'
+          : '编码 Z-A';
 
   function renderFilterPopover() {
     return (
@@ -717,7 +807,7 @@ export default function TenantProductsPage() {
               </p>
             </div>
             <div className="hidden items-center gap-2 lg:flex">
-              <div className="relative">
+              <div className="relative" data-products-filter-root="true">
                 <Button
                   type="button"
                   variant="secondary"
@@ -748,10 +838,131 @@ export default function TenantProductsPage() {
         <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
           <CardContent className="space-y-4 pt-6">
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-600">
-              <div className="flex flex-wrap gap-2">
-                <span className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5">
-                  共 {meta.total} 条，当前页 {filteredItems.length} 条
-                </span>
+              <span className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5">
+                共 {meta.total} 条，当前页 {filteredItems.length} 条
+              </span>
+            </div>
+
+            <div className="rounded-2xl border border-neutral-200 bg-gradient-to-b from-white to-neutral-50/80 p-3 lg:hidden">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-semibold text-neutral-700">顶部筛选</p>
+                <div className="relative" data-products-filter-root="true">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setIsFilterPopoverOpen((current) => !current)}
+                  >
+                    <SlidersHorizontal size={14} />
+                    更多{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+                  </Button>
+                  {isFilterPopoverOpen ? renderFilterPopover() : null}
+                </div>
+              </div>
+
+              <div className="mt-2 grid gap-2">
+                <div className="flex items-start gap-2">
+                  <p className="mt-1 w-10 shrink-0 text-[11px] font-semibold text-neutral-500">系列</p>
+                  <div className="flex flex-1 gap-2 overflow-x-auto pb-1">
+                    <button
+                      type="button"
+                      className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                        !seriesFilterId
+                          ? 'border-[#FFD400] bg-[#FFF6BF] text-neutral-900'
+                          : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-neutral-300'
+                      }`}
+                      onClick={() => setSeriesFilterId('')}
+                    >
+                      全部
+                    </button>
+                    {quickSeriesOptions.map((item) => {
+                      const selected = seriesFilterId === item.id;
+                      return (
+                        <button
+                          key={`series-top-${item.id}`}
+                          type="button"
+                          className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                            selected
+                              ? 'border-[#FFD400] bg-[#FFF6BF] text-neutral-900'
+                              : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-neutral-300'
+                          }`}
+                          onClick={() => setSeriesFilterId(item.id)}
+                        >
+                          {item.code}
+                        </button>
+                      );
+                    })}
+                    {hasMoreSeriesOptions ? (
+                      <button
+                        type="button"
+                        className="shrink-0 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 transition hover:border-neutral-300"
+                        onClick={() => setIsFilterPopoverOpen(true)}
+                      >
+                        更多…
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  <p className="mt-1 w-10 shrink-0 text-[11px] font-semibold text-neutral-500">性别</p>
+                  <div className="flex flex-1 gap-2 overflow-x-auto pb-1">
+                    {[
+                      { value: '', label: '全部' },
+                      { value: 'male', label: '公' },
+                      { value: 'female', label: '母' },
+                      { value: 'unknown', label: '未知' },
+                    ].map((item) => {
+                      const selected = sexFilter === item.value;
+                      return (
+                        <button
+                          key={`sex-top-${item.label}`}
+                          type="button"
+                          className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                            selected
+                              ? 'border-[#FFD400] bg-[#FFF6BF] text-neutral-900'
+                              : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-neutral-300'
+                          }`}
+                          onClick={() => setSexFilter(item.value)}
+                        >
+                          {item.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  <p className="mt-1 w-10 shrink-0 text-[11px] font-semibold text-neutral-500">封面</p>
+                  <div className="flex flex-1 gap-2 overflow-x-auto pb-1">
+                    {[
+                      { value: 'all', label: '全部' },
+                      { value: 'with-cover', label: '有封面' },
+                      { value: 'without-cover', label: '无封面' },
+                    ].map((item) => {
+                      const selected = coverFilter === item.value;
+                      return (
+                        <button
+                          key={`cover-top-${item.value}`}
+                          type="button"
+                          className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                            selected
+                              ? 'border-[#FFD400] bg-[#FFF6BF] text-neutral-900'
+                              : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-neutral-300'
+                          }`}
+                          onClick={() => setCoverFilter(item.value as CoverFilter)}
+                        >
+                          {item.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {activeFilterCount > 0 ? (
+              <div className="hidden flex-wrap gap-2 text-xs text-neutral-600 lg:flex">
                 {searchInput.trim() ? (
                   <button
                     type="button"
@@ -779,6 +990,15 @@ export default function TenantProductsPage() {
                     系列：{selectedSeriesLabel} ×
                   </button>
                 ) : null}
+                {sortFilter !== defaultSortSelection ? (
+                  <button
+                    type="button"
+                    className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5"
+                    onClick={() => setSortFilter(defaultSortSelection)}
+                  >
+                    排序：{selectedSortLabel} ×
+                  </button>
+                ) : null}
                 {coverFilter !== 'all' ? (
                   <button
                     type="button"
@@ -789,19 +1009,7 @@ export default function TenantProductsPage() {
                   </button>
                 ) : null}
               </div>
-              <div className="relative lg:hidden">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setIsFilterPopoverOpen((current) => !current)}
-                >
-                  <SlidersHorizontal size={14} />
-                  筛选{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
-                </Button>
-                {isFilterPopoverOpen ? renderFilterPopover() : null}
-              </div>
-            </div>
+            ) : null}
 
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex flex-wrap gap-2">
