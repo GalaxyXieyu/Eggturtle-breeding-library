@@ -165,21 +165,38 @@ export default function TenantProductsPage() {
       return;
     }
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setShowMobileFilterFab(!entry.isIntersecting);
-      },
-      {
-        root: null,
-        threshold: 0,
-        rootMargin: '-220px 0px 0px 0px',
-      },
-    );
+    let rafId: number | null = null;
 
-    observer.observe(sentinel);
+    function update() {
+      rafId = null;
+      const top = sentinel.getBoundingClientRect().top;
+
+      setShowMobileFilterFab((current) => {
+        if (current) {
+          return top < -80;
+        }
+
+        return top < -180;
+      });
+    }
+
+    function handleScroll() {
+      if (rafId !== null) {
+        return;
+      }
+      rafId = window.requestAnimationFrame(update);
+    }
+
+    update();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleScroll);
 
     return () => {
-      observer.disconnect();
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleScroll);
+      if (rafId !== null) {
+        window.cancelAnimationFrame(rafId);
+      }
     };
   }, []);
 
