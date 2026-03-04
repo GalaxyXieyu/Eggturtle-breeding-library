@@ -1578,7 +1578,7 @@ button.auth-action {
   font: inherit;
 }
 
-.workspace-shell button:not([data-ui='button']) {
+.workspace-shell button:not([data-ui='button']):not(.filter-pill) {
   min-height: 40px;
   padding: 0 14px;
   border: none;
@@ -1590,12 +1590,12 @@ button.auth-action {
   cursor: pointer;
 }
 
-.workspace-shell button:not([data-ui='button']):disabled {
+.workspace-shell button:not([data-ui='button']):not(.filter-pill):disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
 
-.workspace-shell button.secondary:not([data-ui='button']) {
+.workspace-shell button.secondary:not([data-ui='button']):not(.filter-pill) {
   border: 1px solid #d1d5db;
   background: #ffffff;
   color: #111827;

@@ -72,6 +72,12 @@ const SEX_FILTER_OPTIONS = [
   { value: 'unknown', label: '未知' },
 ] as const;
 
+const STATUS_FILTER_OPTIONS = [
+  { value: '', label: '全部' },
+  { value: 'need_mating', label: '待配' },
+  { value: 'warning', label: '⚠️逾期未交配' },
+] as const;
+
 function resolveTenantScrollRoot(): HTMLElement | null {
   if (typeof document === 'undefined') {
     return null;
@@ -231,6 +237,7 @@ export default function TenantProductsPage() {
   const [searchInput, setSearchInput] = useState(listQuery.search);
   const [sexFilter, setSexFilter] = useState(listQuery.sex);
   const [seriesFilterId, setSeriesFilterId] = useState(listQuery.seriesId);
+  const [statusFilter, setStatusFilter] = useState(listQuery.status);
   const editingProduct = useMemo(
     () => items.find((item) => item.id === editingProductId) ?? null,
     [editingProductId, items],
@@ -400,6 +407,7 @@ export default function TenantProductsPage() {
     setSearchInput(listQuery.search);
     setSexFilter(listQuery.sex);
     setSeriesFilterId(listQuery.seriesId);
+    setStatusFilter(listQuery.status);
   }, [listQuery]);
 
   useEffect(() => {
@@ -447,6 +455,10 @@ export default function TenantProductsPage() {
 
       if (nextQuery.seriesId) {
         nextParams.set('seriesId', nextQuery.seriesId);
+      }
+
+      if (nextQuery.status) {
+        nextParams.set('status', nextQuery.status);
       }
 
       if (
@@ -756,10 +768,11 @@ export default function TenantProductsPage() {
       search: searchInput.trim(),
       sex: sexFilter.trim(),
       seriesId: seriesFilterId.trim(),
+      status: statusFilter.trim(),
       sortBy: 'code' as const,
       sortDir: 'asc' as const,
     };
-  }, [listQuery, searchInput, seriesFilterId, sexFilter]);
+  }, [listQuery, searchInput, seriesFilterId, sexFilter, statusFilter]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -768,6 +781,7 @@ export default function TenantProductsPage() {
         nextQuery.search !== listQuery.search ||
         nextQuery.sex !== listQuery.sex ||
         nextQuery.seriesId !== listQuery.seriesId ||
+        nextQuery.status !== listQuery.status ||
         nextQuery.sortBy !== listQuery.sortBy ||
         nextQuery.sortDir !== listQuery.sortDir;
 
@@ -790,6 +804,7 @@ export default function TenantProductsPage() {
     setSearchInput('');
     setSexFilter('');
     setSeriesFilterId('');
+    setStatusFilter('');
     setError(null);
     setMessage(null);
     setContinueEditProductId(null);
@@ -896,7 +911,10 @@ export default function TenantProductsPage() {
   const hasMoreSeriesOptions = seriesOptions.length > quickSeriesOptions.length;
 
   const activeFilterCount =
-    (searchInput.trim() ? 1 : 0) + (sexFilter ? 1 : 0) + (seriesFilterId ? 1 : 0);
+    (searchInput.trim() ? 1 : 0) +
+    (sexFilter ? 1 : 0) +
+    (seriesFilterId ? 1 : 0) +
+    (statusFilter ? 1 : 0);
 
   const selectedSeriesLabel = useMemo(() => {
     if (!seriesFilterId) {
@@ -912,6 +930,20 @@ export default function TenantProductsPage() {
     }
     return base;
   }, [listStats.femaleCount, listStats.maleCount, listStats.needMatingCount, listStats.warningCount, listStats.yearEggCount]);
+  const selectedStatusLabel = useMemo(() => {
+    if (!statusFilter) {
+      return null;
+    }
+
+    return STATUS_FILTER_OPTIONS.find((item) => item.value === statusFilter)?.label ?? statusFilter;
+  }, [statusFilter]);
+  const visibleItems = useMemo(() => {
+    if (!statusFilter) {
+      return items;
+    }
+
+    return items.filter((item) => item.needMatingStatus === statusFilter);
+  }, [items, statusFilter]);
 
   function renderSexPills(keyPrefix: string, className?: string) {
     return SEX_FILTER_OPTIONS.map((item) => {
@@ -922,6 +954,22 @@ export default function TenantProductsPage() {
           type="button"
           className={buildFilterPillClass(selected, { className })}
           onClick={() => setSexFilter(item.value)}
+        >
+          {item.label}
+        </button>
+      );
+    });
+  }
+
+  function renderStatusPills(keyPrefix: string, className?: string) {
+    return STATUS_FILTER_OPTIONS.map((item) => {
+      const selected = statusFilter === item.value;
+      return (
+        <button
+          key={`${keyPrefix}-${item.label}`}
+          type="button"
+          className={buildFilterPillClass(selected, { className })}
+          onClick={() => setStatusFilter(item.value)}
         >
           {item.label}
         </button>
@@ -1038,6 +1086,11 @@ export default function TenantProductsPage() {
         <div className="grid gap-1.5">
           <p className="text-xs font-medium text-neutral-600">性别</p>
           <div className="flex flex-wrap gap-2">{renderSexPills('sex-panel')}</div>
+        </div>
+
+        <div className="grid gap-1.5">
+          <p className="text-xs font-medium text-neutral-600">状态</p>
+          <div className="flex flex-wrap gap-2">{renderStatusPills('status-panel')}</div>
         </div>
 
         <div className="grid gap-1.5">
@@ -1296,6 +1349,13 @@ export default function TenantProductsPage() {
                       {renderSexPills('sex-top', 'shrink-0')}
                     </div>
                   </div>
+
+                  <div className="flex min-w-0 items-start gap-2">
+                    <p className="mt-2 w-10 shrink-0 text-[11px] font-medium text-neutral-500">状态</p>
+                    <div className="flex min-w-0 max-w-full flex-1 gap-2 overflow-x-auto overscroll-x-contain pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                      {renderStatusPills('status-top', 'shrink-0')}
+                    </div>
+                  </div>
                 </div>
               </div>
             ) : null}
@@ -1329,17 +1389,28 @@ export default function TenantProductsPage() {
                     系列：{selectedSeriesLabel} ×
                   </button>
                 ) : null}
+                {selectedStatusLabel ? (
+                  <button
+                    type="button"
+                    className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5"
+                    onClick={() => setStatusFilter('')}
+                  >
+                    状态：{selectedStatusLabel} ×
+                  </button>
+                ) : null}
               </div>
             ) : null}
 
             {loading ? <p className="text-sm text-neutral-600">正在加载宠物预览...</p> : null}
-            {!loading && items.length === 0 ? (
-              <p className="text-sm text-neutral-500">暂无产品，或当前筛选条件未命中结果。</p>
+            {!loading && visibleItems.length === 0 ? (
+              <p className="text-sm text-neutral-500">
+                {hasMore ? '当前筛选在已加载数据中暂无命中，正在继续加载更多...' : '暂无产品，或当前筛选条件未命中结果。'}
+              </p>
             ) : null}
 
-            {!loading && items.length > 0 ? (
+            {!loading && visibleItems.length > 0 ? (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] sm:gap-4 xl:grid-cols-[repeat(auto-fill,minmax(240px,1fr))]">
-                {items.map((item) => (
+                {visibleItems.map((item) => (
                   <PetCard
                     key={`preview-${item.id}`}
                     variant="tenant"
@@ -1387,13 +1458,13 @@ export default function TenantProductsPage() {
               </div>
             ) : null}
 
-            {!loading && items.length > 0 && isLoadingMore ? (
+            {!loading && isLoadingMore ? (
               <p className="text-center text-sm text-neutral-500">正在加载更多...</p>
             ) : null}
-            {!loading && items.length > 0 && hasMore ? (
+            {!loading && hasMore ? (
               <div ref={loadMoreSentinelRef} className="h-2 w-full" aria-hidden="true" />
             ) : null}
-            {!loading && items.length > 0 && !hasMore ? (
+            {!loading && visibleItems.length > 0 && !hasMore ? (
               <p className="text-center text-xs text-neutral-400">已展示全部 {meta.total} 条</p>
             ) : null}
           </CardContent>

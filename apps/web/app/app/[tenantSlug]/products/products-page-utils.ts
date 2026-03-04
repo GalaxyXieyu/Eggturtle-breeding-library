@@ -10,6 +10,7 @@ export type ProductsListQuery = {
   search: string;
   sex: string;
   seriesId: string;
+  status: string;
   sortBy: ProductSortBy;
   sortDir: ProductSortDir;
 };
@@ -28,6 +29,7 @@ export const DEFAULT_LIST_QUERY: ProductsListQuery = {
   search: '',
   sex: '',
   seriesId: '',
+  status: '',
   // Default ordering: female -> male; then numeric code 1..100; "unsortable" codes treated as new uploads.
   sortBy: 'code',
   sortDir: 'asc',
@@ -47,6 +49,7 @@ export function parseListQuery(queryString: string): ProductsListQuery {
     search: (query.get('search') ?? '').trim(),
     sex: (query.get('sex') ?? '').trim(),
     seriesId: (query.get('seriesId') ?? '').trim(),
+    status: (query.get('status') ?? '').trim(),
     sortBy,
     sortDir,
   };
