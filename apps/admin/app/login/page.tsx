@@ -11,7 +11,8 @@ import {
 } from '@eggturtle/shared';
 
 import { UiPreferenceControls, type UiLocale, useUiPreferences } from '../../components/ui-preferences';
-import { ApiError, apiRequest } from '../../lib/api-client';
+import { apiRequest } from '../../lib/api-client';
+import { formatUnknownError } from '../../lib/formatters';
 
 type LoginMode = 'password' | 'code';
 
@@ -185,7 +186,7 @@ export default function LoginPage() {
 
       router.replace(redirectTo);
     } catch (requestError) {
-      setError(formatError(requestError, copy.unknownError));
+      setError(formatUnknownError(requestError, { fallback: copy.unknownError }));
     } finally {
       setLoading(false);
     }
@@ -209,7 +210,7 @@ export default function LoginPage() {
       setDevCode(response.devCode ?? null);
       setCode('');
     } catch (requestError) {
-      setError(formatError(requestError, copy.unknownError));
+      setError(formatUnknownError(requestError, { fallback: copy.unknownError }));
     } finally {
       setLoading(false);
     }
@@ -239,7 +240,7 @@ export default function LoginPage() {
 
       router.replace(redirectTo);
     } catch (requestError) {
-      setError(formatError(requestError, copy.unknownError));
+      setError(formatUnknownError(requestError, { fallback: copy.unknownError }));
     } finally {
       setLoading(false);
     }
@@ -394,16 +395,4 @@ export default function LoginPage() {
       </section>
     </main>
   );
-}
-
-function formatError(error: unknown, fallback: string) {
-  if (error instanceof ApiError) {
-    return error.message;
-  }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return fallback;
 }

@@ -13,7 +13,8 @@ import {
   AdminTableFrame
 } from '../../../components/dashboard/polish-primitives';
 import { useUiPreferences } from '../../../components/ui-preferences';
-import { ApiError, getAdminRevenueOverview } from '../../../lib/api-client';
+import { getAdminRevenueOverview } from '../../../lib/api-client';
+import { formatUnknownError } from '../../../lib/formatters';
 
 type RevenueState = {
   loading: boolean;
@@ -120,7 +121,7 @@ export default function DashboardBillingPage() {
 
         setState({
           loading: false,
-          error: formatError(error, copy.unknownError),
+          error: formatUnknownError(error, { fallback: copy.unknownError }),
           data: null
         });
       }
@@ -279,16 +280,4 @@ function formatCurrency(cents: number) {
     currency: 'CNY',
     maximumFractionDigits: 2
   }).format(cents / 100);
-}
-
-function formatError(error: unknown, fallback: string) {
-  if (error instanceof ApiError) {
-    return error.message;
-  }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return fallback;
 }

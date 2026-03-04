@@ -48,14 +48,21 @@ export default function TenantFloatingShareButton({
       const url = share.permanentUrl;
       try {
         await navigator.clipboard.writeText(url);
-        setNotice(`已复制链接：${url}`);
+        setNotice('已复制分享链接。');
       } catch {
         setError('链接已生成，但自动复制失败，请手动复制。');
       }
 
-      const opened = window.open(url, '_blank', 'noopener');
+      const opened = window.open(url, '_blank');
       if (!opened) {
-        setError('浏览器拦截了新窗口，请允许弹窗后重试。');
+        // 某些浏览器在隐私模式会返回 null，这里走 a 标签降级，避免误报“被拦截”。
+        const link = document.createElement('a');
+        link.href = url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       }
     } catch (err) {
       setError(formatApiError(err, '创建分享链接失败'));

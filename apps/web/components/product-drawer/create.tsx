@@ -5,8 +5,6 @@ import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from 're
 import {
   createProductRequestSchema,
   createProductResponseSchema,
-  createSeriesRequestSchema,
-  createSeriesResponseSchema,
   reorderProductImagesRequestSchema,
   reorderProductImagesResponseSchema,
   setMainProductImageResponseSchema,
@@ -26,19 +24,26 @@ import {
   X,
 } from 'lucide-react';
 
-import { apiRequest } from '../lib/api-client';
-import { formatApiError } from '../lib/error-utils';
-import { uploadSingleFileWithAuth } from '../lib/upload-client';
-import { Button } from './ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Input } from './ui/input';
-import { NativeSelect } from './ui/native-select';
+import { apiRequest } from '../../lib/api-client';
+import { formatApiError } from '../../lib/error-utils';
+import { uploadSingleFileWithAuth } from '../../lib/upload-client';
+import {
+  createSeriesIfNeeded,
+  parseOffspringUnitPrice,
+  parsePopularityScore,
+  resolveSeriesInput,
+  toSuggestedSeriesCode,
+  type ProductSeriesOption,
+  type ProductSex,
+  type SeriesResolveResult
+} from './shared';
+import ProductStatusToggleGroup from './status-toggle-group';
+import { Button } from '../ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import { Input } from '../ui/input';
+import { NativeSelect } from '../ui/native-select';
 
-export type ProductSeriesOption = {
-  id: string;
-  code: string;
-  name: string;
-};
+export type { ProductSeriesOption } from './shared';
 
 export type PendingImageItem = {
   id: string;
@@ -48,21 +53,9 @@ export type PendingImageItem = {
   localOrder: number;
 };
 
-export type SeriesResolveResult =
-  | {
-      type: 'matchedExisting';
-      seriesId: string | null;
-      matched: ProductSeriesOption | null;
-      input: string;
-    }
-  | {
-      type: 'requireNewSeries';
-      input: string;
-    };
+type CreateSex = ProductSex;
 
-type CreateSex = '' | 'male' | 'female';
-
-type ProductCreateResult = {
+export type ProductCreateResult = {
   product: Product;
   imageFailures: number;
   message: string;
@@ -305,7 +298,7 @@ export default function ProductCreateDrawer({
       return;
     }
 
-    const parsedOffspringPrice = parseOffspringPrice(sex, offspringUnitPrice);
+    const parsedOffspringPrice = parseOffspringUnitPrice(sex, offspringUnitPrice);
     if (parsedOffspringPrice === 'invalid') {
       setError('子代单价格式不正确，请输入非负数字。');
       return;
@@ -503,6 +496,13 @@ export default function ProductCreateDrawer({
       >
         <header className="sticky top-0 z-20 border-b border-neutral-200 bg-white/95 px-4 py-3 backdrop-blur sm:px-6">
           <div className="flex items-center justify-between gap-3">
+            <span className="inline-flex h-9 min-w-12 items-center justify-center rounded-full border border-neutral-200 bg-neutral-50 px-2 text-xs font-semibold text-neutral-600">
+              {selectedImageCount} 图
+            </span>
+            <div className="flex-1 text-center">
+              <p className="text-sm font-semibold text-neutral-900">新建乌龟</p>
+              <p className="text-xs text-neutral-500">上传图片后直接确认创建</p>
+            </div>
             <button
               type="button"
               className={MODAL_CLOSE_BUTTON_CLASS}
@@ -512,13 +512,6 @@ export default function ProductCreateDrawer({
             >
               <X size={17} strokeWidth={2.6} />
             </button>
-            <div className="text-center">
-              <p className="text-sm font-semibold text-neutral-900">新建乌龟</p>
-              <p className="text-xs text-neutral-500">上传图片后直接确认创建</p>
-            </div>
-            <span className="inline-flex h-9 min-w-12 items-center justify-center rounded-full border border-neutral-200 bg-neutral-50 px-2 text-xs font-semibold text-neutral-600">
-              {selectedImageCount} 图
-            </span>
           </div>
         </header>
 
@@ -945,40 +938,33 @@ export default function ProductCreateDrawer({
                     onChange={(event) => setPopularityScore(event.target.value)}
                   />
                 </div>
-                <div className="flex flex-wrap gap-4 text-sm text-neutral-700">
-                  <label className="inline-flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={excludeFromBreeding}
-                      onChange={(event) => setExcludeFromBreeding(event.target.checked)}
-                    />
-                    不参与繁殖
-                  </label>
-                  <label className="inline-flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={hasSample}
-                      onChange={(event) => setHasSample(event.target.checked)}
-                    />
-                    有样本
-                  </label>
-                  <label className="inline-flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={inStock}
-                      onChange={(event) => setInStock(event.target.checked)}
-                    />
-                    在库
-                  </label>
-                  <label className="inline-flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={isFeatured}
-                      onChange={(event) => setIsFeatured(event.target.checked)}
-                    />
-                    精选
-                  </label>
-                </div>
+                <ProductStatusToggleGroup
+                  values={{
+                    excludeFromBreeding,
+                    hasSample,
+                    inStock,
+                    isFeatured
+                  }}
+                  disabled={submitting}
+                  onToggle={(field, nextValue) => {
+                    if (field === 'excludeFromBreeding') {
+                      setExcludeFromBreeding(nextValue);
+                      return;
+                    }
+
+                    if (field === 'hasSample') {
+                      setHasSample(nextValue);
+                      return;
+                    }
+
+                    if (field === 'inStock') {
+                      setInStock(nextValue);
+                      return;
+                    }
+
+                    setIsFeatured(nextValue);
+                  }}
+                />
               </CardContent>
             </Card>
           </div>
@@ -1012,105 +998,6 @@ export default function ProductCreateDrawer({
       </section>
     </div>
   );
-
-  async function createSeriesIfNeeded(input: {
-    isDemoMode: boolean;
-    code: string;
-    name: string;
-    description: string;
-    sortOrder: string;
-    isActive: boolean;
-  }): Promise<ProductSeriesOption> {
-    const nextSeriesCode = input.code.trim().toUpperCase();
-    const nextSeriesName = input.name.trim();
-
-    if (!nextSeriesCode || !nextSeriesName) {
-      throw new Error('新系列需要填写系列编码和系列名称。');
-    }
-
-    const parsedSortOrder = parseSeriesSortOrder(input.sortOrder);
-
-    if (input.isDemoMode) {
-      return {
-        id: `demo-series-${Date.now()}`,
-        code: nextSeriesCode,
-        name: nextSeriesName,
-      };
-    }
-
-    const createSeriesPayload = createSeriesRequestSchema.parse({
-      code: nextSeriesCode,
-      name: nextSeriesName,
-      description: input.description.trim() ? input.description.trim() : null,
-      sortOrder: parsedSortOrder,
-      isActive: input.isActive,
-    });
-
-    const createSeriesResponse = await apiRequest('/series', {
-      method: 'POST',
-      body: createSeriesPayload,
-      requestSchema: createSeriesRequestSchema,
-      responseSchema: createSeriesResponseSchema,
-    });
-
-    return {
-      id: createSeriesResponse.series.id,
-      code: createSeriesResponse.series.code,
-      name: createSeriesResponse.series.name,
-    };
-  }
-}
-
-function resolveSeriesInput(
-  input: string,
-  seriesOptions: ProductSeriesOption[],
-): SeriesResolveResult {
-  const trimmedInput = input.trim();
-  if (!trimmedInput) {
-    return {
-      type: 'matchedExisting',
-      input: '',
-      seriesId: null,
-      matched: null,
-    };
-  }
-
-  const normalizedInput = normalizeText(trimmedInput);
-
-  const codeMatched = seriesOptions.find((item) => normalizeText(item.code) === normalizedInput);
-  if (codeMatched) {
-    return {
-      type: 'matchedExisting',
-      input: trimmedInput,
-      seriesId: codeMatched.id,
-      matched: codeMatched,
-    };
-  }
-
-  const nameMatched = seriesOptions.find((item) => normalizeText(item.name) === normalizedInput);
-  if (nameMatched) {
-    return {
-      type: 'matchedExisting',
-      input: trimmedInput,
-      seriesId: nameMatched.id,
-      matched: nameMatched,
-    };
-  }
-
-  const idMatched = seriesOptions.find((item) => normalizeText(item.id) === normalizedInput);
-  if (idMatched) {
-    return {
-      type: 'matchedExisting',
-      input: trimmedInput,
-      seriesId: idMatched.id,
-      matched: idMatched,
-    };
-  }
-
-  return {
-    type: 'requireNewSeries',
-    input: trimmedInput,
-  };
 }
 
 function normalizePendingImages(items: PendingImageItem[]): PendingImageItem[] {
@@ -1131,65 +1018,4 @@ function releasePendingImageUrls(items: PendingImageItem[]) {
   items.forEach((item) => {
     URL.revokeObjectURL(item.previewUrl);
   });
-}
-
-function parseOffspringPrice(sex: CreateSex, input: string): number | null | 'invalid' {
-  if (sex !== 'female') {
-    return null;
-  }
-
-  const trimmed = input.trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  const value = Number(trimmed);
-  if (!Number.isFinite(value) || value < 0) {
-    return 'invalid';
-  }
-
-  return value;
-}
-
-function parsePopularityScore(input: string): number | null {
-  const trimmed = input.trim();
-  if (!trimmed) {
-    return 0;
-  }
-
-  const value = Number(trimmed);
-  if (!Number.isInteger(value) || value < 0 || value > 100) {
-    return null;
-  }
-
-  return value;
-}
-
-function parseSeriesSortOrder(input: string): number | undefined {
-  const trimmed = input.trim();
-  if (!trimmed) {
-    return undefined;
-  }
-
-  const value = Number(trimmed);
-  if (!Number.isInteger(value)) {
-    throw new Error('系列排序必须是整数。');
-  }
-
-  return value;
-}
-
-function toSuggestedSeriesCode(input: string): string {
-  const normalized = input
-    .trim()
-    .toUpperCase()
-    .replace(/\s+/g, '-')
-    .replace(/[^A-Z0-9-_]/g, '-');
-  const compact = normalized.replace(/-+/g, '-').replace(/^-|-$/g, '');
-
-  return compact || 'NEW-SERIES';
-}
-
-function normalizeText(value: string) {
-  return value.trim().toLowerCase();
 }

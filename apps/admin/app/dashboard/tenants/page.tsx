@@ -14,7 +14,8 @@ import {
   AdminTableFrame
 } from '../../../components/dashboard/polish-primitives';
 import { useUiPreferences } from '../../../components/ui-preferences';
-import { ApiError, apiRequest } from '../../../lib/api-client';
+import { apiRequest } from '../../../lib/api-client';
+import { formatDateTime, formatUnknownError } from '../../../lib/formatters';
 
 type PageState = {
   loading: boolean;
@@ -107,7 +108,10 @@ export default function DashboardTenantsPage() {
         setStatus({ loading: false, error: null });
       } catch (error) {
         if (!cancelled) {
-          setStatus({ loading: false, error: formatError(error, copy.unknownError) });
+          setStatus({
+            loading: false,
+            error: formatUnknownError(error, { fallback: copy.unknownError })
+          });
           setTenants([]);
         }
       }
@@ -206,7 +210,7 @@ export default function DashboardTenantsPage() {
                   <td>{tenant.name}</td>
                   <td className="mono">{tenant.slug}</td>
                   <td>{tenant.memberCount}</td>
-                  <td>{formatDate(tenant.createdAt)}</td>
+                  <td>{formatDateTime(tenant.createdAt)}</td>
                   <td>
                     <AdminActionLink href={`/dashboard/tenants/${tenant.id}`}>{copy.viewDetail}</AdminActionLink>
                   </td>
@@ -220,25 +224,4 @@ export default function DashboardTenantsPage() {
       {status.error ? <p className="error">{status.error}</p> : null}
     </section>
   );
-}
-
-function formatDate(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return date.toLocaleString();
-}
-
-function formatError(error: unknown, fallback: string) {
-  if (error instanceof ApiError) {
-    return error.message;
-  }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return fallback;
 }

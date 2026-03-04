@@ -17,7 +17,8 @@ import {
   AdminPanel,
   AdminTableFrame
 } from '../../../components/dashboard/polish-primitives';
-import { ApiError, apiRequest } from '../../../lib/api-client';
+import { apiRequest } from '../../../lib/api-client';
+import { formatDateTime, formatUnknownError } from '../../../lib/formatters';
 
 type PageState = {
   loading: boolean;
@@ -160,7 +161,7 @@ export default function DashboardAuditLogsPage() {
           setState((previous) => ({
             ...previous,
             loading: false,
-            error: formatError(error),
+            error: formatUnknownError(error),
             logs: []
           }));
         }
@@ -413,7 +414,7 @@ export default function DashboardAuditLogsPage() {
                     </div>
                   </td>
                   <td className="mono metadata-cell">{stringifyMetadata(log.metadata)}</td>
-                  <td>{formatDate(log.createdAt)}</td>
+                  <td>{formatDateTime(log.createdAt)}</td>
                 </tr>
               ))}
             </tbody>
@@ -530,27 +531,6 @@ function toIso(value: string) {
   }
 
   return parsed.toISOString();
-}
-
-function formatDate(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return date.toLocaleString();
-}
-
-function formatError(error: unknown) {
-  if (error instanceof ApiError) {
-    return error.message;
-  }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return '未知错误';
 }
 
 function resolveExportErrorMessage(status: number) {

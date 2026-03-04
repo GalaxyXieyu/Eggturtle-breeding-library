@@ -18,10 +18,10 @@ import {
 } from '../../../components/dashboard/polish-primitives';
 import { useUiPreferences } from '../../../components/ui-preferences';
 import {
-  ApiError,
   getAdminTenantUsage,
   getAdminUsageOverview
 } from '../../../lib/api-client';
+import { formatUnknownError } from '../../../lib/formatters';
 
 type UsagePageState = {
   loading: boolean;
@@ -149,7 +149,7 @@ export default function DashboardUsagePage() {
 
         setOverviewState({
           loading: false,
-          error: formatError(error, copy.unknownError),
+          error: formatUnknownError(error, { fallback: copy.unknownError }),
           data: null
         });
         setSelectedTenantId(null);
@@ -206,7 +206,7 @@ export default function DashboardUsagePage() {
 
         setTenantState({
           loading: false,
-          error: formatError(error, copy.unknownError),
+          error: formatUnknownError(error, { fallback: copy.unknownError }),
           data: null
         });
       }
@@ -441,16 +441,4 @@ function formatBytes(value: string) {
   }
 
   return `${cursor.toFixed(cursor >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
-}
-
-function formatError(error: unknown, fallback: string) {
-  if (error instanceof ApiError) {
-    return error.message;
-  }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return fallback;
 }

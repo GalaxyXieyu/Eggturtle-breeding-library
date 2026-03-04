@@ -17,6 +17,7 @@ import {
 } from '@eggturtle/shared';
 
 import { ApiError, apiRequest } from '../../../lib/api-client';
+import { formatDateTime, formatUnknownError } from '../../../lib/formatters';
 
 type PageState = {
   loadingTenants: boolean;
@@ -106,7 +107,7 @@ export default function DashboardMembershipsPage() {
           setStatus((previous) => ({
             ...previous,
             loadingTenants: false,
-            error: formatError(error)
+            error: formatUnknownError(error)
           }));
         }
       }
@@ -158,7 +159,7 @@ export default function DashboardMembershipsPage() {
           setStatus((previous) => ({
             ...previous,
             loadingMembers: false,
-            error: formatError(error)
+            error: formatUnknownError(error)
           }));
         }
       }
@@ -225,7 +226,7 @@ export default function DashboardMembershipsPage() {
       setStatus((previous) => ({
         ...previous,
         saving: false,
-        error: formatError(error)
+        error: formatUnknownError(error)
       }));
     }
   }
@@ -411,7 +412,7 @@ export default function DashboardMembershipsPage() {
                       ))}
                     </select>
                   </td>
-                  <td>{formatDate(member.joinedAt)}</td>
+                  <td>{formatDateTime(member.joinedAt)}</td>
                   <td>
                     {confirmingRemoveUserId === member.user.id ? (
                       <div className="inline-actions">
@@ -477,27 +478,6 @@ function buildActionMessage(response: {
   return `已将 ${response.user.email} 从 ${previousRoleLabel} 调整为 ${response.role}。审计ID：${response.auditLogId}`;
 }
 
-function formatDate(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return date.toLocaleString();
-}
-
-function formatError(error: unknown) {
-  if (error instanceof ApiError) {
-    return error.message;
-  }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return '未知错误';
-}
-
 function isTenantMemberNotFoundError(error: unknown) {
   return error instanceof ApiError && error.errorCode === ErrorCode.TenantMemberNotFound;
 }
@@ -507,5 +487,5 @@ function formatRemoveMemberError(error: unknown) {
     return '成员已不存在，列表已刷新。';
   }
 
-  return formatError(error);
+  return formatUnknownError(error);
 }

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { PublicSharePresentation } from '@eggturtle/shared';
 import { SlidersHorizontal, X } from 'lucide-react';
 
+import { buildFilterPillClass } from '../../../components/filter-pill';
 import { UiPreferenceControls } from '../../../components/ui-preferences';
 import PublicBottomDock from '../_shared/public-bottom-dock';
 import PublicFloatingActions from '../_shared/public-floating-actions';
@@ -167,11 +168,9 @@ export default function PublicFeedPage({
                 key={item.id}
                 type="button"
                 onClick={() => setSeriesId(item.id)}
-                className={`h-8 rounded-full border px-3 text-xs shadow-[0_1px_0_rgba(0,0,0,0.04)] transition lg:h-9 lg:px-4 lg:text-sm ${
-                  seriesId === item.id
-                    ? 'font-semibold text-white'
-                    : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:shadow-sm'
-                }`}
+                className={buildFilterPillClass(seriesId === item.id, {
+                  activeClassName: 'font-semibold text-white',
+                })}
                 style={
                   seriesId === item.id
                     ? {
@@ -201,11 +200,9 @@ export default function PublicFeedPage({
                 key={item.key}
                 type="button"
                 onClick={() => setSex(item.key)}
-                className={`h-8 rounded-full border px-3 text-xs shadow-[0_1px_0_rgba(0,0,0,0.04)] transition lg:h-9 lg:px-4 lg:text-sm ${
-                  sex === item.key
-                    ? 'font-semibold text-white'
-                    : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:shadow-sm'
-                }`}
+                className={buildFilterPillClass(sex === item.key, {
+                  activeClassName: 'font-semibold text-white',
+                })}
                 style={
                   sex === item.key
                     ? {
@@ -235,11 +232,9 @@ export default function PublicFeedPage({
                 key={item.key}
                 type="button"
                 onClick={() => setStatus(item.key)}
-                className={`h-8 rounded-full border px-3 text-xs shadow-[0_1px_0_rgba(0,0,0,0.04)] transition lg:h-9 lg:px-4 lg:text-sm ${
-                  status === item.key
-                    ? 'font-semibold text-white'
-                    : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:shadow-sm'
-                }`}
+                className={buildFilterPillClass(status === item.key, {
+                  activeClassName: 'font-semibold text-white',
+                })}
                 style={
                   status === item.key
                     ? {

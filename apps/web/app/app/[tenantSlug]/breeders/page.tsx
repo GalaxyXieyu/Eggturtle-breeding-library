@@ -12,6 +12,7 @@ import {
 import { ArrowRight, Search, SlidersHorizontal } from 'lucide-react';
 
 import { ApiError, apiRequest, getAccessToken, resolveAuthenticatedAssetUrl } from '../../../../lib/api-client';
+import { formatSex } from '../../../../lib/pet-format';
 import { switchTenantBySlug } from '../../../../lib/tenant-session';
 import { Badge } from '../../../../components/ui/badge';
 import { Button } from '../../../../components/ui/button';
@@ -348,7 +349,7 @@ export default function BreedersListPage() {
                         </TableCell>
                         <TableCell>{item.name ?? '未命名种龟'}</TableCell>
                         <TableCell>{readSeriesCode(seriesOptions, item.seriesId)}</TableCell>
-                        <TableCell>{formatSex(item.sex)}</TableCell>
+                        <TableCell>{formatSex(item.sex, { unknownLabel: 'unknown' })}</TableCell>
                         <TableCell>
                           <Badge variant={item.inStock ? 'success' : 'default'}>{item.inStock ? '启用' : '停用'}</Badge>
                         </TableCell>
@@ -380,7 +381,7 @@ export default function BreedersListPage() {
                         </div>
                         <p className="truncate text-xs text-neutral-500">{item.name ?? '未命名种龟'}</p>
                         <p className="mt-1 text-xs text-neutral-500">
-                          {readSeriesCode(seriesOptions, item.seriesId)} · {formatSex(item.sex)}
+                          {readSeriesCode(seriesOptions, item.seriesId)} · {formatSex(item.sex, { unknownLabel: 'unknown' })}
                         </p>
                       </div>
                     </div>
@@ -430,18 +431,6 @@ function BreederImagePreview({ item }: { item: Product }) {
 
 function resolveImageUrl(value: string) {
   return resolveAuthenticatedAssetUrl(value);
-}
-
-function formatSex(value?: string | null) {
-  if (value === 'male') {
-    return '公';
-  }
-
-  if (value === 'female') {
-    return '母';
-  }
-
-  return value ?? '未知';
 }
 
 function readSeriesCode(options: Series[], seriesId: string | null | undefined) {

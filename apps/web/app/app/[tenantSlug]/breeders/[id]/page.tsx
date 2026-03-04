@@ -15,8 +15,10 @@ import {
 import { ArrowLeft, CalendarClock, Image as ImageIcon, Network, PencilRuler } from 'lucide-react';
 
 import { ApiError, apiRequest, getAccessToken, resolveAuthenticatedAssetUrl } from '../../../../../lib/api-client';
+import { formatSex } from '../../../../../lib/pet-format';
 import { switchTenantBySlug } from '../../../../../lib/tenant-session';
 import { cn } from '../../../../../lib/utils';
+import ProductDrawer from '../../../../../components/product-drawer';
 import { Badge } from '../../../../../components/ui/badge';
 import { Button } from '../../../../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../../components/ui/card';
@@ -49,6 +51,7 @@ export default function BreederDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeImageId, setActiveImageId] = useState<string | null>(null);
+  const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
   const [eventFilter, setEventFilter] = useState<'all' | 'mating' | 'egg' | 'change_mate'>('all');
   const [eventExpanded, setEventExpanded] = useState(true);
   const [data, setData] = useState<DetailState>({
@@ -203,7 +206,7 @@ export default function BreederDetailPage() {
               <Badge variant={currentBreeder?.inStock ? 'success' : 'default'}>
                 {currentBreeder?.inStock ? '启用中' : '停用'}
               </Badge>
-              <Badge variant="accent">{formatSex(currentBreeder?.sex)}</Badge>
+              <Badge variant="accent">{formatSex(currentBreeder?.sex, { unknownLabel: 'unknown' })}</Badge>
               <Badge variant="sky">{currentBreeder?.seriesId ?? '未关联系列'}</Badge>
             </div>
             <div>
@@ -220,9 +223,14 @@ export default function BreederDetailPage() {
                 返回列表
               </Button>
               {currentBreeder ? (
-                <Button variant="primary" onClick={() => router.push(`/app/${tenantSlug}/products/${currentBreeder.id}`)}>
+                <Button variant="primary" onClick={() => setIsEditDrawerOpen(true)}>
                   <PencilRuler size={16} />
                   编辑资料
+                </Button>
+              ) : null}
+              {currentBreeder ? (
+                <Button variant="secondary" onClick={() => router.push(`/app/${tenantSlug}/products/${currentBreeder.id}`)}>
+                  图片管理
                 </Button>
               ) : null}
             </div>
@@ -295,7 +303,12 @@ export default function BreederDetailPage() {
                       <TreeCard title="子代" node={null} onOpen={openBreederDetail} />
                     ) : (
                       data.tree.children.map((child) => (
-                        <TreeCard key={child.id} title={formatSex(child.sex)} node={child} onOpen={openBreederDetail} />
+                        <TreeCard
+                          key={child.id}
+                          title={formatSex(child.sex, { unknownLabel: 'unknown' })}
+                          node={child}
+                          onOpen={openBreederDetail}
+                        />
                       ))
                     )}
                   </div>
@@ -411,6 +424,22 @@ export default function BreederDetailPage() {
           <p className="text-sm font-semibold text-red-700">{error}</p>
         </Card>
       ) : null}
+
+      <ProductDrawer
+        mode="edit"
+        open={isEditDrawerOpen}
+        product={currentBreeder}
+        tenantSlug={tenantSlug}
+        isDemoMode={isDemoMode}
+        onClose={() => setIsEditDrawerOpen(false)}
+        onSaved={(nextProduct) => {
+          setData((current) => ({
+            ...current,
+            breeder: nextProduct
+          }));
+          setIsEditDrawerOpen(false);
+        }}
+      />
     </main>
   );
 }
@@ -461,18 +490,6 @@ function TreeCard(props: { title: string; node: FamilyTreeNode | null; onOpen: (
 
 function resolveImageUrl(value: string) {
   return resolveAuthenticatedAssetUrl(value);
-}
-
-function formatSex(value?: string | null) {
-  if (value === 'male') {
-    return '公';
-  }
-
-  if (value === 'female') {
-    return '母';
-  }
-
-  return value ?? '未知';
 }
 
 function formatError(error: unknown) {

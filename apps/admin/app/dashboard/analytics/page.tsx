@@ -10,7 +10,8 @@ import {
   AdminTableFrame
 } from '../../../components/dashboard/polish-primitives';
 import { useUiPreferences } from '../../../components/ui-preferences';
-import { ApiError, getAdminActivityOverview } from '../../../lib/api-client';
+import { getAdminActivityOverview } from '../../../lib/api-client';
+import { formatUnknownError } from '../../../lib/formatters';
 
 type PageState = {
   loading: boolean;
@@ -103,7 +104,7 @@ export default function DashboardAnalyticsPage() {
 
         setState({
           loading: false,
-          error: formatError(error, copy.unknownError),
+          error: formatUnknownError(error, { fallback: copy.unknownError }),
           data: null
         });
       }
@@ -227,16 +228,4 @@ export default function DashboardAnalyticsPage() {
 
 function formatPercent(value: number) {
   return `${(value * 100).toFixed(1)}%`;
-}
-
-function formatError(error: unknown, fallback: string) {
-  if (error instanceof ApiError) {
-    return error.message;
-  }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return fallback;
 }

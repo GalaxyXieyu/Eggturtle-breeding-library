@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from 'next/link';
 
+import { formatPrice, formatSex } from '../../../lib/pet-format';
 import {
   buildPublicShareRouteQuery,
   fetchPublicShareFromSearchParams,
@@ -94,7 +95,11 @@ export default async function TenantPublicFeedPage({
                   <h2>{item.name || item.code}</h2>
                   <p className="muted mono">{item.code}</p>
                   <div className="row">
-                    {item.sex ? <span className="public-feed-tag">{formatSex(item.sex)}</span> : null}
+                    {item.sex ? (
+                      <span className="public-feed-tag">
+                        {formatSex(item.sex, { unknownLabel: 'unknown' })}
+                      </span>
+                    ) : null}
                     {item.seriesId ? <span className="public-feed-tag">系列 {item.seriesId}</span> : null}
                     {item.isFeatured ? <span className="public-feed-tag public-feed-tag-featured">精选</span> : null}
                   </div>
@@ -133,25 +138,6 @@ export default async function TenantPublicFeedPage({
       ) : null}
     </main>
   );
-}
-
-function formatSex(value: string) {
-  if (value === 'male') {
-    return '公';
-  }
-
-  if (value === 'female') {
-    return '母';
-  }
-
-  return value;
-}
-
-function formatPrice(value: number) {
-  return value.toLocaleString('zh-CN', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2
-  });
 }
 
 function normalizeTenantSlug(value: string | null | undefined) {

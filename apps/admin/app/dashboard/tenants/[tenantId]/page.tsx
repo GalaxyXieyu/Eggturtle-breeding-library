@@ -22,13 +22,13 @@ import {
   AdminTableFrame
 } from '../../../../components/dashboard/polish-primitives';
 import {
-  ApiError,
   apiRequest,
   getAdminTenantSubscription,
   reactivateAdminTenant,
   suspendAdminTenant,
   updateAdminTenantSubscription
 } from '../../../../lib/api-client';
+import { formatDateTime, formatUnknownError } from '../../../../lib/formatters';
 
 type DetailState = {
   loading: boolean;
@@ -132,7 +132,7 @@ export default function TenantDetailPage() {
           setState((previous) => ({
             ...previous,
             loading: false,
-            error: formatError(error)
+            error: formatUnknownError(error, { includeErrorCode: true })
           }));
         }
       }
@@ -185,7 +185,7 @@ export default function TenantDetailPage() {
           setSubscriptionState((previous) => ({
             ...previous,
             loading: false,
-            error: formatError(error),
+            error: formatUnknownError(error, { includeErrorCode: true }),
             subscription: null
           }));
           setSubscriptionPlan('FREE');
@@ -290,7 +290,7 @@ export default function TenantDetailPage() {
       setSubscriptionState((previous) => ({
         ...previous,
         saving: false,
-        error: formatError(error)
+        error: formatUnknownError(error, { includeErrorCode: true })
       }));
     }
   }
@@ -337,7 +337,7 @@ export default function TenantDetailPage() {
       setLifecycleState((previous) => ({
         ...previous,
         suspending: false,
-        error: formatError(error)
+        error: formatUnknownError(error, { includeErrorCode: true })
       }));
     }
   }
@@ -374,7 +374,7 @@ export default function TenantDetailPage() {
       setLifecycleState((previous) => ({
         ...previous,
         reactivating: false,
-        error: formatError(error)
+        error: formatUnknownError(error, { includeErrorCode: true })
       }));
     }
   }
@@ -418,7 +418,7 @@ export default function TenantDetailPage() {
             </div>
             <div>
               <dt>创建时间</dt>
-              <dd>{formatDate(state.tenant.createdAt)}</dd>
+              <dd>{formatDateTime(state.tenant.createdAt)}</dd>
             </div>
           </dl>
         </AdminPanel>
@@ -451,7 +451,7 @@ export default function TenantDetailPage() {
             {subscriptionState.subscription.disabledAt ? (
               <div>
                 <dt>Disabled at</dt>
-                <dd>{formatDate(subscriptionState.subscription.disabledAt)}</dd>
+                <dd>{formatDateTime(subscriptionState.subscription.disabledAt)}</dd>
               </div>
             ) : null}
             {subscriptionState.subscription.disabledReason ? (
@@ -665,7 +665,7 @@ export default function TenantDetailPage() {
                   <td>
                     <AdminBadge tone={toRoleTone(member.role)}>{member.role}</AdminBadge>
                   </td>
-                  <td>{formatDate(member.joinedAt)}</td>
+                  <td>{formatDateTime(member.joinedAt)}</td>
                 </tr>
               ))}
             </tbody>
@@ -694,7 +694,7 @@ export default function TenantDetailPage() {
                 <tr key={log.id}>
                   <td>{log.action}</td>
                   <td>{log.actorUserEmail ?? log.actorUserId}</td>
-                  <td>{formatDate(log.createdAt)}</td>
+                  <td>{formatDateTime(log.createdAt)}</td>
                 </tr>
               ))}
             </tbody>
@@ -764,21 +764,12 @@ function toIsoDateTimeOrNull(value: string) {
   return date.toISOString();
 }
 
-function formatDate(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return date.toLocaleString();
-}
-
 function formatOptionalDate(value: string | null) {
   if (!value) {
     return 'Never';
   }
 
-  return formatDate(value);
+  return formatDateTime(value);
 }
 
 function formatNullableValue(value: string | number | null) {
@@ -823,20 +814,4 @@ function toSubscriptionStatusTone(status: string): 'success' | 'warning' | 'dang
   }
 
   return 'neutral';
-}
-
-function formatError(error: unknown) {
-  if (error instanceof ApiError) {
-    if (error.errorCode) {
-      return `${error.message} (errorCode: ${error.errorCode})`;
-    }
-
-    return error.message;
-  }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return '未知错误';
 }

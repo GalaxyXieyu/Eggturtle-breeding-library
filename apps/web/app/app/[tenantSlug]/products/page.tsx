@@ -16,15 +16,18 @@ import {
   listSeriesResponseSchema,
   type Product,
 } from '@eggturtle/shared';
-import { Plus, SlidersHorizontal, SquarePen } from 'lucide-react';
+import { Plus, SlidersHorizontal, SquarePen, X } from 'lucide-react';
 
 import { apiRequest, resolveAuthenticatedAssetUrl } from '../../../../lib/api-client';
 import { formatApiError } from '../../../../lib/error-utils';
+import { formatSex } from '../../../../lib/pet-format';
 import { ensureTenantRouteSession } from '../../../../lib/tenant-route-session';
-import TenantFloatingShareButton from '../../../../components/tenant-floating-share-button';
-import ProductCreateDrawer, {
+import { buildFilterPillClass } from '../../../../components/filter-pill';
+import { PetCard } from '../../../../components/pet';
+import ProductDrawer, {
   type ProductSeriesOption,
-} from '../../../../components/product-create-drawer';
+} from '../../../../components/product-drawer';
+import TenantFloatingShareButton from '../../../../components/tenant-floating-share-button';
 import { Button } from '../../../../components/ui/button';
 import { Card, CardContent } from '../../../../components/ui/card';
 import { Input } from '../../../../components/ui/input';
@@ -45,6 +48,16 @@ type ListMeta = {
   totalPages: number;
 };
 
+const SEX_FILTER_OPTIONS = [
+  { value: '', label: '全部' },
+  { value: 'female', label: '母' },
+  { value: 'male', label: '公' },
+  { value: 'unknown', label: '未知' },
+] as const;
+
+const FILTER_SHEET_CLOSE_BUTTON_CLASS =
+  'inline-flex !h-10 !w-10 !min-h-10 !min-w-10 !shrink-0 !items-center !justify-center !rounded-full !border-0 !p-0 !leading-none bg-neutral-900 text-white shadow-[0_10px_24px_rgba(0,0,0,0.34)] ring-1 ring-black/20 transition hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/35 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200';
+
 function resolveTenantScrollRoot(): HTMLElement | null {
   if (typeof document === 'undefined') {
     return null;
@@ -60,7 +73,6 @@ function readScrollTop(target: HTMLElement | Window) {
 
   return target.scrollTop;
 }
-
 
 const DEMO_PRODUCTS: Product[] = [
   {
@@ -125,8 +137,11 @@ export default function TenantProductsPage() {
   const [tenantReady, setTenantReady] = useState(false);
   const [seriesOptions, setSeriesOptions] = useState<ProductSeriesOption[]>([]);
   const [isCreateDrawerOpen, setIsCreateDrawerOpen] = useState(false);
+  const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
   const [showMobileFilterFab, setShowMobileFilterFab] = useState(false);
+  const [isMobileFilterLayout, setIsMobileFilterLayout] = useState(false);
   const mobileTopFilterRef = useRef<HTMLDivElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -135,6 +150,10 @@ export default function TenantProductsPage() {
   const [searchInput, setSearchInput] = useState(listQuery.search);
   const [sexFilter, setSexFilter] = useState(listQuery.sex);
   const [seriesFilterId, setSeriesFilterId] = useState(listQuery.seriesId);
+  const editingProduct = useMemo(
+    () => items.find((item) => item.id === editingProductId) ?? null,
+    [editingProductId, items],
+  );
 
   useEffect(() => {
     if (!isFilterPopoverOpen) {
@@ -236,6 +255,26 @@ export default function TenantProductsPage() {
       if (rafId !== null) {
         window.cancelAnimationFrame(rafId);
       }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const media = window.matchMedia('(max-width: 1023px)');
+    const update = () => {
+      setIsMobileFilterLayout(media.matches);
+    };
+
+    update();
+    media.addEventListener('change', update);
+    window.addEventListener('resize', update);
+
+    return () => {
+      media.removeEventListener('change', update);
+      window.removeEventListener('resize', update);
     };
   }, []);
 
@@ -569,8 +608,10 @@ export default function TenantProductsPage() {
   }
 
   function openEdit(productId: string) {
-    const demoSuffix = isDemoMode ? '?demo=1' : '';
-    router.push(`/app/${tenantSlug}/products/${productId}${demoSuffix}`);
+    setEditingProductId(productId);
+    setIsEditDrawerOpen(true);
+    setError(null);
+    setMessage(null);
   }
 
   function openPreviewDetail(productId: string) {
@@ -657,6 +698,67 @@ export default function TenantProductsPage() {
     return formatSeriesLabelById(seriesFilterId, seriesOptions);
   }, [seriesFilterId, seriesOptions]);
 
+  function renderSexPills(keyPrefix: string, className?: string) {
+    return SEX_FILTER_OPTIONS.map((item) => {
+      const selected = sexFilter === item.value;
+      return (
+        <button
+          key={`${keyPrefix}-${item.label}`}
+          type="button"
+          className={buildFilterPillClass(selected, { className })}
+          onClick={() => setSexFilter(item.value)}
+        >
+          {item.label}
+        </button>
+      );
+    });
+  }
+
+  function renderSeriesPills(
+    keyPrefix: string,
+    options?: {
+      className?: string;
+      showMoreButton?: boolean;
+      onMoreClick?: (event: ReactMouseEvent<HTMLElement>) => void;
+    },
+  ) {
+    const className = options?.className;
+    return (
+      <>
+        <button
+          type="button"
+          className={buildFilterPillClass(!seriesFilterId, { className })}
+          onClick={() => setSeriesFilterId('')}
+        >
+          全部
+        </button>
+        {quickSeriesOptions.map((item) => {
+          const selected = seriesFilterId === item.id;
+          return (
+            <button
+              key={`${keyPrefix}-${item.id}`}
+              type="button"
+              title={`${item.code}${item.name ? ` · ${item.name}` : ''}`}
+              className={buildFilterPillClass(selected, { className })}
+              onClick={() => setSeriesFilterId(item.id)}
+            >
+              <span className="max-w-[9.5rem] truncate">{item.code}</span>
+            </button>
+          );
+        })}
+        {options?.showMoreButton && hasMoreSeriesOptions ? (
+          <button
+            type="button"
+            className={buildFilterPillClass(false, { className: `${className ?? ''} font-medium`.trim() })}
+            onClick={(event) => options.onMoreClick?.(event)}
+          >
+            更多…
+          </button>
+        ) : null}
+      </>
+    );
+  }
+
 
   const filterPopoverAnchorRef = useRef<HTMLElement | null>(null);
   const [filterPopoverAnchorRect, setFilterPopoverAnchorRect] = useState<DOMRect | null>(null);
@@ -667,16 +769,21 @@ export default function TenantProductsPage() {
     placement: 'above' | 'below',
     options?: { toggle?: boolean },
   ) => {
+    const shouldToggle = options?.toggle ?? false;
+    if (isMobileFilterLayout && showMobileFilterFab) {
+      setIsFilterPopoverOpen((current) => (shouldToggle ? !current : true));
+      return;
+    }
+
     filterPopoverAnchorRef.current = event.currentTarget;
     setFilterPopoverAnchorRect(event.currentTarget.getBoundingClientRect());
     setFilterPopoverPlacement(placement);
 
-    const shouldToggle = options?.toggle ?? false;
     setIsFilterPopoverOpen((current) => (shouldToggle ? !current : true));
   };
 
   useEffect(() => {
-    if (!isFilterPopoverOpen) {
+    if (!isFilterPopoverOpen || (isMobileFilterLayout && showMobileFilterFab)) {
       return;
     }
 
@@ -697,7 +804,94 @@ export default function TenantProductsPage() {
       window.removeEventListener('resize', update);
       window.removeEventListener('orientationchange', update);
     };
-  }, [isFilterPopoverOpen]);
+  }, [isFilterPopoverOpen, isMobileFilterLayout, showMobileFilterFab]);
+
+  function renderFilterPanelBody() {
+    return (
+      <div className="grid gap-3">
+        <div className="grid gap-1.5">
+          <p className="text-xs font-semibold text-neutral-600">关键词</p>
+          <Input
+            type="text"
+            placeholder="按编号 / 名称 / 描述搜索"
+            value={searchInput}
+            className="h-9"
+            onChange={(event) => setSearchInput(event.target.value)}
+          />
+        </div>
+
+        <div className="grid gap-1.5">
+          <p className="text-xs font-medium text-neutral-600">性别</p>
+          <div className="flex flex-wrap gap-2">{renderSexPills('sex-panel')}</div>
+        </div>
+
+        <div className="grid gap-1.5">
+          <p className="text-xs font-medium text-neutral-600">系列</p>
+          <div className="flex flex-wrap gap-2">{renderSeriesPills('series-panel')}</div>
+          {hasMoreSeriesOptions ? (
+            <NativeSelect
+              value={seriesFilterId}
+              className="h-9"
+              onChange={(event) => setSeriesFilterId(event.target.value)}
+            >
+              <option value="">更多系列（全部）</option>
+              {seriesOptions.map((item) => (
+                <option key={`series-option-${item.id}`} value={item.id}>
+                  {item.code} · {item.name}
+                </option>
+              ))}
+            </NativeSelect>
+          ) : null}
+        </div>
+
+        <div className="flex items-center justify-between gap-2 border-t border-neutral-200 pt-2">
+          <span className="text-xs text-neutral-500">点选即应用，输入关键词会在 200ms 后同步列表。</span>
+          <div className="flex gap-2">
+            <Button type="button" size="sm" variant="secondary" onClick={handleResetSearch}>
+              清空
+            </Button>
+            <Button type="button" size="sm" variant="secondary" onClick={() => setIsFilterPopoverOpen(false)}>
+              完成
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderMobileFilterSheet() {
+    return (
+      <div
+        className="fixed inset-0 z-[70] flex items-end bg-black/35 p-3 sm:items-center sm:justify-center sm:p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-label="筛选宠物"
+        onClick={() => setIsFilterPopoverOpen(false)}
+      >
+        <div
+          className="w-full max-h-[86vh] overflow-y-auto rounded-3xl border border-neutral-200 bg-white p-4 shadow-2xl sm:max-w-xl dark:border-white/10 dark:bg-neutral-900"
+          data-products-filter-root="true"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div>
+              <p className="text-base font-semibold text-neutral-900 dark:text-neutral-100">筛选宠物</p>
+              <p className="text-xs text-neutral-600 dark:text-neutral-400">选择条件后会实时更新列表。</p>
+            </div>
+            <button
+              type="button"
+              className={FILTER_SHEET_CLOSE_BUTTON_CLASS}
+              aria-label="关闭筛选"
+              onClick={() => setIsFilterPopoverOpen(false)}
+            >
+              <X size={17} strokeWidth={2.6} />
+            </button>
+          </div>
+          {renderFilterPanelBody()}
+        </div>
+      </div>
+    );
+  }
 
   function renderFilterPopover(placement: 'above' | 'below' = 'below') {
     const placementClass =
@@ -716,108 +910,7 @@ export default function TenantProductsPage() {
 
     return (
       <div className={placementClass} style={placementStyle} data-products-filter-root="true" role="dialog">
-        <div className="grid gap-3">
-          <div className="grid gap-1.5">
-            <p className="text-xs font-semibold text-neutral-600">关键词</p>
-            <Input
-              type="text"
-              placeholder="按编号 / 名称 / 描述搜索"
-              value={searchInput}
-              className="h-9"
-              onChange={(event) => setSearchInput(event.target.value)}
-            />
-          </div>
-
-          <div className="grid gap-1.5">
-            <p className="text-xs font-semibold text-neutral-600">性别</p>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { value: '', label: '全部' },
-                { value: 'female', label: '母' },
-                { value: 'male', label: '公' },
-                { value: 'unknown', label: '未知' },
-              ].map((item) => {
-                const selected = sexFilter === item.value;
-                return (
-                  <button
-                    key={`sex-${item.label}`}
-                    type="button"
-                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                      selected
-                        ? 'border-[#FFD400] bg-[#FFF6BF] text-neutral-900'
-                        : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-neutral-300'
-                    }`}
-                    onClick={() => setSexFilter(item.value)}
-                  >
-                    {item.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="grid gap-1.5">
-            <p className="text-xs font-semibold text-neutral-600">系列</p>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                  !seriesFilterId
-                    ? 'border-[#FFD400] bg-[#FFF6BF] text-neutral-900'
-                    : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-neutral-300'
-                }`}
-                onClick={() => setSeriesFilterId('')}
-              >
-                全部
-              </button>
-              {quickSeriesOptions.map((item) => {
-                const selected = seriesFilterId === item.id;
-                return (
-                  <button
-                    key={`series-chip-${item.id}`}
-                    type="button"
-                    title={`${item.code}${item.name ? ` · ${item.name}` : ''}`}
-                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/15 focus-visible:ring-offset-2 active:scale-[0.98] ${
-                      selected
-                        ? 'border-[#FFD400] bg-[#FFF6BF] text-neutral-900'
-                        : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-neutral-300'
-                    }`}
-                    onClick={() => setSeriesFilterId(item.id)}
-                  >
-                    <span className="max-w-[9.5rem] truncate">{item.code}</span>
-                  </button>
-                );
-              })}
-            </div>
-            {hasMoreSeriesOptions ? (
-              <NativeSelect
-                value={seriesFilterId}
-                className="h-9"
-                onChange={(event) => setSeriesFilterId(event.target.value)}
-              >
-                <option value="">更多系列（全部）</option>
-                {seriesOptions.map((item) => (
-                  <option key={`series-option-${item.id}`} value={item.id}>
-                    {item.code} · {item.name}
-                  </option>
-                ))}
-              </NativeSelect>
-            ) : null}
-          </div>
-
-
-          <div className="flex items-center justify-between gap-2 border-t border-neutral-200 pt-2">
-            <span className="text-xs text-neutral-500">点选即应用，输入关键词会在 200ms 后同步列表。</span>
-            <div className="flex gap-2">
-              <Button type="button" size="sm" variant="secondary" onClick={handleResetSearch}>
-                清空
-              </Button>
-              <Button type="button" size="sm" variant="secondary" onClick={() => setIsFilterPopoverOpen(false)}>
-                完成
-              </Button>
-            </div>
-          </div>
-        </div>
+        {renderFilterPanelBody()}
       </div>
     );
   }
@@ -875,100 +968,43 @@ export default function TenantProductsPage() {
             {!showMobileFilterFab ? (
               <div
                 ref={mobileTopFilterRef}
-                className="rounded-2xl border border-neutral-200 bg-gradient-to-b from-white to-neutral-50/80 p-3 lg:hidden"
+                className="z-20 border border-black/5 bg-white/95 px-3 py-3 shadow-[0_4px_20px_rgba(0,0,0,0.06)] backdrop-blur-md supports-[backdrop-filter]:bg-white/90 lg:hidden lg:rounded-2xl"
               >
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-semibold text-neutral-700">顶部筛选</p>
-                <div className="relative" data-products-filter-root="true">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    className="bg-neutral-900 text-white hover:bg-neutral-800"
-                    onClick={(event) => openFilterPopover(event, 'below', { toggle: true })}
-                  >
-                    <SlidersHorizontal size={14} />
-                    筛选{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="mt-2 grid gap-2">
-                <div className="flex min-w-0 items-start gap-2">
-                  <p className="mt-1 w-10 shrink-0 text-[11px] font-semibold text-neutral-500">系列</p>
-                  <div className="flex min-w-0 max-w-full flex-1 gap-2 overflow-x-auto overscroll-x-contain pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    <button
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-medium text-neutral-600">筛选</p>
+                  <div className="relative" data-products-filter-root="true">
+                    <Button
                       type="button"
-                      className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                        !seriesFilterId
-                          ? 'border-[#FFD400] bg-[#FFF6BF] text-neutral-900'
-                          : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-neutral-300'
-                      }`}
-                      onClick={() => setSeriesFilterId('')}
+                      variant="secondary"
+                      size="sm"
+                      onClick={(event) => openFilterPopover(event, 'below', { toggle: true })}
                     >
-                      全部
-                    </button>
-                    {quickSeriesOptions.map((item) => {
-                      const selected = seriesFilterId === item.id;
-                      return (
-                        <button
-                          key={`series-top-${item.id}`}
-                          type="button"
-                          title={`${item.code}${item.name ? ` · ${item.name}` : ''}`}
-                          className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/15 focus-visible:ring-offset-2 active:scale-[0.98] ${
-                            selected
-                              ? 'border-[#FFD400] bg-[#FFF6BF] text-neutral-900'
-                              : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-neutral-300'
-                          }`}
-                          onClick={() => setSeriesFilterId(item.id)}
-                        >
-                          <span className="max-w-[9.5rem] truncate">{item.code}</span>
-                        </button>
-                      );
-                    })}
-                    {hasMoreSeriesOptions ? (
-                      <button
-                        type="button"
-                        className="shrink-0 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 transition hover:border-neutral-300"
-                        onClick={(event) => openFilterPopover(event, 'below')}
-                      >
-                        更多…
-                      </button>
-                    ) : null}
+                      <SlidersHorizontal size={14} />
+                      筛选{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+                    </Button>
                   </div>
                 </div>
 
-                <div className="flex min-w-0 items-start gap-2">
-                  <p className="mt-1 w-10 shrink-0 text-[11px] font-semibold text-neutral-500">性别</p>
-                  <div className="flex min-w-0 max-w-full flex-1 gap-2 overflow-x-auto overscroll-x-contain pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    {[
-                      { value: '', label: '全部' },
-                      { value: 'female', label: '母' },
-                      { value: 'male', label: '公' },
-                      { value: 'unknown', label: '未知' },
-                    ].map((item) => {
-                      const selected = sexFilter === item.value;
-                      return (
-                        <button
-                          key={`sex-top-${item.label}`}
-                          type="button"
-                          className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/15 focus-visible:ring-offset-2 active:scale-[0.98] ${
-                            selected
-                              ? 'border-[#FFD400] bg-[#FFF6BF] text-neutral-900'
-                              : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-neutral-300'
-                          }`}
-                          onClick={() => setSexFilter(item.value)}
-                        >
-                          {item.label}
-                        </button>
-                      );
-                    })}
+                <div className="mt-3 grid gap-3">
+                  <div className="flex min-w-0 items-start gap-2">
+                    <p className="mt-2 w-10 shrink-0 text-[11px] font-medium text-neutral-500">系列</p>
+                    <div className="flex min-w-0 max-w-full flex-1 gap-2 overflow-x-auto overscroll-x-contain pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                      {renderSeriesPills('series-top', {
+                        className: 'shrink-0',
+                        showMoreButton: true,
+                        onMoreClick: (event) => openFilterPopover(event, 'below'),
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="flex min-w-0 items-start gap-2">
+                    <p className="mt-2 w-10 shrink-0 text-[11px] font-medium text-neutral-500">性别</p>
+                    <div className="flex min-w-0 max-w-full flex-1 gap-2 overflow-x-auto overscroll-x-contain pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                      {renderSexPills('sex-top', 'shrink-0')}
+                    </div>
                   </div>
                 </div>
-
               </div>
-
-            </div>
             ) : null}
 
             {activeFilterCount > 0 ? (
@@ -1056,9 +1092,22 @@ export default function TenantProductsPage() {
             {!loading && items.length > 0 ? (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] sm:gap-4 xl:grid-cols-[repeat(auto-fill,minmax(240px,1fr))]">
                 {items.map((item) => (
-                  <article
+                  <PetCard
                     key={`preview-${item.id}`}
-                    className="group cursor-pointer overflow-hidden rounded-2xl border border-neutral-200/90 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)] transition hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-[0_12px_34px_rgba(0,0,0,0.14)]"
+                    variant="tenant"
+                    code={item.code}
+                    coverImageUrl={item.coverImageUrl ? resolveAuthenticatedAssetUrl(item.coverImageUrl) : null}
+                    coverFallbackImageUrl={null}
+                    coverAlt={`${item.code} 封面`}
+                    sex={item.sex}
+                    needMatingStatus={item.needMatingStatus}
+                    daysSinceEgg={item.daysSinceEgg}
+                    offspringUnitPrice={item.offspringUnitPrice}
+                    lastEggAt={item.lastEggAt}
+                    lastMatingAt={item.lastMatingAt}
+                    description={item.description}
+                    sireCode={item.sireCode}
+                    damCode={item.damCode}
                     role="button"
                     tabIndex={0}
                     aria-label={`查看 ${item.code} 详情`}
@@ -1069,37 +1118,8 @@ export default function TenantProductsPage() {
                         openPreviewDetail(item.id);
                       }
                     }}
-                  >
-                    <div className="relative aspect-[4/5] bg-neutral-100">
-                      {item.coverImageUrl ? (
-                        <img
-                          src={resolveImageUrl(item.coverImageUrl)}
-                          alt={`${item.code} 封面`}
-                          className="h-full w-full object-cover"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-xs text-neutral-500">
-                          暂无封面
-                        </div>
-                      )}
-                      <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/30 to-transparent" />
-                      {item.needMatingStatus === 'need_mating' || item.needMatingStatus === 'warning' ? (
-                        <div
-                          className={`absolute left-2 top-2 rounded-full px-2.5 py-1 text-xs font-medium ${
-                            item.needMatingStatus === 'need_mating'
-                              ? 'bg-[#FFD400]/90 text-black ring-1 ring-black/10'
-                              : 'bg-red-600/90 text-white ring-1 ring-black/10'
-                          }`}
-                        >
-                          {item.needMatingStatus === 'need_mating' ? '待配' : '⚠️逾期未交配'}
-                          {typeof item.daysSinceEgg === 'number' ? ` 第${item.daysSinceEgg}天` : ''}
-                        </div>
-                      ) : null}
-                      <div className="absolute right-2 top-2 rounded-full bg-white/90 px-2.5 py-1 text-xs text-black">
-                        {formatSex(item.sex)}
-                      </div>
-                      <span className="absolute bottom-2 right-2 flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full shadow-[0_2px_12px_rgba(0,0,0,0.12)] transition-transform duration-200 hover:scale-105">
+                    topRightSlot={
+                      <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full shadow-[0_2px_12px_rgba(0,0,0,0.12)] transition-transform duration-200 hover:scale-105">
                         <button
                           type="button"
                           data-ui="button"
@@ -1113,57 +1133,8 @@ export default function TenantProductsPage() {
                           <SquarePen size={14} strokeWidth={2.25} />
                         </button>
                       </span>
-                    </div>
-
-                    <div className="p-3 lg:p-4">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="min-w-0 text-sm font-semibold tracking-wide text-neutral-900 sm:text-base lg:text-lg">
-                          {item.code}
-                        </div>
-                        {typeof item.offspringUnitPrice === 'number' ? (
-                          <span className="shrink-0 rounded-full bg-neutral-900 px-2 py-0.5 text-[11px] font-semibold leading-5 text-[#FFD400] ring-1 ring-white/10 sm:text-xs">
-                            子代 ¥ {item.offspringUnitPrice}
-                          </span>
-                        ) : null}
-                      </div>
-
-                      {item.lastEggAt || item.lastMatingAt ? (
-                        <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-neutral-700">
-                          {item.lastEggAt ? (
-                            <span className="rounded-full bg-amber-50 px-2 py-0.5 ring-1 ring-amber-200/60">
-                              产蛋 {formatShortDate(item.lastEggAt)}
-                            </span>
-                          ) : null}
-                          {item.lastMatingAt ? (
-                            <span className="rounded-full bg-emerald-50 px-2 py-0.5 ring-1 ring-emerald-200/60">
-                              交配 {formatShortDate(item.lastMatingAt)}
-                            </span>
-                          ) : null}
-                        </div>
-                      ) : null}
-
-                      {item.description ? (
-                        <div className="mt-2 rounded-xl bg-neutral-100/80 px-2.5 py-1.5 text-xs leading-relaxed text-neutral-700 sm:text-sm">
-                          <span className="line-clamp-2">{item.description}</span>
-                        </div>
-                      ) : null}
-
-                      {item.sireCode || item.damCode ? (
-                        <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-neutral-700">
-                          {item.sireCode ? (
-                            <span className="rounded-full bg-neutral-100 px-2 py-0.5">
-                              父系 {item.sireCode}
-                            </span>
-                          ) : null}
-                          {item.damCode ? (
-                            <span className="rounded-full bg-neutral-100 px-2 py-0.5">
-                              母系 {item.damCode}
-                            </span>
-                          ) : null}
-                        </div>
-                      ) : null}
-                    </div>
-                  </article>
+                    }
+                  />
                 ))}
               </div>
             ) : null}
@@ -1181,7 +1152,7 @@ export default function TenantProductsPage() {
                   variant="secondary"
                   onClick={() => openEdit(continueEditProductId)}
                 >
-                  继续编辑图片
+                  继续抽屉编辑
                 </Button>
               </div>
             ) : null}
@@ -1231,9 +1202,36 @@ export default function TenantProductsPage() {
         ) : null}
       </main>
 
-      {isFilterPopoverOpen ? renderFilterPopover(filterPopoverPlacement) : null}
+      {isFilterPopoverOpen
+        ? isMobileFilterLayout && showMobileFilterFab
+          ? renderMobileFilterSheet()
+          : renderFilterPopover(filterPopoverPlacement)
+        : null}
 
-      <ProductCreateDrawer
+      <ProductDrawer
+        mode="edit"
+        open={isEditDrawerOpen}
+        product={editingProduct}
+        tenantSlug={tenantSlug}
+        isDemoMode={isDemoMode}
+        seriesOptions={seriesOptions}
+        onSeriesCreated={handleSeriesCreated}
+        onClose={() => {
+          setIsEditDrawerOpen(false);
+          setEditingProductId(null);
+        }}
+        onSaved={(nextProduct) => {
+          setItems((currentItems) =>
+            currentItems.map((item) => (item.id === nextProduct.id ? nextProduct : item)),
+          );
+          setMessage(`已保存 ${nextProduct.code}。`);
+          setError(null);
+          setContinueEditProductId(null);
+        }}
+      />
+
+      <ProductDrawer
+        mode="create"
         open={isCreateDrawerOpen}
         onClose={() => setIsCreateDrawerOpen(false)}
         tenantSlug={tenantSlug}
@@ -1248,38 +1246,4 @@ export default function TenantProductsPage() {
 
 function normalizeText(value: string | null | undefined) {
   return (value ?? '').trim().toLowerCase();
-}
-
-function resolveImageUrl(value: string) {
-  return resolveAuthenticatedAssetUrl(value);
-}
-
-function formatSex(value?: string | null) {
-  if (!value) {
-    return '未知';
-  }
-
-  if (value === 'male') {
-    return '公';
-  }
-
-  if (value === 'female') {
-    return '母';
-  }
-
-  if (value === 'unknown') {
-    return '未知';
-  }
-
-  return value;
-}
-
-function formatShortDate(value?: string | null) {
-  const raw = (value ?? '').trim();
-  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (!match) {
-    return '';
-  }
-
-  return `${match[2]}.${match[3]}`;
 }

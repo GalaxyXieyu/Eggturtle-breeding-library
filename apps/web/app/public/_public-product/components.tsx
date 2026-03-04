@@ -5,20 +5,9 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import type { PublicSharePresentation } from '@eggturtle/shared';
 
+import { PetCard } from '../../../components/pet';
+import { formatSex, formatShortDate } from '../../../lib/pet-format';
 import type { Breeder, BreederEventItem, FamilyTree, MaleMateLoadItem, NeedMatingStatus, Series } from './types';
-
-function formatShortDate(value?: string | null) {
-  const iso = (value || '').trim();
-  const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (!match) return '';
-  return `${match[2]}.${match[3]}`;
-}
-
-function sexLabel(sex?: string | null) {
-  if (sex === 'male') return '公';
-  if (sex === 'female') return '母';
-  return '-';
-}
 
 function withDemo(path: string, demo: boolean) {
   return demo ? `${path}${path.includes('?') ? '&' : '?'}demo=1` : path;
@@ -205,67 +194,24 @@ export function BreederCard({
   shareQuery?: string;
 }) {
   const mainImage = breeder.images.find((item) => item.type === 'main') || breeder.images[0];
-  const status = breeder.needMatingStatus || 'normal';
-
-  const badge =
-    status === 'need_mating'
-      ? 'bg-[#FFD400]/90 text-black ring-1 ring-black/10'
-      : status === 'warning'
-        ? 'bg-red-600/90 text-white ring-1 ring-black/10'
-        : null;
-
   return (
-    <Link
+    <PetCard
       href={withDemo(publicPath(shareToken, `/products/${breeder.id}`, shareQuery), demo)}
-      className="group w-full overflow-hidden rounded-2xl border border-neutral-200/90 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)] transition active:scale-[0.995] hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-[0_12px_34px_rgba(0,0,0,0.14)]"
-    >
-      <div className="relative aspect-[4/5] bg-neutral-100">
-        <img
-          src={mainImage?.url || '/images/mg_01.jpg'}
-          alt={breeder.code}
-          className="h-full w-full object-cover"
-          loading="lazy"
-          decoding="async"
-          fetchPriority="low"
-        />
-        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/30 to-transparent" />
-
-        {badge ? (
-          <div className={`absolute left-2 top-2 rounded-full px-2.5 py-1 text-xs font-medium ${badge}`}>
-            {status === 'need_mating' ? '待配' : '⚠️逾期未交配'}
-            {typeof breeder.daysSinceEgg === 'number' ? ` 第${breeder.daysSinceEgg}天` : ''}
-          </div>
-        ) : null}
-
-        <div className="absolute right-2 top-2 rounded-full bg-white/90 px-2.5 py-1 text-xs text-black">{sexLabel(breeder.sex)}</div>
-      </div>
-
-      <div className="p-3 lg:p-4">
-        <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0 text-sm font-semibold tracking-wide text-neutral-900 sm:text-base lg:text-lg">{breeder.code}</div>
-          {typeof breeder.offspringUnitPrice === 'number' ? (
-            <span className="shrink-0 rounded-full bg-neutral-900 px-2 py-0.5 text-[11px] font-semibold leading-5 text-[#FFD400] ring-1 ring-white/10 sm:text-xs">
-              子代 ¥ {breeder.offspringUnitPrice}
-            </span>
-          ) : null}
-        </div>
-
-        <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-neutral-700">
-          {breeder.lastEggAt ? (
-            <span className="rounded-full bg-amber-50 px-2 py-0.5 ring-1 ring-amber-200/60">产蛋 {formatShortDate(breeder.lastEggAt)}</span>
-          ) : null}
-          {breeder.lastMatingAt ? (
-            <span className="rounded-full bg-emerald-50 px-2 py-0.5 ring-1 ring-emerald-200/60">交配 {formatShortDate(breeder.lastMatingAt)}</span>
-          ) : null}
-        </div>
-
-        {breeder.description ? (
-          <div className="mt-2 rounded-xl bg-neutral-100/80 px-2.5 py-1.5 text-xs leading-relaxed text-neutral-700 sm:text-sm">
-            <span className="line-clamp-2">{breeder.description}</span>
-          </div>
-        ) : null}
-      </div>
-    </Link>
+      variant="public"
+      code={breeder.code}
+      coverImageUrl={mainImage?.url}
+      coverFallbackImageUrl="/images/mg_01.jpg"
+      coverAlt={breeder.code}
+      sex={breeder.sex}
+      sexEmptyLabel="-"
+      sexUnknownLabel="-"
+      needMatingStatus={breeder.needMatingStatus}
+      daysSinceEgg={breeder.daysSinceEgg}
+      offspringUnitPrice={breeder.offspringUnitPrice}
+      lastEggAt={breeder.lastEggAt}
+      lastMatingAt={breeder.lastMatingAt}
+      description={breeder.description}
+    />
   );
 }
 
@@ -365,7 +311,9 @@ export function BreederCarousel({
                     查看系列说明
                   </button>
                 ) : null}
-                <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-neutral-900">{sexLabel(breeder.sex)}</span>
+                <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-neutral-900">
+                  {formatSex(breeder.sex, { emptyLabel: '-', unknownLabel: '-' })}
+                </span>
                 {series?.name ? <span className="rounded-full bg-black/70 px-3 py-1 text-xs font-medium text-white">系列 {series.name}</span> : null}
               </div>
               <span className="shrink-0 rounded-full bg-black/70 px-3 py-1 text-xs font-medium text-white">

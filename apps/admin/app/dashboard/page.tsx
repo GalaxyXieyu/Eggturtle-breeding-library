@@ -10,7 +10,8 @@ import {
 } from '@eggturtle/shared';
 
 import { useUiPreferences } from '../../components/ui-preferences';
-import { ApiError, apiRequest } from '../../lib/api-client';
+import { apiRequest } from '../../lib/api-client';
+import { formatDateTime, formatUnknownError } from '../../lib/formatters';
 
 type OverviewState = {
   loading: boolean;
@@ -90,7 +91,11 @@ export default function DashboardOverviewPage() {
         });
       } catch (error) {
         if (!cancelled) {
-          setState((previous) => ({ ...previous, loading: false, error: formatError(error, copy.unknownError) }));
+          setState((previous) => ({
+            ...previous,
+            loading: false,
+            error: formatUnknownError(error, { fallback: copy.unknownError })
+          }));
         }
       }
     }
@@ -160,7 +165,7 @@ export default function DashboardOverviewPage() {
                       <span className="mono">{log.targetTenantId ?? '-'}</span>
                     </div>
                   </td>
-                  <td>{formatDate(log.createdAt)}</td>
+                  <td>{formatDateTime(log.createdAt)}</td>
                 </tr>
               ))}
             </tbody>
@@ -172,25 +177,4 @@ export default function DashboardOverviewPage() {
       {state.error ? <p className="error">{state.error}</p> : null}
     </section>
   );
-}
-
-function formatDate(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return date.toLocaleString();
-}
-
-function formatError(error: unknown, fallback: string) {
-  if (error instanceof ApiError) {
-    return error.message;
-  }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return fallback;
 }
