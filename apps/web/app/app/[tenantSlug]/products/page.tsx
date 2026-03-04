@@ -1210,18 +1210,11 @@ export default function TenantProductsPage() {
             <TenantFloatingShareButton intent="feed" inline className="h-11 w-11" />
             {showMobileFilterFab ? (
               <div className="relative" data-products-filter-root="true">
-                {/*
-                  激活态使用黑底白图标，避免深色背景下图标对比度不足。
-                */}
                 <Button
                   type="button"
                   size="icon"
                   variant="secondary"
-                  className={`tenant-fab-button shadow-[0_14px_30px_rgba(0,0,0,0.18)] ring-1 ring-black/10 ${
-                    isFilterPopoverOpen && filterPopoverPlacement === 'above'
-                      ? 'bg-neutral-900 text-white hover:bg-neutral-800 [&_svg]:text-white'
-                      : 'bg-white/95 text-neutral-800 hover:bg-white'
-                  }`}
+                  className="tenant-fab-button bg-neutral-900 text-white shadow-[0_14px_30px_rgba(0,0,0,0.18)] ring-1 ring-black/10 hover:bg-neutral-800 [&_svg]:text-white"
                   aria-label="打开筛选"
                   onClick={(event) => openFilterPopover(event, 'above', { toggle: true })}
                 >
