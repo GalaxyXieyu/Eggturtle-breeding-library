@@ -125,36 +125,33 @@ export default function TenantProductsPage() {
       return;
     }
 
-    function handlePointerDown(event: PointerEvent) {
-      const target = event.target as HTMLElement | null;
-      if (!target) {
+    const handleClickAway = (event: MouseEvent) => {
+      const target = event.target;
+      if (target instanceof Element && target.closest('[data-products-filter-root="true"]')) {
         return;
       }
-
-      if (target.closest('[data-products-filter-root="true"]')) {
-        return;
-      }
-
       setIsFilterPopoverOpen(false);
-    }
+    };
 
-    function handleKeyDown(event: KeyboardEvent) {
+    const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setIsFilterPopoverOpen(false);
       }
-    }
+    };
 
-    function handleScroll() {
+    const handleScroll = () => {
       setIsFilterPopoverOpen(false);
-    }
+    };
 
-    window.addEventListener('pointerdown', handlePointerDown);
-    window.addEventListener('keydown', handleKeyDown);
+    const clickOptions: AddEventListenerOptions = { capture: true };
+
+    document.addEventListener('click', handleClickAway, clickOptions);
+    document.addEventListener('keydown', handleKeyDown);
     window.addEventListener('scroll', handleScroll, { passive: true });
 
     return () => {
-      window.removeEventListener('pointerdown', handlePointerDown);
-      window.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('click', handleClickAway, clickOptions);
+      document.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('scroll', handleScroll);
     };
   }, [isFilterPopoverOpen]);
@@ -507,35 +504,6 @@ export default function TenantProductsPage() {
     };
   }, [buildDraftQuery, listQuery, replaceListQuery]);
 
-  useEffect(() => {
-    if (!isFilterPopoverOpen) {
-      return;
-    }
-
-    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
-      const target = event.target;
-      if (target instanceof Element && target.closest('[data-products-filter-root="true"]')) {
-        return;
-      }
-      setIsFilterPopoverOpen(false);
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setIsFilterPopoverOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handlePointerDown);
-    document.addEventListener('touchstart', handlePointerDown);
-    document.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      document.removeEventListener('mousedown', handlePointerDown);
-      document.removeEventListener('touchstart', handlePointerDown);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isFilterPopoverOpen]);
 
   function handleResetSearch() {
     setSearchInput('');
