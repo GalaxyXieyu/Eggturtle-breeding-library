@@ -1,14 +1,14 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   listProductsResponseSchema,
   listSeriesResponseSchema,
   type Product,
 } from '@eggturtle/shared';
-import { Plus, Search as SearchIcon, SlidersHorizontal, SquarePen, X } from 'lucide-react';
+import { Plus, SlidersHorizontal, SquarePen } from 'lucide-react';
 
 import { apiRequest, resolveAuthenticatedAssetUrl } from '../../../../lib/api-client';
 import { formatApiError } from '../../../../lib/error-utils';
@@ -18,20 +18,13 @@ import ProductCreateDrawer, {
   type ProductSeriesOption,
 } from '../../../../components/product-create-drawer';
 import { Button } from '../../../../components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '../../../../components/ui/card';
+import { Card, CardContent } from '../../../../components/ui/card';
 import { Input } from '../../../../components/ui/input';
 import { NativeSelect } from '../../../../components/ui/native-select';
 import {
   DEFAULT_LIST_QUERY,
   PAGE_SIZE_OPTIONS,
   compareProducts,
-  findSeriesByInput,
   formatSeriesLabelById,
   parseListQuery,
   parseSortSelection,
@@ -97,9 +90,6 @@ const DEMO_PRODUCTS: Product[] = [
   },
 ];
 
-const MODAL_CLOSE_BUTTON_CLASS =
-  '!h-10 !w-10 !min-h-10 !min-w-10 !rounded-full !border-0 !p-0 !leading-none bg-neutral-900 text-white shadow-[0_10px_24px_rgba(0,0,0,0.34)] ring-1 ring-black/20 transition hover:bg-neutral-800 focus-visible:ring-2 focus-visible:ring-black/35 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200';
-
 export default function TenantProductsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -115,14 +105,14 @@ export default function TenantProductsPage() {
   const [tenantReady, setTenantReady] = useState(false);
   const [seriesOptions, setSeriesOptions] = useState<ProductSeriesOption[]>([]);
   const [isCreateDrawerOpen, setIsCreateDrawerOpen] = useState(false);
-  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [continueEditProductId, setContinueEditProductId] = useState<string | null>(null);
 
   const [searchInput, setSearchInput] = useState(listQuery.search);
   const [sexFilter, setSexFilter] = useState(listQuery.sex);
-  const [seriesInput, setSeriesInput] = useState(listQuery.seriesId);
+  const [seriesFilterId, setSeriesFilterId] = useState(listQuery.seriesId);
   const [sortFilter, setSortFilter] = useState<SortSelection>(
     toSortSelection(listQuery.sortBy, listQuery.sortDir),
   );
@@ -138,7 +128,7 @@ export default function TenantProductsPage() {
   useEffect(() => {
     setSearchInput(listQuery.search);
     setSexFilter(listQuery.sex);
-    setSeriesInput(listQuery.seriesId);
+    setSeriesFilterId(listQuery.seriesId);
     setSortFilter(toSortSelection(listQuery.sortBy, listQuery.sortDir));
   }, [listQuery]);
 
@@ -395,51 +385,61 @@ export default function TenantProductsPage() {
     };
   }, [listQuery, loadProducts, loadSeriesOptions, tenantReady]);
 
-  function applyFilters() {
-    setError(null);
-    setMessage(null);
-    setContinueEditProductId(null);
-
+  const buildDraftQuery = useCallback(() => {
     const [sortBy, sortDir] = parseSortSelection(sortFilter);
-    const trimmedSeriesInput = seriesInput.trim();
-    const matchedSeries = findSeriesByInput(trimmedSeriesInput, seriesOptions);
 
-    if (trimmedSeriesInput && !matchedSeries) {
-      setError('未匹配到系列，请输入已存在的系列名称/编码/ID，或先用新建功能创建系列。');
-      return;
-    }
-
-    replaceListQuery({
+    return {
       ...listQuery,
       page: 1,
       search: searchInput.trim(),
       sex: sexFilter.trim(),
-      seriesId: matchedSeries ? matchedSeries.id : '',
+      seriesId: seriesFilterId.trim(),
       sortBy,
       sortDir,
-    });
-  }
+    };
+  }, [listQuery, searchInput, seriesFilterId, sexFilter, sortFilter]);
 
-  function handleSearch(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    applyFilters();
-    setIsFilterModalOpen(false);
-  }
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const nextQuery = buildDraftQuery();
+      const hasChanged =
+        nextQuery.search !== listQuery.search ||
+        nextQuery.sex !== listQuery.sex ||
+        nextQuery.seriesId !== listQuery.seriesId ||
+        nextQuery.sortBy !== listQuery.sortBy ||
+        nextQuery.sortDir !== listQuery.sortDir ||
+        nextQuery.page !== listQuery.page;
+
+      if (!hasChanged) {
+        return;
+      }
+
+      setError(null);
+      setMessage(null);
+      setContinueEditProductId(null);
+      replaceListQuery(nextQuery);
+    }, 200);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [buildDraftQuery, listQuery, replaceListQuery]);
 
   function handleResetSearch() {
     setSearchInput('');
     setSexFilter('');
-    setSeriesInput('');
+    setSeriesFilterId('');
     setSortFilter(toSortSelection(DEFAULT_LIST_QUERY.sortBy, DEFAULT_LIST_QUERY.sortDir));
+    setCoverFilter('all');
     setError(null);
     setMessage(null);
     setContinueEditProductId(null);
+    setIsFilterPopoverOpen(false);
 
     replaceListQuery({
       ...DEFAULT_LIST_QUERY,
       pageSize: listQuery.pageSize,
     });
-    setIsFilterModalOpen(false);
   }
 
   function goToPage(nextPage: number) {
@@ -523,23 +523,31 @@ export default function TenantProductsPage() {
     await loadProducts(listQuery);
   }
 
-  function renderFilterForm(scope: 'desktop' | 'mobile') {
-    const searchId = `products-search-${scope}`;
-    const sexId = `products-sex-filter-${scope}`;
-    const seriesId = `products-series-filter-${scope}`;
-    const seriesOptionsId = `products-series-options-${scope}`;
-    const sortId = `products-sort-${scope}`;
-    const coverId = `products-cover-filter-${scope}`;
+  const quickSeriesOptions = useMemo(() => seriesOptions.slice(0, 6), [seriesOptions]);
+  const hasMoreSeriesOptions = seriesOptions.length > quickSeriesOptions.length;
 
+  const activeFilterCount =
+    (searchInput.trim() ? 1 : 0) +
+    (sexFilter ? 1 : 0) +
+    (seriesFilterId ? 1 : 0) +
+    (sortFilter !== toSortSelection(DEFAULT_LIST_QUERY.sortBy, DEFAULT_LIST_QUERY.sortDir) ? 1 : 0) +
+    (coverFilter !== 'all' ? 1 : 0);
+
+  const selectedSeriesLabel = useMemo(() => {
+    if (!seriesFilterId) {
+      return null;
+    }
+
+    return formatSeriesLabelById(seriesFilterId, seriesOptions);
+  }, [seriesFilterId, seriesOptions]);
+
+  function renderFilterPopover() {
     return (
-      <form className="grid gap-3" onSubmit={handleSearch}>
-        <div className="grid grid-cols-1 gap-2 lg:grid-cols-3">
+      <div className="absolute right-0 top-full z-40 mt-2 w-[min(96vw,620px)] rounded-2xl border border-neutral-200 bg-white p-3 shadow-[0_18px_40px_rgba(15,23,42,0.16)]">
+        <div className="grid gap-3">
           <div className="grid gap-1.5">
-            <label htmlFor={searchId} className="text-xs font-semibold text-neutral-600">
-              关键词
-            </label>
+            <p className="text-xs font-semibold text-neutral-600">关键词</p>
             <Input
-              id={searchId}
               type="text"
               placeholder="按编号 / 名称 / 描述搜索"
               value={searchInput}
@@ -547,103 +555,151 @@ export default function TenantProductsPage() {
               onChange={(event) => setSearchInput(event.target.value)}
             />
           </div>
-          <div className="grid gap-1.5">
-            <label htmlFor={sexId} className="text-xs font-semibold text-neutral-600">
-              性别
-            </label>
-            <NativeSelect
-              id={sexId}
-              value={sexFilter}
-              className="h-9"
-              onChange={(event) => setSexFilter(event.target.value)}
-              aria-label="性别筛选"
-            >
-              <option value="">全部性别</option>
-              <option value="male">公</option>
-              <option value="female">母</option>
-              <option value="unknown">未知</option>
-            </NativeSelect>
-          </div>
-          <div className="grid gap-1.5">
-            <label htmlFor={seriesId} className="text-xs font-semibold text-neutral-600">
-              系列（输入自动识别）
-            </label>
-            <Input
-              id={seriesId}
-              type="text"
-              list={seriesOptionsId}
-              placeholder="输入系列编码 / 名称 / ID"
-              value={seriesInput}
-              className="h-9"
-              onChange={(event) => setSeriesInput(event.target.value)}
-            />
-            <datalist id={seriesOptionsId}>
-              {seriesOptions.flatMap((item) => [
-                <option key={`${scope}-${item.id}-code`} value={item.code}>
-                  {item.name}
-                </option>,
-                <option key={`${scope}-${item.id}-name`} value={item.name}>
-                  {item.code}
-                </option>,
-                <option key={`${scope}-${item.id}-id`} value={item.id}>
-                  {item.name}
-                </option>,
-              ])}
-            </datalist>
-          </div>
-        </div>
 
-        <div className="grid grid-cols-1 gap-2 lg:grid-cols-3">
           <div className="grid gap-1.5">
-            <label htmlFor={sortId} className="text-xs font-semibold text-neutral-600">
-              排序
-            </label>
-            <NativeSelect
-              id={sortId}
-              value={sortFilter}
-              className="h-9"
-              onChange={(event) => setSortFilter(event.target.value as SortSelection)}
-            >
-              <option value="updatedAt-desc">更新时间（新到旧）</option>
-              <option value="updatedAt-asc">更新时间（旧到新）</option>
-              <option value="code-asc">编码（A-Z）</option>
-              <option value="code-desc">编码（Z-A）</option>
-            </NativeSelect>
+            <p className="text-xs font-semibold text-neutral-600">性别</p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { value: '', label: '全部' },
+                { value: 'male', label: '公' },
+                { value: 'female', label: '母' },
+                { value: 'unknown', label: '未知' },
+              ].map((item) => {
+                const selected = sexFilter === item.value;
+                return (
+                  <button
+                    key={`sex-${item.label}`}
+                    type="button"
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                      selected
+                        ? 'border-[#FFD400] bg-[#FFF6BF] text-neutral-900'
+                        : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-neutral-300'
+                    }`}
+                    onClick={() => setSexFilter(item.value)}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div className="grid gap-1.5">
-            <label htmlFor={coverId} className="text-xs font-semibold text-neutral-600">
-              封面筛选（当前页）
-            </label>
-            <NativeSelect
-              id={coverId}
-              value={coverFilter}
-              className="h-9"
-              onChange={(event) => setCoverFilter(event.target.value as CoverFilter)}
-            >
-              <option value="all">全部封面状态</option>
-              <option value="with-cover">仅有封面</option>
-              <option value="without-cover">仅无封面</option>
-            </NativeSelect>
+            <p className="text-xs font-semibold text-neutral-600">系列</p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                  !seriesFilterId
+                    ? 'border-[#FFD400] bg-[#FFF6BF] text-neutral-900'
+                    : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-neutral-300'
+                }`}
+                onClick={() => setSeriesFilterId('')}
+              >
+                全部
+              </button>
+              {quickSeriesOptions.map((item) => {
+                const selected = seriesFilterId === item.id;
+                return (
+                  <button
+                    key={`series-chip-${item.id}`}
+                    type="button"
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                      selected
+                        ? 'border-[#FFD400] bg-[#FFF6BF] text-neutral-900'
+                        : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-neutral-300'
+                    }`}
+                    onClick={() => setSeriesFilterId(item.id)}
+                  >
+                    {item.code}
+                  </button>
+                );
+              })}
+            </div>
+            {hasMoreSeriesOptions ? (
+              <NativeSelect
+                value={seriesFilterId}
+                className="h-9"
+                onChange={(event) => setSeriesFilterId(event.target.value)}
+              >
+                <option value="">更多系列（全部）</option>
+                {seriesOptions.map((item) => (
+                  <option key={`series-option-${item.id}`} value={item.id}>
+                    {item.code} · {item.name}
+                  </option>
+                ))}
+              </NativeSelect>
+            ) : null}
+          </div>
+
+          <div className="grid gap-1.5">
+            <p className="text-xs font-semibold text-neutral-600">排序</p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { value: 'updatedAt-desc', label: '更新时间 新→旧' },
+                { value: 'updatedAt-asc', label: '更新时间 旧→新' },
+                { value: 'code-asc', label: '编码 A-Z' },
+                { value: 'code-desc', label: '编码 Z-A' },
+              ].map((item) => {
+                const selected = sortFilter === item.value;
+                return (
+                  <button
+                    key={`sort-${item.value}`}
+                    type="button"
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                      selected
+                        ? 'border-[#FFD400] bg-[#FFF6BF] text-neutral-900'
+                        : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-neutral-300'
+                    }`}
+                    onClick={() => setSortFilter(item.value as SortSelection)}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="grid gap-1.5">
+            <p className="text-xs font-semibold text-neutral-600">封面筛选（当前页）</p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { value: 'all', label: '全部' },
+                { value: 'with-cover', label: '仅有封面' },
+                { value: 'without-cover', label: '仅无封面' },
+              ].map((item) => {
+                const selected = coverFilter === item.value;
+                return (
+                  <button
+                    key={`cover-${item.value}`}
+                    type="button"
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                      selected
+                        ? 'border-[#FFD400] bg-[#FFF6BF] text-neutral-900'
+                        : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-neutral-300'
+                    }`}
+                    onClick={() => setCoverFilter(item.value as CoverFilter)}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-2 border-t border-neutral-200 pt-2">
+            <span className="text-xs text-neutral-500">点选即应用，输入关键词会在 200ms 后同步列表。</span>
+            <div className="flex gap-2">
+              <Button type="button" size="sm" variant="secondary" onClick={handleResetSearch}>
+                清空
+              </Button>
+              <Button type="button" size="sm" variant="secondary" onClick={() => setIsFilterPopoverOpen(false)}>
+                完成
+              </Button>
+            </div>
           </div>
         </div>
-
-        <div className="flex flex-wrap gap-2">
-          <Button type="submit" size="sm" disabled={loading}>
-            <SearchIcon size={14} />
-            {loading ? '加载中...' : '应用筛选'}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            onClick={handleResetSearch}
-            disabled={loading}
-          >
-            重置
-          </Button>
-        </div>
-      </form>
+      </div>
     );
   }
 
@@ -661,21 +717,24 @@ export default function TenantProductsPage() {
               </p>
             </div>
             <div className="hidden items-center gap-2 lg:flex">
+              <div className="relative">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    setIsCreateDrawerOpen(false);
+                    setIsFilterPopoverOpen((current) => !current);
+                  }}
+                >
+                  <SlidersHorizontal size={14} />
+                  筛选{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+                </Button>
+                {isFilterPopoverOpen ? renderFilterPopover() : null}
+              </div>
               <Button
                 type="button"
-                variant="secondary"
                 onClick={() => {
-                  setIsCreateDrawerOpen(false);
-                  setIsFilterModalOpen(true);
-                }}
-              >
-                <SlidersHorizontal size={14} />
-                筛选
-              </Button>
-              <Button
-                type="button"
-                onClick={() => {
-                  setIsFilterModalOpen(false);
+                  setIsFilterPopoverOpen(false);
                   setIsCreateDrawerOpen(true);
                 }}
               >
@@ -688,20 +747,60 @@ export default function TenantProductsPage() {
 
         <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
           <CardContent className="space-y-4 pt-6">
-            <div className="flex flex-wrap gap-2 text-xs text-neutral-600">
-              <span className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5">
-                共 {meta.total} 条，当前页 {filteredItems.length} 条
-              </span>
-              {listQuery.seriesId ? (
-                <span className="rounded-full border border-[#FFD400]/40 bg-[#FFF9D8] px-3 py-1.5">
-                  系列：{formatSeriesLabelById(listQuery.seriesId, seriesOptions)}
-                </span>
-              ) : null}
-              {listQuery.sex ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-600">
+              <div className="flex flex-wrap gap-2">
                 <span className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5">
-                  性别：{formatSex(listQuery.sex)}
+                  共 {meta.total} 条，当前页 {filteredItems.length} 条
                 </span>
-              ) : null}
+                {searchInput.trim() ? (
+                  <button
+                    type="button"
+                    className="rounded-full border border-[#FFD400]/40 bg-[#FFF9D8] px-3 py-1.5"
+                    onClick={() => setSearchInput('')}
+                  >
+                    关键词：{searchInput.trim()} ×
+                  </button>
+                ) : null}
+                {sexFilter ? (
+                  <button
+                    type="button"
+                    className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5"
+                    onClick={() => setSexFilter('')}
+                  >
+                    性别：{formatSex(sexFilter)} ×
+                  </button>
+                ) : null}
+                {selectedSeriesLabel ? (
+                  <button
+                    type="button"
+                    className="rounded-full border border-[#FFD400]/40 bg-[#FFF9D8] px-3 py-1.5"
+                    onClick={() => setSeriesFilterId('')}
+                  >
+                    系列：{selectedSeriesLabel} ×
+                  </button>
+                ) : null}
+                {coverFilter !== 'all' ? (
+                  <button
+                    type="button"
+                    className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5"
+                    onClick={() => setCoverFilter('all')}
+                  >
+                    封面：{coverFilter === 'with-cover' ? '仅有封面' : '仅无封面'} ×
+                  </button>
+                ) : null}
+              </div>
+              <div className="relative lg:hidden">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setIsFilterPopoverOpen((current) => !current)}
+                >
+                  <SlidersHorizontal size={14} />
+                  筛选{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+                </Button>
+                {isFilterPopoverOpen ? renderFilterPopover() : null}
+              </div>
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -894,7 +993,7 @@ export default function TenantProductsPage() {
           </Card>
         ) : null}
 
-        {!isFilterModalOpen && !isCreateDrawerOpen ? (
+        {!isCreateDrawerOpen ? (
           <div className="mobile-fab fixed right-6 z-50 flex flex-col-reverse gap-2 lg:hidden">
             <Button
               type="button"
@@ -902,61 +1001,13 @@ export default function TenantProductsPage() {
               className="tenant-fab-button h-11 w-11"
               aria-label="新建产品"
               onClick={() => {
-                setIsFilterModalOpen(false);
+                setIsFilterPopoverOpen(false);
                 setIsCreateDrawerOpen(true);
               }}
             >
               <Plus size={18} />
             </Button>
-            <Button
-              type="button"
-              size="icon"
-              variant="secondary"
-              className="tenant-fab-button bg-white/95 dark:bg-neutral-900/92"
-              aria-label="打开筛选弹窗"
-              onClick={() => {
-                setIsCreateDrawerOpen(false);
-                setIsFilterModalOpen(true);
-              }}
-            >
-              <SlidersHorizontal size={18} />
-            </Button>
             <TenantFloatingShareButton intent="feed" inline className="h-11 w-11" />
-          </div>
-        ) : null}
-
-        {isFilterModalOpen ? (
-          <div
-            className="fixed inset-0 z-50 flex items-end bg-black/35 p-3 sm:items-center sm:justify-center sm:p-4"
-            role="dialog"
-            aria-modal="true"
-            aria-label="筛选产品"
-            onClick={() => setIsFilterModalOpen(false)}
-          >
-            <Card
-              className="w-full max-h-[86vh] overflow-y-auto rounded-3xl border-neutral-200 bg-white shadow-2xl sm:max-w-xl"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <CardHeader className="sticky top-0 z-10 border-b border-neutral-200/80 bg-white/95 backdrop-blur">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <CardTitle className="text-xl">筛选产品</CardTitle>
-                    <CardDescription>设置筛选后立即回到产品列表查看结果。</CardDescription>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="icon"
-                    className={MODAL_CLOSE_BUTTON_CLASS}
-                    onClick={() => setIsFilterModalOpen(false)}
-                    aria-label="关闭筛选"
-                  >
-                    <X size={17} strokeWidth={2.6} />
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-4">{renderFilterForm('mobile')}</CardContent>
-            </Card>
           </div>
         ) : null}
       </main>
