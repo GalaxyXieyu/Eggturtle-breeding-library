@@ -1213,8 +1213,8 @@ export default function TenantProductsPage() {
                 <Button
                   type="button"
                   size="icon"
-                  variant="secondary"
-                  className="tenant-fab-button bg-neutral-900 text-white shadow-[0_14px_30px_rgba(0,0,0,0.18)] ring-1 ring-black/10 hover:bg-neutral-800 [&_svg]:text-white"
+                  variant="default"
+                  className="h-11 w-11 rounded-full border border-black/10 bg-neutral-900 text-white shadow-[0_14px_30px_rgba(0,0,0,0.18)] backdrop-blur transition hover:scale-[1.05] hover:bg-neutral-800 [&_svg]:text-white"
                   aria-label="打开筛选"
                   onClick={(event) => openFilterPopover(event, 'above', { toggle: true })}
                 >
