@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   listProductsResponseSchema,
@@ -107,6 +107,7 @@ export default function TenantProductsPage() {
   const [isCreateDrawerOpen, setIsCreateDrawerOpen] = useState(false);
   const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
   const [showMobileFilterFab, setShowMobileFilterFab] = useState(false);
+  const mobileFilterSentinelRef = useRef<HTMLDivElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [continueEditProductId, setContinueEditProductId] = useState<string | null>(null);
@@ -159,28 +160,25 @@ export default function TenantProductsPage() {
   }, [isFilterPopoverOpen]);
 
   useEffect(() => {
-    let rafId: number | null = null;
-
-    function update() {
-      rafId = null;
-      setShowMobileFilterFab(window.scrollY > 220);
+    const sentinel = mobileFilterSentinelRef.current;
+    if (!sentinel) {
+      return;
     }
 
-    function handleScroll() {
-      if (rafId !== null) {
-        return;
-      }
-      rafId = window.requestAnimationFrame(update);
-    }
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setShowMobileFilterFab(!entry.isIntersecting);
+      },
+      {
+        root: null,
+        threshold: 0,
+      },
+    );
 
-    update();
-    window.addEventListener('scroll', handleScroll, { passive: true });
+    observer.observe(sentinel);
 
     return () => {
-      window.removeEventListener('scroll', handleScroll);
-      if (rafId !== null) {
-        window.cancelAnimationFrame(rafId);
-      }
+      observer.disconnect();
     };
   }, []);
 
@@ -880,6 +878,8 @@ export default function TenantProductsPage() {
                 共 {meta.total} 条，当前页 {filteredItems.length} 条
               </span>
             </div>
+
+            <div ref={mobileFilterSentinelRef} className="h-px lg:hidden" aria-hidden="true" />
 
             {!showMobileFilterFab ? (
               <div className="rounded-2xl border border-neutral-200 bg-gradient-to-b from-white to-neutral-50/80 p-3 lg:hidden overflow-hidden">
