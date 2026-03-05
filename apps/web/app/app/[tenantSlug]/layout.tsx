@@ -199,6 +199,11 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
     }
   }
 
+  function handleLogout() {
+    clearAccessToken();
+    router.replace('/login');
+  }
+
   return (
     <div className="tenant-shell-bg h-[100svh] overflow-hidden">
       <div className="flex h-full w-full gap-2 p-2 pb-[calc(env(safe-area-inset-bottom)+72px)] sm:gap-3 sm:p-3 lg:gap-4 lg:p-4 lg:pb-4">
@@ -277,10 +282,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
               type="button"
               variant="ghost"
               className="mt-2 w-full justify-start text-neutral-600 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-neutral-100"
-              onClick={() => {
-                clearAccessToken();
-                router.replace('/login');
-              }}
+              onClick={handleLogout}
             >
               <LogOut size={16} />
               <span>{copy.logout}</span>
@@ -374,6 +376,19 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
               </li>
             );
           })}
+          <li key="mobile-logout" className="flex min-w-[56px] justify-center">
+            <button
+              type="button"
+              onClick={handleLogout}
+              aria-label={copy.logout}
+              className="inline-flex min-w-[56px] flex-col items-center gap-0.5 px-1 pb-0.5 text-[11px] font-medium text-neutral-500 transition-colors hover:text-neutral-800 active:opacity-80 dark:text-neutral-400 dark:hover:text-neutral-200"
+            >
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-transparent text-current transition-colors">
+                <LogOut size={18} />
+              </span>
+              <span>{copy.logout}</span>
+            </button>
+          </li>
         </ul>
       </nav>
       {shouldRenderLayoutFloatingShare ? (
