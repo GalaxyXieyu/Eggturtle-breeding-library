@@ -155,6 +155,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
         const access = await ensureTenantRouteSession({
           tenantSlug,
           missingTenantMessage: '缺少 tenantSlug。',
+          router,
           redirectWhenUnauthenticated: false,
         });
         if (!access.ok) {
@@ -185,7 +186,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
     return () => {
       cancelled = true;
     };
-  }, [tenantSlug]);
+  }, [router, tenantSlug]);
 
   useEffect(() => {
     let cancelled = false;
@@ -195,6 +196,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
         const access = await ensureTenantRouteSession({
           tenantSlug,
           missingTenantMessage: '缺少 tenantSlug。',
+          router,
           redirectWhenUnauthenticated: false,
         });
         if (!access.ok || cancelled) {
@@ -217,7 +219,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
         setSetupRequired(shouldRequireProfileSetup(profileResponse.profile, securityResponse.profile));
       } catch {
         if (!cancelled) {
-          setSetupRequired(false);
+          setSetupRequired(true);
         }
       }
     })();
@@ -225,7 +227,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
     return () => {
       cancelled = true;
     };
-  }, [tenantSlug]);
+  }, [router, tenantSlug]);
 
   useEffect(() => {
     if (!setupRequired) {

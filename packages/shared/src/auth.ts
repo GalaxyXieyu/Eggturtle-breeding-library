@@ -148,7 +148,8 @@ export const myPhoneBindingResponseSchema = z.object({
 
 export const upsertMyPhoneBindingRequestSchema = z.object({
   phoneNumber: authPhoneNumberSchema,
-  code: authCodeSchema
+  code: authCodeSchema,
+  oldCode: authCodeSchema.optional()
 });
 
 export const upsertMyPhoneBindingResponseSchema = z.object({

@@ -163,12 +163,15 @@ export default function LoginPage() {
 
   const copy = COPY[locale];
 
-  function getPostAuthRedirect(defaultPath: string): string {
+  function getPostAuthRedirect(
+    defaultPath: string,
+    options?: { allowedTenantSlug?: string },
+  ): string {
     if (typeof window === 'undefined') {
       return defaultPath;
     }
 
-    return resolvePostAuthRedirect(defaultPath, window.location.search);
+    return resolvePostAuthRedirect(defaultPath, window.location.search, undefined, options);
   }
 
   function resetPhoneFlow() {
@@ -249,7 +252,11 @@ export default function LoginPage() {
 
       setAccessToken(response.accessToken);
       const nextPath = response.isNewUser ? `/app/${response.tenant.slug}/account?setup=1` : `/app/${response.tenant.slug}`;
-      router.replace(getPostAuthRedirect(nextPath));
+      router.replace(
+        getPostAuthRedirect(nextPath, {
+          allowedTenantSlug: response.tenant.slug
+        })
+      );
     } catch (requestError) {
       setError(formatError(requestError, locale));
     } finally {
@@ -462,6 +469,30 @@ function formatError(error: unknown, locale: UiLocale) {
 
     if (/timeout|timed out/i.test(normalizedMessage)) {
       return timeoutMessage;
+    }
+
+    if (normalizedMessage.includes('User is not a member of this tenant.')) {
+      return locale === 'zh'
+        ? '登录态已过期，正在为你切换到可用工作台，请重试。'
+        : 'Your session tenant is stale. Please retry to enter an available workspace.';
+    }
+
+    if (normalizedMessage.includes('Phone number is not allowed for this account.')) {
+      return locale === 'zh'
+        ? '该手机号已失效，请使用当前绑定手机号登录或在账号中换绑后再试。'
+        : 'This phone is no longer valid for this account. Please use the currently bound phone.';
+    }
+
+    if (normalizedMessage.includes('Phone number is already bound to another account.')) {
+      return locale === 'zh' ? '该手机号已绑定其他账号，请更换手机号。' : 'This phone number is bound to another account.';
+    }
+
+    if (normalizedMessage.includes('Code is invalid.')) {
+      return locale === 'zh' ? '验证码不正确，请重新输入。' : 'The verification code is invalid.';
+    }
+
+    if (normalizedMessage.includes('Code is expired.')) {
+      return locale === 'zh' ? '验证码已过期，请重新发送。' : 'The verification code has expired.';
     }
 
     return normalizedMessage;

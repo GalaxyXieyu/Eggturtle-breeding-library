@@ -285,69 +285,80 @@ export class AuthService {
     const now = new Date();
     const shadowEmail = this.toPhoneShadowEmail(phoneNumber);
 
-    return this.prisma.$transaction(async (tx) => {
-      await this.consumeSmsCodeOrThrow(tx, phoneNumber, code, now);
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        await this.consumeSmsCodeOrThrow(tx, phoneNumber, code, now);
 
-      const boundPhone = await tx.userPhoneBinding.findUnique({
-        where: {
-          phoneNumber
-        },
-        include: {
-          user: true
-        }
-      });
-
-      let user = boundPhone?.user ?? null;
-      let isNewUser = false;
-
-      if (!user) {
-        user = await tx.user.findUnique({
+        const boundPhone = await tx.userPhoneBinding.findUnique({
           where: {
-            email: shadowEmail
+            phoneNumber
+          },
+          include: {
+            user: true
           }
         });
-      }
 
-      if (!user) {
-        user = await tx.user.create({
-          data: {
-            email: shadowEmail
-          }
-        });
-        isNewUser = true;
-      }
+        let user = boundPhone?.user ?? null;
+        let isNewUser = false;
 
-      let membership = await tx.tenantMember.findFirst({
-        where: {
-          userId: user.id
-        },
-        orderBy: {
-          createdAt: 'asc'
-        },
-        include: {
-          tenant: {
-            select: {
-              id: true,
-              slug: true,
-              name: true
+        if (!user) {
+          user = await tx.user.findUnique({
+            where: {
+              email: shadowEmail
             }
+          });
+        }
+
+        if (user && !boundPhone) {
+          const existingBinding = await tx.userPhoneBinding.findUnique({
+            where: {
+              userId: user.id
+            },
+            select: {
+              phoneNumber: true
+            }
+          });
+
+          if (existingBinding && existingBinding.phoneNumber !== phoneNumber) {
+            throw new UnauthorizedException({
+              message: 'Phone number is not allowed for this account.',
+              errorCode: ErrorCode.Unauthorized
+            });
           }
         }
-      });
 
-      if (!membership) {
-        const tenant = await tx.tenant.create({
-          data: {
-            slug: this.buildPhoneTenantSlug(phoneNumber),
-            name: `手机用户${phoneNumber.slice(-4)}`
+        if (!user) {
+          user = await tx.user.create({
+            data: {
+              email: shadowEmail
+            }
+          });
+          isNewUser = true;
+        }
+
+        // Phone-login success should always materialize binding for account page visibility.
+        await tx.userPhoneBinding.upsert({
+          where: {
+            userId: user.id
+          },
+          update: {
+            phoneNumber,
+            updatedAt: now
+          },
+          create: {
+            userId: user.id,
+            phoneNumber,
+            createdAt: now,
+            updatedAt: now
           }
         });
 
-        membership = await tx.tenantMember.create({
-          data: {
-            tenantId: tenant.id,
-            userId: user.id,
-            role: TenantMemberRole.OWNER
+        let membership = await tx.tenantMember.findFirst({
+          where: {
+            userId: user.id
+          },
+          orderBy: {
+            createdAt: 'asc'
           },
           include: {
             tenant: {
@@ -360,42 +371,77 @@ export class AuthService {
           }
         });
 
-        await tx.tenantSubscription.create({
-          data: {
-            tenantId: tenant.id,
-            plan: 'FREE',
-            startsAt: now,
-            expiresAt: null,
-            disabledAt: null
-          }
-        });
+        if (!membership) {
+          const tenant = await tx.tenant.create({
+            data: {
+              slug: this.buildPhoneTenantSlug(phoneNumber),
+              name: `手机用户${phoneNumber.slice(-4)}`
+            }
+          });
 
-        isNewUser = true;
+          membership = await tx.tenantMember.create({
+            data: {
+              tenantId: tenant.id,
+              userId: user.id,
+              role: TenantMemberRole.OWNER
+            },
+            include: {
+              tenant: {
+                select: {
+                  id: true,
+                  slug: true,
+                  name: true
+                }
+              }
+            }
+          });
+
+          await tx.tenantSubscription.create({
+            data: {
+              tenantId: tenant.id,
+              plan: 'FREE',
+              startsAt: now,
+              expiresAt: null,
+              disabledAt: null
+            }
+          });
+
+          isNewUser = true;
+        }
+
+        const accessToken = this.issueAccessToken(
+          {
+            id: user.id,
+            email: user.email
+          },
+          membership.tenantId
+        );
+
+        return {
+          accessToken,
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name
+          },
+          tenant: {
+            id: membership.tenant.id,
+            slug: membership.tenant.slug,
+            name: membership.tenant.name
+          },
+          isNewUser
+        };
+      });
+    } catch (error) {
+      if (this.isUserPhoneBindingConflict(error)) {
+        throw new ConflictException({
+          message: 'Phone number is already bound to another account.',
+          errorCode: ErrorCode.InvalidRequestPayload
+        });
       }
 
-      const accessToken = this.issueAccessToken(
-        {
-          id: user.id,
-          email: user.email
-        },
-        membership.tenantId
-      );
-
-      return {
-        accessToken,
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name
-        },
-        tenant: {
-          id: membership.tenant.id,
-          slug: membership.tenant.slug,
-          name: membership.tenant.name
-        },
-        isNewUser
-      };
-    });
+      throw error;
+    }
   }
 
   private async findUserByAccountName(accountName: string) {
@@ -812,6 +858,39 @@ export class AuthService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
+        const currentBinding = await tx.userPhoneBinding.findUnique({
+          where: {
+            userId
+          },
+          select: {
+            phoneNumber: true
+          }
+        });
+
+        const currentBoundPhone = currentBinding?.phoneNumber ?? null;
+        const isReplacingBoundPhone = Boolean(
+          currentBoundPhone &&
+            currentBoundPhone !== payload.phoneNumber
+        );
+
+        if (isReplacingBoundPhone) {
+          if (!payload.oldCode) {
+            throw new BadRequestException({
+              message: 'Old phone verification code is required.',
+              errorCode: ErrorCode.InvalidRequestPayload
+            });
+          }
+
+          if (!currentBoundPhone) {
+            throw new BadRequestException({
+              message: 'Current bound phone is missing.',
+              errorCode: ErrorCode.InvalidRequestPayload
+            });
+          }
+
+          await this.consumeSmsCodeOrThrow(tx, currentBoundPhone, payload.oldCode, now);
+        }
+
         await this.consumeSmsCodeOrThrow(tx, payload.phoneNumber, payload.code, now);
 
         const existingPhoneBinding = await tx.userPhoneBinding.findUnique({

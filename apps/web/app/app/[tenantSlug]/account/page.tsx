@@ -64,6 +64,7 @@ export default function AccountPage() {
   const [savingPassword, setSavingPassword] = useState(false);
   const [savingSecurity, setSavingSecurity] = useState(false);
   const [sendingPhoneCode, setSendingPhoneCode] = useState(false);
+  const [sendingOldPhoneCode, setSendingOldPhoneCode] = useState(false);
   const [savingPhoneBinding, setSavingPhoneBinding] = useState(false);
   const [completingSetup, setCompletingSetup] = useState(false);
   const [mustCompleteSetup, setMustCompleteSetup] = useState(false);
@@ -78,6 +79,8 @@ export default function AccountPage() {
   const [phoneDraft, setPhoneDraft] = useState('');
   const [phoneCodeDraft, setPhoneCodeDraft] = useState('');
   const [phoneCodeCooldown, setPhoneCodeCooldown] = useState(0);
+  const [oldPhoneCodeDraft, setOldPhoneCodeDraft] = useState('');
+  const [oldPhoneCodeCooldown, setOldPhoneCodeCooldown] = useState(0);
   const [securityQuestionDraft, setSecurityQuestionDraft] = useState('');
   const [securityAnswerDraft, setSecurityAnswerDraft] = useState('');
 
@@ -85,6 +88,7 @@ export default function AccountPage() {
   const [message, setMessage] = useState<string | null>(null);
   const needsSetup = searchParams.get('setup') === '1';
   const shouldShowSetup = needsSetup || mustCompleteSetup;
+  const isReplacingBoundPhone = Boolean(boundPhoneNumber && boundPhoneNumber !== phoneDraft);
   const selectedSecurityQuestion = SECURITY_QUESTION_OPTIONS.includes(securityQuestionDraft as (typeof SECURITY_QUESTION_OPTIONS)[number])
     ? securityQuestionDraft
     : CUSTOM_SECURITY_QUESTION_VALUE;
@@ -102,6 +106,20 @@ export default function AccountPage() {
       window.clearInterval(timer);
     };
   }, [phoneCodeCooldown]);
+
+  useEffect(() => {
+    if (oldPhoneCodeCooldown <= 0) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setOldPhoneCodeCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [oldPhoneCodeCooldown]);
 
   useEffect(() => {
     const rawTab = searchParams.get('tab');
@@ -160,6 +178,8 @@ export default function AccountPage() {
         setPhoneDraft(phoneBindingResponse.binding?.phoneNumber ?? '');
         setPhoneCodeDraft('');
         setPhoneCodeCooldown(0);
+        setOldPhoneCodeDraft('');
+        setOldPhoneCodeCooldown(0);
         const requireSetup = shouldRequireProfileSetup(profileResponse.profile, securityResponse.profile);
         setMustCompleteSetup(requireSetup);
         setSecurityQuestionDraft(
@@ -289,6 +309,37 @@ export default function AccountPage() {
     }
   }
 
+  async function handleSendOldPhoneCode() {
+    if (!boundPhoneNumber || !/^1\d{10}$/.test(boundPhoneNumber)) {
+      setError('当前账号未绑定可用手机号，请先完成绑定。');
+      return;
+    }
+
+    setSendingOldPhoneCode(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const payload = requestSmsCodeRequestSchema.parse({
+        phoneNumber: boundPhoneNumber,
+      });
+      await apiRequest('/auth/request-sms-code', {
+        method: 'POST',
+        auth: false,
+        body: payload,
+        requestSchema: requestSmsCodeRequestSchema,
+        responseSchema: requestSmsCodeResponseSchema,
+      });
+
+      setOldPhoneCodeCooldown(60);
+      setMessage(`原绑定手机号 ${maskPhoneNumber(boundPhoneNumber)} 的验证码已发送。`);
+    } catch (requestError) {
+      setError(formatApiError(requestError));
+    } finally {
+      setSendingOldPhoneCode(false);
+    }
+  }
+
   async function handleBindPhone() {
     if (!/^1\d{10}$/.test(phoneDraft)) {
       setError('请输入正确的 11 位手机号。');
@@ -300,6 +351,11 @@ export default function AccountPage() {
       return;
     }
 
+    if (isReplacingBoundPhone && !/^\d{6}$/.test(oldPhoneCodeDraft)) {
+      setError('更换手机号前，请先输入原手机号收到的 6 位验证码。');
+      return;
+    }
+
     setSavingPhoneBinding(true);
     setError(null);
     setMessage(null);
@@ -308,6 +364,7 @@ export default function AccountPage() {
       const payload = upsertMyPhoneBindingRequestSchema.parse({
         phoneNumber: phoneDraft,
         code: phoneCodeDraft,
+        oldCode: isReplacingBoundPhone ? oldPhoneCodeDraft : undefined,
       });
       const response = await apiRequest('/me/phone-binding', {
         method: 'PUT',
@@ -319,7 +376,13 @@ export default function AccountPage() {
       setBoundPhoneNumber(response.binding.phoneNumber);
       setPhoneDraft(response.binding.phoneNumber);
       setPhoneCodeDraft('');
-      setMessage(`手机号 ${maskPhoneNumber(response.binding.phoneNumber)} 绑定成功。`);
+      setOldPhoneCodeDraft('');
+      setOldPhoneCodeCooldown(0);
+      setMessage(
+        isReplacingBoundPhone
+          ? `手机号已更换为 ${maskPhoneNumber(response.binding.phoneNumber)}。`
+          : `手机号 ${maskPhoneNumber(response.binding.phoneNumber)} 绑定成功。`
+      );
     } catch (requestError) {
       setError(formatApiError(requestError));
     } finally {
@@ -574,7 +637,7 @@ export default function AccountPage() {
                 <UserRound size={18} />
                 个人资料
               </CardTitle>
-              <CardDescription>姓名可编辑，邮箱为登录账号。</CardDescription>
+              <CardDescription>用户名可编辑，邮箱为登录账号。</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-2">
@@ -582,11 +645,11 @@ export default function AccountPage() {
                 <Input id="account-email" value={profile?.email ?? ''} disabled />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="account-name">显示名称</Label>
+                <Label htmlFor="account-name">用户名</Label>
                 <Input
                   id="account-name"
                   value={nameDraft}
-                  placeholder="请输入姓名或昵称"
+                  placeholder="请输入用户名"
                   onChange={(event) => setNameDraft(event.target.value)}
                 />
               </div>
@@ -612,6 +675,22 @@ export default function AccountPage() {
                   onChange={(event) => setPhoneCodeDraft(event.target.value.replace(/\D/g, '').slice(0, 6))}
                 />
               </div>
+              {isReplacingBoundPhone ? (
+                <div className="grid gap-2">
+                  <Label htmlFor="account-old-phone-code">原手机号验证码</Label>
+                  <Input
+                    id="account-old-phone-code"
+                    value={oldPhoneCodeDraft}
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="请输入原手机号收到的 6 位验证码"
+                    onChange={(event) => setOldPhoneCodeDraft(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                  />
+                  <p className="text-xs text-neutral-500">
+                    正在更换绑定，需验证原手机号：{boundPhoneNumber ? maskPhoneNumber(boundPhoneNumber) : '-'}
+                  </p>
+                </div>
+              ) : null}
               <div className="flex items-center gap-2">
                 <Button
                   variant="secondary"
@@ -624,6 +703,19 @@ export default function AccountPage() {
                       ? `${phoneCodeCooldown}s 后重发`
                       : '发送验证码'}
                 </Button>
+                {isReplacingBoundPhone ? (
+                  <Button
+                    variant="secondary"
+                    disabled={sendingOldPhoneCode || oldPhoneCodeCooldown > 0 || !boundPhoneNumber}
+                    onClick={() => void handleSendOldPhoneCode()}
+                  >
+                    {sendingOldPhoneCode
+                      ? '发送中...'
+                      : oldPhoneCodeCooldown > 0
+                        ? `${oldPhoneCodeCooldown}s 后重发`
+                        : '发送原号验证码'}
+                  </Button>
+                ) : null}
                 <Button
                   variant="secondary"
                   disabled={savingPhoneBinding}

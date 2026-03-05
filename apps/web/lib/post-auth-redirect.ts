@@ -2,13 +2,19 @@ export type ShareSource = 'share' | 'direct';
 
 const DEFAULT_SHARE_SOURCE_NEXT = '/app?intent=dashboard&source=share';
 
+type ResolvePostAuthRedirectOptions = {
+  allowedTenantSlug?: string | null;
+  allowGenericAppEntryNext?: boolean;
+};
+
 export function resolvePostAuthRedirect(
   defaultPath: string,
   search: string,
   shareSourceNext = DEFAULT_SHARE_SOURCE_NEXT,
+  options: ResolvePostAuthRedirectOptions = {},
 ): string {
   const searchParams = new URLSearchParams(search);
-  const safeNext = sanitizeInternalNext(searchParams.get('next'));
+  const safeNext = sanitizeTenantAwareNext(searchParams.get('next'), options);
   if (safeNext) {
     return safeNext;
   }
@@ -44,4 +50,30 @@ export function sanitizeInternalNext(value: string | null): string | null {
   }
 
   return normalized;
+}
+
+function sanitizeTenantAwareNext(
+  value: string | null,
+  options: ResolvePostAuthRedirectOptions,
+): string | null {
+  const safeNext = sanitizeInternalNext(value);
+  if (!safeNext) {
+    return null;
+  }
+
+  const allowedTenantSlug = options.allowedTenantSlug?.trim();
+  if (!allowedTenantSlug) {
+    return safeNext;
+  }
+
+  if (safeNext.startsWith(`/app/${allowedTenantSlug}`)) {
+    return safeNext;
+  }
+
+  const allowGenericAppEntryNext = options.allowGenericAppEntryNext ?? true;
+  if (allowGenericAppEntryNext && (safeNext === '/app' || safeNext.startsWith('/app?'))) {
+    return safeNext;
+  }
+
+  return null;
 }

@@ -1,4 +1,4 @@
-import { getAccessToken } from './api-client';
+import { ApiError, getAccessToken } from './api-client';
 import { switchTenantBySlug } from './tenant-session';
 
 type RouterLike = {
@@ -10,6 +10,7 @@ type EnsureTenantRouteSessionOptions = {
   missingTenantMessage: string;
   router?: RouterLike;
   redirectWhenUnauthenticated?: boolean;
+  redirectWhenTenantMismatch?: boolean;
 };
 
 type EnsureTenantRouteSessionResult =
@@ -18,7 +19,7 @@ type EnsureTenantRouteSessionResult =
     }
   | {
       ok: false;
-      reason: 'missing-tenant' | 'unauthenticated';
+      reason: 'missing-tenant' | 'unauthenticated' | 'tenant-mismatch';
       message?: string;
     };
 
@@ -30,6 +31,7 @@ export async function ensureTenantRouteSession(
     missingTenantMessage,
     router,
     redirectWhenUnauthenticated = true,
+    redirectWhenTenantMismatch = true,
   } = options;
 
   if (!tenantSlug) {
@@ -51,6 +53,37 @@ export async function ensureTenantRouteSession(
     };
   }
 
-  await switchTenantBySlug(tenantSlug);
-  return { ok: true };
+  try {
+    await switchTenantBySlug(tenantSlug);
+    return { ok: true };
+  } catch (error) {
+    if (isTenantMismatchError(error)) {
+      if (redirectWhenTenantMismatch) {
+        router?.replace('/app');
+      }
+
+      return {
+        ok: false,
+        reason: 'tenant-mismatch',
+        message: '当前空间不可用，正在切换到你的可用工作台。'
+      };
+    }
+
+    throw error;
+  }
+}
+
+function isTenantMismatchError(error: unknown) {
+  if (error instanceof ApiError) {
+    return error.status === 403 || error.status === 404;
+  }
+
+  if (error instanceof Error) {
+    return (
+      error.message.includes('User is not a member of this tenant.') ||
+      error.message.includes('Tenant not found.')
+    );
+  }
+
+  return false;
 }
