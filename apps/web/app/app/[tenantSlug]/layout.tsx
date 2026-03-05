@@ -123,6 +123,11 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
     !pathname?.endsWith('/products') &&
     !pathname?.endsWith('/series');
   const setupQueryEnabled = searchParams.get('setup') === '1';
+  const accountPath = `/app/${tenantSlug}/account`;
+  const visibleNavItems = setupRequired
+    ? NAV_ITEMS.filter((item) => item.href(tenantSlug) === accountPath)
+    : NAV_ITEMS;
+  const shouldBlockOtherPages = setupRequired && pathname !== accountPath;
 
   const floatingShareIntent = useMemo<TenantShareIntent>(() => {
     const segments = pathname.split('/').filter(Boolean);
@@ -227,13 +232,12 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
       return;
     }
 
-    const accountPath = `/app/${tenantSlug}/account`;
     if (pathname === accountPath && setupQueryEnabled) {
       return;
     }
 
     router.replace(`${accountPath}?setup=1`);
-  }, [pathname, router, setupQueryEnabled, setupRequired, tenantSlug]);
+  }, [accountPath, pathname, router, setupQueryEnabled, setupRequired, tenantSlug]);
 
   async function handleQuickShareOpen() {
     if (quickSharePending) {
@@ -285,7 +289,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
           </div>
 
           <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-4">
-            {NAV_ITEMS.map((item) => {
+            {visibleNavItems.map((item) => {
               const href = item.href(tenantSlug);
               const active = isActive(pathname, href);
               const Icon = item.icon;
@@ -318,16 +322,18 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
           </nav>
 
           <div className="shrink-0 border-t border-neutral-200 px-3 pb-2 pt-3 dark:border-neutral-800">
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full justify-start rounded-xl border-neutral-200 !bg-neutral-50 !text-neutral-800 shadow-none hover:!bg-neutral-100 hover:!text-neutral-900 [&_svg]:text-neutral-500 hover:[&_svg]:text-neutral-700 dark:border-neutral-700 dark:!bg-neutral-900 dark:!text-neutral-100 dark:hover:!bg-neutral-800 dark:[&_svg]:text-neutral-300 dark:hover:[&_svg]:text-neutral-100"
-              onClick={() => void handleQuickShareOpen()}
-              disabled={quickSharePending}
-            >
-              <Share2 size={16} />
-              <span>{quickSharePending ? copy.quickSharePending : copy.createShare}</span>
-            </Button>
+            {!setupRequired ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full justify-start rounded-xl border-neutral-200 !bg-neutral-50 !text-neutral-800 shadow-none hover:!bg-neutral-100 hover:!text-neutral-900 [&_svg]:text-neutral-500 hover:[&_svg]:text-neutral-700 dark:border-neutral-700 dark:!bg-neutral-900 dark:!text-neutral-100 dark:hover:!bg-neutral-800 dark:[&_svg]:text-neutral-300 dark:hover:[&_svg]:text-neutral-100"
+                onClick={() => void handleQuickShareOpen()}
+                disabled={quickSharePending}
+              >
+                <Share2 size={16} />
+                <span>{quickSharePending ? copy.quickSharePending : copy.createShare}</span>
+              </Button>
+            ) : null}
 
             {quickShareError ? (
               <p className="mt-2 break-all rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
@@ -358,7 +364,15 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
 
         <section className="flex h-full min-w-0 flex-1 flex-col">
           <div data-tenant-scroll-root="true" className="min-h-0 flex-1 overflow-y-auto pr-1">
-            <div className="tenant-mobile-content-safe pb-3 sm:pb-4 lg:pb-4">{children}</div>
+            <div className="tenant-mobile-content-safe pb-3 sm:pb-4 lg:pb-4">
+              {shouldBlockOtherPages ? (
+                <div className="rounded-2xl border border-[#FFD400]/70 bg-[#FFF7D5] px-4 py-3 text-sm font-semibold text-neutral-900">
+                  正在跳转到信息补全页，请先完成用户名、密码和密保设置。
+                </div>
+              ) : (
+                children
+              )}
+            </div>
           </div>
         </section>
       </div>
@@ -373,7 +387,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
           aria-hidden
         />
         <ul className="relative z-0 mx-auto flex w-full max-w-xl items-end justify-between px-1 leading-[15.85px] mt-[5px] mb-[5px]">
-          {NAV_ITEMS.map((item, index) => {
+          {visibleNavItems.map((item, index) => {
             const href = item.href(tenantSlug);
             const active = isActive(pathname, href);
             const Icon = item.icon;
@@ -440,7 +454,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
           })}
         </ul>
       </nav>
-      {shouldRenderLayoutFloatingShare ? (
+      {shouldRenderLayoutFloatingShare && !setupRequired ? (
         <TenantFloatingShareButton intent={floatingShareIntent} className="lg:hidden" />
       ) : null}
     </div>
