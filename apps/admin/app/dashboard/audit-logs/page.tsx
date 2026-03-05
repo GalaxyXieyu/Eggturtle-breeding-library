@@ -363,11 +363,6 @@ export default function DashboardAuditLogsPage() {
       </AdminPanel>
 
       {state.error ? <p className="error">{state.error}</p> : null}
-      {exportMessage ? (
-        <p className={exportMessage.includes('失败') || exportMessage.includes('错误') ? 'error' : 'success'}>
-          {exportMessage}
-        </p>
-      ) : null}
     </section>
   );
 }
@@ -439,6 +434,5 @@ function toIso(value: string) {
 
   return parsed.toISOString();
 }
-
 
 
