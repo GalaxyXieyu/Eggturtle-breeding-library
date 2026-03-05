@@ -361,13 +361,30 @@ export default function AccountPage() {
 
   async function handleCompleteSetup() {
     const trimmedName = nameDraft.trim();
+    const trimmedSecurityQuestion = securityQuestionDraft.trim();
+    const trimmedSecurityAnswer = securityAnswerDraft.trim();
     if (!trimmedName) {
-      setError('请先填写用户名。');
+      setError('请填写用户名，方便团队成员识别账号归属。');
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setError('登录密码至少 8 位，建议使用“字母+数字”的组合。');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setError('两次输入的密码不一致。');
+      setError('两次输入的登录密码不一致，请重新确认。');
+      return;
+    }
+
+    if (trimmedSecurityQuestion.length < 2) {
+      setError('请先选择或填写一个密保问题。');
+      return;
+    }
+
+    if (trimmedSecurityAnswer.length < 2) {
+      setError('请填写密保答案（至少 2 个字），用于手机号不可用时找回账号。');
       return;
     }
 
@@ -383,8 +400,8 @@ export default function AccountPage() {
         newPassword,
       });
       const securityPayload = upsertMySecurityProfileRequestSchema.parse({
-        question: securityQuestionDraft.trim(),
-        answer: securityAnswerDraft.trim(),
+        question: trimmedSecurityQuestion,
+        answer: trimmedSecurityAnswer,
       });
 
       const profileResponse = await apiRequest('/me/profile', {
@@ -415,7 +432,7 @@ export default function AccountPage() {
       setMustCompleteSetup(false);
       router.replace(`/app/${tenantSlug}`);
     } catch (requestError) {
-      setError(formatApiError(requestError));
+      setError(toBusinessSetupError(requestError));
     } finally {
       setCompletingSetup(false);
     }
@@ -502,7 +519,12 @@ export default function AccountPage() {
               />
             </div>
             <div className="xl:col-span-2">
-              <Button variant="primary" disabled={completingSetup} onClick={() => void handleCompleteSetup()}>
+              <Button
+                variant="default"
+                className="bg-neutral-900 text-white hover:bg-neutral-800 disabled:bg-neutral-900 disabled:text-white"
+                disabled={completingSetup}
+                onClick={() => void handleCompleteSetup()}
+              >
                 {completingSetup ? '提交中...' : '完成并进入工作台'}
               </Button>
             </div>
@@ -769,6 +791,22 @@ function shouldRequireProfileSetup(profile: MeProfile, securityProfile: { questi
   const hasPassword = Boolean(profile.passwordUpdatedAt);
   const hasSecurityProfile = Boolean(securityProfile?.question?.trim());
   return !(hasName && hasPassword && hasSecurityProfile);
+}
+
+function toBusinessSetupError(error: unknown) {
+  const rawMessage = formatApiError(error);
+
+  if (rawMessage.includes('Password must be at least 8 characters') || rawMessage.includes('newPassword')) {
+    return '登录密码至少 8 位，建议使用“字母+数字”的组合。';
+  }
+  if (rawMessage.includes('question')) {
+    return '请先选择或填写一个密保问题。';
+  }
+  if (rawMessage.includes('answer')) {
+    return '请填写密保答案（至少 2 个字），用于手机号不可用时找回账号。';
+  }
+
+  return rawMessage;
 }
 
 function normalizeAccountTab(value: string | null): AccountTab {
