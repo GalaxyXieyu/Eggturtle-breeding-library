@@ -6,7 +6,8 @@ const DEFAULT_API_BASE_URL = '';
 const INTERNAL_PROXY_PREFIX = '/api/proxy';
 
 const LOGIN_PATH = '/login';
-const PRODUCT_IMAGE_CONTENT_PATH_PATTERN = /^\/products\/[^/]+\/images\/[^/]+\/content$/;
+const AUTHENTICATED_ASSET_PATH_PATTERN =
+  /^\/products\/[^/]+\/(?:images|certificates|couple-photos)\/[^/]+\/content$/;
 const MAX_ERROR_MESSAGE_LENGTH = 220;
 
 type SchemaParser<T> = {
@@ -118,7 +119,7 @@ export function resolveAuthenticatedAssetUrl(rawValue: string) {
     }
   }
 
-  if (!PRODUCT_IMAGE_CONTENT_PATH_PATTERN.test(parsed.pathname)) {
+  if (!AUTHENTICATED_ASSET_PATH_PATTERN.test(parsed.pathname)) {
     return candidate;
   }
 
