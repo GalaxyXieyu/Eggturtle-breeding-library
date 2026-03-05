@@ -18,7 +18,7 @@ import {
   updateMyPasswordRequestSchema,
   updateMyPasswordResponseSchema,
 } from '@eggturtle/shared';
-import { KeyRound, UserRound } from 'lucide-react';
+import { KeyRound, LogOut, UserRound } from 'lucide-react';
 
 import { Button } from '../../../../components/ui/button';
 import {
@@ -30,7 +30,7 @@ import {
 } from '../../../../components/ui/card';
 import { Input } from '../../../../components/ui/input';
 import { Label } from '../../../../components/ui/label';
-import { apiRequest } from '../../../../lib/api-client';
+import { apiRequest, clearAccessToken } from '../../../../lib/api-client';
 import { formatApiError } from '../../../../lib/error-utils';
 import { ensureTenantRouteSession } from '../../../../lib/tenant-route-session';
 import { cn } from '../../../../lib/utils';
@@ -336,6 +336,11 @@ export default function AccountPage() {
     }
   }
 
+  function handleLogout() {
+    clearAccessToken();
+    router.replace('/login');
+  }
+
   return (
     <main className="space-y-4 pb-10 sm:space-y-6">
       <section className="flex flex-wrap gap-2">
@@ -552,6 +557,19 @@ export default function AccountPage() {
       {error ? (
         <Card className="rounded-2xl border-red-200 bg-red-50 p-4">
           <p className="text-sm font-semibold text-red-700">{error}</p>
+        </Card>
+      ) : null}
+
+      {!loading && activeTab === 'profile' ? (
+        <Card className="rounded-2xl border-neutral-200/90 bg-white p-2 lg:hidden">
+          <Button
+            variant="ghost"
+            className="w-full justify-start text-neutral-700 hover:text-neutral-900"
+            onClick={handleLogout}
+          >
+            <LogOut size={16} />
+            <span>退出登录</span>
+          </Button>
         </Card>
       ) : null}
     </main>

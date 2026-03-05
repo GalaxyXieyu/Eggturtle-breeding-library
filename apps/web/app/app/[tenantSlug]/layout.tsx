@@ -376,19 +376,6 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
               </li>
             );
           })}
-          <li key="mobile-logout" className="flex min-w-[56px] justify-center">
-            <button
-              type="button"
-              onClick={handleLogout}
-              aria-label={copy.logout}
-              className="inline-flex min-w-[56px] flex-col items-center gap-0.5 px-1 pb-0.5 text-[11px] font-medium text-neutral-500 transition-colors hover:text-neutral-800 active:opacity-80 dark:text-neutral-400 dark:hover:text-neutral-200"
-            >
-              <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-transparent text-current transition-colors">
-                <LogOut size={18} />
-              </span>
-              <span>{copy.logout}</span>
-            </button>
-          </li>
         </ul>
       </nav>
       {shouldRenderLayoutFloatingShare ? (
