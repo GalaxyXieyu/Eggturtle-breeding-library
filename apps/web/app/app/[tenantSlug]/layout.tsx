@@ -3,8 +3,14 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { useParams, usePathname, useRouter } from 'next/navigation';
-import { meSubscriptionResponseSchema } from '@eggturtle/shared';
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
+import {
+  meProfileResponseSchema,
+  meSubscriptionResponseSchema,
+  mySecurityProfileResponseSchema,
+  type MeProfile,
+  type MySecurityProfile,
+} from '@eggturtle/shared';
 import { LayoutDashboard, Package, Layers, Share2, LogOut, UserRound } from 'lucide-react';
 
 import { UiPreferenceControls, useUiPreferences } from '../../../components/ui-preferences';
@@ -97,12 +103,14 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
   const params = useParams<{ tenantSlug: string }>();
   const tenantSlug = params.tenantSlug ?? '';
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const [quickSharePending, setQuickSharePending] = useState(false);
   const [quickShareNotice, setQuickShareNotice] = useState<string | null>(null);
   const [quickShareError, setQuickShareError] = useState<string | null>(null);
   const [currentPlan, setCurrentPlan] = useState<PlanTier>('FREE');
   const [planLoading, setPlanLoading] = useState(true);
+  const [setupRequired, setSetupRequired] = useState(false);
   const { locale } = useUiPreferences();
   const copy = SHELL_COPY[locale];
   const displayTenantName = useMemo(
@@ -114,6 +122,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
     pathname !== `/app/${tenantSlug}` &&
     !pathname?.endsWith('/products') &&
     !pathname?.endsWith('/series');
+  const setupQueryEnabled = searchParams.get('setup') === '1';
 
   const floatingShareIntent = useMemo<TenantShareIntent>(() => {
     const segments = pathname.split('/').filter(Boolean);
@@ -172,6 +181,59 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
       cancelled = true;
     };
   }, [tenantSlug]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const access = await ensureTenantRouteSession({
+          tenantSlug,
+          missingTenantMessage: '缺少 tenantSlug。',
+          redirectWhenUnauthenticated: false,
+        });
+        if (!access.ok || cancelled) {
+          return;
+        }
+
+        const [profileResponse, securityResponse] = await Promise.all([
+          apiRequest('/me/profile', {
+            responseSchema: meProfileResponseSchema,
+          }),
+          apiRequest('/me/security-profile', {
+            responseSchema: mySecurityProfileResponseSchema,
+          }),
+        ]);
+
+        if (cancelled) {
+          return;
+        }
+
+        setSetupRequired(shouldRequireProfileSetup(profileResponse.profile, securityResponse.profile));
+      } catch {
+        if (!cancelled) {
+          setSetupRequired(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tenantSlug]);
+
+  useEffect(() => {
+    if (!setupRequired) {
+      return;
+    }
+
+    const accountPath = `/app/${tenantSlug}/account`;
+    if (pathname === accountPath && setupQueryEnabled) {
+      return;
+    }
+
+    router.replace(`${accountPath}?setup=1`);
+  }, [pathname, router, setupQueryEnabled, setupRequired, tenantSlug]);
 
   async function handleQuickShareOpen() {
     if (quickSharePending) {
@@ -431,6 +493,13 @@ function formatPlanBadgeLabel(plan: PlanTier, locale: 'zh' | 'en') {
     return 'Basic';
   }
   return 'Pro';
+}
+
+function shouldRequireProfileSetup(profile: MeProfile, securityProfile: MySecurityProfile | null) {
+  const hasName = Boolean(profile.name?.trim());
+  const hasPassword = Boolean(profile.passwordUpdatedAt);
+  const hasSecurityProfile = Boolean(securityProfile?.question?.trim());
+  return !(hasName && hasPassword && hasSecurityProfile);
 }
 
 function safelyDecodePathSegment(value: string): string {

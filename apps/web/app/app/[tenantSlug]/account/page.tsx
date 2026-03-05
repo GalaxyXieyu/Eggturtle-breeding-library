@@ -42,6 +42,14 @@ const ACCOUNT_TABS: Array<{ key: AccountTab; label: string }> = [
   { key: 'profile', label: '账号' },
   { key: 'subscription', label: '订阅' },
 ];
+const CUSTOM_SECURITY_QUESTION_VALUE = '__custom__';
+const SECURITY_QUESTION_OPTIONS = [
+  '我第一只宠物的名字是？',
+  '我最常去的城市是？',
+  '我小学班主任的姓名是？',
+  '我母亲的姓名是？',
+  '我父亲的姓名是？',
+] as const;
 
 export default function AccountPage() {
   const router = useRouter();
@@ -57,6 +65,8 @@ export default function AccountPage() {
   const [savingSecurity, setSavingSecurity] = useState(false);
   const [sendingPhoneCode, setSendingPhoneCode] = useState(false);
   const [savingPhoneBinding, setSavingPhoneBinding] = useState(false);
+  const [completingSetup, setCompletingSetup] = useState(false);
+  const [mustCompleteSetup, setMustCompleteSetup] = useState(false);
 
   const [profile, setProfile] = useState<MeProfile | null>(null);
 
@@ -74,6 +84,10 @@ export default function AccountPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const needsSetup = searchParams.get('setup') === '1';
+  const shouldShowSetup = needsSetup || mustCompleteSetup;
+  const selectedSecurityQuestion = SECURITY_QUESTION_OPTIONS.includes(securityQuestionDraft as (typeof SECURITY_QUESTION_OPTIONS)[number])
+    ? securityQuestionDraft
+    : CUSTOM_SECURITY_QUESTION_VALUE;
 
   useEffect(() => {
     if (phoneCodeCooldown <= 0) {
@@ -146,7 +160,11 @@ export default function AccountPage() {
         setPhoneDraft(phoneBindingResponse.binding?.phoneNumber ?? '');
         setPhoneCodeDraft('');
         setPhoneCodeCooldown(0);
-        setSecurityQuestionDraft(securityResponse.profile?.question ?? '');
+        const requireSetup = shouldRequireProfileSetup(profileResponse.profile, securityResponse.profile);
+        setMustCompleteSetup(requireSetup);
+        setSecurityQuestionDraft(
+          securityResponse.profile?.question ?? (requireSetup ? SECURITY_QUESTION_OPTIONS[0] : ''),
+        );
         setSecurityAnswerDraft('');
       } catch (requestError) {
         if (!cancelled) {
@@ -162,7 +180,7 @@ export default function AccountPage() {
     return () => {
       cancelled = true;
     };
-  }, [router, tenantSlug]);
+  }, [router, tenantSlug, needsSetup]);
 
   function switchTab(nextTab: AccountTab) {
     if (nextTab === activeTab) {
@@ -341,6 +359,165 @@ export default function AccountPage() {
     router.replace('/login');
   }
 
+  async function handleCompleteSetup() {
+    const trimmedName = nameDraft.trim();
+    if (!trimmedName) {
+      setError('请先填写用户名。');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError('两次输入的密码不一致。');
+      return;
+    }
+
+    setCompletingSetup(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const profilePayload = updateMeProfileRequestSchema.parse({
+        name: trimmedName,
+      });
+      const passwordPayload = updateMyPasswordRequestSchema.parse({
+        newPassword,
+      });
+      const securityPayload = upsertMySecurityProfileRequestSchema.parse({
+        question: securityQuestionDraft.trim(),
+        answer: securityAnswerDraft.trim(),
+      });
+
+      const profileResponse = await apiRequest('/me/profile', {
+        method: 'PUT',
+        body: profilePayload,
+        requestSchema: updateMeProfileRequestSchema,
+        responseSchema: updateMeProfileResponseSchema,
+      });
+      await apiRequest('/me/password', {
+        method: 'PUT',
+        body: passwordPayload,
+        requestSchema: updateMyPasswordRequestSchema,
+        responseSchema: updateMyPasswordResponseSchema,
+      });
+      await apiRequest('/me/security-profile', {
+        method: 'PUT',
+        body: securityPayload,
+        requestSchema: upsertMySecurityProfileRequestSchema,
+        responseSchema: upsertMySecurityProfileResponseSchema,
+      });
+
+      setProfile(profileResponse.profile);
+      setNameDraft(profileResponse.profile.name ?? '');
+      setNewPassword('');
+      setConfirmPassword('');
+      setSecurityQuestionDraft(securityPayload.question);
+      setSecurityAnswerDraft('');
+      setMustCompleteSetup(false);
+      router.replace(`/app/${tenantSlug}`);
+    } catch (requestError) {
+      setError(formatApiError(requestError));
+    } finally {
+      setCompletingSetup(false);
+    }
+  }
+
+  if (!loading && shouldShowSetup) {
+    return (
+      <main className="space-y-4 pb-10 sm:space-y-6">
+        <Card className="overflow-hidden rounded-3xl border-[#FFD400]/75 bg-[linear-gradient(145deg,rgba(255,247,213,0.96),rgba(255,255,255,0.98))]">
+          <CardHeader className="space-y-2">
+            <CardTitle className="text-2xl text-neutral-900">完成首次登录设置</CardTitle>
+            <CardDescription className="text-neutral-700">
+              仅需补全必填信息：用户名、登录密码、密保。完成后即可进入工作台。
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            <div className="grid gap-2">
+              <Label htmlFor="setup-email">登录账号</Label>
+              <Input id="setup-email" value={profile?.email ?? ''} disabled />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="setup-name">用户名（必填）</Label>
+              <Input
+                id="setup-name"
+                value={nameDraft}
+                placeholder="请输入用户名"
+                onChange={(event) => setNameDraft(event.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="setup-password">登录密码（必填）</Label>
+              <Input
+                id="setup-password"
+                type="password"
+                value={newPassword}
+                placeholder="至少 8 位"
+                onChange={(event) => setNewPassword(event.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="setup-password-confirm">确认密码（必填）</Label>
+              <Input
+                id="setup-password-confirm"
+                type="password"
+                value={confirmPassword}
+                placeholder="再次输入密码"
+                onChange={(event) => setConfirmPassword(event.target.value)}
+              />
+            </div>
+            <div className="grid gap-2 xl:col-span-2">
+              <Label htmlFor="setup-security-question-select">密保问题（必填）</Label>
+              <select
+                id="setup-security-question-select"
+                className="h-10 rounded-md border border-neutral-300 bg-white px-3 text-sm text-neutral-900"
+                value={selectedSecurityQuestion}
+                onChange={(event) => {
+                  const nextValue = event.target.value;
+                  setSecurityQuestionDraft(nextValue === CUSTOM_SECURITY_QUESTION_VALUE ? '' : nextValue);
+                }}
+              >
+                {SECURITY_QUESTION_OPTIONS.map((item) => (
+                  <option key={`setup-security-option-${item}`} value={item}>
+                    {item}
+                  </option>
+                ))}
+                <option value={CUSTOM_SECURITY_QUESTION_VALUE}>自定义问题</option>
+              </select>
+              {selectedSecurityQuestion === CUSTOM_SECURITY_QUESTION_VALUE ? (
+                <Input
+                  id="setup-security-question-custom"
+                  value={securityQuestionDraft}
+                  placeholder="请输入自定义密保问题"
+                  onChange={(event) => setSecurityQuestionDraft(event.target.value)}
+                />
+              ) : null}
+            </div>
+            <div className="grid gap-2 xl:col-span-2">
+              <Label htmlFor="setup-security-answer">密保答案（必填）</Label>
+              <Input
+                id="setup-security-answer"
+                value={securityAnswerDraft}
+                placeholder="至少 2 个字符"
+                onChange={(event) => setSecurityAnswerDraft(event.target.value)}
+              />
+            </div>
+            <div className="xl:col-span-2">
+              <Button variant="primary" disabled={completingSetup} onClick={() => void handleCompleteSetup()}>
+                {completingSetup ? '提交中...' : '完成并进入工作台'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {error ? (
+          <Card className="rounded-2xl border-red-200 bg-red-50 p-4">
+            <p className="text-sm font-semibold text-red-700">{error}</p>
+          </Card>
+        ) : null}
+      </main>
+    );
+  }
+
   return (
     <main className="space-y-4 pb-10 sm:space-y-6">
       <section className="flex flex-wrap gap-2">
@@ -360,12 +537,6 @@ export default function AccountPage() {
           </button>
         ))}
       </section>
-
-      {needsSetup ? (
-        <Card className="rounded-2xl border-[#FFD400]/80 bg-[#FFF7D5] p-4">
-          <p className="text-sm font-semibold text-neutral-900">首次手机号登录成功，请先补全显示名称、登录密码和密保信息。</p>
-        </Card>
-      ) : null}
 
       {loading ? (
         <Card className="rounded-2xl border-neutral-200/90 bg-white p-6">
@@ -517,19 +688,36 @@ export default function AccountPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-2">
-                <Label htmlFor="security-question">密保问题</Label>
-                <Input
-                  id="security-question"
-                  value={securityQuestionDraft}
-                  placeholder="例如：我第一只宠物的名字？"
-                  onChange={(event) => setSecurityQuestionDraft(event.target.value)}
-                />
+                <Label htmlFor="security-question-select">密保问题</Label>
+                <select
+                  id="security-question-select"
+                  className="h-10 rounded-md border border-neutral-300 bg-white px-3 text-sm text-neutral-900"
+                  value={selectedSecurityQuestion}
+                  onChange={(event) => {
+                    const nextValue = event.target.value;
+                    setSecurityQuestionDraft(nextValue === CUSTOM_SECURITY_QUESTION_VALUE ? '' : nextValue);
+                  }}
+                >
+                  {SECURITY_QUESTION_OPTIONS.map((item) => (
+                    <option key={`security-option-${item}`} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                  <option value={CUSTOM_SECURITY_QUESTION_VALUE}>自定义问题</option>
+                </select>
+                {selectedSecurityQuestion === CUSTOM_SECURITY_QUESTION_VALUE ? (
+                  <Input
+                    id="security-question-custom"
+                    value={securityQuestionDraft}
+                    placeholder="请输入自定义密保问题"
+                    onChange={(event) => setSecurityQuestionDraft(event.target.value)}
+                  />
+                ) : null}
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="security-answer">密保答案</Label>
                 <Input
                   id="security-answer"
-                  type="password"
                   value={securityAnswerDraft}
                   placeholder="至少 2 个字符"
                   onChange={(event) => setSecurityAnswerDraft(event.target.value)}
@@ -574,6 +762,13 @@ export default function AccountPage() {
       ) : null}
     </main>
   );
+}
+
+function shouldRequireProfileSetup(profile: MeProfile, securityProfile: { question: string } | null) {
+  const hasName = Boolean(profile.name?.trim());
+  const hasPassword = Boolean(profile.passwordUpdatedAt);
+  const hasSecurityProfile = Boolean(securityProfile?.question?.trim());
+  return !(hasName && hasPassword && hasSecurityProfile);
 }
 
 function normalizeAccountTab(value: string | null): AccountTab {
