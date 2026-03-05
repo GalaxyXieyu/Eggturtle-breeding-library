@@ -19,7 +19,7 @@ import {
   type ProductListStats,
   type TenantSharePresentation,
 } from '@eggturtle/shared';
-import { Plus, Search, SquarePen, X } from 'lucide-react';
+import { Plus, Search, SquarePen } from 'lucide-react';
 
 import { apiRequest, resolveAuthenticatedAssetUrl } from '../../../../lib/api-client';
 import { formatApiError } from '../../../../lib/error-utils';
@@ -36,7 +36,6 @@ import { Card, CardContent } from '../../../../components/ui/card';
 import {
   FloatingActionButton,
   FloatingActionDock,
-  modalCloseButtonClass,
 } from '../../../../components/ui/floating-actions';
 import { Input } from '../../../../components/ui/input';
 import { NativeSelect } from '../../../../components/ui/native-select';
@@ -1146,14 +1145,6 @@ export default function TenantProductsPage() {
               <p className="text-base font-semibold text-neutral-900 dark:text-neutral-100">筛选宠物</p>
               <p className="text-xs text-neutral-600 dark:text-neutral-400">选择条件后会实时更新列表。</p>
             </div>
-            <button
-              type="button"
-              className={modalCloseButtonClass}
-              aria-label="关闭筛选"
-              onClick={() => setIsFilterPopoverOpen(false)}
-            >
-              <X size={17} strokeWidth={2.6} />
-            </button>
           </div>
           {renderFilterPanelBody()}
         </div>
@@ -1303,7 +1294,7 @@ export default function TenantProductsPage() {
         </Card>
 
         <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
-          <CardContent className="space-y-4 pt-6">
+          <CardContent className="space-y-4 px-3 pt-6 sm:px-6">
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-600">
               <span className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5">
                 {listStatsLabel}
