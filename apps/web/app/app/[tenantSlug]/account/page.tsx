@@ -4,7 +4,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   meProfileResponseSchema,
+  myPhoneBindingResponseSchema,
+  mySecurityProfileResponseSchema,
+  requestSmsCodeRequestSchema,
+  requestSmsCodeResponseSchema,
   type MeProfile,
+  upsertMyPhoneBindingRequestSchema,
+  upsertMyPhoneBindingResponseSchema,
+  upsertMySecurityProfileRequestSchema,
+  upsertMySecurityProfileResponseSchema,
   updateMeProfileRequestSchema,
   updateMeProfileResponseSchema,
   updateMyPasswordRequestSchema,
@@ -46,6 +54,9 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
+  const [savingSecurity, setSavingSecurity] = useState(false);
+  const [sendingPhoneCode, setSendingPhoneCode] = useState(false);
+  const [savingPhoneBinding, setSavingPhoneBinding] = useState(false);
 
   const [profile, setProfile] = useState<MeProfile | null>(null);
 
@@ -53,9 +64,30 @@ export default function AccountPage() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [boundPhoneNumber, setBoundPhoneNumber] = useState<string | null>(null);
+  const [phoneDraft, setPhoneDraft] = useState('');
+  const [phoneCodeDraft, setPhoneCodeDraft] = useState('');
+  const [phoneCodeCooldown, setPhoneCodeCooldown] = useState(0);
+  const [securityQuestionDraft, setSecurityQuestionDraft] = useState('');
+  const [securityAnswerDraft, setSecurityAnswerDraft] = useState('');
 
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const needsSetup = searchParams.get('setup') === '1';
+
+  useEffect(() => {
+    if (phoneCodeCooldown <= 0) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setPhoneCodeCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [phoneCodeCooldown]);
 
   useEffect(() => {
     const rawTab = searchParams.get('tab');
@@ -92,9 +124,17 @@ export default function AccountPage() {
           return;
         }
 
-        const profileResponse = await apiRequest('/me/profile', {
-          responseSchema: meProfileResponseSchema,
-        });
+        const [profileResponse, securityResponse, phoneBindingResponse] = await Promise.all([
+          apiRequest('/me/profile', {
+            responseSchema: meProfileResponseSchema,
+          }),
+          apiRequest('/me/security-profile', {
+            responseSchema: mySecurityProfileResponseSchema,
+          }),
+          apiRequest('/me/phone-binding', {
+            responseSchema: myPhoneBindingResponseSchema,
+          }),
+        ]);
 
         if (cancelled) {
           return;
@@ -102,6 +142,12 @@ export default function AccountPage() {
 
         setProfile(profileResponse.profile);
         setNameDraft(profileResponse.profile.name ?? '');
+        setBoundPhoneNumber(phoneBindingResponse.binding?.phoneNumber ?? null);
+        setPhoneDraft(phoneBindingResponse.binding?.phoneNumber ?? '');
+        setPhoneCodeDraft('');
+        setPhoneCodeCooldown(0);
+        setSecurityQuestionDraft(securityResponse.profile?.question ?? '');
+        setSecurityAnswerDraft('');
       } catch (requestError) {
         if (!cancelled) {
           setError(formatApiError(requestError));
@@ -194,6 +240,102 @@ export default function AccountPage() {
     }
   }
 
+  async function handleSendPhoneCode() {
+    if (!/^1\d{10}$/.test(phoneDraft)) {
+      setError('请输入正确的 11 位手机号。');
+      return;
+    }
+
+    setSendingPhoneCode(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const payload = requestSmsCodeRequestSchema.parse({
+        phoneNumber: phoneDraft,
+      });
+      await apiRequest('/auth/request-sms-code', {
+        method: 'POST',
+        auth: false,
+        body: payload,
+        requestSchema: requestSmsCodeRequestSchema,
+        responseSchema: requestSmsCodeResponseSchema,
+      });
+
+      setPhoneCodeCooldown(60);
+      setMessage(`验证码已发送到 ${maskPhoneNumber(phoneDraft)}。`);
+    } catch (requestError) {
+      setError(formatApiError(requestError));
+    } finally {
+      setSendingPhoneCode(false);
+    }
+  }
+
+  async function handleBindPhone() {
+    if (!/^1\d{10}$/.test(phoneDraft)) {
+      setError('请输入正确的 11 位手机号。');
+      return;
+    }
+
+    if (!/^\d{6}$/.test(phoneCodeDraft)) {
+      setError('请输入 6 位验证码。');
+      return;
+    }
+
+    setSavingPhoneBinding(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const payload = upsertMyPhoneBindingRequestSchema.parse({
+        phoneNumber: phoneDraft,
+        code: phoneCodeDraft,
+      });
+      const response = await apiRequest('/me/phone-binding', {
+        method: 'PUT',
+        body: payload,
+        requestSchema: upsertMyPhoneBindingRequestSchema,
+        responseSchema: upsertMyPhoneBindingResponseSchema,
+      });
+
+      setBoundPhoneNumber(response.binding.phoneNumber);
+      setPhoneDraft(response.binding.phoneNumber);
+      setPhoneCodeDraft('');
+      setMessage(`手机号 ${maskPhoneNumber(response.binding.phoneNumber)} 绑定成功。`);
+    } catch (requestError) {
+      setError(formatApiError(requestError));
+    } finally {
+      setSavingPhoneBinding(false);
+    }
+  }
+
+  async function handleSaveSecurityProfile() {
+    setSavingSecurity(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const payload = upsertMySecurityProfileRequestSchema.parse({
+        question: securityQuestionDraft.trim(),
+        answer: securityAnswerDraft.trim(),
+      });
+      await apiRequest('/me/security-profile', {
+        method: 'PUT',
+        body: payload,
+        requestSchema: upsertMySecurityProfileRequestSchema,
+        responseSchema: upsertMySecurityProfileResponseSchema,
+      });
+
+      setSecurityQuestionDraft(payload.question);
+      setSecurityAnswerDraft('');
+      setMessage('密保信息已更新。');
+    } catch (requestError) {
+      setError(formatApiError(requestError));
+    } finally {
+      setSavingSecurity(false);
+    }
+  }
+
   return (
     <main className="space-y-4 pb-10 sm:space-y-6">
       <section className="flex flex-wrap gap-2">
@@ -214,6 +356,12 @@ export default function AccountPage() {
         ))}
       </section>
 
+      {needsSetup ? (
+        <Card className="rounded-2xl border-[#FFD400]/80 bg-[#FFF7D5] p-4">
+          <p className="text-sm font-semibold text-neutral-900">首次手机号登录成功，请先补全显示名称、登录密码和密保信息。</p>
+        </Card>
+      ) : null}
+
       {loading ? (
         <Card className="rounded-2xl border-neutral-200/90 bg-white p-6">
           <p className="text-sm text-neutral-600">正在加载账户信息...</p>
@@ -221,7 +369,7 @@ export default function AccountPage() {
       ) : null}
 
       {!loading && activeTab === 'profile' ? (
-        <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <section className="grid grid-cols-1 gap-4 xl:grid-cols-3">
           <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-2xl">
@@ -244,6 +392,51 @@ export default function AccountPage() {
                   onChange={(event) => setNameDraft(event.target.value)}
                 />
               </div>
+              <div className="grid gap-2">
+                <Label htmlFor="account-phone">绑定手机号</Label>
+                <Input
+                  id="account-phone"
+                  value={phoneDraft}
+                  inputMode="numeric"
+                  maxLength={11}
+                  placeholder="请输入 11 位手机号"
+                  onChange={(event) => setPhoneDraft(event.target.value.replace(/\D/g, '').slice(0, 11))}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="account-phone-code">短信验证码</Label>
+                <Input
+                  id="account-phone-code"
+                  value={phoneCodeDraft}
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="请输入 6 位验证码"
+                  onChange={(event) => setPhoneCodeDraft(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  disabled={sendingPhoneCode || phoneCodeCooldown > 0}
+                  onClick={() => void handleSendPhoneCode()}
+                >
+                  {sendingPhoneCode
+                    ? '发送中...'
+                    : phoneCodeCooldown > 0
+                      ? `${phoneCodeCooldown}s 后重发`
+                      : '发送验证码'}
+                </Button>
+                <Button
+                  variant="secondary"
+                  disabled={savingPhoneBinding}
+                  onClick={() => void handleBindPhone()}
+                >
+                  {savingPhoneBinding ? '绑定中...' : '绑定手机号'}
+                </Button>
+              </div>
+              <p className="text-xs text-neutral-500">
+                当前绑定：{boundPhoneNumber ? maskPhoneNumber(boundPhoneNumber) : '未绑定'}
+              </p>
               <div className="grid gap-1 text-xs text-neutral-500">
                 <p>账号创建时间：{formatDate(profile?.createdAt)}</p>
                 <p>最近改密时间：{formatDate(profile?.passwordUpdatedAt)}</p>
@@ -308,6 +501,40 @@ export default function AccountPage() {
               </Button>
             </CardContent>
           </Card>
+
+          <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-2xl">
+                <KeyRound size={18} />
+                密保信息
+              </CardTitle>
+              <CardDescription>用于手机号不可用时找回账号，建议设置易记但不易猜的问答。</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-2">
+                <Label htmlFor="security-question">密保问题</Label>
+                <Input
+                  id="security-question"
+                  value={securityQuestionDraft}
+                  placeholder="例如：我第一只宠物的名字？"
+                  onChange={(event) => setSecurityQuestionDraft(event.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="security-answer">密保答案</Label>
+                <Input
+                  id="security-answer"
+                  type="password"
+                  value={securityAnswerDraft}
+                  placeholder="至少 2 个字符"
+                  onChange={(event) => setSecurityAnswerDraft(event.target.value)}
+                />
+              </div>
+              <Button variant="secondary" disabled={savingSecurity} onClick={() => void handleSaveSecurityProfile()}>
+                {savingSecurity ? '保存中...' : '保存密保'}
+              </Button>
+            </CardContent>
+          </Card>
         </section>
       ) : null}
 
@@ -337,6 +564,14 @@ function normalizeAccountTab(value: string | null): AccountTab {
   }
 
   return 'profile';
+}
+
+function maskPhoneNumber(phoneNumber: string): string {
+  if (!/^1\d{10}$/.test(phoneNumber)) {
+    return phoneNumber;
+  }
+
+  return `${phoneNumber.slice(0, 3)}****${phoneNumber.slice(-4)}`;
 }
 
 function formatDate(value: string | null | undefined) {

@@ -9,6 +9,7 @@ import { AuthService } from './auth.service';
 import { JwtTokenService } from './jwt-token.service';
 import { MeController } from './me.controller';
 import { RbacGuard } from './rbac.guard';
+import { SmsVerificationService } from './sms-verification.service';
 import { SuperAdminGuard } from './super-admin.guard';
 import { SubscriptionActivationCodesController } from './subscription-activation-codes.controller';
 import { TenantSubscriptionGuard } from './tenant-subscription.guard';
@@ -16,7 +17,15 @@ import { TenantSubscriptionGuard } from './tenant-subscription.guard';
 @Module({
   imports: [PrismaModule, SubscriptionsModule],
   controllers: [AuthController, MeController, SubscriptionActivationCodesController],
-  providers: [AuthService, AuthGuard, RbacGuard, SuperAdminGuard, TenantSubscriptionGuard, JwtTokenService],
+  providers: [
+    AuthService,
+    AuthGuard,
+    RbacGuard,
+    SuperAdminGuard,
+    TenantSubscriptionGuard,
+    JwtTokenService,
+    SmsVerificationService
+  ],
   exports: [AuthGuard, RbacGuard, SuperAdminGuard, TenantSubscriptionGuard, AuthService]
 })
 export class AuthModule {}

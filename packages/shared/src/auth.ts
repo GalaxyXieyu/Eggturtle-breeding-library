@@ -4,6 +4,10 @@ import { tenantSubscriptionSchema } from './subscription';
 import { tenantNameSchema, tenantSlugSchema } from './tenant';
 
 export const authEmailSchema = z.string().trim().email().max(255).transform((email) => email.toLowerCase());
+export const authPhoneNumberSchema = z
+  .string()
+  .trim()
+  .regex(/^1\d{10}$/, 'Phone number must be an 11-digit mainland China mobile number.');
 export const authLoginIdentifierSchema = z
   .string()
   .trim()
@@ -32,6 +36,16 @@ export const requestCodeResponseSchema = z.object({
   devCode: authCodeSchema.optional()
 });
 
+export const requestSmsCodeRequestSchema = z.object({
+  phoneNumber: authPhoneNumberSchema
+});
+
+export const requestSmsCodeResponseSchema = z.object({
+  ok: z.literal(true),
+  expiresAt: z.string().datetime(),
+  devCode: authCodeSchema.optional()
+});
+
 export const verifyCodeRequestSchema = z.object({
   email: authEmailSchema,
   code: authCodeSchema,
@@ -49,6 +63,22 @@ export const passwordLoginRequestSchema = z.object({
 });
 
 export const passwordLoginResponseSchema = verifyCodeResponseSchema;
+
+export const phoneLoginRequestSchema = z.object({
+  phoneNumber: authPhoneNumberSchema,
+  code: authCodeSchema
+});
+
+export const phoneLoginResponseSchema = z.object({
+  accessToken: z.string().min(1),
+  user: authUserSchema,
+  tenant: z.object({
+    id: z.string().min(1),
+    slug: tenantSlugSchema,
+    name: tenantNameSchema
+  }),
+  isNewUser: z.boolean()
+});
 
 export const meResponseSchema = z.object({
   user: authUserSchema,
@@ -85,6 +115,47 @@ export const updateMyPasswordResponseSchema = z.object({
   passwordUpdatedAt: z.string().datetime()
 });
 
+export const securityProfileQuestionSchema = z.string().trim().min(2).max(120);
+export const securityProfileAnswerSchema = z.string().trim().min(2).max(120);
+
+export const mySecurityProfileSchema = z.object({
+  question: securityProfileQuestionSchema,
+  updatedAt: z.string().datetime()
+});
+
+export const mySecurityProfileResponseSchema = z.object({
+  profile: mySecurityProfileSchema.nullable()
+});
+
+export const upsertMySecurityProfileRequestSchema = z.object({
+  question: securityProfileQuestionSchema,
+  answer: securityProfileAnswerSchema
+});
+
+export const upsertMySecurityProfileResponseSchema = z.object({
+  ok: z.literal(true),
+  updatedAt: z.string().datetime()
+});
+
+export const myPhoneBindingSchema = z.object({
+  phoneNumber: authPhoneNumberSchema,
+  updatedAt: z.string().datetime()
+});
+
+export const myPhoneBindingResponseSchema = z.object({
+  binding: myPhoneBindingSchema.nullable()
+});
+
+export const upsertMyPhoneBindingRequestSchema = z.object({
+  phoneNumber: authPhoneNumberSchema,
+  code: authCodeSchema
+});
+
+export const upsertMyPhoneBindingResponseSchema = z.object({
+  ok: z.literal(true),
+  binding: myPhoneBindingSchema
+});
+
 export const meSubscriptionResponseSchema = z.object({
   subscription: tenantSubscriptionSchema
 });
@@ -92,6 +163,7 @@ export const meSubscriptionResponseSchema = z.object({
 // Registration schemas
 export const registerRequestSchema = z.object({
   email: authEmailSchema,
+  phoneNumber: authPhoneNumberSchema.optional(),
   code: authCodeSchema,
   password: authPasswordSchema,
   tenantSlug: tenantSlugSchema,
@@ -111,10 +183,14 @@ export const registerResponseSchema = z.object({
 
 export type RequestCodeRequest = z.infer<typeof requestCodeRequestSchema>;
 export type RequestCodeResponse = z.infer<typeof requestCodeResponseSchema>;
+export type RequestSmsCodeRequest = z.infer<typeof requestSmsCodeRequestSchema>;
+export type RequestSmsCodeResponse = z.infer<typeof requestSmsCodeResponseSchema>;
 export type VerifyCodeRequest = z.infer<typeof verifyCodeRequestSchema>;
 export type VerifyCodeResponse = z.infer<typeof verifyCodeResponseSchema>;
 export type PasswordLoginRequest = z.infer<typeof passwordLoginRequestSchema>;
 export type PasswordLoginResponse = z.infer<typeof passwordLoginResponseSchema>;
+export type PhoneLoginRequest = z.infer<typeof phoneLoginRequestSchema>;
+export type PhoneLoginResponse = z.infer<typeof phoneLoginResponseSchema>;
 export type AuthUser = z.infer<typeof authUserSchema>;
 export type MeResponse = z.infer<typeof meResponseSchema>;
 export type MeProfile = z.infer<typeof meProfileSchema>;
@@ -123,6 +199,14 @@ export type UpdateMeProfileRequest = z.infer<typeof updateMeProfileRequestSchema
 export type UpdateMeProfileResponse = z.infer<typeof updateMeProfileResponseSchema>;
 export type UpdateMyPasswordRequest = z.infer<typeof updateMyPasswordRequestSchema>;
 export type UpdateMyPasswordResponse = z.infer<typeof updateMyPasswordResponseSchema>;
+export type MySecurityProfile = z.infer<typeof mySecurityProfileSchema>;
+export type MySecurityProfileResponse = z.infer<typeof mySecurityProfileResponseSchema>;
+export type UpsertMySecurityProfileRequest = z.infer<typeof upsertMySecurityProfileRequestSchema>;
+export type UpsertMySecurityProfileResponse = z.infer<typeof upsertMySecurityProfileResponseSchema>;
+export type MyPhoneBinding = z.infer<typeof myPhoneBindingSchema>;
+export type MyPhoneBindingResponse = z.infer<typeof myPhoneBindingResponseSchema>;
+export type UpsertMyPhoneBindingRequest = z.infer<typeof upsertMyPhoneBindingRequestSchema>;
+export type UpsertMyPhoneBindingResponse = z.infer<typeof upsertMyPhoneBindingResponseSchema>;
 export type MeSubscriptionResponse = z.infer<typeof meSubscriptionResponseSchema>;
 export type RegisterRequest = z.infer<typeof registerRequestSchema>;
 export type RegisterResponse = z.infer<typeof registerResponseSchema>;

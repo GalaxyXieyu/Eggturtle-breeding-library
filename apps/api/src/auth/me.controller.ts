@@ -8,10 +8,16 @@ import {
   UseGuards
 } from '@nestjs/common';
 import {
-  ErrorCode,
-  meProfileResponseSchema,
-  meResponseSchema,
-  meSubscriptionResponseSchema,
+    ErrorCode,
+    meProfileResponseSchema,
+    myPhoneBindingResponseSchema,
+    mySecurityProfileResponseSchema,
+    meResponseSchema,
+    meSubscriptionResponseSchema,
+    upsertMyPhoneBindingRequestSchema,
+    upsertMyPhoneBindingResponseSchema,
+    upsertMySecurityProfileRequestSchema,
+    upsertMySecurityProfileResponseSchema,
   updateMeProfileRequestSchema,
   updateMeProfileResponseSchema,
   updateMyPasswordRequestSchema,
@@ -71,6 +77,44 @@ export class MeController {
     return updateMyPasswordResponseSchema.parse({
       ok: true,
       passwordUpdatedAt: response.passwordUpdatedAt
+    });
+  }
+
+  @Get('me/security-profile')
+  async getMySecurityProfile(@CurrentUser() user: NonNullable<AuthenticatedRequest['user']>) {
+    const profile = await this.authService.getMySecurityProfile(user.id);
+    return mySecurityProfileResponseSchema.parse({ profile });
+  }
+
+  @Put('me/security-profile')
+  async upsertMySecurityProfile(
+    @CurrentUser() user: NonNullable<AuthenticatedRequest['user']>,
+    @Body() body: unknown
+  ) {
+    const payload = parseOrThrow(upsertMySecurityProfileRequestSchema, body);
+    const response = await this.authService.upsertMySecurityProfile(user.id, payload);
+    return upsertMySecurityProfileResponseSchema.parse({
+      ok: true,
+      updatedAt: response.updatedAt
+    });
+  }
+
+  @Get('me/phone-binding')
+  async getMyPhoneBinding(@CurrentUser() user: NonNullable<AuthenticatedRequest['user']>) {
+    const binding = await this.authService.getMyPhoneBinding(user.id);
+    return myPhoneBindingResponseSchema.parse({ binding });
+  }
+
+  @Put('me/phone-binding')
+  async upsertMyPhoneBinding(
+    @CurrentUser() user: NonNullable<AuthenticatedRequest['user']>,
+    @Body() body: unknown
+  ) {
+    const payload = parseOrThrow(upsertMyPhoneBindingRequestSchema, body);
+    const response = await this.authService.upsertMyPhoneBinding(user.id, payload);
+    return upsertMyPhoneBindingResponseSchema.parse({
+      ok: true,
+      binding: response
     });
   }
 

@@ -28,6 +28,8 @@ model User {
   passwordUpdatedAt   DateTime?            @map("password_updated_at")
   createdAt           DateTime             @default(now()) @map("created_at")
   updatedAt           DateTime             @updatedAt @map("updated_at")
+  securityProfile     UserSecurityProfile?
+  phoneBinding        UserPhoneBinding?
   tenantMembers       TenantMember[]
   createdSubscriptionActivationCodes SubscriptionActivationCode[] @relation("SubscriptionActivationCodeCreator")
   auditLogs           AuditLog[]           @relation("AuditLogActor")
@@ -35,6 +37,31 @@ model User {
   superAdminAuditLogs SuperAdminAuditLog[] @relation("SuperAdminAuditLogActor")
 
   @@map("users")
+}
+
+model UserSecurityProfile {
+  id         String   @id @default(cuid())
+  userId     String   @unique @map("user_id")
+  question   String   @db.VarChar(120)
+  answerHash String   @map("answer_hash") @db.VarChar(128)
+  salt       String   @db.VarChar(64)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_security_profiles")
+}
+
+model UserPhoneBinding {
+  id          String   @id @default(cuid())
+  userId      String   @unique @map("user_id")
+  phoneNumber String   @unique @map("phone_number") @db.VarChar(20)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([phoneNumber], map: "user_phone_bindings_phone_number_idx")
+  @@map("user_phone_bindings")
 }
 
 model AuthCode {

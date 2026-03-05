@@ -2,10 +2,14 @@ import { Body, Controller, Post, UseGuards } from '@nestjs/common';
 import {
   passwordLoginRequestSchema,
   passwordLoginResponseSchema,
+  phoneLoginRequestSchema,
+  phoneLoginResponseSchema,
   registerRequestSchema,
   registerResponseSchema,
   requestCodeRequestSchema,
   requestCodeResponseSchema,
+  requestSmsCodeRequestSchema,
+  requestSmsCodeResponseSchema,
   switchTenantRequestSchema,
   switchTenantResponseSchema,
   verifyCodeRequestSchema,
@@ -31,6 +35,14 @@ export class AuthController {
     return requestCodeResponseSchema.parse(response);
   }
 
+  @Post('request-sms-code')
+  async requestSmsCode(@Body() body: unknown) {
+    const payload = parseOrThrow(requestSmsCodeRequestSchema, body);
+    const response = await this.authService.requestSmsCode(payload.phoneNumber);
+
+    return requestSmsCodeResponseSchema.parse(response);
+  }
+
   @Post('verify-code')
   async verifyCode(@Body() body: unknown) {
     const payload = parseOrThrow(verifyCodeRequestSchema, body);
@@ -45,6 +57,14 @@ export class AuthController {
     const response = await this.authService.passwordLogin(payload.email, payload.password);
 
     return passwordLoginResponseSchema.parse(response);
+  }
+
+  @Post('phone-login')
+  async phoneLogin(@Body() body: unknown) {
+    const payload = parseOrThrow(phoneLoginRequestSchema, body);
+    const response = await this.authService.phoneLogin(payload.phoneNumber, payload.code);
+
+    return phoneLoginResponseSchema.parse(response);
   }
 
   @Post('switch-tenant')
