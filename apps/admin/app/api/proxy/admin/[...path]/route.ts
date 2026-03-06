@@ -4,7 +4,7 @@ import {
   clearSessionCookie,
   getAdminApiBaseUrl,
   getSessionToken
-} from '../../../../../lib/server-session';
+} from '@/lib/server-session';
 
 type RouteContext = {
   params: {

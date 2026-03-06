@@ -5,7 +5,7 @@ import type {
   PublicShareResponse
 } from '@eggturtle/shared';
 
-import type { Breeder, BreederEventItem, FamilyTree, MaleMateLoadItem, Series, Sex } from './types';
+import type { Breeder, BreederEventItem, FamilyTree, MaleMateLoadItem, Series, Sex } from '@/app/public/_public-product/types';
 
 type TenantFeedShare = PublicShareResponse;
 type TenantFeedDetail = NonNullable<TenantFeedShare['product']>;

@@ -1,6 +1,7 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "baseUrl": ".",
     "target": "ES2022",
     "lib": [
       "dom",
@@ -22,7 +23,18 @@
       {
         "name": "next"
       }
-    ]
+    ],
+    "paths": {
+      "@/*": [
+        "./*"
+      ],
+      "@eggturtle/shared": [
+        "../../packages/shared/src"
+      ],
+      "@eggturtle/shared/*": [
+        "../../packages/shared/src/*"
+      ]
+    }
   },
   "include": [
     "next-env.d.ts",

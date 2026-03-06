@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { Layers, PawPrint, UserRound } from 'lucide-react';
 
-import { cn } from '../../../lib/utils';
-import { appendPublicShareQuery } from './public-share-api';
+import { cn } from '@/lib/utils';
+import { appendPublicShareQuery } from '@/app/public/_shared/public-share-api';
 
 export type PublicDockTab = 'series' | 'pets' | 'me';
 

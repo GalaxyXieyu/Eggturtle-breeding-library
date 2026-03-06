@@ -129,9 +129,13 @@ export class TenantSharePresentationService {
       }
     });
 
+    const url = uploadResult.url.startsWith('s3://')
+      ? `/tenant-share-presentation/assets?key=${encodeURIComponent(uploadResult.key)}`
+      : uploadResult.url;
+
     return {
       key: uploadResult.key,
-      url: uploadResult.url,
+      url,
       contentType: uploadResult.contentType,
       sizeBytes: String(file.buffer.length)
     };

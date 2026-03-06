@@ -4,9 +4,9 @@ import { type Product } from '@eggturtle/shared';
 
 import ProductCreateDrawer, {
   type ProductCreateResult
-} from './product-drawer/create';
-import ProductEditDrawer from './product-drawer/edit';
-import { type ProductSeriesOption } from './product-drawer/shared';
+} from '@/components/product-drawer/create';
+import ProductEditDrawer from '@/components/product-drawer/edit';
+import { type ProductSeriesOption } from '@/components/product-drawer/shared';
 
 type ProductDrawerCreateProps = {
   mode: 'create';
@@ -34,7 +34,7 @@ type ProductDrawerEditProps = {
 export type ProductDrawerProps = ProductDrawerCreateProps | ProductDrawerEditProps;
 
 export type { ProductCreateResult };
-export type { ProductSeriesOption } from './product-drawer/shared';
+export type { ProductSeriesOption } from '@/components/product-drawer/shared';
 
 export default function ProductDrawer(props: ProductDrawerProps) {
   if (props.mode === 'create') {

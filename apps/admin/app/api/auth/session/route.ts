@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 
-import { isSuperAdminEmailAllowlisted } from '../../../../lib/admin-auth';
+import { isSuperAdminEmailAllowlisted } from '@/lib/admin-auth';
 import {
   clearSessionCookie,
   getSessionToken,
   resolveSessionFromToken
-} from '../../../../lib/server-session';
+} from '@/lib/server-session';
 
 export async function GET() {
   const token = getSessionToken();

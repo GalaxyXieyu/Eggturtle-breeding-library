@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from 'react';
 
-import type { Breeder, NeedMatingStatus, Series } from './types';
-import { BreederCard, DemoHint, PublicEmptyState, SeriesIntroCard } from './components';
+import type { Breeder, NeedMatingStatus, Series } from '@/app/public/_legacy/types';
+import { BreederCard, DemoHint, PublicEmptyState, SeriesIntroCard } from '@/app/public/_legacy/components';
 
 type Props = {
   demo: boolean;

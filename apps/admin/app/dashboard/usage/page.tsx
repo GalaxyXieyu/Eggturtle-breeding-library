@@ -15,18 +15,18 @@ import {
   AdminPageHeader,
   AdminPanel,
   AdminTableFrame
-} from '../../../components/dashboard/polish-primitives';
-import { useUiPreferences } from '../../../components/ui-preferences';
+} from '@/components/dashboard/polish-primitives';
+import { useUiPreferences } from '@/components/ui-preferences';
 import {
   getAdminTenantUsage,
   getAdminUsageOverview
-} from '../../../lib/api-client';
+} from '@/lib/api-client';
 import {
   formatPlanLabel,
   formatUsageMetricLabel,
   formatUsageStatusLabel
-} from '../../../lib/admin-labels';
-import { formatUnknownError } from '../../../lib/formatters';
+} from '@/lib/admin-labels';
+import { formatUnknownError } from '@/lib/formatters';
 
 type UsagePageState = {
   loading: boolean;

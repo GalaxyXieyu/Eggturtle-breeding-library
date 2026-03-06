@@ -1,8 +1,8 @@
-export { default as PetCard } from './pet-card';
+export { default as PetCard } from '@/components/pet/pet-card';
 export {
   PetPriceBadge,
   PetSexBadge,
   PetStatusBadge,
   PetTimelineChips,
   type PetNeedMatingStatus
-} from './pet-card-badges';
+} from '@/components/pet/pet-card-badges';

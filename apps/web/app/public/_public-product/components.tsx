@@ -5,9 +5,9 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import type { PublicSharePresentation } from '@eggturtle/shared';
 
-import { PetCard } from '../../../components/pet';
-import { formatSex, formatShortDate } from '../../../lib/pet-format';
-import type { Breeder, BreederEventItem, FamilyTree, MaleMateLoadItem, NeedMatingStatus, Series } from './types';
+import { PetCard } from '@/components/pet';
+import { formatSex, formatShortDate } from '@/lib/pet-format';
+import type { Breeder, BreederEventItem, FamilyTree, MaleMateLoadItem, NeedMatingStatus, Series } from '@/app/public/_public-product/types';
 
 function withDemo(path: string, demo: boolean) {
   return demo ? `${path}${path.includes('?') ? '&' : '?'}demo=1` : path;

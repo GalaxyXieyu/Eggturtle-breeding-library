@@ -10,14 +10,14 @@ import {
 } from '@eggturtle/shared';
 import { Wallet } from 'lucide-react';
 
-import { Badge } from '../../../../components/ui/badge';
-import { Button } from '../../../../components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../components/ui/card';
-import { Input } from '../../../../components/ui/input';
-import { Label } from '../../../../components/ui/label';
-import { buildInteractivePillClass } from '../../../../components/ui/pill';
-import { ApiError, apiRequest, getAccessToken } from '../../../../lib/api-client';
-import { switchTenantBySlug } from '../../../../lib/tenant-session';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { buildInteractivePillClass } from '@/components/ui/pill';
+import { ApiError, apiRequest, getAccessToken } from '@/lib/api-client';
+import { switchTenantBySlug } from '@/lib/tenant-session';
 
 type PlanTier = 'FREE' | 'BASIC' | 'PRO';
 

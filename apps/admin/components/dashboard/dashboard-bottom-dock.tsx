@@ -4,9 +4,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-import { useUiPreferences } from '../ui-preferences';
-import { DashboardNavIconGlyph } from './dashboard-nav-icon';
-import { dashboardNavGroups, type DashboardNavItem } from './nav-config';
+import { useUiPreferences } from '@/components/ui-preferences';
+import { DashboardNavIconGlyph } from '@/components/dashboard/dashboard-nav-icon';
+import { dashboardNavGroups, type DashboardNavItem } from '@/components/dashboard/nav-config';
 
 const DOCK_COPY = {
   zh: {

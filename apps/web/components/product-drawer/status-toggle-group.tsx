@@ -5,8 +5,8 @@ import { Check } from 'lucide-react';
 import {
   PRODUCT_BOOLEAN_TOGGLES,
   type ProductBooleanField
-} from './shared';
-import { buildInteractivePillClass } from '../ui/pill';
+} from '@/components/product-drawer/shared';
+import { buildInteractivePillClass } from '@/components/ui/pill';
 
 type ProductStatusValues = Record<ProductBooleanField, boolean>;
 

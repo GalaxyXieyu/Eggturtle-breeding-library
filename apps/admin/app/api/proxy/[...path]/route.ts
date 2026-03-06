@@ -5,7 +5,7 @@ import {
   clearAdminSessionCookieOptions,
   getApiBaseUrl,
   validateAdminAccessToken
-} from '../../../../lib/admin-auth';
+} from '@/lib/admin-auth';
 
 type RouteContext = {
   params: {

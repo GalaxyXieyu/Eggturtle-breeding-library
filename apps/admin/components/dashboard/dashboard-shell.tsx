@@ -2,10 +2,10 @@
 
 import { ReactNode, useState } from 'react';
 
-import { DashboardBottomDock } from './dashboard-bottom-dock';
-import { DashboardSidebar } from './dashboard-sidebar';
-import { DashboardTopTabs } from './dashboard-top-tabs';
-import { DashboardTopbar } from './dashboard-topbar';
+import { DashboardBottomDock } from '@/components/dashboard/dashboard-bottom-dock';
+import { DashboardSidebar } from '@/components/dashboard/dashboard-sidebar';
+import { DashboardTopTabs } from '@/components/dashboard/dashboard-top-tabs';
+import { DashboardTopbar } from '@/components/dashboard/dashboard-topbar';
 
 type DashboardShellProps = {
   children: ReactNode;

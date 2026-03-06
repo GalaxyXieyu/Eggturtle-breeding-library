@@ -5,8 +5,8 @@ import { getAdminTenantResponseSchema } from '@eggturtle/shared';
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 
-import { apiRequest } from '../../lib/api-client';
-import { UiPreferenceControls, useUiPreferences, type UiLocale } from '../ui-preferences';
+import { apiRequest } from '@/lib/api-client';
+import { UiPreferenceControls, useUiPreferences, type UiLocale } from '@/components/ui-preferences';
 
 type DashboardTopbarProps = {
   collapsed: boolean;

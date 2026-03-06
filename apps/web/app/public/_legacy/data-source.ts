@@ -5,8 +5,8 @@ import {
   listBreederEvents,
   listBreeders,
   listSeries,
-} from './mock-data';
-import type { NeedMatingStatus } from './types';
+} from '@/app/public/_legacy/mock-data';
+import type { NeedMatingStatus } from '@/app/public/_legacy/types';
 
 export type FeedQuery = {
   demo: boolean;

@@ -2,9 +2,9 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { meResponseSchema, type MeResponse } from '@eggturtle/shared';
 
-import { ADMIN_SESSION_COOKIE_NAME, DEFAULT_ADMIN_API_BASE_URL } from './session-constants';
+import { ADMIN_SESSION_COOKIE_NAME, DEFAULT_ADMIN_API_BASE_URL } from '@/lib/session-constants';
 
-export { ADMIN_SESSION_COOKIE_NAME } from './session-constants';
+export { ADMIN_SESSION_COOKIE_NAME } from '@/lib/session-constants';
 
 export function getAdminApiBaseUrl() {
   return (

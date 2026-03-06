@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { ADMIN_SESSION_COOKIE_NAME } from './lib/session-constants';
+import { ADMIN_SESSION_COOKIE_NAME } from '@/lib/session-constants';
 
 export function middleware(request: NextRequest) {
   if (!request.nextUrl.pathname.startsWith('/dashboard')) {

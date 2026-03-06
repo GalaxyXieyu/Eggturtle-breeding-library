@@ -11,15 +11,15 @@ import {
 } from '@eggturtle/shared';
 import { ArrowRight, Search } from 'lucide-react';
 
-import { ApiError, apiRequest, getAccessToken, resolveAuthenticatedAssetUrl } from '../../../../lib/api-client';
-import { formatSex } from '../../../../lib/pet-format';
-import { switchTenantBySlug } from '../../../../lib/tenant-session';
-import { Badge } from '../../../../components/ui/badge';
-import { Button } from '../../../../components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../components/ui/card';
-import { Input } from '../../../../components/ui/input';
-import { NativeSelect } from '../../../../components/ui/native-select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../../components/ui/table';
+import { ApiError, apiRequest, getAccessToken, resolveAuthenticatedAssetUrl } from '@/lib/api-client';
+import { formatSex } from '@/lib/pet-format';
+import { switchTenantBySlug } from '@/lib/tenant-session';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { NativeSelect } from '@/components/ui/native-select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 type ListMeta = {
   page: number;

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-import { useUiPreferences } from '../ui-preferences';
+import { useUiPreferences } from '@/components/ui-preferences';
 
 type TopTabItem = {
   href: string;

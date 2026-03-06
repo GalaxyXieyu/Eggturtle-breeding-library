@@ -1,4 +1,4 @@
-import { DeprecatedAdminEntry, normalizeAdminSubPath } from '../_shared/deprecated-admin-entry';
+import { DeprecatedAdminEntry, normalizeAdminSubPath } from '@/app/admin/_shared/deprecated-admin-entry';
 
 export const dynamic = 'force-dynamic';
 

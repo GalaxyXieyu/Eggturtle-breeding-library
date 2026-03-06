@@ -1,5 +1,5 @@
-import { formatPrice, formatSex, formatShortDate } from '../../lib/pet-format';
-import { cn } from '../../lib/utils';
+import { formatPrice, formatSex, formatShortDate } from '@/lib/pet-format';
+import { cn } from '@/lib/utils';
 
 export type PetNeedMatingStatus = 'normal' | 'need_mating' | 'warning';
 

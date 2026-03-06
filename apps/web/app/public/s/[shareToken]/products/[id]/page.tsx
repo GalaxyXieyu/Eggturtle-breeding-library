@@ -1,12 +1,12 @@
 import { redirect } from 'next/navigation';
 
-import PublicProductDetailPage from '../../../../_public-product/public-product-detail-page';
+import PublicProductDetailPage from '@/app/public/_public-product/public-product-detail-page';
 import {
   mapPublicShareDetail,
   mapPublicProductToLegacyBreeder,
   mapTenantFeedToLegacy
-} from '../../../../_public-product/public-share-adapter';
-import PublicShareErrorPanel from '../../../../_shared/public-share-error-panel';
+} from '@/app/public/_public-product/public-share-adapter';
+import PublicShareErrorPanel from '@/app/public/_shared/public-share-error-panel';
 import {
   buildPublicShareRouteQuery,
   fetchPublicShareFromSearchParams,
@@ -14,7 +14,7 @@ import {
   refreshPublicShareEntryLocation,
   shouldAutoRefreshShareSignature,
   type PublicSearchParams
-} from '../../../../_shared/public-share-api';
+} from '@/app/public/_shared/public-share-api';
 
 export default async function PublicShareProductDetailPage({
   params,

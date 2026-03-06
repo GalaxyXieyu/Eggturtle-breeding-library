@@ -4,8 +4,8 @@
 import Link from 'next/link';
 import type { KeyboardEventHandler, MouseEventHandler, ReactNode } from 'react';
 
-import { cn } from '../../lib/utils';
-import { type PetNeedMatingStatus, PetPriceBadge, PetSexBadge, PetStatusBadge, PetTimelineChips } from './pet-card-badges';
+import { cn } from '@/lib/utils';
+import { type PetNeedMatingStatus, PetPriceBadge, PetSexBadge, PetStatusBadge, PetTimelineChips } from '@/components/pet/pet-card-badges';
 
 type BasePetCardProps = {
   code: string;

@@ -1,4 +1,4 @@
-import { type DashboardNavIcon } from './nav-config';
+import { type DashboardNavIcon } from '@/components/dashboard/nav-config';
 
 type DashboardNavIconProps = {
   icon: DashboardNavIcon;

@@ -2,7 +2,7 @@ import '../../../packages/shared/styles/ui-foundation.css';
 import './globals.css';
 import { Inter, Playfair_Display } from 'next/font/google';
 
-import { UiPreferencesProvider } from '../components/ui-preferences';
+import { UiPreferencesProvider } from '@/components/ui-preferences';
 
 const fontSans = Inter({
   subsets: ['latin'],

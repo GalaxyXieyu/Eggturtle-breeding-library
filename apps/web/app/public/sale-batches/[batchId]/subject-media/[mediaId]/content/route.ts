@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 
-import { proxyPublicAsset } from '../../../../../../../lib/public-asset-proxy';
+import { proxyPublicAsset } from '@/lib/public-asset-proxy';
 
 type RouteContext = {
   params: {

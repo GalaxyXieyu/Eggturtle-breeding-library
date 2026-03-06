@@ -5,7 +5,7 @@ import {
   switchTenantResponseSchema
 } from '@eggturtle/shared';
 
-import { ApiError, apiRequest, setAccessToken } from './api-client';
+import { ApiError, apiRequest, setAccessToken } from '@/lib/api-client';
 
 export async function switchTenantBySlug(slug: string) {
   const response = await apiRequest('/auth/switch-tenant', {

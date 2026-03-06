@@ -17,7 +17,10 @@
       "Bash(./start_backend.sh:*)",
       "Bash(ls:*)",
       "Bash(chmod:*)",
-      "Bash(PYTHONPATH=. ./venv/bin/python:*)"
+      "Bash(PYTHONPATH=. ./venv/bin/python:*)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(wc -l /Volumes/DATABASE/code/Eggturtle-breeding-library/apps/web/app/app/[tenantSlug]/breeders/[id]/page.tsx)",
+      "Bash(pnpm --filter @eggturtle/web build)"
     ],
     "deny": []
   }

@@ -1,4 +1,4 @@
-import { ApiError } from './api-client'
+import { ApiError } from '@/lib/api-client'
 
 type FormatUnknownErrorOptions = {
   fallback?: string

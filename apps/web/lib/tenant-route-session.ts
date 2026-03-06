@@ -1,5 +1,5 @@
-import { ApiError, getAccessToken } from './api-client';
-import { switchTenantBySlug } from './tenant-session';
+import { ApiError, getAccessToken } from '@/lib/api-client';
+import { switchTenantBySlug } from '@/lib/tenant-session';
 
 type RouterLike = {
   replace: (href: string) => void;

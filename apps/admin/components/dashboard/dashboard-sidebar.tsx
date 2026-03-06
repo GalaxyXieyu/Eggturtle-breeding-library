@@ -3,12 +3,12 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-import { useUiPreferences } from '../ui-preferences';
-import { DashboardNavIconGlyph } from './dashboard-nav-icon';
+import { useUiPreferences } from '@/components/ui-preferences';
+import { DashboardNavIconGlyph } from '@/components/dashboard/dashboard-nav-icon';
 import {
   dashboardNavGroups,
   type DashboardNavItem
-} from './nav-config';
+} from '@/components/dashboard/nav-config';
 
 const webSuperAdminEnabled = process.env.NEXT_PUBLIC_SUPER_ADMIN_ENABLED === 'true';
 
