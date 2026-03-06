@@ -19,7 +19,7 @@ import {
 type ProductsListCardProps = {
   listStatsLabel: string;
   showMobileFilterFab: boolean;
-  mobileTopFilterRef: RefObject<HTMLDivElement | null>;
+  mobileTopFilterRef: RefObject<HTMLDivElement>;
   activeFilterCount: number;
   searchInput: string;
   sexFilter: string;
@@ -34,7 +34,7 @@ type ProductsListCardProps = {
   isLoadingMore: boolean;
   visibleItems: Product[];
   total: number;
-  loadMoreSentinelRef: RefObject<HTMLDivElement | null>;
+  loadMoreSentinelRef: RefObject<HTMLDivElement>;
   onOpenFilter: (
     event: ReactMouseEvent<HTMLElement>,
     placement: 'above' | 'below',

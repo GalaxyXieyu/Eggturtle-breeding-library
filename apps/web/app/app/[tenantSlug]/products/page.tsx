@@ -82,7 +82,7 @@ export default function TenantProductsPage() {
   const [nextPage, setNextPage] = useState(1);
   const [listStats, setListStats] = useState<ProductListStats>(EMPTY_LIST_STATS);
   const queryVersionRef = useRef(0);
-  const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
+  const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
   const [tenantReady, setTenantReady] = useState(false);
   const [seriesOptions, setSeriesOptions] = useState<ProductSeriesOption[]>([]);
   const [isCreateDrawerOpen, setIsCreateDrawerOpen] = useState(false);
@@ -91,7 +91,7 @@ export default function TenantProductsPage() {
   const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
   const [showMobileFilterFab, setShowMobileFilterFab] = useState(false);
   const [isMobileFilterLayout, setIsMobileFilterLayout] = useState(false);
-  const mobileTopFilterRef = useRef<HTMLDivElement | null>(null);
+  const mobileTopFilterRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [continueEditProductId, setContinueEditProductId] = useState<string | null>(null);

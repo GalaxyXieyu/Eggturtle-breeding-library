@@ -19,7 +19,7 @@ function readScrollTop(target: HTMLElement | Window) {
 type UseProductsPageUiEffectsInput = {
   isFilterPopoverOpen: boolean;
   setIsFilterPopoverOpen: Dispatch<SetStateAction<boolean>>;
-  mobileTopFilterRef: RefObject<HTMLDivElement | null>;
+  mobileTopFilterRef: RefObject<HTMLDivElement>;
   setShowMobileFilterFab: Dispatch<SetStateAction<boolean>>;
   setIsMobileFilterLayout: Dispatch<SetStateAction<boolean>>;
 };

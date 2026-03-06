@@ -76,7 +76,7 @@ export default function SubscriptionPage() {
   const [upgradeModalPlan, setUpgradeModalPlan] = useState<PlanPackage | null>(null);
   const [activeMobilePlanIndex, setActiveMobilePlanIndex] = useState(0);
   const [proPlanFocused, setProPlanFocused] = useState(false);
-  const mobilePlansRef = useRef<HTMLDivElement | null>(null);
+  const mobilePlansRef = useRef<HTMLDivElement>(null);
   const proPlanFocusTimerRef = useRef<number | null>(null);
 
   useEffect(() => {

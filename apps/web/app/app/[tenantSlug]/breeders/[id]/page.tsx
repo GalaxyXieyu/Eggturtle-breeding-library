@@ -487,8 +487,6 @@ export default function BreederDetailPage() {
       <BreederInfoCard
         breeder={currentBreeder}
         activeImage={activeImage}
-        listHref={listHref}
-        tenantSlug={tenantSlug}
         onBack={() => router.push(listHref)}
         onEdit={() => setIsEditDrawerOpen(true)}
         onManageImages={() => router.push(`/app/${tenantSlug}/products/${currentBreeder?.id}`)}
