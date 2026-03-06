@@ -85,16 +85,23 @@ export const verifyCodeResponseSchema = z.object({
 
 export const passwordLoginRequestSchema = z
   .object({
+    account: authAccountSchema.optional(),
+    phoneNumber: authPhoneNumberSchema.optional(),
     login: authLoginIdentifierSchema.optional(),
     email: authLoginIdentifierSchema.optional(),
     password: authPasswordSchema,
   })
-  .refine((payload) => Boolean(payload.login ?? payload.email), {
+  .refine(
+    (payload) => Boolean(payload.account ?? payload.phoneNumber ?? payload.login ?? payload.email),
+    {
     message: 'Login identifier is required.',
-    path: ['login'],
-  })
+      path: ['account'],
+    },
+  )
   .transform((payload) => ({
-    login: payload.login ?? payload.email ?? '',
+    account: payload.account ?? null,
+    phoneNumber: payload.phoneNumber ?? null,
+    login: payload.phoneNumber ?? payload.account ?? payload.login ?? payload.email ?? '',
     password: payload.password,
   }));
 
