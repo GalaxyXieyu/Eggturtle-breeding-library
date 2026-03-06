@@ -302,6 +302,18 @@ export class ProductsService {
         });
 
         if (mateCodeChanged && (resolvedSex ?? '').toLowerCase() === 'female') {
+          await tx.productCouplePhoto.updateMany({
+            where: {
+              tenantId,
+              femaleProductId: updatedProduct.id,
+              isCurrent: true
+            },
+            data: {
+              isCurrent: false,
+              staleReason: 'mate_changed'
+            }
+          });
+
           await tx.productEvent.create({
             data: {
               tenantId,
@@ -359,6 +371,11 @@ export class ProductsService {
       maleCode
     });
 
+    const existing = await this.findDuplicateMatingEvent(tenantId, female.id, eventDate, maleCode);
+    if (existing) {
+      return this.toProductEvent(existing);
+    }
+
     const event = await this.prisma.productEvent.create({
       data: {
         tenantId,
@@ -398,6 +415,11 @@ export class ProductsService {
     const note = buildTaggedNote(payload.note, {
       eggCount: eggCount ?? undefined
     });
+
+    const existing = await this.findDuplicateEggEvent(tenantId, female.id, eventDate, eggCount);
+    if (existing) {
+      return this.toProductEvent(existing);
+    }
 
     const event = await this.prisma.productEvent.create({
       data: {
@@ -440,12 +462,32 @@ export class ProductsService {
         ? this.normalizeOptionalCode(payload.maleCode) ?? this.normalizeOptionalCode(product.mateCode)
         : this.normalizeOptionalCode(payload.maleCode);
 
+    const oldMateCode = this.normalizeOptionalCode(payload.oldMateCode);
+    const newMateCode = this.normalizeOptionalCode(payload.newMateCode);
+    const eggCount = payload.eggCount ?? null;
+
     const note = buildTaggedNote(payload.note, {
       maleCode,
-      eggCount: payload.eggCount ?? undefined,
-      oldMateCode: this.normalizeOptionalCode(payload.oldMateCode),
-      newMateCode: this.normalizeOptionalCode(payload.newMateCode)
+      eggCount: eggCount ?? undefined,
+      oldMateCode,
+      newMateCode
     });
+
+    const existing = await this.findDuplicateProductEvent(
+      tenantId,
+      product.id,
+      payload.eventType,
+      eventDate,
+      {
+        maleCode,
+        eggCount,
+        oldMateCode,
+        newMateCode
+      }
+    );
+    if (existing) {
+      return this.toProductEvent(existing);
+    }
 
     const event = await this.prisma.productEvent.create({
       data: {
@@ -971,7 +1013,7 @@ export class ProductsService {
         mate: this.toFamilyTreeLink(currentMateCode, mate)
       },
       limitations:
-        'Product family-tree currently includes self, immediate sire/dam/mate, and direct children only.'
+        '当前家族谱系仅展示自己、直属父母、当前配偶与直系子代。'
     };
   }
 
@@ -1452,6 +1494,118 @@ export class ProductsService {
     } catch (error) {
       throw new BadRequestException(error instanceof Error ? error.message : 'Invalid event_date format');
     }
+  }
+
+  private utcDayRange(date: Date): { start: Date; end: Date } {
+    const start = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0, 0));
+    const end = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 1, 0, 0, 0, 0));
+    return { start, end };
+  }
+
+  private async listProductEventsForUtcDay(
+    tenantId: string,
+    productId: string,
+    eventType: string,
+    eventDate: Date
+  ): Promise<PrismaProductEvent[]> {
+    const { start, end } = this.utcDayRange(eventDate);
+    return this.prisma.productEvent.findMany({
+      where: {
+        tenantId,
+        productId,
+        eventType,
+        eventDate: {
+          gte: start,
+          lt: end
+        }
+      },
+      orderBy: {
+        createdAt: 'asc'
+      }
+    });
+  }
+
+  private async findDuplicateMatingEvent(
+    tenantId: string,
+    femaleProductId: string,
+    eventDate: Date,
+    maleCode: string | null
+  ): Promise<PrismaProductEvent | null> {
+    const candidates = await this.listProductEventsForUtcDay(tenantId, femaleProductId, 'mating', eventDate);
+    if (candidates.length === 0) {
+      return null;
+    }
+
+    // If male code is missing, treat any same-day mating as duplicate to avoid spam.
+    if (!maleCode) {
+      return candidates[0] ?? null;
+    }
+
+    for (const e of candidates) {
+      const parsed = parseTaggedProductEventNote(e.note);
+      if (parsed.maleCode === maleCode) {
+        return e;
+      }
+    }
+
+    return null;
+  }
+
+  private async findDuplicateEggEvent(
+    tenantId: string,
+    femaleProductId: string,
+    eventDate: Date,
+    eggCount: number | null
+  ): Promise<PrismaProductEvent | null> {
+    const candidates = await this.listProductEventsForUtcDay(tenantId, femaleProductId, 'egg', eventDate);
+    if (candidates.length === 0) {
+      return null;
+    }
+
+    // If eggCount is omitted, treat any same-day egg as duplicate.
+    if (eggCount === null) {
+      return candidates[0] ?? null;
+    }
+
+    for (const e of candidates) {
+      const parsed = parseTaggedProductEventNote(e.note);
+      if (parsed.eggCount === eggCount) {
+        return e;
+      }
+    }
+
+    return null;
+  }
+
+  private async findDuplicateProductEvent(
+    tenantId: string,
+    productId: string,
+    eventType: 'mating' | 'egg' | 'change_mate',
+    eventDate: Date,
+    detail: {
+      maleCode: string | null;
+      eggCount: number | null;
+      oldMateCode: string | null;
+      newMateCode: string | null;
+    }
+  ): Promise<PrismaProductEvent | null> {
+    if (eventType === 'mating') {
+      return this.findDuplicateMatingEvent(tenantId, productId, eventDate, detail.maleCode);
+    }
+
+    if (eventType === 'egg') {
+      return this.findDuplicateEggEvent(tenantId, productId, eventDate, detail.eggCount);
+    }
+
+    const candidates = await this.listProductEventsForUtcDay(tenantId, productId, 'change_mate', eventDate);
+    for (const e of candidates) {
+      const parsed = parseTaggedProductEventNote(e.note);
+      if (parsed.oldMateCode === detail.oldMateCode && parsed.newMateCode === detail.newMateCode) {
+        return e;
+      }
+    }
+
+    return null;
   }
 
   private compareProductCode(left: string, right: string, sortDir: Prisma.SortOrder): number {

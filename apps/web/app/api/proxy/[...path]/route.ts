@@ -35,7 +35,7 @@ async function handleProxyRequest(request: NextRequest, context: RouteContext) {
     headers.set('Authorization', authorization);
   }
 
-  const body = hasRequestBody(request.method) ? await request.text() : undefined;
+  const body = hasRequestBody(request.method) ? Buffer.from(await request.arrayBuffer()) : undefined;
 
   try {
     const upstreamResponse = await fetch(upstreamUrl, {
@@ -45,7 +45,7 @@ async function handleProxyRequest(request: NextRequest, context: RouteContext) {
       cache: 'no-store'
     });
 
-    const responseBody = await upstreamResponse.text();
+    const responseBody = await upstreamResponse.arrayBuffer();
     const response = new NextResponse(responseBody, {
       status: upstreamResponse.status
     });

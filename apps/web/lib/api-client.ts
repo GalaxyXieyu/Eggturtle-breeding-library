@@ -6,7 +6,11 @@ const DEFAULT_API_BASE_URL = '';
 const INTERNAL_PROXY_PREFIX = '/api/proxy';
 
 const LOGIN_PATH = '/login';
-const PRODUCT_IMAGE_CONTENT_PATH_PATTERN = /^\/products\/[^/]+\/images\/[^/]+\/content$/;
+const AUTHENTICATED_ASSET_PATH_PATTERNS = [
+  /^\/products\/[^/]+\/images\/[^/]+\/content$/,
+  /^\/products\/[^/]+\/certificates\/[^/]+\/content$/,
+  /^\/products\/[^/]+\/couple-photos\/[^/]+\/content$/
+];
 const MAX_ERROR_MESSAGE_LENGTH = 220;
 
 type SchemaParser<T> = {
@@ -15,7 +19,7 @@ type SchemaParser<T> = {
 
 type ApiRequestOptions<RequestPayload, ResponsePayload> = {
   auth?: boolean;
-  body?: RequestPayload;
+  body?: RequestPayload | FormData;
   headers?: HeadersInit;
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   requestSchema?: SchemaParser<RequestPayload>;
@@ -118,7 +122,7 @@ export function resolveAuthenticatedAssetUrl(rawValue: string) {
     }
   }
 
-  if (!PRODUCT_IMAGE_CONTENT_PATH_PATTERN.test(parsed.pathname)) {
+  if (!AUTHENTICATED_ASSET_PATH_PATTERNS.some((pattern) => pattern.test(parsed.pathname))) {
     return candidate;
   }
 
@@ -226,11 +230,16 @@ export async function apiRequest<RequestPayload = never, ResponsePayload = unkno
   const shouldUseAuth = options.auth ?? true;
   const headers = new Headers(options.headers ?? {});
 
-  let parsedBody: RequestPayload | undefined;
+  let requestBody: BodyInit | undefined;
 
   if (typeof options.body !== 'undefined') {
-    parsedBody = options.requestSchema ? options.requestSchema.parse(options.body) : options.body;
-    headers.set('Content-Type', 'application/json');
+    if (typeof FormData !== 'undefined' && options.body instanceof FormData) {
+      requestBody = options.body;
+    } else {
+      const parsedBody = options.requestSchema ? options.requestSchema.parse(options.body) : options.body;
+      headers.set('Content-Type', 'application/json');
+      requestBody = JSON.stringify(parsedBody);
+    }
   }
 
   if (shouldUseAuth && !headers.has('Authorization')) {
@@ -243,7 +252,7 @@ export async function apiRequest<RequestPayload = never, ResponsePayload = unkno
   const response = await fetch(resolveRequestPath(path), {
     method: options.method ?? 'GET',
     headers,
-    body: typeof parsedBody === 'undefined' ? undefined : JSON.stringify(parsedBody),
+    body: requestBody,
     cache: 'no-store'
   });
 
