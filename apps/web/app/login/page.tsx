@@ -127,7 +127,7 @@ const COPY: Record<UiLocale, LoginCopy> = {
     registering: '注册中…',
     registerSubmit: '注册并进入工作台',
     switchToRegister: '没有账号？去注册',
-    switchToLogin: '已有账号？去登录',
+    switchToLogin: '返回登录',
     registerSummary: '注册完成后，可用“账号 + 密码”或“手机号 + 密码/验证码”登录。',
     loginSummary: '从分享页进入也会保留回跳路径，登录后自动进入你的工作台。',
     successCodeHint: '验证码已发送，你可以直接输入验证码继续。',
@@ -180,7 +180,7 @@ const COPY: Record<UiLocale, LoginCopy> = {
     registering: 'Creating account…',
     registerSubmit: 'Register and enter workspace',
     switchToRegister: 'Need an account? Register',
-    switchToLogin: 'Already have an account? Sign in',
+    switchToLogin: 'Back to sign in',
     registerSummary:
       'After sign-up, you can sign in with account + password or phone + password/code.',
     loginSummary:
