@@ -54,7 +54,7 @@ export class AuthController {
   @Post('password-login')
   async passwordLogin(@Body() body: unknown) {
     const payload = parseOrThrow(passwordLoginRequestSchema, body);
-    const response = await this.authService.passwordLogin(payload.email, payload.password);
+    const response = await this.authService.passwordLogin(payload.login, payload.password);
 
     return passwordLoginResponseSchema.parse(response);
   }

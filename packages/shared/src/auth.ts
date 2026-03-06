@@ -83,10 +83,20 @@ export const verifyCodeResponseSchema = z.object({
   user: authUserSchema,
 });
 
-export const passwordLoginRequestSchema = z.object({
-  email: authLoginIdentifierSchema,
-  password: authPasswordSchema,
-});
+export const passwordLoginRequestSchema = z
+  .object({
+    login: authLoginIdentifierSchema.optional(),
+    email: authLoginIdentifierSchema.optional(),
+    password: authPasswordSchema,
+  })
+  .refine((payload) => Boolean(payload.login ?? payload.email), {
+    message: 'Login identifier is required.',
+    path: ['login'],
+  })
+  .transform((payload) => ({
+    login: payload.login ?? payload.email ?? '',
+    password: payload.password,
+  }));
 
 export const passwordLoginResponseSchema = verifyCodeResponseSchema;
 
