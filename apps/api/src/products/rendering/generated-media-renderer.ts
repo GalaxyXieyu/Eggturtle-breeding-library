@@ -40,15 +40,6 @@ type CouplePhotoRenderInput = {
   maleImage?: Buffer | null;
 };
 
-function escapeXml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-}
-
 async function buildImageLayer(image: Buffer | null | undefined, slot: SlotRect) {
   if (!image) {
     return null;
@@ -284,15 +275,6 @@ async function createQrBuffer(payload: string, size: number): Promise<Buffer> {
     const pseudoSvg = buildPseudoQrSvg(payload, size);
     return sharp(Buffer.from(pseudoSvg)).png().toBuffer();
   }
-}
-
-function buildWatermarkOverlay(width: number, height: number, text: string) {
-  const safeText = escapeXml(text);
-  return Buffer.from(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
-      <text x="${width - 18}" y="${height - 22}" text-anchor="end" font-size="20" fill="rgba(46,34,22,0.35)" font-family="serif">${safeText}</text>
-    </svg>`
-  );
 }
 
 export async function renderCertificatePng(input: CertificateRenderInput): Promise<Buffer> {

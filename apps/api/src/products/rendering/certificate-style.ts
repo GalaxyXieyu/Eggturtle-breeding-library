@@ -256,8 +256,6 @@ export function buildCertificateStyleSvg(input: CertificateStyleInput): string {
   const topDividerY = useExternalBackground ? 388 : PAGE_LAYOUT.topDividerY;
   const lineageDividerY = 1138;
 
-  const leftColX = SUMMARY_COLS[0].x;
-  const rightColX = SUMMARY_COLS[1].x;
   const leftSummaryCenterX = SUMMARY_COLS[0].x + SUMMARY_COLS[0].width / 2;
   const rightSummaryCenterX = SUMMARY_COLS[1].x + SUMMARY_COLS[1].width / 2;
   const lineageLeftCenterX = LINEAGE_COLS[0].x + LINEAGE_COLS[0].width / 2;
