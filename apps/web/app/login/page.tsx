@@ -17,10 +17,10 @@ import {
   UiPreferenceControls,
   type UiLocale,
   useUiPreferences,
-} from '../../components/ui-preferences';
-import { apiRequest, getAccessToken, setAccessToken } from '../../lib/api-client';
-import { formatApiError } from '../../lib/error-utils';
-import { resolvePostAuthRedirect } from '../../lib/post-auth-redirect';
+} from '@/components/ui-preferences';
+import { apiRequest, getAccessToken, setAccessToken } from '@/lib/api-client';
+import { formatApiError } from '@/lib/error-utils';
+import { resolvePostAuthRedirect } from '@/lib/post-auth-redirect';
 
 type EntryView = 'login' | 'register';
 type LoginMode = 'password' | 'code';
@@ -454,7 +454,7 @@ function LoginPageContent() {
 
     try {
       const payload = passwordLoginRequestSchema.parse({
-        email: loginIdentifier,
+        login: loginIdentifier,
         password: loginPassword,
       });
 

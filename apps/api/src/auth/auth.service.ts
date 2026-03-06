@@ -1197,9 +1197,24 @@ export class AuthService {
 
     const salt = Buffer.from(saltHex, 'hex');
     const expected = Buffer.from(expectedHex, 'hex');
-    const candidate = scryptSync(`${password}:${this.getPasswordPepper()}`, salt, expected.length);
 
-    return this.isHashEqual(candidate, expected);
+    if (expected.length === 0) {
+      return false;
+    }
+
+    const peppers = [this.getPasswordPepper()];
+    if (peppers[0] !== '') {
+      peppers.push('');
+    }
+
+    for (const pepper of peppers) {
+      const candidate = scryptSync(`${password}:${pepper}`, salt, expected.length);
+      if (this.isHashEqual(candidate, expected)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   private getPasswordPepper() {
