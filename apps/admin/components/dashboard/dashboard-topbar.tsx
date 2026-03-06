@@ -11,8 +11,6 @@ import { UiPreferenceControls, useUiPreferences, type UiLocale } from '../ui-pre
 type DashboardTopbarProps = {
   collapsed: boolean;
   currentUserEmail: string;
-  isMobile: boolean;
-  sidebarOpen: boolean;
   onToggleSidebar: () => void;
 };
 
@@ -26,8 +24,6 @@ const TOPBAR_COPY = {
   zh: {
     collapseSidebar: '收起侧边栏',
     expandSidebar: '展开侧边栏',
-    openNavigation: '打开导航',
-    closeNavigation: '关闭导航',
     breadcrumbsLabel: '面包屑',
     currentAccount: '当前账号：',
     signingOut: '退出中...',
@@ -36,8 +32,6 @@ const TOPBAR_COPY = {
   en: {
     collapseSidebar: 'Collapse sidebar',
     expandSidebar: 'Expand sidebar',
-    openNavigation: 'Open navigation',
-    closeNavigation: 'Close navigation',
     breadcrumbsLabel: 'Breadcrumbs',
     currentAccount: 'Current account:',
     signingOut: 'Signing out...',
@@ -48,8 +42,6 @@ const TOPBAR_COPY = {
 export function DashboardTopbar({
   collapsed,
   currentUserEmail,
-  isMobile,
-  sidebarOpen,
   onToggleSidebar
 }: DashboardTopbarProps) {
   const pathname = usePathname();
@@ -99,13 +91,7 @@ export function DashboardTopbar({
   const currentPageLabel =
     [...breadcrumbs].reverse().find((crumb) => crumb.isCurrent)?.label ??
     (locale === 'zh' ? '平台总览' : 'Overview');
-  const sidebarToggleLabel = isMobile
-    ? sidebarOpen
-      ? copy.closeNavigation
-      : copy.openNavigation
-    : collapsed
-      ? copy.expandSidebar
-      : copy.collapseSidebar;
+  const sidebarToggleLabel = collapsed ? copy.expandSidebar : copy.collapseSidebar;
 
   async function handleSignOut() {
     if (signingOut) {
@@ -130,11 +116,11 @@ export function DashboardTopbar({
       <div className="topbar-main">
         <button
           type="button"
-          className="icon-button"
+          className="icon-button sidebar-toggle"
           onClick={onToggleSidebar}
           aria-label={sidebarToggleLabel}
         >
-          <span aria-hidden="true">{isMobile && sidebarOpen ? '×' : '☰'}</span>
+          <span aria-hidden="true">☰</span>
         </button>
 
         <div>
