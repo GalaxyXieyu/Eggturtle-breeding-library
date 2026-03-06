@@ -12,8 +12,9 @@ import {
 export async function POST(request: Request) {
   try {
     const payload = passwordLoginRequestSchema.parse(await request.json());
+    const loginIdentifier = payload.login;
 
-    if (!isSuperAdminIdentifierAllowlisted(payload.email)) {
+    if (!isSuperAdminIdentifierAllowlisted(loginIdentifier)) {
       return withClearedSessionCookie(
         NextResponse.json(
           {

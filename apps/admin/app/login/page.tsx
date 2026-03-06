@@ -173,7 +173,7 @@ export default function LoginPage() {
 
     try {
       const payload = passwordLoginRequestSchema.parse({
-        email,
+        login: email,
         password
       });
 
