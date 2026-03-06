@@ -217,14 +217,6 @@ function LoginPageSkeleton() {
             </div>
           </div>
           <div className="login-form-stack">
-            <div className="login-entry-switch" aria-hidden>
-              <button type="button" className="login-entry-btn active" disabled>
-                登录
-              </button>
-              <button type="button" className="login-entry-btn" disabled>
-                注册
-              </button>
-            </div>
             <div className="login-panel">
               <p className="muted">正在同步登录与注册入口，请稍候…</p>
             </div>
@@ -614,28 +606,6 @@ function LoginPageContent() {
           </div>
 
           <div className="login-form-stack">
-            <div
-              className="login-entry-switch"
-              aria-label={entryView === 'register' ? copy.registerTitle : copy.loginTitle}
-            >
-              <button
-                type="button"
-                className={entryView === 'login' ? 'login-entry-btn active' : 'login-entry-btn'}
-                aria-pressed={entryView === 'login'}
-                onClick={() => switchEntryView('login')}
-              >
-                {copy.entryLogin}
-              </button>
-              <button
-                type="button"
-                className={entryView === 'register' ? 'login-entry-btn active' : 'login-entry-btn'}
-                aria-pressed={entryView === 'register'}
-                onClick={() => switchEntryView('register')}
-              >
-                {copy.entryRegister}
-              </button>
-            </div>
-
             {entryView === 'login' ? (
               <>
                 <p className="muted">{copy.loginSummary}</p>
