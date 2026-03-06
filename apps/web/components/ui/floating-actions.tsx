@@ -1,7 +1,7 @@
 import type { HTMLAttributes } from 'react';
 
-import { cn } from '../../lib/utils';
-import { Button, type ButtonProps } from './button';
+import { cn } from '@/lib/utils';
+import { Button, type ButtonProps } from '@/components/ui/button';
 
 export const floatingActionDockClass =
   'mobile-fab fixed right-6 z-50 flex flex-col-reverse gap-2 sm:right-6 lg:right-8';

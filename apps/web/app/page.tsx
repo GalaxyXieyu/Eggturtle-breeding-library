@@ -3,8 +3,8 @@
 import Image from 'next/image';
 import Link from 'next/link';
 
-import { useUiPreferences } from '../components/ui-preferences';
-import styles from './page.module.css';
+import { useUiPreferences } from '@/components/ui-preferences';
+import styles from '@/app/page.module.css';
 
 type HomeCopy = {
   navLogin: string;

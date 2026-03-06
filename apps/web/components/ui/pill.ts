@@ -1,4 +1,4 @@
-import { cn } from '../../lib/utils';
+import { cn } from '@/lib/utils';
 
 export const INTERACTIVE_PILL_BASE_CLASS =
   'inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD400]/80 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60';

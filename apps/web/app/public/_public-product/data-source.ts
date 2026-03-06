@@ -5,9 +5,9 @@ import {
   listBreederEvents,
   listBreeders,
   listSeries,
-} from './mock-data';
-import type { NeedMatingStatus } from './types';
-import { DEFAULT_PUBLIC_SHARE_PRESENTATION } from './presentation';
+} from '@/app/public/_public-product/mock-data';
+import type { NeedMatingStatus } from '@/app/public/_public-product/types';
+import { DEFAULT_PUBLIC_SHARE_PRESENTATION } from '@/app/public/_public-product/presentation';
 
 export type FeedQuery = {
   demo: boolean;

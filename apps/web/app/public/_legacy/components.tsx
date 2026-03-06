@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 
-import type { Breeder, BreederEventItem, FamilyTree, MaleMateLoadItem, NeedMatingStatus, Series } from './types';
+import type { Breeder, BreederEventItem, FamilyTree, MaleMateLoadItem, NeedMatingStatus, Series } from '@/app/public/_legacy/types';
 
 function formatShortDate(value?: string | null) {
   const iso = (value || '').trim();

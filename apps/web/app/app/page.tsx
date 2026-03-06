@@ -3,14 +3,14 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-import { useUiPreferences } from '../../components/ui-preferences';
-import { ApiError, clearAccessToken, getAccessToken } from '../../lib/api-client';
+import { useUiPreferences } from '@/components/ui-preferences';
+import { ApiError, clearAccessToken, getAccessToken } from '@/lib/api-client';
 import {
   normalizeShareSource,
   sanitizeInternalNext,
   type ShareSource,
-} from '../../lib/post-auth-redirect';
-import { resolveCurrentTenantSlug } from '../../lib/tenant-session';
+} from '@/lib/post-auth-redirect';
+import { resolveCurrentTenantSlug } from '@/lib/tenant-session';
 
 type PageState = {
   error: string | null;

@@ -5,11 +5,11 @@ import { useEffect, useMemo, useState } from 'react';
 import type { PublicSharePresentation } from '@eggturtle/shared';
 import { ArrowRight, CheckCircle2, Link2, Palette, PencilRuler, Sparkles, type LucideIcon } from 'lucide-react';
 
-import { getAccessToken } from '../../../lib/api-client';
-import { resolvePublicSharePresentation } from '../_public-product/presentation';
-import PublicBottomDock from './public-bottom-dock';
-import PublicFloatingActions from './public-floating-actions';
-import { appendPublicShareQuery } from './public-share-api';
+import { getAccessToken } from '@/lib/api-client';
+import { resolvePublicSharePresentation } from '@/app/public/_public-product/presentation';
+import PublicBottomDock from '@/app/public/_shared/public-bottom-dock';
+import PublicFloatingActions from '@/app/public/_shared/public-floating-actions';
+import { appendPublicShareQuery } from '@/app/public/_shared/public-share-api';
 
 type PublicShareMePageProps = {
   shareToken: string;

@@ -25,25 +25,25 @@ import {
   apiRequest,
   getAccessToken,
   resolveAuthenticatedAssetUrl,
-} from '../../../../lib/api-client';
-import { switchTenantBySlug } from '../../../../lib/tenant-session';
-import TenantFloatingShareButton from '../../../../components/tenant-floating-share-button';
-import { Badge } from '../../../../components/ui/badge';
-import { Button } from '../../../../components/ui/button';
+} from '@/lib/api-client';
+import { switchTenantBySlug } from '@/lib/tenant-session';
+import TenantFloatingShareButton from '@/components/tenant-floating-share-button';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '../../../../components/ui/card';
+} from '@/components/ui/card';
 import {
   FloatingActionButton,
   FloatingActionDock,
   modalCloseButtonClass,
-} from '../../../../components/ui/floating-actions';
-import { Input } from '../../../../components/ui/input';
-import { Textarea } from '../../../../components/ui/textarea';
+} from '@/components/ui/floating-actions';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 
 type ListMeta = {
   page: number;

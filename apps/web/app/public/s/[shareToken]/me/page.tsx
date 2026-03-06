@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 
-import PublicShareErrorPanel from '../../../_shared/public-share-error-panel';
-import PublicShareMePage from '../../../_shared/public-share-me-page';
+import PublicShareErrorPanel from '@/app/public/_shared/public-share-error-panel';
+import PublicShareMePage from '@/app/public/_shared/public-share-me-page';
 import {
   buildPublicShareRouteQuery,
   fetchPublicShareFromSearchParams,
@@ -9,7 +9,7 @@ import {
   refreshPublicShareEntryLocation,
   shouldAutoRefreshShareSignature,
   type PublicSearchParams
-} from '../../../_shared/public-share-api';
+} from '@/app/public/_shared/public-share-api';
 
 export default async function PublicShareMeRoute({
   params,

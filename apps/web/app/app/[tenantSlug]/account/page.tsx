@@ -20,21 +20,21 @@ import {
 } from '@eggturtle/shared';
 import { KeyRound, LogOut, UserRound } from 'lucide-react';
 
-import { Button } from '../../../../components/ui/button';
-import { AccountSectionNav } from '../../../../components/account-section-nav';
+import { Button } from '@/components/ui/button';
+import { AccountSectionNav } from '@/components/account-section-nav';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '../../../../components/ui/card';
-import { Input } from '../../../../components/ui/input';
-import { Label } from '../../../../components/ui/label';
-import { apiRequest, clearAccessToken } from '../../../../lib/api-client';
-import { formatApiError } from '../../../../lib/error-utils';
-import { ensureTenantRouteSession } from '../../../../lib/tenant-route-session';
-import SubscriptionPageContent from '../subscription/page';
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { apiRequest, clearAccessToken } from '@/lib/api-client';
+import { formatApiError } from '@/lib/error-utils';
+import { ensureTenantRouteSession } from '@/lib/tenant-route-session';
+import SubscriptionPageContent from '@/app/app/[tenantSlug]/subscription/page';
 
 type AccountTab = 'profile' | 'subscription';
 type SetupRequirements = {

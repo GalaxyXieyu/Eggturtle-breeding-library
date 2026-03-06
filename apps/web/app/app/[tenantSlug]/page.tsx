@@ -21,24 +21,24 @@ import {
   Workflow,
 } from 'lucide-react';
 
-import { apiRequest } from '../../../lib/api-client';
-import { formatApiError } from '../../../lib/error-utils';
-import { ensureTenantRouteSession } from '../../../lib/tenant-route-session';
-import { createTenantFeedShareLink } from '../../../lib/tenant-share';
-import { Badge } from '../../../components/ui/badge';
-import { Button } from '../../../components/ui/button';
+import { apiRequest } from '@/lib/api-client';
+import { formatApiError } from '@/lib/error-utils';
+import { ensureTenantRouteSession } from '@/lib/tenant-route-session';
+import { createTenantFeedShareLink } from '@/lib/tenant-share';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '../../../components/ui/card';
+} from '@/components/ui/card';
 import {
   FloatingActionButton,
   FloatingActionDock,
-} from '../../../components/ui/floating-actions';
-import TenantFloatingShareButton from '../../../components/tenant-floating-share-button';
+} from '@/components/ui/floating-actions';
+import TenantFloatingShareButton from '@/components/tenant-floating-share-button';
 
 type ShareLinks = {
   shareToken: string;

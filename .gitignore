@@ -81,3 +81,7 @@ apps/web/.next.bak-*/
 # Local/generated artifacts from review/verification runs
 out/
 docs/evidence/
+
+# Local scratch
+.backup/
+apps/api/tmp/

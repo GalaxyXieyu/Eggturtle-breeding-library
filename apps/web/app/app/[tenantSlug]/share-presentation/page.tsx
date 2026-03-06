@@ -15,22 +15,22 @@ import { Copy, Link2 } from 'lucide-react';
 import {
   apiRequest,
   resolveAuthenticatedAssetUrl,
-} from '../../../../lib/api-client';
-import { formatApiError } from '../../../../lib/error-utils';
-import { ensureTenantRouteSession } from '../../../../lib/tenant-route-session';
-import { createTenantFeedShareLink } from '../../../../lib/tenant-share';
-import { uploadSingleFileWithAuth } from '../../../../lib/upload-client';
-import { Button } from '../../../../components/ui/button';
+} from '@/lib/api-client';
+import { formatApiError } from '@/lib/error-utils';
+import { ensureTenantRouteSession } from '@/lib/tenant-route-session';
+import { createTenantFeedShareLink } from '@/lib/tenant-share';
+import { uploadSingleFileWithAuth } from '@/lib/upload-client';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '../../../../components/ui/card';
-import { Input } from '../../../../components/ui/input';
-import { Label } from '../../../../components/ui/label';
-import { Textarea } from '../../../../components/ui/textarea';
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 const DEFAULT_HERO_IMAGE = '/images/mg_04.jpg';
 

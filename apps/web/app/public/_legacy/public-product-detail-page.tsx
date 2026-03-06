@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 
-import type { Breeder, BreederEventItem, FamilyTree, MaleMateLoadItem, Series } from './types';
+import type { Breeder, BreederEventItem, FamilyTree, MaleMateLoadItem, Series } from '@/app/public/_legacy/types';
 import {
   BreederCarousel,
   BreederEventTimeline,
@@ -11,7 +11,7 @@ import {
   DemoHint,
   FamilyTreeSection,
   MaleMateLoadCard,
-} from './components';
+} from '@/app/public/_legacy/components';
 
 function withDemo(path: string, demo: boolean, shareQuery?: string) {
   const withQuery = shareQuery ? `${path}${path.includes('?') ? '&' : '?'}${shareQuery}` : path;

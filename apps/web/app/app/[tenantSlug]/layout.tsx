@@ -13,17 +13,17 @@ import {
 } from '@eggturtle/shared';
 import { LayoutDashboard, Package, Layers, Share2, LogOut, UserRound } from 'lucide-react';
 
-import { UiPreferenceControls, useUiPreferences } from '../../../components/ui-preferences';
-import { Button } from '../../../components/ui/button';
+import { UiPreferenceControls, useUiPreferences } from '@/components/ui-preferences';
+import { Button } from '@/components/ui/button';
 import TenantFloatingShareButton, {
   type TenantShareIntent,
-} from '../../../components/tenant-floating-share-button';
-import { apiRequest, clearAccessToken } from '../../../lib/api-client';
-import { formatApiError } from '../../../lib/error-utils';
-import { ensureTenantRouteSession } from '../../../lib/tenant-route-session';
-import { createTenantFeedShareLink } from '../../../lib/tenant-share';
-import { formatTenantDisplayName } from '../../../lib/tenant-display';
-import { cn } from '../../../lib/utils';
+} from '@/components/tenant-floating-share-button';
+import { apiRequest, clearAccessToken } from '@/lib/api-client';
+import { formatApiError } from '@/lib/error-utils';
+import { ensureTenantRouteSession } from '@/lib/tenant-route-session';
+import { createTenantFeedShareLink } from '@/lib/tenant-share';
+import { formatTenantDisplayName } from '@/lib/tenant-display';
+import { cn } from '@/lib/utils';
 
 type TenantRouteLayoutProps = {
   children: ReactNode;
@@ -123,7 +123,9 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
   const shouldRenderLayoutFloatingShare =
     pathname !== `/app/${tenantSlug}` &&
     !pathname?.endsWith('/products') &&
-    !pathname?.endsWith('/series');
+    !pathname?.endsWith('/series') &&
+    !pathname?.endsWith('/account') &&
+    !pathname?.endsWith('/certificates');
   const setupQueryEnabled = searchParams.get('setup') === '1';
   const accountPath = `/app/${tenantSlug}/account`;
   const visibleNavItems = setupRequired
@@ -483,7 +485,9 @@ function isActive(pathname: string, href: string): boolean {
     const tenantBase = href.replace(/\/account$/, '');
     if (
       pathname === `${tenantBase}/subscription` ||
-      pathname.startsWith(`${tenantBase}/subscription/`)
+      pathname.startsWith(`${tenantBase}/subscription/`) ||
+      pathname === `${tenantBase}/certificates` ||
+      pathname.startsWith(`${tenantBase}/certificates/`)
     ) {
       return true;
     }

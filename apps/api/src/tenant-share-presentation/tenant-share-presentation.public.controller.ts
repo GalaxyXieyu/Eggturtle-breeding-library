@@ -1,0 +1,72 @@
+import { BadRequestException, Controller, Get, Header, Inject, StreamableFile, Query } from '@nestjs/common';
+import path from 'node:path';
+
+import { STORAGE_PROVIDER_TOKEN } from '../storage/storage.constants';
+import type { StorageProvider } from '../storage/storage.provider';
+
+function normalizeStorageKey(rawKey: string): string {
+  const key = rawKey.replace(/\\/g, '/').replace(/^\/+/, '').trim();
+  if (!key) {
+    throw new BadRequestException('Storage key is required.');
+  }
+
+  const segments = key.split('/').filter((segment) => segment.length > 0);
+  if (segments.length < 2) {
+    throw new BadRequestException('Storage key must include tenant prefix.');
+  }
+
+  if (segments.some((segment) => segment === '..')) {
+    throw new BadRequestException('Storage key cannot include parent path segments.');
+  }
+
+  return segments.join('/');
+}
+
+function guessContentTypeFromKey(key: string): string | null {
+  const ext = path.extname(key).toLowerCase();
+  switch (ext) {
+    case '.jpg':
+    case '.jpeg':
+      return 'image/jpeg';
+    case '.png':
+      return 'image/png';
+    case '.webp':
+      return 'image/webp';
+    case '.gif':
+      return 'image/gif';
+    case '.svg':
+      return 'image/svg+xml';
+    default:
+      return null;
+  }
+}
+
+@Controller('tenant-share-presentation')
+export class TenantSharePresentationPublicController {
+  constructor(@Inject(STORAGE_PROVIDER_TOKEN) private readonly storageProvider: StorageProvider) {}
+
+  // Public endpoint used by the share pages to load tenant presentation assets (hero images, contact QR, etc.).
+  @Get('assets')
+  @Header('Cache-Control', 'public, max-age=31536000, immutable')
+  async getAsset(@Query('key') key: string | undefined) {
+    const rawKey = key?.trim();
+    if (!rawKey) {
+      throw new BadRequestException('Query parameter "key" is required.');
+    }
+
+    const normalizedKey = normalizeStorageKey(rawKey);
+    const segments = normalizedKey.split('/');
+
+    // Restrict to tenant share-presentation assets only.
+    if (segments[1] !== 'tenant-share-presentation') {
+      throw new BadRequestException('Unsupported asset key.');
+    }
+
+    const result = await this.storageProvider.getObject(normalizedKey);
+    const contentType = result.contentType ?? guessContentTypeFromKey(normalizedKey) ?? 'application/octet-stream';
+
+    return new StreamableFile(result.body, {
+      type: contentType
+    });
+  }
+}

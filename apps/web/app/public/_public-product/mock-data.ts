@@ -5,7 +5,7 @@ import type {
   MaleMateLoadItem,
   NeedMatingStatus,
   Series,
-} from './types';
+} from '@/app/public/_public-product/types';
 
 const seriesList: Series[] = [
   {

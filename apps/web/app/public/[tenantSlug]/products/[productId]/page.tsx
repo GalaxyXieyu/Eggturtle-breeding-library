@@ -1,12 +1,12 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from 'next/link';
 
-import { formatPrice, formatSex } from '../../../../../lib/pet-format';
+import { formatPrice, formatSex } from '@/lib/pet-format';
 import {
   buildPublicShareRouteQuery,
   fetchPublicShareFromSearchParams,
   type PublicSearchParams
-} from '../../../_shared/public-share-api';
+} from '@/app/public/_shared/public-share-api';
 
 export default async function TenantPublicDetailPage({
   params,

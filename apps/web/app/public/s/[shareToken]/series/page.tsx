@@ -1,10 +1,10 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
-import { mapTenantFeedToLegacy } from '../../../_public-product/public-share-adapter';
-import PublicBottomDock from '../../../_shared/public-bottom-dock';
-import PublicFloatingActions from '../../../_shared/public-floating-actions';
-import PublicShareErrorPanel from '../../../_shared/public-share-error-panel';
+import { mapTenantFeedToLegacy } from '@/app/public/_public-product/public-share-adapter';
+import PublicBottomDock from '@/app/public/_shared/public-bottom-dock';
+import PublicFloatingActions from '@/app/public/_shared/public-floating-actions';
+import PublicShareErrorPanel from '@/app/public/_shared/public-share-error-panel';
 import {
   buildPublicShareRouteQuery,
   fetchPublicShareFromSearchParams,
@@ -12,7 +12,7 @@ import {
   refreshPublicShareEntryLocation,
   shouldAutoRefreshShareSignature,
   type PublicSearchParams
-} from '../../../_shared/public-share-api';
+} from '@/app/public/_shared/public-share-api';
 
 export default async function PublicShareSeriesPage({
   params,

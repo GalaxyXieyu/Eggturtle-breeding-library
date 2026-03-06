@@ -1,4 +1,4 @@
-import { DeprecatedAdminEntry } from './_shared/deprecated-admin-entry';
+import { DeprecatedAdminEntry } from '@/app/admin/_shared/deprecated-admin-entry';
 
 export const dynamic = 'force-dynamic';
 

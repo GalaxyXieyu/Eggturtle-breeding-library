@@ -10,9 +10,9 @@ import {
   verifyCodeRequestSchema
 } from '@eggturtle/shared';
 
-import { UiPreferenceControls, type UiLocale, useUiPreferences } from '../../components/ui-preferences';
-import { apiRequest } from '../../lib/api-client';
-import { formatUnknownError } from '../../lib/formatters';
+import { UiPreferenceControls, type UiLocale, useUiPreferences } from '@/components/ui-preferences';
+import { apiRequest } from '@/lib/api-client';
+import { formatUnknownError } from '@/lib/formatters';
 
 type LoginMode = 'password' | 'code';
 

@@ -1,6 +1,6 @@
 import { createSeriesRequestSchema, createSeriesResponseSchema } from '@eggturtle/shared';
 
-import { apiRequest } from '../../lib/api-client';
+import { apiRequest } from '@/lib/api-client';
 
 export type ProductSeriesOption = {
   id: string;

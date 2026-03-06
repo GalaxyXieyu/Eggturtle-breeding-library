@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { ADMIN_ACCESS_COOKIE_NAME, clearAdminSessionCookieOptions } from '../../lib/admin-auth';
+import { ADMIN_ACCESS_COOKIE_NAME, clearAdminSessionCookieOptions } from '@/lib/admin-auth';
 
 export async function GET(request: NextRequest) {
   const redirectUrl = new URL('/login', request.url);

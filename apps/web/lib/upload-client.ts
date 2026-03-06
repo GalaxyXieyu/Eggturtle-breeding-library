@@ -1,4 +1,4 @@
-import { ApiError, getAccessToken, getApiBaseUrl } from './api-client';
+import { ApiError, getAccessToken, getApiBaseUrl } from '@/lib/api-client';
 
 type ResponseSchemaParser<T> = {
   parse: (value: unknown) => T;

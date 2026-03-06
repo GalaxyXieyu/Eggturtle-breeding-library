@@ -11,8 +11,8 @@ import {
   FloatingActionDock,
   floatingActionButtonClass,
   modalCloseButtonClass
-} from '../../../components/ui/floating-actions';
-import { cn } from '../../../lib/utils';
+} from '@/components/ui/floating-actions';
+import { cn } from '@/lib/utils';
 
 type PublicFloatingActionsProps = {
   permalink?: string;

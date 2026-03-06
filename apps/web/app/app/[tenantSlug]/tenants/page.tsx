@@ -9,8 +9,8 @@ import {
   type TenantMembership
 } from '@eggturtle/shared/tenant';
 
-import { ApiError, apiRequest, getAccessToken } from '../../../../lib/api-client';
-import { switchTenantBySlug } from '../../../../lib/tenant-session';
+import { ApiError, apiRequest, getAccessToken } from '@/lib/api-client';
+import { switchTenantBySlug } from '@/lib/tenant-session';
 
 export default function TenantManagementPage() {
   const router = useRouter();

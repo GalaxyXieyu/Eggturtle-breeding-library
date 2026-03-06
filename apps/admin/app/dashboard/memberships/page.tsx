@@ -20,10 +20,10 @@ import {
   AdminPageHeader,
   AdminPanel,
   AdminTableFrame
-} from '../../../components/dashboard/polish-primitives';
-import { formatTenantRoleLabel } from '../../../lib/admin-labels';
-import { ApiError, apiRequest } from '../../../lib/api-client';
-import { formatDateTime, formatUnknownError } from '../../../lib/formatters';
+} from '@/components/dashboard/polish-primitives';
+import { formatTenantRoleLabel } from '@/lib/admin-labels';
+import { ApiError, apiRequest } from '@/lib/api-client';
+import { formatDateTime, formatUnknownError } from '@/lib/formatters';
 
 type PageState = {
   loadingTenants: boolean;

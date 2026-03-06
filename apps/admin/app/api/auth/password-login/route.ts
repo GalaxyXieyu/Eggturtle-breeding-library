@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { passwordLoginRequestSchema, passwordLoginResponseSchema } from '@eggturtle/shared/auth';
 
-import { isSuperAdminEmailAllowlisted, isSuperAdminIdentifierAllowlisted } from '../../../../lib/admin-auth';
+import { isSuperAdminEmailAllowlisted, isSuperAdminIdentifierAllowlisted } from '@/lib/admin-auth';
 import {
   applySessionCookie,
   clearSessionCookie,
   getAdminApiBaseUrl,
   resolveSessionFromToken
-} from '../../../../lib/server-session';
+} from '@/lib/server-session';
 
 export async function POST(request: Request) {
   try {

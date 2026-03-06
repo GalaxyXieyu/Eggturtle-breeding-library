@@ -17,31 +17,52 @@ import {
   UseInterceptors
 } from '@nestjs/common';
 import {
+  confirmProductCertificateGenerateResponseSchema,
   createEggRecordRequestSchema,
   createMatingRecordRequestSchema,
   createProductEventRequestSchema,
   createProductEventResponseSchema,
-  ErrorCode,
   createProductRequestSchema,
   createProductResponseSchema,
+  createSaleAllocationRequestSchema,
+  createSaleAllocationResponseSchema,
+  createSaleBatchRequestSchema,
+  createSaleBatchResponseSchema,
+  createSaleSubjectMediaRequestSchema,
+  createSaleSubjectMediaResponseSchema,
   deleteProductImageResponseSchema,
+  ErrorCode,
+  generateProductCertificatePreviewResponseSchema,
+  generateProductCouplePhotoRequestSchema,
+  generateProductCouplePhotoResponseSchema,
+  getCurrentProductCouplePhotoResponseSchema,
+  getProductCertificateEligibilityResponseSchema,
   getProductFamilyTreeResponseSchema,
   getProductPublicClicksResponseSchema,
   getProductResponseSchema,
+  listProductCertificateCenterQuerySchema,
+  listProductCertificateCenterResponseSchema,
+  listProductCertificatesResponseSchema,
+  listProductCouplePhotosResponseSchema,
+  listProductEventsResponseSchema,
   listProductImagesResponseSchema,
   listProductsPublicClicksQuerySchema,
   listProductsPublicClicksResponseSchema,
-  listProductEventsResponseSchema,
   listProductsQuerySchema,
   listProductsResponseSchema,
+  listSaleBatchesResponseSchema,
+  productCertificateGenerateRequestSchema,
+  productCertificateSchema,
   productCodeSchema,
   productIdParamSchema,
   productPublicClicksQuerySchema,
   reorderProductImagesRequestSchema,
   reorderProductImagesResponseSchema,
+  reissueProductCertificateRequestSchema,
   setMainProductImageResponseSchema,
   updateProductRequestSchema,
-  uploadProductImageResponseSchema
+  uploadProductImageResponseSchema,
+  voidProductCertificateRequestSchema
 } from '@eggturtle/shared';
 import { FileInterceptor } from '@nestjs/platform-express';
 
@@ -52,6 +73,7 @@ import { RequireTenantRole } from '../auth/require-tenant-role.decorator';
 import { TenantSubscriptionGuard } from '../auth/tenant-subscription.guard';
 import { parseOrThrow } from '../common/zod-parse';
 
+import { ProductGeneratedAssetsService } from './product-generated-assets.service';
 import { ProductsService } from './products.service';
 
 type UploadedBinaryFile = {
@@ -69,7 +91,10 @@ type PassthroughResponse = {
 @UseGuards(AuthGuard, RbacGuard, TenantSubscriptionGuard)
 @RequireTenantRole('VIEWER')
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(
+    private readonly productsService: ProductsService,
+    private readonly generatedAssetsService: ProductGeneratedAssetsService
+  ) {}
 
   @Post()
   @RequireTenantRole('EDITOR')
@@ -129,6 +154,78 @@ export class ProductsController {
     const event = await this.productsService.createEggRecord(tenantId, actorUserId, payload);
 
     return createProductEventResponseSchema.parse({ event });
+  }
+
+
+  @Get('certificates/center')
+  async listCertificateCenter(@Req() request: AuthenticatedRequest, @Query() query: unknown) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const parsedQuery = parseOrThrow(listProductCertificateCenterQuerySchema, query);
+    const response = await this.generatedAssetsService.listCertificateCenter(tenantId, parsedQuery);
+
+    return listProductCertificateCenterResponseSchema.parse(response);
+  }
+
+  @Post('certificates/:certificateId/void')
+  @RequireTenantRole('EDITOR')
+  async voidCertificate(
+    @Req() request: AuthenticatedRequest,
+    @Param('certificateId') certificateId: string,
+    @Body() body: unknown
+  ) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const actorUserId = this.requireUserId(request.user?.id);
+    const payload = parseOrThrow(voidProductCertificateRequestSchema, body);
+    const response = await this.generatedAssetsService.voidCertificate(
+      tenantId,
+      actorUserId,
+      certificateId,
+      payload
+    );
+
+    return {
+      certificate: productCertificateSchema.parse(response.certificate)
+    };
+  }
+
+  @Post('certificates/:certificateId/reissue/preview')
+  @RequireTenantRole('EDITOR')
+  async previewReissueCertificate(
+    @Req() request: AuthenticatedRequest,
+    @Param('certificateId') certificateId: string,
+    @Body() body: unknown
+  ) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const actorUserId = this.requireUserId(request.user?.id);
+    const payload = parseOrThrow(reissueProductCertificateRequestSchema, body);
+    const response = await this.generatedAssetsService.previewReissueCertificate(
+      tenantId,
+      actorUserId,
+      certificateId,
+      payload
+    );
+
+    return generateProductCertificatePreviewResponseSchema.parse(response);
+  }
+
+  @Post('certificates/:certificateId/reissue/confirm')
+  @RequireTenantRole('EDITOR')
+  async confirmReissueCertificate(
+    @Req() request: AuthenticatedRequest,
+    @Param('certificateId') certificateId: string,
+    @Body() body: unknown
+  ) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const actorUserId = this.requireUserId(request.user?.id);
+    const payload = parseOrThrow(reissueProductCertificateRequestSchema, body);
+    const response = await this.generatedAssetsService.confirmReissueCertificate(
+      tenantId,
+      actorUserId,
+      certificateId,
+      payload
+    );
+
+    return confirmProductCertificateGenerateResponseSchema.parse(response);
   }
 
   @Get(':id')
@@ -202,6 +299,245 @@ export class ProductsController {
     const tree = await this.productsService.getProductFamilyTree(tenantId, productId);
 
     return getProductFamilyTreeResponseSchema.parse({ tree });
+  }
+
+
+  @Get(':id/sale-batches')
+  async listSaleBatches(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const productId = parseOrThrow(productIdParamSchema, id);
+    const response = await this.generatedAssetsService.listSaleBatches(tenantId, productId);
+
+    return listSaleBatchesResponseSchema.parse(response);
+  }
+
+  @Post(':id/sale-batches')
+  @RequireTenantRole('EDITOR')
+  async createSaleBatch(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() body: unknown
+  ) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const actorUserId = this.requireUserId(request.user?.id);
+    const productId = parseOrThrow(productIdParamSchema, id);
+    const payload = parseOrThrow(createSaleBatchRequestSchema, body);
+    const response = await this.generatedAssetsService.createSaleBatch(
+      tenantId,
+      actorUserId,
+      productId,
+      payload
+    );
+
+    return createSaleBatchResponseSchema.parse(response);
+  }
+
+  @Post(':id/sale-allocations')
+  @RequireTenantRole('EDITOR')
+  async createSaleAllocation(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() body: unknown
+  ) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const actorUserId = this.requireUserId(request.user?.id);
+    const productId = parseOrThrow(productIdParamSchema, id);
+    const payload = parseOrThrow(createSaleAllocationRequestSchema, body);
+    const response = await this.generatedAssetsService.createSaleAllocation(
+      tenantId,
+      actorUserId,
+      productId,
+      payload
+    );
+
+    return createSaleAllocationResponseSchema.parse(response);
+  }
+
+  @Post(':id/sale-subject-media')
+  @RequireTenantRole('EDITOR')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: {
+        files: 1,
+        fileSize: 10 * 1024 * 1024
+      }
+    })
+  )
+  async uploadSaleSubjectMedia(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @UploadedFile() file: UploadedBinaryFile | undefined
+  ) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const actorUserId = this.requireUserId(request.user?.id);
+    const productId = parseOrThrow(productIdParamSchema, id);
+    const payload = parseOrThrow(createSaleSubjectMediaRequestSchema, body);
+
+    if (!file || !file.buffer || file.buffer.length === 0) {
+      throw new BadRequestException('A single image file is required in form field "file".');
+    }
+
+    const response = await this.generatedAssetsService.uploadSaleSubjectMedia(
+      tenantId,
+      actorUserId,
+      productId,
+      payload,
+      file
+    );
+
+    return createSaleSubjectMediaResponseSchema.parse(response);
+  }
+
+  @Get(':id/certificates/eligibility')
+  async getCertificateEligibility(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const productId = parseOrThrow(productIdParamSchema, id);
+    const result = await this.generatedAssetsService.getCertificateEligibility(tenantId, productId);
+
+    return getProductCertificateEligibilityResponseSchema.parse(result);
+  }
+
+  @Post(':id/certificates/preview')
+  @RequireTenantRole('EDITOR')
+  async previewCertificate(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() body: unknown
+  ) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const actorUserId = this.requireUserId(request.user?.id);
+    const productId = parseOrThrow(productIdParamSchema, id);
+    const payload = parseOrThrow(productCertificateGenerateRequestSchema, body);
+    const response = await this.generatedAssetsService.previewCertificate(
+      tenantId,
+      actorUserId,
+      productId,
+      payload
+    );
+
+    return generateProductCertificatePreviewResponseSchema.parse(response);
+  }
+
+  @Post(':id/certificates/confirm')
+  @RequireTenantRole('EDITOR')
+  async confirmCertificate(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() body: unknown
+  ) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const actorUserId = this.requireUserId(request.user?.id);
+    const productId = parseOrThrow(productIdParamSchema, id);
+    const payload = parseOrThrow(productCertificateGenerateRequestSchema, body);
+    const response = await this.generatedAssetsService.confirmCertificate(
+      tenantId,
+      actorUserId,
+      productId,
+      payload
+    );
+
+    return confirmProductCertificateGenerateResponseSchema.parse(response);
+  }
+
+  @Get(':id/certificates')
+  async listCertificates(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const productId = parseOrThrow(productIdParamSchema, id);
+    const response = await this.generatedAssetsService.listCertificates(tenantId, productId);
+
+    return listProductCertificatesResponseSchema.parse(response);
+  }
+
+  @Get(':pid/certificates/:cid/content')
+  async getCertificateContent(
+    @Req() request: AuthenticatedRequest,
+    @Param('pid') productId: string,
+    @Param('cid') certificateId: string,
+    @Res({ passthrough: true }) response: PassthroughResponse
+  ) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const content = await this.generatedAssetsService.getCertificateContent(
+      tenantId,
+      productId,
+      certificateId
+    );
+
+    response.setHeader('Cache-Control', 'private, no-store');
+
+    if ('redirectUrl' in content) {
+      response.redirect(content.redirectUrl);
+      return;
+    }
+
+    if (content.contentType) {
+      response.setHeader('Content-Type', content.contentType);
+    }
+
+    return new StreamableFile(content.content);
+  }
+
+  @Post(':id/couple-photos/generate')
+  @RequireTenantRole('EDITOR')
+  async generateCouplePhoto(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() body: unknown
+  ) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const actorUserId = this.requireUserId(request.user?.id);
+    const productId = parseOrThrow(productIdParamSchema, id);
+    const payload = parseOrThrow(generateProductCouplePhotoRequestSchema, body);
+    const result = await this.generatedAssetsService.generateCouplePhoto(
+      tenantId,
+      actorUserId,
+      productId,
+      payload
+    );
+
+    return generateProductCouplePhotoResponseSchema.parse(result);
+  }
+
+  @Get(':id/couple-photos/current')
+  async getCurrentCouplePhoto(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const productId = parseOrThrow(productIdParamSchema, id);
+    const result = await this.generatedAssetsService.getCurrentCouplePhoto(tenantId, productId);
+
+    return getCurrentProductCouplePhotoResponseSchema.parse(result);
+  }
+
+  @Get(':id/couple-photos/history')
+  async listCouplePhotoHistory(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const productId = parseOrThrow(productIdParamSchema, id);
+    const result = await this.generatedAssetsService.listCouplePhotosHistory(tenantId, productId);
+
+    return listProductCouplePhotosResponseSchema.parse(result);
+  }
+
+  @Get(':pid/couple-photos/:photoId/content')
+  async getCouplePhotoContent(
+    @Req() request: AuthenticatedRequest,
+    @Param('pid') productId: string,
+    @Param('photoId') photoId: string,
+    @Res({ passthrough: true }) response: PassthroughResponse
+  ) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const content = await this.generatedAssetsService.getCouplePhotoContent(tenantId, productId, photoId);
+
+    response.setHeader('Cache-Control', 'private, no-store');
+
+    if ('redirectUrl' in content) {
+      response.redirect(content.redirectUrl);
+      return;
+    }
+
+    if (content.contentType) {
+      response.setHeader('Content-Type', content.contentType);
+    }
+
+    return new StreamableFile(content.content);
   }
 
   @Get(':id/images')

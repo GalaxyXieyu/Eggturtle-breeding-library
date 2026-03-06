@@ -20,21 +20,21 @@ import {
   AdminPageHeader,
   AdminPanel,
   AdminTableFrame
-} from '../../../../components/dashboard/polish-primitives';
+} from '@/components/dashboard/polish-primitives';
 import {
   apiRequest,
   getAdminTenantSubscription,
   reactivateAdminTenant,
   suspendAdminTenant,
   updateAdminTenantSubscription
-} from '../../../../lib/api-client';
+} from '@/lib/api-client';
 import {
   formatAuditActionLabel,
   formatPlanLabel,
   formatSubscriptionStatusLabel,
   formatTenantRoleLabel
-} from '../../../../lib/admin-labels';
-import { formatDateTime, formatUnknownError } from '../../../../lib/formatters';
+} from '@/lib/admin-labels';
+import { formatDateTime, formatUnknownError } from '@/lib/formatters';
 
 type DetailState = {
   loading: boolean;

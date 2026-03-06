@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { Layers, PawPrint, UserRound } from 'lucide-react';
 
-import { cn } from '../../../lib/utils';
-import { appendPublicShareQuery } from './public-share-api';
+import { cn } from '@/lib/utils';
+import { appendPublicShareQuery } from '@/app/public/_shared/public-share-api';
 
 export type PublicDockTab = 'series' | 'pets' | 'me';
 
@@ -32,7 +32,7 @@ export default function PublicBottomDock({
   }> = [
     {
       key: 'series',
-      label: '系列',
+      label: '数据',
       href: appendPublicShareQuery(`${basePath}/series`, shareQuery),
       icon: Layers,
     },

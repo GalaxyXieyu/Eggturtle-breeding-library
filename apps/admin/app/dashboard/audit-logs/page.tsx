@@ -16,10 +16,10 @@ import {
   AdminPageHeader,
   AdminPanel,
   AdminTableFrame
-} from '../../../components/dashboard/polish-primitives';
-import { formatAuditActionLabel } from '../../../lib/admin-labels';
-import { apiRequest } from '../../../lib/api-client';
-import { formatDateTime, formatUnknownError } from '../../../lib/formatters';
+} from '@/components/dashboard/polish-primitives';
+import { formatAuditActionLabel } from '@/lib/admin-labels';
+import { apiRequest } from '@/lib/api-client';
+import { formatDateTime, formatUnknownError } from '@/lib/formatters';
 
 type PageState = {
   loading: boolean;

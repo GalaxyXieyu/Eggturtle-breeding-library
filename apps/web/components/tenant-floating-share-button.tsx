@@ -3,10 +3,10 @@
 import { useEffect, useState } from 'react';
 import { Share2 } from 'lucide-react';
 
-import { formatApiError } from '../lib/error-utils';
-import { createTenantFeedShareLink } from '../lib/tenant-share';
-import { cn } from '../lib/utils';
-import { FloatingActionButton, FloatingActionDock } from './ui/floating-actions';
+import { formatApiError } from '@/lib/error-utils';
+import { createTenantFeedShareLink } from '@/lib/tenant-share';
+import { cn } from '@/lib/utils';
+import { FloatingActionButton, FloatingActionDock } from '@/components/ui/floating-actions';
 
 export type TenantShareIntent = 'feed' | 'series' | { productId: string };
 

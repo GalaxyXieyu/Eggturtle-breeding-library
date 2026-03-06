@@ -673,7 +673,7 @@ export class SharesService {
         mate: this.toPublicFamilyTreeLink(currentMateCode, mate)
       },
       limitations:
-        'Product family-tree currently includes self, immediate sire/dam/mate, and direct children only.'
+        '当前家族谱系仅展示自己、直属父母、当前配偶与直系子代。'
     };
   }
 

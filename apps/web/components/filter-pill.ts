@@ -1,4 +1,4 @@
-import { cn } from '../lib/utils';
+import { cn } from '@/lib/utils';
 
 export const FILTER_PILL_BASE_CLASS =
   'filter-pill h-8 rounded-full border px-3 text-xs shadow-[0_1px_0_rgba(0,0,0,0.04)] transition lg:h-9 lg:px-4 lg:text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/15 focus-visible:ring-offset-2 active:scale-[0.98]';

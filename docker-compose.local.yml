@@ -1,8 +1,9 @@
-version: "3.9"
-
 services:
   app:
-    build: .
+    build:
+      context: .
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:-node:22-alpine}
     image: eggturtle:local
     ports:
       - "30080:80"
@@ -22,7 +23,7 @@ services:
 
   # Optional for now (Legacy app can run on sqlite). Kept to match the future SaaS plan.
   postgres:
-    image: postgres:16-alpine
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
     ports:
       - "30001:5432"
     environment:
@@ -34,7 +35,7 @@ services:
 
   # MinIO (S3 compatible). Not wired into the Legacy app yet.
   minio:
-    image: minio/minio:RELEASE.2025-01-20T14-49-07Z
+    image: ${MINIO_IMAGE:-minio/minio:RELEASE.2025-01-20T14-49-07Z}
     command: server /data --console-address ":9001"
     ports:
       - "127.0.0.1:30002:9000" # S3 API (localhost only)

@@ -4,7 +4,7 @@ import {
   meResponseSchema,
 } from '@eggturtle/shared';
 
-import { apiRequest } from './api-client';
+import { apiRequest } from '@/lib/api-client';
 
 export type TenantShareIntent = 'feed' | 'series' | { productId: string };
 

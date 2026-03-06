@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation';
 
-import PublicFeedPage from '../../_public-product/public-feed-page';
-import { mapTenantFeedToLegacy } from '../../_public-product/public-share-adapter';
-import PublicShareErrorPanel from '../../_shared/public-share-error-panel';
+import PublicFeedPage from '@/app/public/_public-product/public-feed-page';
+import { mapTenantFeedToLegacy } from '@/app/public/_public-product/public-share-adapter';
+import PublicShareErrorPanel from '@/app/public/_shared/public-share-error-panel';
 import {
   buildPublicShareRouteQuery,
   fetchPublicShareFromSearchParams,
@@ -10,7 +10,7 @@ import {
   refreshPublicShareEntryLocation,
   shouldAutoRefreshShareSignature,
   type PublicSearchParams
-} from '../../_shared/public-share-api';
+} from '@/app/public/_shared/public-share-api';
 
 export default async function PublicShareFeedPage({
   params,

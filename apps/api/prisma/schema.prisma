@@ -35,6 +35,8 @@ model User {
   createdSubscriptionActivationCodes SubscriptionActivationCode[] @relation("SubscriptionActivationCodeCreator")
   auditLogs           AuditLog[]           @relation("AuditLogActor")
   createdShares       PublicShare[]        @relation("PublicShareCreator")
+  issuedProductCertificates ProductCertificate[] @relation("ProductCertificateIssuer")
+  generatedProductCouplePhotos ProductCouplePhoto[] @relation("ProductCouplePhotoGenerator")
   superAdminAuditLogs SuperAdminAuditLog[] @relation("SuperAdminAuditLogActor")
 
   @@map("users")
@@ -92,6 +94,12 @@ model Tenant {
   featuredProducts    FeaturedProduct[]
   shares              PublicShare[]
   sharePresentationConfig TenantSharePresentationConfig?
+  productCertificates ProductCertificate[]
+  certificateQuotaMonthly TenantCertificateQuotaMonthly[]
+  productCouplePhotos ProductCouplePhoto[]
+  saleBatches         SaleBatch[]
+  saleAllocations     SaleAllocation[]
+  saleSubjectMedia    SaleSubjectMedia[]
   auditLogs           AuditLog[]
   targetedSubscriptionActivationCodes SubscriptionActivationCode[] @relation("SubscriptionActivationCodeTargetTenant")
   superAdminAuditLogs SuperAdminAuditLog[] @relation("SuperAdminAuditLogTenant")
@@ -189,6 +197,10 @@ model Product {
   events              ProductEvent[]
   featuredProducts    FeaturedProduct[]
   shares              PublicShare[]
+  certificates        ProductCertificate[]
+  couplePhotos        ProductCouplePhoto[] @relation("ProductCouplePhotoFemale")
+  saleBatches         SaleBatch[]
+  saleSubjectMedia    SaleSubjectMedia[]
 
   // Enables composite foreign keys to enforce tenant isolation.
   @@unique([id, tenantId], map: "products_id_tenant_id_key")
@@ -199,6 +211,100 @@ model Product {
   @@index([tenantId, sex], map: "products_tenant_id_sex_idx")
   @@index([tenantId, type], map: "products_tenant_id_type_idx")
   @@map("products")
+}
+
+model ProductCertificate {
+  id              String   @id @default(cuid())
+  tenantId        String   @map("tenant_id")
+  productId       String   @map("product_id")
+  eggEventId      String?  @map("egg_event_id")
+  saleBatchId     String?  @map("sale_batch_id")
+  saleAllocationId String? @map("sale_allocation_id")
+  subjectMediaId  String?  @map("subject_media_id")
+  previousCertificateId String? @map("previous_certificate_id")
+  versionNo       Int      @default(1) @map("version_no")
+  voidReason      String?  @map("void_reason") @db.VarChar(240)
+  certNo          String   @map("cert_no") @db.VarChar(120)
+  verifyId        String   @unique @map("verify_id") @db.VarChar(40)
+  status          String   @default("ISSUED") @db.VarChar(40)
+  templateVersion String   @map("template_version") @db.VarChar(40)
+  lineageSnapshot Json     @map("lineage_snapshot")
+  saleSnapshot    Json?    @map("sale_snapshot")
+  watermarkSnapshot Json?  @map("watermark_snapshot")
+  imageKey        String   @map("image_key") @db.VarChar(500)
+  imageUrl        String   @map("image_url") @db.VarChar(1000)
+  contentType     String?  @map("content_type") @db.VarChar(255)
+  sizeBytes       BigInt   @default(0) @map("size_bytes")
+  issuedAt        DateTime @default(now()) @map("issued_at")
+  issuedByUserId  String   @map("issued_by_user_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product         Product  @relation(fields: [productId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  eggEvent        ProductEvent? @relation("ProductCertificateEggEvent", fields: [eggEventId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  saleBatch       SaleBatch? @relation(fields: [saleBatchId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  saleAllocation  SaleAllocation? @relation(fields: [saleAllocationId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  subjectMedia    SaleSubjectMedia? @relation(fields: [subjectMediaId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  previousCertificate ProductCertificate? @relation("ProductCertificateVersionChain", fields: [previousCertificateId], references: [id], onDelete: SetNull)
+  nextCertificates ProductCertificate[] @relation("ProductCertificateVersionChain")
+  issuedByUser    User     @relation("ProductCertificateIssuer", fields: [issuedByUserId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, certNo], map: "product_certificates_tenant_id_cert_no_key")
+  @@index([tenantId], map: "product_certificates_tenant_id_idx")
+  @@index([tenantId, productId], map: "product_certificates_tenant_id_product_id_idx")
+  @@index([tenantId, eggEventId], map: "product_certificates_tenant_id_egg_event_id_idx")
+  @@index([tenantId, saleBatchId], map: "product_certificates_tenant_id_sale_batch_id_idx")
+  @@index([tenantId, saleAllocationId], map: "product_certificates_tenant_id_sale_allocation_id_idx")
+  @@index([tenantId, issuedAt], map: "product_certificates_tenant_id_issued_at_idx")
+  @@index([issuedByUserId], map: "product_certificates_issued_by_user_id_idx")
+  @@map("product_certificates")
+}
+
+model TenantCertificateQuotaMonthly {
+  id        String   @id @default(cuid())
+  tenantId  String   @map("tenant_id")
+  monthKey  String   @map("month_key") @db.VarChar(6)
+  usedCount Int      @default(0) @map("used_count")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, monthKey], map: "tenant_certificate_quota_monthly_tenant_id_month_key_key")
+  @@index([tenantId], map: "tenant_certificate_quota_monthly_tenant_id_idx")
+  @@map("tenant_certificate_quota_monthly")
+}
+
+model ProductCouplePhoto {
+  id                    String    @id @default(cuid())
+  tenantId              String    @map("tenant_id")
+  femaleProductId       String    @map("female_product_id")
+  maleProductIdSnapshot String?   @map("male_product_id_snapshot")
+  femaleCodeSnapshot    String    @map("female_code_snapshot") @db.VarChar(120)
+  maleCodeSnapshot      String    @map("male_code_snapshot") @db.VarChar(120)
+  femaleImageKeySnapshot String?  @map("female_image_key_snapshot") @db.VarChar(500)
+  maleImageKeySnapshot  String?   @map("male_image_key_snapshot") @db.VarChar(500)
+  priceSnapshot         Decimal?  @map("price_snapshot") @db.Decimal(10, 2)
+  templateVersion       String    @map("template_version") @db.VarChar(40)
+  watermarkSnapshot     Json?     @map("watermark_snapshot")
+  imageKey              String    @map("image_key") @db.VarChar(500)
+  imageUrl              String    @map("image_url") @db.VarChar(1000)
+  contentType           String?   @map("content_type") @db.VarChar(255)
+  sizeBytes             BigInt    @default(0) @map("size_bytes")
+  isCurrent             Boolean   @default(true) @map("is_current")
+  staleReason           String?   @map("stale_reason") @db.VarChar(80)
+  generatedAt           DateTime  @default(now()) @map("generated_at")
+  generatedByUserId     String    @map("generated_by_user_id")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+  tenant                Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  femaleProduct         Product   @relation("ProductCouplePhotoFemale", fields: [femaleProductId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  generatedByUser       User      @relation("ProductCouplePhotoGenerator", fields: [generatedByUserId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId], map: "product_couple_photos_tenant_id_idx")
+  @@index([tenantId, femaleProductId], map: "product_couple_photos_tenant_id_female_product_id_idx")
+  @@index([tenantId, femaleProductId, isCurrent], map: "product_couple_photos_tenant_female_current_idx")
+  @@index([generatedByUserId], map: "product_couple_photos_generated_by_user_id_idx")
+  @@map("product_couple_photos")
 }
 
 model Series {
@@ -223,21 +329,115 @@ model Series {
 }
 
 model ProductEvent {
-  id        String   @id @default(cuid())
-  tenantId  String   @map("tenant_id")
-  productId String   @map("product_id")
-  eventType String   @map("event_type") @db.VarChar(40)
-  eventDate DateTime @map("event_date")
-  note      String?
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  product   Product  @relation(fields: [productId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  id           String   @id @default(cuid())
+  tenantId     String   @map("tenant_id")
+  productId    String   @map("product_id")
+  eventType    String   @map("event_type") @db.VarChar(40)
+  eventDate    DateTime @map("event_date")
+  note         String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product      Product  @relation(fields: [productId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  saleBatches  SaleBatch[]
+  certificates ProductCertificate[] @relation("ProductCertificateEggEvent")
 
+  @@unique([id, tenantId], map: "product_events_id_tenant_id_key")
   @@index([tenantId], map: "product_events_tenant_id_idx")
   @@index([tenantId, productId], map: "product_events_tenant_id_product_id_idx")
   @@index([tenantId, productId, eventDate], map: "product_events_tenant_id_product_id_event_date_idx")
   @@map("product_events")
+}
+
+model SaleBatch {
+  id                  String   @id @default(cuid())
+  tenantId            String   @map("tenant_id")
+  femaleProductId     String   @map("female_product_id")
+  eggEventId          String   @map("egg_event_id")
+  batchNo             String   @map("batch_no") @db.VarChar(120)
+  status              String   @default("OPEN") @db.VarChar(40)
+  plannedQuantity     Int      @default(1) @map("planned_quantity")
+  soldQuantity        Int      @default(0) @map("sold_quantity")
+  eventDateSnapshot   DateTime @map("event_date_snapshot")
+  eggCountSnapshot    Int?     @map("egg_count_snapshot")
+  femaleCodeSnapshot  String   @map("female_code_snapshot") @db.VarChar(120)
+  sireCodeSnapshot    String   @map("sire_code_snapshot") @db.VarChar(120)
+  seriesNameSnapshot  String?  @map("series_name_snapshot") @db.VarChar(120)
+  priceLow            Decimal? @map("price_low") @db.Decimal(10, 2)
+  priceHigh           Decimal? @map("price_high") @db.Decimal(10, 2)
+  note                String?
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  femaleProduct       Product  @relation(fields: [femaleProductId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  eggEvent            ProductEvent @relation(fields: [eggEventId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  allocations         SaleAllocation[]
+  subjectMedia        SaleSubjectMedia[]
+  certificates        ProductCertificate[]
+
+  @@unique([id, tenantId], map: "sale_batches_id_tenant_id_key")
+  @@unique([tenantId, batchNo], map: "sale_batches_tenant_id_batch_no_key")
+  @@index([tenantId], map: "sale_batches_tenant_id_idx")
+  @@index([tenantId, femaleProductId], map: "sale_batches_tenant_id_female_product_id_idx")
+  @@index([tenantId, eggEventId], map: "sale_batches_tenant_id_egg_event_id_idx")
+  @@index([tenantId, status], map: "sale_batches_tenant_id_status_idx")
+  @@map("sale_batches")
+}
+
+model SaleAllocation {
+  id               String   @id @default(cuid())
+  tenantId         String   @map("tenant_id")
+  saleBatchId      String   @map("sale_batch_id")
+  allocationNo     String   @map("allocation_no") @db.VarChar(120)
+  status           String   @default("SOLD") @db.VarChar(40)
+  quantity         Int      @default(1)
+  buyerName        String   @map("buyer_name") @db.VarChar(120)
+  buyerAccountId   String?  @map("buyer_account_id") @db.VarChar(120)
+  buyerContact     String?  @map("buyer_contact") @db.VarChar(120)
+  unitPrice        Decimal? @map("unit_price") @db.Decimal(10, 2)
+  channel          String?  @db.VarChar(80)
+  campaignId       String?  @map("campaign_id") @db.VarChar(120)
+  note             String?
+  soldAt           DateTime @default(now()) @map("sold_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  saleBatch        SaleBatch @relation(fields: [saleBatchId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  certificates     ProductCertificate[]
+
+  @@unique([id, tenantId], map: "sale_allocations_id_tenant_id_key")
+  @@unique([tenantId, allocationNo], map: "sale_allocations_tenant_id_allocation_no_key")
+  @@index([tenantId], map: "sale_allocations_tenant_id_idx")
+  @@index([tenantId, saleBatchId], map: "sale_allocations_tenant_id_sale_batch_id_idx")
+  @@index([tenantId, status], map: "sale_allocations_tenant_id_status_idx")
+  @@index([tenantId, soldAt], map: "sale_allocations_tenant_id_sold_at_idx")
+  @@map("sale_allocations")
+}
+
+model SaleSubjectMedia {
+  id               String   @id @default(cuid())
+  tenantId         String   @map("tenant_id")
+  femaleProductId  String   @map("female_product_id")
+  saleBatchId      String   @map("sale_batch_id")
+  label            String?  @db.VarChar(120)
+  imageKey         String   @map("image_key") @db.VarChar(500)
+  imageUrl         String   @map("image_url") @db.VarChar(1000)
+  contentType      String?  @map("content_type") @db.VarChar(255)
+  sizeBytes        BigInt   @default(0) @map("size_bytes")
+  isPrimary        Boolean  @default(false) @map("is_primary")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  femaleProduct    Product  @relation(fields: [femaleProductId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  saleBatch        SaleBatch @relation(fields: [saleBatchId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  certificates     ProductCertificate[]
+
+  @@unique([id, tenantId], map: "sale_subject_media_id_tenant_id_key")
+  @@index([tenantId], map: "sale_subject_media_tenant_id_idx")
+  @@index([tenantId, femaleProductId], map: "sale_subject_media_tenant_id_female_product_id_idx")
+  @@index([tenantId, saleBatchId], map: "sale_subject_media_tenant_id_sale_batch_id_idx")
+  @@index([tenantId, saleBatchId, isPrimary], map: "sale_subject_media_tenant_batch_primary_idx")
+  @@map("sale_subject_media")
 }
 
 model FeaturedProduct {

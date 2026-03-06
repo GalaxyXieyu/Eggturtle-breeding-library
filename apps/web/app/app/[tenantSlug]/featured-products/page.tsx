@@ -11,8 +11,8 @@ import {
   reorderFeaturedProductsResponseSchema,
   type FeaturedProductItem
 } from '@eggturtle/shared/featured';
-import { ApiError, apiRequest, getAccessToken } from '../../../../lib/api-client';
-import { switchTenantBySlug } from '../../../../lib/tenant-session';
+import { ApiError, apiRequest, getAccessToken } from '@/lib/api-client';
+import { switchTenantBySlug } from '@/lib/tenant-session';
 
 export default function FeaturedProductsPage() {
   const router = useRouter();

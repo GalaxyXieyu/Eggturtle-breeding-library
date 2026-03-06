@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { requestCodeRequestSchema, requestCodeResponseSchema } from '@eggturtle/shared/auth';
 
-import { isSuperAdminEmailAllowlisted } from '../../../../lib/admin-auth';
-import { getAdminApiBaseUrl } from '../../../../lib/server-session';
+import { isSuperAdminEmailAllowlisted } from '@/lib/admin-auth';
+import { getAdminApiBaseUrl } from '@/lib/server-session';
 
 export async function POST(request: Request) {
   try {

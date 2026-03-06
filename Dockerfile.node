@@ -1,10 +1,11 @@
-FROM node:22-alpine AS builder
+ARG NODE_IMAGE=node:22-alpine
+FROM ${NODE_IMAGE} AS builder
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN corepack enable
+RUN corepack enable && corepack prepare pnpm@9.15.5 --activate
 
 WORKDIR /app
 
@@ -25,14 +26,14 @@ RUN pnpm --filter @eggturtle/shared build \
   && pnpm --filter @eggturtle/web build \
   && pnpm --filter @eggturtle/admin build
 
-FROM node:22-alpine AS runner
+FROM ${NODE_IMAGE} AS runner
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN corepack enable
+RUN corepack enable && corepack prepare pnpm@9.15.5 --activate
 
 WORKDIR /app
 

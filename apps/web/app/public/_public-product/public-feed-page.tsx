@@ -5,25 +5,25 @@ import { useEffect, useMemo, useState } from 'react';
 import type { PublicSharePresentation } from '@eggturtle/shared';
 import { Search, X } from 'lucide-react';
 
-import { buildFilterPillClass } from '../../../components/filter-pill';
+import { buildFilterPillClass } from '@/components/filter-pill';
 import {
   FloatingActionButton,
   modalCloseButtonClass,
-} from '../../../components/ui/floating-actions';
-import { UiPreferenceControls } from '../../../components/ui-preferences';
-import PublicBottomDock from '../_shared/public-bottom-dock';
-import PublicFloatingActions from '../_shared/public-floating-actions';
-import { appendPublicShareQuery } from '../_shared/public-share-api';
+} from '@/components/ui/floating-actions';
+import { UiPreferenceControls } from '@/components/ui-preferences';
+import PublicBottomDock from '@/app/public/_shared/public-bottom-dock';
+import PublicFloatingActions from '@/app/public/_shared/public-floating-actions';
+import { appendPublicShareQuery } from '@/app/public/_shared/public-share-api';
 
-import type { Breeder, NeedMatingStatus, Series } from './types';
+import type { Breeder, NeedMatingStatus, Series } from '@/app/public/_public-product/types';
 import {
   BreederCard,
   DemoHint,
   PublicEmptyState,
   SeriesIntroCard,
   ShareContactCard,
-} from './components';
-import { resolvePublicSharePresentation } from './presentation';
+} from '@/app/public/_public-product/components';
+import { resolvePublicSharePresentation } from '@/app/public/_public-product/presentation';
 
 type Props = {
   demo: boolean;

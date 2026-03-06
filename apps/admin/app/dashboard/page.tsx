@@ -14,10 +14,10 @@ import {
   AdminPageHeader,
   AdminPanel,
   AdminTableFrame
-} from '../../components/dashboard/polish-primitives';
-import { useUiPreferences } from '../../components/ui-preferences';
-import { apiRequest } from '../../lib/api-client';
-import { formatDateTime, formatUnknownError } from '../../lib/formatters';
+} from '@/components/dashboard/polish-primitives';
+import { useUiPreferences } from '@/components/ui-preferences';
+import { apiRequest } from '@/lib/api-client';
+import { formatDateTime, formatUnknownError } from '@/lib/formatters';
 
 type OverviewState = {
   loading: boolean;

@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 
-import PublicProductDetailPage from '../../_public-product/public-product-detail-page';
-import { getPublicBreederDetailData, getPublicFeedData } from '../../_public-product/data-source';
+import PublicProductDetailPage from '@/app/public/_public-product/public-product-detail-page';
+import { getPublicBreederDetailData, getPublicFeedData } from '@/app/public/_public-product/data-source';
 
 export default async function PublicProductDetailRoute({
   params,

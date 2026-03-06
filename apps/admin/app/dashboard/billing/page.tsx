@@ -11,11 +11,11 @@ import {
   AdminPageHeader,
   AdminPanel,
   AdminTableFrame
-} from '../../../components/dashboard/polish-primitives';
-import { formatPlanLabel } from '../../../lib/admin-labels';
-import { useUiPreferences } from '../../../components/ui-preferences';
-import { getAdminRevenueOverview } from '../../../lib/api-client';
-import { formatUnknownError } from '../../../lib/formatters';
+} from '@/components/dashboard/polish-primitives';
+import { formatPlanLabel } from '@/lib/admin-labels';
+import { useUiPreferences } from '@/components/ui-preferences';
+import { getAdminRevenueOverview } from '@/lib/api-client';
+import { formatUnknownError } from '@/lib/formatters';
 
 type RevenueState = {
   loading: boolean;

@@ -4,12 +4,12 @@
 import Link from 'next/link';
 import type { PublicSharePresentation } from '@eggturtle/shared';
 
-import { UiPreferenceControls } from '../../../components/ui-preferences';
-import PublicBottomDock from '../_shared/public-bottom-dock';
-import PublicFloatingActions from '../_shared/public-floating-actions';
-import { appendPublicShareQuery } from '../_shared/public-share-api';
+import { UiPreferenceControls } from '@/components/ui-preferences';
+import PublicBottomDock from '@/app/public/_shared/public-bottom-dock';
+import PublicFloatingActions from '@/app/public/_shared/public-floating-actions';
+import { appendPublicShareQuery } from '@/app/public/_shared/public-share-api';
 
-import type { Breeder, BreederEventItem, FamilyTree, MaleMateLoadItem, Series } from './types';
+import type { Breeder, BreederEventItem, FamilyTree, MaleMateLoadItem, Series } from '@/app/public/_public-product/types';
 import {
   BreederCarousel,
   BreederEventTimeline,
@@ -18,8 +18,8 @@ import {
   FamilyTreeSection,
   MaleMateLoadCard,
   ShareContactCard
-} from './components';
-import { resolvePublicSharePresentation } from './presentation';
+} from '@/app/public/_public-product/components';
+import { resolvePublicSharePresentation } from '@/app/public/_public-product/presentation';
 
 function withDemo(path: string, demo: boolean, shareQuery?: string) {
   const withQuery = shareQuery ? `${path}${path.includes('?') ? '&' : '?'}${shareQuery}` : path;
