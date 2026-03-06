@@ -4,9 +4,9 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
-  UnauthorizedException
+  UnauthorizedException,
 } from '@nestjs/common';
-import { ErrorCode } from '@eggturtle/shared';
+import { ErrorCode, tenantSlugSchema } from '@eggturtle/shared';
 import type {
   AuthUser,
   MeProfile,
@@ -24,7 +24,7 @@ import type {
   UpsertMyPhoneBindingRequest,
   UpsertMySecurityProfileRequest,
   UpdateMyPasswordRequest,
-  VerifyCodeResponse
+  VerifyCodeResponse,
 } from '@eggturtle/shared';
 import { Prisma, TenantMemberRole } from '@prisma/client';
 import { createHash, randomBytes, randomInt, scryptSync, timingSafeEqual } from 'node:crypto';
@@ -39,17 +39,37 @@ export type AuthContext = {
   tenantId?: string;
 };
 
+type SmsCodePurpose = 'register' | 'login' | 'binding' | 'replace';
+
 @Injectable()
 export class AuthService {
   private static readonly SMS_CODE_KEY_PREFIX = 'sms:';
+  private static readonly ACCOUNT_EMAIL_DOMAIN = 'account.eggturtle.local';
+  private static readonly PHONE_SHADOW_EMAIL_DOMAIN = 'phone.eggturtle.local';
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtTokenService: JwtTokenService,
-    private readonly smsVerificationService: SmsVerificationService
+    private readonly smsVerificationService: SmsVerificationService,
   ) {}
 
   async requestCode(email: string): Promise<RequestCodeResponse> {
+    const user = await this.prisma.user.findUnique({
+      where: {
+        email,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException({
+        message: 'Email code login is only available for existing accounts.',
+        errorCode: ErrorCode.Unauthorized,
+      });
+    }
+
     const code = this.generateCode();
     const salt = randomBytes(16).toString('hex');
     const codeHash = this.hashCode(code, salt);
@@ -61,8 +81,8 @@ export class AuthService {
         email,
         codeHash,
         salt,
-        expiresAt
-      }
+        expiresAt,
+      },
     });
 
     const shouldExposeDevCode = this.isDevCodeEnabled();
@@ -70,18 +90,37 @@ export class AuthService {
       console.info('[Auth v0] request-code', {
         email,
         code,
-        expiresAt: expiresAt.toISOString()
+        expiresAt: expiresAt.toISOString(),
       });
     }
 
     return {
       ok: true,
       expiresAt: expiresAt.toISOString(),
-      ...(shouldExposeDevCode ? { devCode: code } : {})
+      ...(shouldExposeDevCode ? { devCode: code } : {}),
     };
   }
 
-  async requestSmsCode(phoneNumber: string): Promise<RequestSmsCodeResponse> {
+  async requestSmsCode(
+    phoneNumber: string,
+    purpose: SmsCodePurpose = 'register',
+  ): Promise<RequestSmsCodeResponse> {
+    const { shadowEmail, user } = await this.loadPhoneIdentity(this.prisma, phoneNumber);
+
+    if (purpose === 'login' && !user) {
+      throw new UnauthorizedException({
+        message: 'Phone number is not registered.',
+        errorCode: ErrorCode.Unauthorized,
+      });
+    }
+
+    if (purpose === 'register' && user && this.isRegisteredPhoneAccount(user, shadowEmail)) {
+      throw new ConflictException({
+        message: 'Phone number is already registered.',
+        errorCode: ErrorCode.InvalidRequestPayload,
+      });
+    }
+
     const code = this.generateCode();
     const salt = randomBytes(16).toString('hex');
     const codeHash = this.hashCode(code, salt);
@@ -95,27 +134,27 @@ export class AuthService {
         email: this.toSmsCodeKey(phoneNumber),
         codeHash,
         salt,
-        expiresAt
-      }
+        expiresAt,
+      },
     });
 
     try {
-      await this.smsVerificationService.sendRegisterSmsCode({
+      await this.smsVerificationService.sendSmsCode({
         phoneNumber,
         code,
         validTimeSeconds,
-        outId: `register-${Date.now()}-${randomInt(1000, 10_000)}`
+        outId: `${purpose}-${Date.now()}-${randomInt(1000, 10_000)}`,
       });
     } catch (error) {
       await this.prisma.authCode
         .updateMany({
           where: {
             id: authCode.id,
-            consumedAt: null
+            consumedAt: null,
           },
           data: {
-            consumedAt: now
-          }
+            consumedAt: now,
+          },
         })
         .catch(() => undefined);
 
@@ -126,15 +165,16 @@ export class AuthService {
     if (shouldExposeDevCode) {
       console.info('[Auth v0] request-sms-code', {
         phoneNumber,
+        purpose,
         code,
-        expiresAt: expiresAt.toISOString()
+        expiresAt: expiresAt.toISOString(),
       });
     }
 
     return {
       ok: true,
       expiresAt: expiresAt.toISOString(),
-      ...(shouldExposeDevCode ? { devCode: code } : {})
+      ...(shouldExposeDevCode ? { devCode: code } : {}),
     };
   }
 
@@ -142,11 +182,11 @@ export class AuthService {
     const latestCode = await this.prisma.authCode.findFirst({
       where: {
         email,
-        consumedAt: null
+        consumedAt: null,
       },
       orderBy: {
-        createdAt: 'desc'
-      }
+        createdAt: 'desc',
+      },
     });
 
     if (!latestCode) {
@@ -157,7 +197,7 @@ export class AuthService {
     if (latestCode.expiresAt.getTime() <= now.getTime()) {
       throw new UnauthorizedException({
         message: 'Code is expired.',
-        errorCode: ErrorCode.ExpiredCode
+        errorCode: ErrorCode.ExpiredCode,
       });
     }
 
@@ -170,31 +210,42 @@ export class AuthService {
       const consumed = await tx.authCode.updateMany({
         where: {
           id: latestCode.id,
-          consumedAt: null
+          consumedAt: null,
         },
         data: {
-          consumedAt: now
-        }
+          consumedAt: now,
+        },
       });
 
       if (consumed.count !== 1) {
         this.throwInvalidCode();
       }
 
-      const passwordUpdate = password
-        ? {
-            passwordHash: this.hashPassword(password),
-            passwordUpdatedAt: now
-          }
-        : {};
-
-      return tx.user.upsert({
-        where: { email },
-        update: passwordUpdate,
-        create: {
+      const existingUser = await tx.user.findUnique({
+        where: {
           email,
-          ...passwordUpdate
-        }
+        },
+      });
+
+      if (!existingUser) {
+        throw new UnauthorizedException({
+          message: 'Email code login is only available for existing accounts.',
+          errorCode: ErrorCode.Unauthorized,
+        });
+      }
+
+      if (!password) {
+        return existingUser;
+      }
+
+      return tx.user.update({
+        where: {
+          id: existingUser.id,
+        },
+        data: {
+          passwordHash: this.hashPassword(password),
+          passwordUpdatedAt: now,
+        },
       });
     });
 
@@ -202,9 +253,9 @@ export class AuthService {
     const accessToken = this.issueAccessToken(
       {
         id: user.id,
-        email: user.email
+        email: user.email,
       },
-      tenantId
+      tenantId,
     );
 
     return {
@@ -212,46 +263,62 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
-        name: user.name
-      }
+        name: user.name,
+      },
     };
   }
 
   async passwordLogin(email: string, password: string): Promise<PasswordLoginResponse> {
     const loginIdentifier = email.trim().toLowerCase();
-    let user = await this.prisma.user.findUnique({
-      where: {
-        email: loginIdentifier
-      }
-    });
+    let user = null;
 
-    // Support tenant-slug login (e.g. "siri") by resolving to the tenant owner account.
+    if (/^1\d{10}$/.test(loginIdentifier)) {
+      const binding = await this.prisma.userPhoneBinding.findUnique({
+        where: {
+          phoneNumber: loginIdentifier,
+        },
+        include: {
+          user: true,
+        },
+      });
+
+      user = binding?.user ?? null;
+    }
+
+    if (!user) {
+      user = await this.prisma.user.findUnique({
+        where: {
+          email: loginIdentifier,
+        },
+      });
+    }
+
+    if (!user && !loginIdentifier.includes('@')) {
+      user = await this.findUserByAccountName(loginIdentifier);
+    }
+
     if (!user && !loginIdentifier.includes('@')) {
       const ownerMembership = await this.prisma.tenantMember.findFirst({
         where: {
           role: TenantMemberRole.OWNER,
           tenant: {
-            slug: loginIdentifier
+            slug: loginIdentifier,
           },
           user: {
             passwordHash: {
-              not: null
-            }
-          }
+              not: null,
+            },
+          },
         },
         include: {
-          user: true
+          user: true,
         },
         orderBy: {
-          createdAt: 'asc'
-        }
+          createdAt: 'asc',
+        },
       });
 
       user = ownerMembership?.user ?? null;
-    }
-
-    if (!user && !loginIdentifier.includes('@')) {
-      user = await this.findUserByAccountName(loginIdentifier);
     }
 
     if (!user?.passwordHash) {
@@ -266,9 +333,9 @@ export class AuthService {
     const accessToken = this.issueAccessToken(
       {
         id: user.id,
-        email: user.email
+        email: user.email,
       },
-      tenantId
+      tenantId,
     );
 
     return {
@@ -276,124 +343,102 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
-        name: user.name
-      }
+        name: user.name,
+      },
     };
   }
 
   async phoneLogin(phoneNumber: string, code: string): Promise<PhoneLoginResponse> {
     const now = new Date();
-    const shadowEmail = this.toPhoneShadowEmail(phoneNumber);
 
     try {
       return await this.prisma.$transaction(async (tx) => {
         await this.consumeSmsCodeOrThrow(tx, phoneNumber, code, now);
 
-        const boundPhone = await tx.userPhoneBinding.findUnique({
-          where: {
-            phoneNumber
-          },
-          include: {
-            user: true
-          }
-        });
-
-        let user = boundPhone?.user ?? null;
-        let isNewUser = false;
+        const { boundPhone, user } = await this.loadPhoneIdentity(tx, phoneNumber);
 
         if (!user) {
-          user = await tx.user.findUnique({
-            where: {
-              email: shadowEmail
-            }
+          throw new UnauthorizedException({
+            message: 'Phone number is not registered.',
+            errorCode: ErrorCode.Unauthorized,
           });
         }
 
-        if (user && !boundPhone) {
+        if (!boundPhone) {
           const existingBinding = await tx.userPhoneBinding.findUnique({
             where: {
-              userId: user.id
+              userId: user.id,
             },
             select: {
-              phoneNumber: true
-            }
+              phoneNumber: true,
+            },
           });
 
           if (existingBinding && existingBinding.phoneNumber !== phoneNumber) {
             throw new UnauthorizedException({
               message: 'Phone number is not allowed for this account.',
-              errorCode: ErrorCode.Unauthorized
+              errorCode: ErrorCode.Unauthorized,
             });
           }
         }
 
-        if (!user) {
-          user = await tx.user.create({
-            data: {
-              email: shadowEmail
-            }
-          });
-          isNewUser = true;
-        }
-
-        // Phone-login success should always materialize binding for account page visibility.
         await tx.userPhoneBinding.upsert({
           where: {
-            userId: user.id
+            userId: user.id,
           },
           update: {
             phoneNumber,
-            updatedAt: now
+            updatedAt: now,
           },
           create: {
             userId: user.id,
             phoneNumber,
             createdAt: now,
-            updatedAt: now
-          }
+            updatedAt: now,
+          },
         });
 
         let membership = await tx.tenantMember.findFirst({
           where: {
-            userId: user.id
+            userId: user.id,
           },
           orderBy: {
-            createdAt: 'asc'
+            createdAt: 'asc',
           },
           include: {
             tenant: {
               select: {
                 id: true,
                 slug: true,
-                name: true
-              }
-            }
-          }
+                name: true,
+              },
+            },
+          },
         });
 
         if (!membership) {
           const tenant = await tx.tenant.create({
             data: {
-              slug: this.buildPhoneTenantSlug(phoneNumber),
-              name: `手机用户${phoneNumber.slice(-4)}`
-            }
+              slug: this.buildFallbackPhoneTenantSlug(phoneNumber),
+              name: `手机用户${phoneNumber.slice(-4)}`,
+            },
           });
 
           membership = await tx.tenantMember.create({
             data: {
               tenantId: tenant.id,
               userId: user.id,
-              role: TenantMemberRole.OWNER
+              role: TenantMemberRole.OWNER,
             },
             include: {
               tenant: {
                 select: {
                   id: true,
                   slug: true,
-                  name: true
-                }
-              }
-            }
+                  name: true,
+                },
+              },
+            },
           });
 
           await tx.tenantSubscription.create({
@@ -402,19 +447,17 @@ export class AuthService {
               plan: 'FREE',
               startsAt: now,
               expiresAt: null,
-              disabledAt: null
-            }
+              disabledAt: null,
+            },
           });
-
-          isNewUser = true;
         }
 
         const accessToken = this.issueAccessToken(
           {
             id: user.id,
-            email: user.email
+            email: user.email,
           },
-          membership.tenantId
+          membership.tenantId,
         );
 
         return {
@@ -422,21 +465,21 @@ export class AuthService {
           user: {
             id: user.id,
             email: user.email,
-            name: user.name
+            name: user.name,
           },
           tenant: {
             id: membership.tenant.id,
             slug: membership.tenant.slug,
-            name: membership.tenant.name
+            name: membership.tenant.name,
           },
-          isNewUser
+          isNewUser: false,
         };
       });
     } catch (error) {
       if (this.isUserPhoneBindingConflict(error)) {
         throw new ConflictException({
           message: 'Phone number is already bound to another account.',
-          errorCode: ErrorCode.InvalidRequestPayload
+          errorCode: ErrorCode.InvalidRequestPayload,
         });
       }
 
@@ -445,20 +488,30 @@ export class AuthService {
   }
 
   private async findUserByAccountName(accountName: string) {
+    const directMatch = await this.prisma.user.findUnique({
+      where: {
+        email: this.toAccountEmail(accountName),
+      },
+    });
+
+    if (directMatch) {
+      return directMatch;
+    }
+
     const candidates = await this.prisma.user.findMany({
       where: {
         passwordHash: {
-          not: null
+          not: null,
         },
         email: {
           startsWith: `${accountName}@`,
-          mode: 'insensitive'
-        }
+          mode: 'insensitive',
+        },
       },
       orderBy: {
-        createdAt: 'asc'
+        createdAt: 'asc',
       },
-      take: 2
+      take: 2,
     });
 
     if (candidates.length !== 1) {
@@ -471,14 +524,14 @@ export class AuthService {
   private async resolveDefaultTenantId(userId: string): Promise<string | undefined> {
     const membership = await this.prisma.tenantMember.findFirst({
       where: {
-        userId
+        userId,
       },
       orderBy: {
-        createdAt: 'asc'
+        createdAt: 'asc',
       },
       select: {
-        tenantId: true
-      }
+        tenantId: true,
+      },
     });
 
     return membership?.tenantId;
@@ -488,19 +541,19 @@ export class AuthService {
     const tenant = payload.tenantId
       ? await this.prisma.tenant.findUnique({
           where: {
-            id: payload.tenantId
-          }
+            id: payload.tenantId,
+          },
         })
       : await this.prisma.tenant.findUnique({
           where: {
-            slug: payload.slug!
-          }
+            slug: payload.slug!,
+          },
         });
 
     if (!tenant) {
       throw new NotFoundException({
         message: 'Tenant not found.',
-        errorCode: ErrorCode.TenantNotFound
+        errorCode: ErrorCode.TenantNotFound,
       });
     }
 
@@ -508,15 +561,15 @@ export class AuthService {
       where: {
         tenantId_userId: {
           tenantId: tenant.id,
-          userId: user.id
-        }
-      }
+          userId: user.id,
+        },
+      },
     });
 
     if (!membership) {
       throw new ForbiddenException({
         message: 'User is not a member of this tenant.',
-        errorCode: ErrorCode.NotTenantMember
+        errorCode: ErrorCode.NotTenantMember,
       });
     }
 
@@ -525,22 +578,21 @@ export class AuthService {
       tenant: {
         id: tenant.id,
         slug: tenant.slug,
-        name: tenant.name
+        name: tenant.name,
       },
-      role: membership.role
+      role: membership.role,
     };
   }
 
   async register(payload: RegisterRequest): Promise<RegisterResponse> {
-    const authCodeTarget = payload.phoneNumber ? this.toSmsCodeKey(payload.phoneNumber) : payload.email;
     const latestCode = await this.prisma.authCode.findFirst({
       where: {
-        email: authCodeTarget,
-        consumedAt: null
+        email: this.toSmsCodeKey(payload.phoneNumber),
+        consumedAt: null,
       },
       orderBy: {
-        createdAt: 'desc'
-      }
+        createdAt: 'desc',
+      },
     });
 
     if (!latestCode) {
@@ -551,7 +603,7 @@ export class AuthService {
     if (latestCode.expiresAt.getTime() <= now.getTime()) {
       throw new UnauthorizedException({
         message: 'Code is expired.',
-        errorCode: ErrorCode.ExpiredCode
+        errorCode: ErrorCode.ExpiredCode,
       });
     }
 
@@ -562,90 +614,154 @@ export class AuthService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
-        // Consume the auth code
         const consumed = await tx.authCode.updateMany({
           where: {
             id: latestCode.id,
-            consumedAt: null
+            consumedAt: null,
           },
           data: {
-            consumedAt: now
-          }
+            consumedAt: now,
+          },
         });
 
         if (consumed.count !== 1) {
           this.throwInvalidCode();
         }
 
-        // Create or update user with password
-        const user = await tx.user.upsert({
-          where: { email: payload.email },
+        const accountEmail = this.toAccountEmail(payload.account);
+        const accountCollision = await tx.user.findFirst({
+          where: {
+            email: {
+              startsWith: `${payload.account}@`,
+              mode: 'insensitive',
+            },
+          },
+          select: {
+            id: true,
+          },
+        });
+        const { shadowEmail, user: existingPhoneUser } = await this.loadPhoneIdentity(
+          tx,
+          payload.phoneNumber,
+        );
+
+        let user = existingPhoneUser;
+
+        if (accountCollision && accountCollision.id !== user?.id) {
+          throw new ConflictException({
+            message: 'Account is already taken.',
+            errorCode: ErrorCode.InvalidRequestPayload,
+          });
+        }
+
+        if (user && this.isRegisteredPhoneAccount(user, shadowEmail)) {
+          throw new ConflictException({
+            message: 'Phone number is already registered.',
+            errorCode: ErrorCode.InvalidRequestPayload,
+          });
+        }
+
+        const passwordHash = this.hashPassword(payload.password);
+
+        if (user) {
+          user = await tx.user.update({
+            where: {
+              id: user.id,
+            },
+            data: {
+              email: accountEmail,
+              name: payload.account,
+              passwordHash,
+              passwordUpdatedAt: now,
+            },
+          });
+        } else {
+          user = await tx.user.create({
+            data: {
+              email: accountEmail,
+              name: payload.account,
+              passwordHash,
+              passwordUpdatedAt: now,
+            },
+          });
+        }
+
+        await tx.userPhoneBinding.upsert({
+          where: {
+            userId: user.id,
+          },
           update: {
-            passwordHash: this.hashPassword(payload.password),
-            passwordUpdatedAt: now
+            phoneNumber: payload.phoneNumber,
+            updatedAt: now,
           },
           create: {
-            email: payload.email,
-            passwordHash: this.hashPassword(payload.password),
-            passwordUpdatedAt: now
-          }
+            userId: user.id,
+            phoneNumber: payload.phoneNumber,
+            createdAt: now,
+            updatedAt: now,
+          },
         });
 
-        const existingMembership = await tx.tenantMember.findFirst({
+        let membership = await tx.tenantMember.findFirst({
           where: {
-            userId: user.id
+            userId: user.id,
+          },
+          orderBy: {
+            createdAt: 'asc',
           },
           include: {
             tenant: {
               select: {
-                slug: true
-              }
-            }
-          }
+                id: true,
+                slug: true,
+                name: true,
+              },
+            },
+          },
         });
 
-        if (existingMembership) {
-          throw new ConflictException({
-            message: `User is already bound to tenant "${existingMembership.tenant.slug}".`,
-            errorCode: ErrorCode.InvalidRequestPayload
+        if (!membership) {
+          const tenant = await tx.tenant.create({
+            data: {
+              slug: await this.buildUniqueTenantSlug(tx, payload.account),
+              name: this.buildRegisterTenantName(payload.account),
+            },
+          });
+
+          membership = await tx.tenantMember.create({
+            data: {
+              tenantId: tenant.id,
+              userId: user.id,
+              role: TenantMemberRole.OWNER,
+            },
+            include: {
+              tenant: {
+                select: {
+                  id: true,
+                  slug: true,
+                  name: true,
+                },
+              },
+            },
+          });
+
+          await tx.tenantSubscription.create({
+            data: {
+              tenantId: tenant.id,
+              plan: 'FREE',
+              startsAt: now,
+              expiresAt: null,
+              disabledAt: null,
+            },
           });
         }
 
-        // Create tenant
-        const tenant = await tx.tenant.create({
-          data: {
-            slug: payload.tenantSlug,
-            name: payload.tenantName
-          }
-        });
-
-        // Create tenant membership as OWNER
-        const membership = await tx.tenantMember.create({
-          data: {
-            tenantId: tenant.id,
-            userId: user.id,
-            role: TenantMemberRole.OWNER
-          }
-        });
-
-        // Create FREE subscription for new tenant
-        await tx.tenantSubscription.create({
-          data: {
-            tenantId: tenant.id,
-            plan: 'FREE',
-            startsAt: now,
-            expiresAt: null,
-            disabledAt: null
-          }
-        });
-
-        // Issue access token with tenant context
         const accessToken = this.issueAccessToken(
           {
             id: user.id,
-            email: user.email
+            email: user.email,
           },
-          tenant.id
+          membership.tenantId,
         );
 
         return {
@@ -653,28 +769,35 @@ export class AuthService {
           user: {
             id: user.id,
             email: user.email,
-            name: user.name
+            name: user.name,
           },
           tenant: {
-            id: tenant.id,
-            slug: tenant.slug,
-            name: tenant.name
+            id: membership.tenant.id,
+            slug: membership.tenant.slug,
+            name: membership.tenant.name,
           },
-          role: membership.role
+          role: membership.role,
         };
       });
     } catch (error) {
       if (this.isTenantSlugConflict(error)) {
         throw new ConflictException({
           message: 'Tenant slug already exists.',
-          errorCode: ErrorCode.TenantSlugConflict
+          errorCode: ErrorCode.TenantSlugConflict,
         });
       }
 
       if (this.isTenantMemberUserConflict(error)) {
         throw new ConflictException({
           message: 'User is already bound to a tenant.',
-          errorCode: ErrorCode.InvalidRequestPayload
+          errorCode: ErrorCode.InvalidRequestPayload,
+        });
+      }
+
+      if (this.isUserPhoneBindingConflict(error)) {
+        throw new ConflictException({
+          message: 'Phone number is already bound to another account.',
+          errorCode: ErrorCode.InvalidRequestPayload,
         });
       }
 
@@ -690,8 +813,8 @@ export class AuthService {
 
     const user = await this.prisma.user.findUnique({
       where: {
-        id: payload.sub
-      }
+        id: payload.sub,
+      },
     });
 
     if (!user) {
@@ -702,9 +825,9 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
-        name: user.name
+        name: user.name,
       },
-      tenantId: payload.tenantId
+      tenantId: payload.tenantId,
     };
   }
 
@@ -722,17 +845,20 @@ export class AuthService {
     const name = this.normalizeOptionalName(payload.name);
     const updated = await this.prisma.user.update({
       where: {
-        id: userId
+        id: userId,
       },
       data: {
-        name
-      }
+        name,
+      },
     });
 
     return this.toMeProfile(updated);
   }
 
-  async updateMyPassword(userId: string, payload: UpdateMyPasswordRequest): Promise<{ passwordUpdatedAt: string }> {
+  async updateMyPassword(
+    userId: string,
+    payload: UpdateMyPasswordRequest,
+  ): Promise<{ passwordUpdatedAt: string }> {
     const user = await this.findUserOrThrow(userId);
     const currentPassword = payload.currentPassword?.trim();
 
@@ -740,14 +866,14 @@ export class AuthService {
       if (!currentPassword || !this.verifyPassword(currentPassword, user.passwordHash)) {
         throw new UnauthorizedException({
           message: 'Current password is incorrect.',
-          errorCode: ErrorCode.Unauthorized
+          errorCode: ErrorCode.Unauthorized,
         });
       }
 
       if (this.verifyPassword(payload.newPassword, user.passwordHash)) {
         throw new BadRequestException({
           message: 'New password must be different from current password.',
-          errorCode: ErrorCode.InvalidRequestPayload
+          errorCode: ErrorCode.InvalidRequestPayload,
         });
       }
     }
@@ -755,16 +881,16 @@ export class AuthService {
     const passwordUpdatedAt = new Date();
     await this.prisma.user.update({
       where: {
-        id: userId
+        id: userId,
       },
       data: {
         passwordHash: this.hashPassword(payload.newPassword),
-        passwordUpdatedAt
-      }
+        passwordUpdatedAt,
+      },
     });
 
     return {
-      passwordUpdatedAt: passwordUpdatedAt.toISOString()
+      passwordUpdatedAt: passwordUpdatedAt.toISOString(),
     };
   }
 
@@ -773,12 +899,12 @@ export class AuthService {
 
     const profile = await this.prisma.userSecurityProfile.findUnique({
       where: {
-        userId
+        userId,
       },
       select: {
         question: true,
-        updatedAt: true
-      }
+        updatedAt: true,
+      },
     });
 
     if (!profile) {
@@ -787,11 +913,14 @@ export class AuthService {
 
     return {
       question: profile.question,
-      updatedAt: profile.updatedAt.toISOString()
+      updatedAt: profile.updatedAt.toISOString(),
     };
   }
 
-  async upsertMySecurityProfile(userId: string, payload: UpsertMySecurityProfileRequest): Promise<{ updatedAt: string }> {
+  async upsertMySecurityProfile(
+    userId: string,
+    payload: UpsertMySecurityProfileRequest,
+  ): Promise<{ updatedAt: string }> {
     await this.findUserOrThrow(userId);
 
     const now = new Date();
@@ -800,13 +929,13 @@ export class AuthService {
 
     const updated = await this.prisma.userSecurityProfile.upsert({
       where: {
-        userId
+        userId,
       },
       update: {
         question: payload.question.trim(),
         answerHash,
         salt,
-        updatedAt: now
+        updatedAt: now,
       },
       create: {
         userId,
@@ -814,15 +943,15 @@ export class AuthService {
         answerHash,
         salt,
         createdAt: now,
-        updatedAt: now
+        updatedAt: now,
       },
       select: {
-        updatedAt: true
-      }
+        updatedAt: true,
+      },
     });
 
     return {
-      updatedAt: updated.updatedAt.toISOString()
+      updatedAt: updated.updatedAt.toISOString(),
     };
   }
 
@@ -831,12 +960,12 @@ export class AuthService {
 
     const binding = await this.prisma.userPhoneBinding.findUnique({
       where: {
-        userId
+        userId,
       },
       select: {
         phoneNumber: true,
-        updatedAt: true
-      }
+        updatedAt: true,
+      },
     });
 
     if (!binding) {
@@ -845,13 +974,13 @@ export class AuthService {
 
     return {
       phoneNumber: binding.phoneNumber,
-      updatedAt: binding.updatedAt.toISOString()
+      updatedAt: binding.updatedAt.toISOString(),
     };
   }
 
   async upsertMyPhoneBinding(
     userId: string,
-    payload: UpsertMyPhoneBindingRequest
+    payload: UpsertMyPhoneBindingRequest,
   ): Promise<{ phoneNumber: string; updatedAt: string }> {
     await this.findUserOrThrow(userId);
     const now = new Date();
@@ -860,31 +989,30 @@ export class AuthService {
       return await this.prisma.$transaction(async (tx) => {
         const currentBinding = await tx.userPhoneBinding.findUnique({
           where: {
-            userId
+            userId,
           },
           select: {
-            phoneNumber: true
-          }
+            phoneNumber: true,
+          },
         });
 
         const currentBoundPhone = currentBinding?.phoneNumber ?? null;
         const isReplacingBoundPhone = Boolean(
-          currentBoundPhone &&
-            currentBoundPhone !== payload.phoneNumber
+          currentBoundPhone && currentBoundPhone !== payload.phoneNumber,
         );
 
         if (isReplacingBoundPhone) {
           if (!payload.oldCode) {
             throw new BadRequestException({
               message: 'Old phone verification code is required.',
-              errorCode: ErrorCode.InvalidRequestPayload
+              errorCode: ErrorCode.InvalidRequestPayload,
             });
           }
 
           if (!currentBoundPhone) {
             throw new BadRequestException({
               message: 'Current bound phone is missing.',
-              errorCode: ErrorCode.InvalidRequestPayload
+              errorCode: ErrorCode.InvalidRequestPayload,
             });
           }
 
@@ -895,50 +1023,50 @@ export class AuthService {
 
         const existingPhoneBinding = await tx.userPhoneBinding.findUnique({
           where: {
-            phoneNumber: payload.phoneNumber
+            phoneNumber: payload.phoneNumber,
           },
           select: {
-            userId: true
-          }
+            userId: true,
+          },
         });
 
         if (existingPhoneBinding && existingPhoneBinding.userId !== userId) {
           throw new ConflictException({
             message: 'Phone number is already bound to another account.',
-            errorCode: ErrorCode.InvalidRequestPayload
+            errorCode: ErrorCode.InvalidRequestPayload,
           });
         }
 
         const binding = await tx.userPhoneBinding.upsert({
           where: {
-            userId
+            userId,
           },
           update: {
             phoneNumber: payload.phoneNumber,
-            updatedAt: now
+            updatedAt: now,
           },
           create: {
             userId,
             phoneNumber: payload.phoneNumber,
             createdAt: now,
-            updatedAt: now
+            updatedAt: now,
           },
           select: {
             phoneNumber: true,
-            updatedAt: true
-          }
+            updatedAt: true,
+          },
         });
 
         return {
           phoneNumber: binding.phoneNumber,
-          updatedAt: binding.updatedAt.toISOString()
+          updatedAt: binding.updatedAt.toISOString(),
         };
       });
     } catch (error) {
       if (this.isUserPhoneBindingConflict(error)) {
         throw new ConflictException({
           message: 'Phone number is already bound to another account.',
-          errorCode: ErrorCode.InvalidRequestPayload
+          errorCode: ErrorCode.InvalidRequestPayload,
         });
       }
 
@@ -953,14 +1081,14 @@ export class AuthService {
   private async findUserOrThrow(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: {
-        id: userId
-      }
+        id: userId,
+      },
     });
 
     if (!user) {
       throw new UnauthorizedException({
         message: 'User not found.',
-        errorCode: ErrorCode.Unauthorized
+        errorCode: ErrorCode.Unauthorized,
       });
     }
 
@@ -979,7 +1107,7 @@ export class AuthService {
       email: user.email,
       name: user.name,
       createdAt: user.createdAt.toISOString(),
-      passwordUpdatedAt: user.passwordUpdatedAt ? user.passwordUpdatedAt.toISOString() : null
+      passwordUpdatedAt: user.passwordUpdatedAt ? user.passwordUpdatedAt.toISOString() : null,
     };
   }
 
@@ -999,9 +1127,9 @@ export class AuthService {
       {
         sub: user.id,
         email: user.email,
-        tenantId
+        tenantId,
       },
-      tokenExpiresInSeconds
+      tokenExpiresInSeconds,
     );
   }
 
@@ -1013,16 +1141,16 @@ export class AuthService {
     tx: Prisma.TransactionClient,
     phoneNumber: string,
     code: string,
-    now: Date
+    now: Date,
   ): Promise<void> {
     const latestCode = await tx.authCode.findFirst({
       where: {
         email: this.toSmsCodeKey(phoneNumber),
-        consumedAt: null
+        consumedAt: null,
       },
       orderBy: {
-        createdAt: 'desc'
-      }
+        createdAt: 'desc',
+      },
     });
 
     if (!latestCode) {
@@ -1032,7 +1160,7 @@ export class AuthService {
     if (latestCode.expiresAt.getTime() <= now.getTime()) {
       throw new UnauthorizedException({
         message: 'Code is expired.',
-        errorCode: ErrorCode.ExpiredCode
+        errorCode: ErrorCode.ExpiredCode,
       });
     }
 
@@ -1044,11 +1172,11 @@ export class AuthService {
     const consumed = await tx.authCode.updateMany({
       where: {
         id: latestCode.id,
-        consumedAt: null
+        consumedAt: null,
       },
       data: {
-        consumedAt: now
-      }
+        consumedAt: now,
+      },
     });
 
     if (consumed.count !== 1) {
@@ -1108,14 +1236,14 @@ export class AuthService {
   private throwInvalidCode(): never {
     throw new UnauthorizedException({
       message: 'Code is invalid.',
-      errorCode: ErrorCode.InvalidCode
+      errorCode: ErrorCode.InvalidCode,
     });
   }
 
   private throwInvalidCredentials(): never {
     throw new UnauthorizedException({
       message: 'Login identifier or password is incorrect.',
-      errorCode: ErrorCode.Unauthorized
+      errorCode: ErrorCode.Unauthorized,
     });
   }
 
@@ -1124,10 +1252,89 @@ export class AuthService {
   }
 
   private toPhoneShadowEmail(phoneNumber: string): string {
-    return `p${phoneNumber}@phone.eggturtle.local`;
+    return `p${phoneNumber}@${AuthService.PHONE_SHADOW_EMAIL_DOMAIN}`;
   }
 
-  private buildPhoneTenantSlug(phoneNumber: string): string {
+  private toAccountEmail(account: string): string {
+    return `${account}@${AuthService.ACCOUNT_EMAIL_DOMAIN}`;
+  }
+
+  private async loadPhoneIdentity(
+    client: Prisma.TransactionClient | PrismaService,
+    phoneNumber: string,
+  ) {
+    const shadowEmail = this.toPhoneShadowEmail(phoneNumber);
+    const boundPhone = await client.userPhoneBinding.findUnique({
+      where: {
+        phoneNumber,
+      },
+      include: {
+        user: true,
+      },
+    });
+
+    const shadowUser = boundPhone
+      ? null
+      : await client.user.findUnique({
+          where: {
+            email: shadowEmail,
+          },
+        });
+
+    return {
+      shadowEmail,
+      boundPhone,
+      user: boundPhone?.user ?? shadowUser,
+    };
+  }
+
+  private isRegisteredPhoneAccount(
+    user: { email: string; passwordHash: string | null },
+    shadowEmail: string,
+  ): boolean {
+    return user.email !== shadowEmail || Boolean(user.passwordHash);
+  }
+
+  private buildRegisterTenantName(account: string): string {
+    return `${account} 的空间`;
+  }
+
+  private normalizeAccountTenantSlugBase(account: string): string {
+    const normalized = account
+      .toLowerCase()
+      .replace(/_/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    return tenantSlugSchema.parse(normalized);
+  }
+
+  private async buildUniqueTenantSlug(
+    tx: Prisma.TransactionClient,
+    account: string,
+  ): Promise<string> {
+    const baseSlug = this.normalizeAccountTenantSlugBase(account);
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const candidate = attempt === 0 ? baseSlug : `${baseSlug}-${randomInt(1000, 10_000)}`;
+      const existing = await tx.tenant.findUnique({
+        where: {
+          slug: candidate,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (!existing) {
+        return candidate;
+      }
+    }
+
+    return `${baseSlug}-${Date.now().toString(36).slice(-4)}`;
+  }
+
+  private buildFallbackPhoneTenantSlug(phoneNumber: string): string {
     const suffix = `${phoneNumber.slice(-4)}${randomInt(1000, 10_000)}`;
     return `u-${suffix}`.toLowerCase();
   }
@@ -1175,6 +1382,10 @@ export class AuthService {
 
     const target = Array.isArray(error.meta?.target) ? error.meta.target : [];
     const normalized = new Set(target.map((value) => String(value)));
-    return normalized.has('phoneNumber') || normalized.has('phone_number') || normalized.has('user_phone_bindings_phone_number_key');
+    return (
+      normalized.has('phoneNumber') ||
+      normalized.has('phone_number') ||
+      normalized.has('user_phone_bindings_phone_number_key')
+    );
   }
 }

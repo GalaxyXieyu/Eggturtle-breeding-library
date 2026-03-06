@@ -3,7 +3,7 @@ import { ErrorCode } from '@eggturtle/shared';
 import DypnsapiClient, { SendSmsVerifyCodeRequest } from '@alicloud/dypnsapi20170525/dist/client';
 import * as OpenApi from '@alicloud/openapi-client/dist/client';
 
-type SendRegisterSmsCodeInput = {
+type SendSmsCodeInput = {
   phoneNumber: string;
   code: string;
   validTimeSeconds: number;
@@ -15,7 +15,7 @@ export class SmsVerificationService {
   private readonly logger = new Logger(SmsVerificationService.name);
   private client: DypnsapiClient | null = null;
 
-  async sendRegisterSmsCode(input: SendRegisterSmsCodeInput): Promise<void> {
+  async sendSmsCode(input: SendSmsCodeInput): Promise<void> {
     const templateParam = this.buildTemplateParam(input.code, input.validTimeSeconds);
     const request = new SendSmsVerifyCodeRequest({
       countryCode: process.env.ALIYUN_SMS_COUNTRY_CODE?.trim() || '86',

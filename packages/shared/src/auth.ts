@@ -3,18 +3,36 @@ import { z } from 'zod';
 import { tenantSubscriptionSchema } from './subscription';
 import { tenantNameSchema, tenantSlugSchema } from './tenant';
 
-export const authEmailSchema = z.string().trim().email().max(255).transform((email) => email.toLowerCase());
+export const authEmailSchema = z
+  .string()
+  .trim()
+  .email()
+  .max(255)
+  .transform((email) => email.toLowerCase());
 export const authPhoneNumberSchema = z
   .string()
   .trim()
   .regex(/^1\d{10}$/, 'Phone number must be an 11-digit mainland China mobile number.');
+export const authAccountSchema = z
+  .string()
+  .trim()
+  .min(4, 'Account must be at least 4 characters.')
+  .max(32, 'Account must be at most 32 characters.')
+  .regex(
+    /^[a-zA-Z][a-zA-Z0-9_-]{2,30}[a-zA-Z0-9]$/,
+    'Account must start with a letter, end with a letter or number, and use letters, numbers, underscores, or hyphens only.',
+  )
+  .transform((value) => value.toLowerCase());
 export const authLoginIdentifierSchema = z
   .string()
   .trim()
   .min(1, 'Login identifier is required.')
   .max(255)
   .transform((value) => value.toLowerCase());
-export const authCodeSchema = z.string().trim().regex(/^\d{6}$/, 'Code must be a 6-digit number.');
+export const authCodeSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{6}$/, 'Code must be a 6-digit number.');
 export const authPasswordSchema = z
   .string()
   .min(8, 'Password must be at least 8 characters.')
@@ -23,50 +41,53 @@ export const authPasswordSchema = z
 export const authUserSchema = z.object({
   id: z.string().min(1),
   email: z.string().email(),
-  name: z.string().nullable()
+  name: z.string().nullable(),
 });
 
 export const requestCodeRequestSchema = z.object({
-  email: authEmailSchema
+  email: authEmailSchema,
 });
 
 export const requestCodeResponseSchema = z.object({
   ok: z.literal(true),
   expiresAt: z.string().datetime(),
-  devCode: authCodeSchema.optional()
+  devCode: authCodeSchema.optional(),
 });
 
+export const requestSmsCodePurposeSchema = z.enum(['register', 'login', 'binding', 'replace']);
+
 export const requestSmsCodeRequestSchema = z.object({
-  phoneNumber: authPhoneNumberSchema
+  phoneNumber: authPhoneNumberSchema,
+  purpose: requestSmsCodePurposeSchema.default('register'),
 });
 
 export const requestSmsCodeResponseSchema = z.object({
   ok: z.literal(true),
   expiresAt: z.string().datetime(),
-  devCode: authCodeSchema.optional()
+  devCode: authCodeSchema.optional(),
 });
 
 export const verifyCodeRequestSchema = z.object({
   email: authEmailSchema,
   code: authCodeSchema,
-  password: authPasswordSchema.optional()
+  password: authPasswordSchema.optional(),
 });
 
 export const verifyCodeResponseSchema = z.object({
   accessToken: z.string().min(1),
-  user: authUserSchema
+  user: authUserSchema,
 });
 
 export const passwordLoginRequestSchema = z.object({
   email: authLoginIdentifierSchema,
-  password: authPasswordSchema
+  password: authPasswordSchema,
 });
 
 export const passwordLoginResponseSchema = verifyCodeResponseSchema;
 
 export const phoneLoginRequestSchema = z.object({
   phoneNumber: authPhoneNumberSchema,
-  code: authCodeSchema
+  code: authCodeSchema,
 });
 
 export const phoneLoginResponseSchema = z.object({
@@ -75,14 +96,14 @@ export const phoneLoginResponseSchema = z.object({
   tenant: z.object({
     id: z.string().min(1),
     slug: tenantSlugSchema,
-    name: tenantNameSchema
+    name: tenantNameSchema,
   }),
-  isNewUser: z.boolean()
+  isNewUser: z.boolean(),
 });
 
 export const meResponseSchema = z.object({
   user: authUserSchema,
-  tenantId: z.string().min(1).nullable().optional()
+  tenantId: z.string().min(1).nullable().optional(),
 });
 
 export const meProfileSchema = z.object({
@@ -90,29 +111,29 @@ export const meProfileSchema = z.object({
   email: z.string().email(),
   name: z.string().nullable(),
   createdAt: z.string().datetime(),
-  passwordUpdatedAt: z.string().datetime().nullable()
+  passwordUpdatedAt: z.string().datetime().nullable(),
 });
 
 export const meProfileResponseSchema = z.object({
-  profile: meProfileSchema
+  profile: meProfileSchema,
 });
 
 export const updateMeProfileRequestSchema = z.object({
-  name: z.string().trim().max(120).nullable()
+  name: z.string().trim().max(120).nullable(),
 });
 
 export const updateMeProfileResponseSchema = z.object({
-  profile: meProfileSchema
+  profile: meProfileSchema,
 });
 
 export const updateMyPasswordRequestSchema = z.object({
   currentPassword: authPasswordSchema.optional(),
-  newPassword: authPasswordSchema
+  newPassword: authPasswordSchema,
 });
 
 export const updateMyPasswordResponseSchema = z.object({
   ok: z.literal(true),
-  passwordUpdatedAt: z.string().datetime()
+  passwordUpdatedAt: z.string().datetime(),
 });
 
 export const securityProfileQuestionSchema = z.string().trim().min(2).max(120);
@@ -120,55 +141,53 @@ export const securityProfileAnswerSchema = z.string().trim().min(2).max(120);
 
 export const mySecurityProfileSchema = z.object({
   question: securityProfileQuestionSchema,
-  updatedAt: z.string().datetime()
+  updatedAt: z.string().datetime(),
 });
 
 export const mySecurityProfileResponseSchema = z.object({
-  profile: mySecurityProfileSchema.nullable()
+  profile: mySecurityProfileSchema.nullable(),
 });
 
 export const upsertMySecurityProfileRequestSchema = z.object({
   question: securityProfileQuestionSchema,
-  answer: securityProfileAnswerSchema
+  answer: securityProfileAnswerSchema,
 });
 
 export const upsertMySecurityProfileResponseSchema = z.object({
   ok: z.literal(true),
-  updatedAt: z.string().datetime()
+  updatedAt: z.string().datetime(),
 });
 
 export const myPhoneBindingSchema = z.object({
   phoneNumber: authPhoneNumberSchema,
-  updatedAt: z.string().datetime()
+  updatedAt: z.string().datetime(),
 });
 
 export const myPhoneBindingResponseSchema = z.object({
-  binding: myPhoneBindingSchema.nullable()
+  binding: myPhoneBindingSchema.nullable(),
 });
 
 export const upsertMyPhoneBindingRequestSchema = z.object({
   phoneNumber: authPhoneNumberSchema,
   code: authCodeSchema,
-  oldCode: authCodeSchema.optional()
+  oldCode: authCodeSchema.optional(),
 });
 
 export const upsertMyPhoneBindingResponseSchema = z.object({
   ok: z.literal(true),
-  binding: myPhoneBindingSchema
+  binding: myPhoneBindingSchema,
 });
 
 export const meSubscriptionResponseSchema = z.object({
-  subscription: tenantSubscriptionSchema
+  subscription: tenantSubscriptionSchema,
 });
 
 // Registration schemas
 export const registerRequestSchema = z.object({
-  email: authEmailSchema,
-  phoneNumber: authPhoneNumberSchema.optional(),
+  account: authAccountSchema,
+  phoneNumber: authPhoneNumberSchema,
   code: authCodeSchema,
   password: authPasswordSchema,
-  tenantSlug: tenantSlugSchema,
-  tenantName: tenantNameSchema
 });
 
 export const registerResponseSchema = z.object({
@@ -177,14 +196,15 @@ export const registerResponseSchema = z.object({
   tenant: z.object({
     id: z.string().min(1),
     slug: tenantSlugSchema,
-    name: tenantNameSchema
+    name: tenantNameSchema,
   }),
-  role: z.enum(['OWNER', 'ADMIN', 'EDITOR', 'VIEWER'])
+  role: z.enum(['OWNER', 'ADMIN', 'EDITOR', 'VIEWER']),
 });
 
 export type RequestCodeRequest = z.infer<typeof requestCodeRequestSchema>;
 export type RequestCodeResponse = z.infer<typeof requestCodeResponseSchema>;
 export type RequestSmsCodeRequest = z.infer<typeof requestSmsCodeRequestSchema>;
+export type RequestSmsCodePurpose = z.infer<typeof requestSmsCodePurposeSchema>;
 export type RequestSmsCodeResponse = z.infer<typeof requestSmsCodeResponseSchema>;
 export type VerifyCodeRequest = z.infer<typeof verifyCodeRequestSchema>;
 export type VerifyCodeResponse = z.infer<typeof verifyCodeResponseSchema>;

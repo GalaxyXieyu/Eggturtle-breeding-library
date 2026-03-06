@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -18,7 +19,7 @@ import {
   updateMyPasswordRequestSchema,
   updateMyPasswordResponseSchema,
 } from '@eggturtle/shared';
-import { KeyRound, LogOut, UserRound } from 'lucide-react';
+import { ArrowRight, KeyRound, LogOut, ShieldCheck, Stamp, UserRound } from 'lucide-react';
 
 import { Button } from '../../../../components/ui/button';
 import {
@@ -37,6 +38,11 @@ import { cn } from '../../../../lib/utils';
 import SubscriptionPageContent from '../subscription/page';
 
 type AccountTab = 'profile' | 'subscription';
+type SetupRequirements = {
+  needsDisplayName: boolean;
+  needsPassword: boolean;
+  needsSecurity: boolean;
+};
 
 const ACCOUNT_TABS: Array<{ key: AccountTab; label: string }> = [
   { key: 'profile', label: '账号' },
@@ -50,6 +56,13 @@ const SECURITY_QUESTION_OPTIONS = [
   '我母亲的姓名是？',
   '我父亲的姓名是？',
 ] as const;
+const EMPTY_SETUP_REQUIREMENTS: SetupRequirements = {
+  needsDisplayName: false,
+  needsPassword: false,
+  needsSecurity: false,
+};
+const ACCOUNT_EMAIL_DOMAIN = 'account.eggturtle.local';
+const PHONE_SHADOW_EMAIL_DOMAIN = 'phone.eggturtle.local';
 
 export default function AccountPage() {
   const router = useRouter();
@@ -67,9 +80,10 @@ export default function AccountPage() {
   const [sendingOldPhoneCode, setSendingOldPhoneCode] = useState(false);
   const [savingPhoneBinding, setSavingPhoneBinding] = useState(false);
   const [completingSetup, setCompletingSetup] = useState(false);
-  const [mustCompleteSetup, setMustCompleteSetup] = useState(false);
 
   const [profile, setProfile] = useState<MeProfile | null>(null);
+  const [setupRequirements, setSetupRequirements] =
+    useState<SetupRequirements>(EMPTY_SETUP_REQUIREMENTS);
 
   const [nameDraft, setNameDraft] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
@@ -87,11 +101,21 @@ export default function AccountPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const needsSetup = searchParams.get('setup') === '1';
+  const mustCompleteSetup =
+    setupRequirements.needsDisplayName ||
+    setupRequirements.needsPassword ||
+    setupRequirements.needsSecurity;
   const shouldShowSetup = needsSetup || mustCompleteSetup;
   const isReplacingBoundPhone = Boolean(boundPhoneNumber && boundPhoneNumber !== phoneDraft);
-  const selectedSecurityQuestion = SECURITY_QUESTION_OPTIONS.includes(securityQuestionDraft as (typeof SECURITY_QUESTION_OPTIONS)[number])
+  const selectedSecurityQuestion = SECURITY_QUESTION_OPTIONS.includes(
+    securityQuestionDraft as (typeof SECURITY_QUESTION_OPTIONS)[number],
+  )
     ? securityQuestionDraft
     : CUSTOM_SECURITY_QUESTION_VALUE;
+  const loginAccountValue = formatLoginAccount(profile?.email, boundPhoneNumber);
+  const loginAccountHint = describeLoginAccount(profile?.email, boundPhoneNumber);
+  const setupChecklistItems = getSetupChecklistItems(setupRequirements);
+  const setupSubmitLabel = getSetupSubmitLabel(setupRequirements);
 
   useEffect(() => {
     if (phoneCodeCooldown <= 0) {
@@ -180,10 +204,14 @@ export default function AccountPage() {
         setPhoneCodeCooldown(0);
         setOldPhoneCodeDraft('');
         setOldPhoneCodeCooldown(0);
-        const requireSetup = shouldRequireProfileSetup(profileResponse.profile, securityResponse.profile);
-        setMustCompleteSetup(requireSetup);
+        const nextSetupRequirements = resolveProfileSetupRequirements(
+          profileResponse.profile,
+          securityResponse.profile,
+        );
+        setSetupRequirements(nextSetupRequirements);
         setSecurityQuestionDraft(
-          securityResponse.profile?.question ?? (requireSetup ? SECURITY_QUESTION_OPTIONS[0] : ''),
+          securityResponse.profile?.question ??
+            (nextSetupRequirements.needsSecurity ? SECURITY_QUESTION_OPTIONS[0] : ''),
         );
         setSecurityAnswerDraft('');
       } catch (requestError) {
@@ -201,6 +229,12 @@ export default function AccountPage() {
       cancelled = true;
     };
   }, [router, tenantSlug, needsSetup]);
+
+  useEffect(() => {
+    if (!loading && needsSetup && !mustCompleteSetup && tenantSlug) {
+      router.replace(`/app/${tenantSlug}`);
+    }
+  }, [loading, mustCompleteSetup, needsSetup, router, tenantSlug]);
 
   function switchTab(nextTab: AccountTab) {
     if (nextTab === activeTab) {
@@ -237,6 +271,10 @@ export default function AccountPage() {
 
       setProfile(response.profile);
       setNameDraft(response.profile.name ?? '');
+      setSetupRequirements((current) => ({
+        ...current,
+        needsDisplayName: !response.profile.name?.trim(),
+      }));
       setMessage('账户资料已更新。');
     } catch (requestError) {
       setError(formatApiError(requestError));
@@ -270,6 +308,10 @@ export default function AccountPage() {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
+      setSetupRequirements((current) => ({
+        ...current,
+        needsPassword: false,
+      }));
       setMessage('密码已更新。');
     } catch (requestError) {
       setError(formatApiError(requestError));
@@ -291,6 +333,7 @@ export default function AccountPage() {
     try {
       const payload = requestSmsCodeRequestSchema.parse({
         phoneNumber: phoneDraft,
+        purpose: 'binding',
       });
       await apiRequest('/auth/request-sms-code', {
         method: 'POST',
@@ -322,6 +365,7 @@ export default function AccountPage() {
     try {
       const payload = requestSmsCodeRequestSchema.parse({
         phoneNumber: boundPhoneNumber,
+        purpose: 'replace',
       });
       await apiRequest('/auth/request-sms-code', {
         method: 'POST',
@@ -381,7 +425,7 @@ export default function AccountPage() {
       setMessage(
         isReplacingBoundPhone
           ? `手机号已更换为 ${maskPhoneNumber(response.binding.phoneNumber)}。`
-          : `手机号 ${maskPhoneNumber(response.binding.phoneNumber)} 绑定成功。`
+          : `手机号 ${maskPhoneNumber(response.binding.phoneNumber)} 绑定成功。`,
       );
     } catch (requestError) {
       setError(formatApiError(requestError));
@@ -409,6 +453,10 @@ export default function AccountPage() {
 
       setSecurityQuestionDraft(payload.question);
       setSecurityAnswerDraft('');
+      setSetupRequirements((current) => ({
+        ...current,
+        needsSecurity: false,
+      }));
       setMessage('密保信息已更新。');
     } catch (requestError) {
       setError(formatApiError(requestError));
@@ -426,28 +474,34 @@ export default function AccountPage() {
     const trimmedName = nameDraft.trim();
     const trimmedSecurityQuestion = securityQuestionDraft.trim();
     const trimmedSecurityAnswer = securityAnswerDraft.trim();
-    if (!trimmedName) {
-      setError('请填写用户名，方便团队成员识别账号归属。');
+
+    if (setupRequirements.needsDisplayName && !trimmedName) {
+      setError('请填写显示名称，方便团队成员识别账号归属。');
       return;
     }
 
-    if (newPassword.length < 8) {
+    if (setupRequirements.needsPassword && newPassword.length < 8) {
       setError('登录密码至少 8 位，建议使用“字母+数字”的组合。');
       return;
     }
 
-    if (newPassword !== confirmPassword) {
+    if (setupRequirements.needsPassword && newPassword !== confirmPassword) {
       setError('两次输入的登录密码不一致，请重新确认。');
       return;
     }
 
-    if (trimmedSecurityQuestion.length < 2) {
+    if (setupRequirements.needsSecurity && trimmedSecurityQuestion.length < 2) {
       setError('请先选择或填写一个密保问题。');
       return;
     }
 
-    if (trimmedSecurityAnswer.length < 2) {
+    if (setupRequirements.needsSecurity && trimmedSecurityAnswer.length < 2) {
       setError('请填写密保答案（至少 2 个字），用于手机号不可用时找回账号。');
+      return;
+    }
+
+    if (!mustCompleteSetup) {
+      router.replace(`/app/${tenantSlug}`);
       return;
     }
 
@@ -456,43 +510,54 @@ export default function AccountPage() {
     setMessage(null);
 
     try {
-      const profilePayload = updateMeProfileRequestSchema.parse({
-        name: trimmedName,
-      });
-      const passwordPayload = updateMyPasswordRequestSchema.parse({
-        newPassword,
-      });
-      const securityPayload = upsertMySecurityProfileRequestSchema.parse({
-        question: trimmedSecurityQuestion,
-        answer: trimmedSecurityAnswer,
-      });
+      let nextProfile = profile;
 
-      const profileResponse = await apiRequest('/me/profile', {
-        method: 'PUT',
-        body: profilePayload,
-        requestSchema: updateMeProfileRequestSchema,
-        responseSchema: updateMeProfileResponseSchema,
-      });
-      await apiRequest('/me/password', {
-        method: 'PUT',
-        body: passwordPayload,
-        requestSchema: updateMyPasswordRequestSchema,
-        responseSchema: updateMyPasswordResponseSchema,
-      });
-      await apiRequest('/me/security-profile', {
-        method: 'PUT',
-        body: securityPayload,
-        requestSchema: upsertMySecurityProfileRequestSchema,
-        responseSchema: upsertMySecurityProfileResponseSchema,
-      });
+      if (setupRequirements.needsDisplayName) {
+        const profilePayload = updateMeProfileRequestSchema.parse({
+          name: trimmedName,
+        });
+        const profileResponse = await apiRequest('/me/profile', {
+          method: 'PUT',
+          body: profilePayload,
+          requestSchema: updateMeProfileRequestSchema,
+          responseSchema: updateMeProfileResponseSchema,
+        });
+        nextProfile = profileResponse.profile;
+        setProfile(profileResponse.profile);
+        setNameDraft(profileResponse.profile.name ?? '');
+      }
 
-      setProfile(profileResponse.profile);
-      setNameDraft(profileResponse.profile.name ?? '');
+      if (setupRequirements.needsPassword) {
+        const passwordPayload = updateMyPasswordRequestSchema.parse({
+          newPassword,
+        });
+        await apiRequest('/me/password', {
+          method: 'PUT',
+          body: passwordPayload,
+          requestSchema: updateMyPasswordRequestSchema,
+          responseSchema: updateMyPasswordResponseSchema,
+        });
+      }
+
+      if (setupRequirements.needsSecurity) {
+        const securityPayload = upsertMySecurityProfileRequestSchema.parse({
+          question: trimmedSecurityQuestion,
+          answer: trimmedSecurityAnswer,
+        });
+        await apiRequest('/me/security-profile', {
+          method: 'PUT',
+          body: securityPayload,
+          requestSchema: upsertMySecurityProfileRequestSchema,
+          responseSchema: upsertMySecurityProfileResponseSchema,
+        });
+        setSecurityQuestionDraft(securityPayload.question);
+      }
+
+      setProfile(nextProfile);
       setNewPassword('');
       setConfirmPassword('');
-      setSecurityQuestionDraft(securityPayload.question);
       setSecurityAnswerDraft('');
-      setMustCompleteSetup(false);
+      setSetupRequirements(EMPTY_SETUP_REQUIREMENTS);
       router.replace(`/app/${tenantSlug}`);
     } catch (requestError) {
       setError(toBusinessSetupError(requestError));
@@ -505,82 +570,137 @@ export default function AccountPage() {
     return (
       <main className="space-y-4 pb-10 sm:space-y-6">
         <Card className="overflow-hidden rounded-3xl border-[#FFD400]/75 bg-[linear-gradient(145deg,rgba(255,247,213,0.96),rgba(255,255,255,0.98))]">
-          <CardHeader className="space-y-2">
+          <CardHeader className="space-y-3">
             <CardTitle className="text-2xl text-neutral-900">完成首次登录设置</CardTitle>
             <CardDescription className="text-neutral-700">
-              仅需补全必填信息：用户名、登录密码、密保。完成后即可进入工作台。
+              {setupChecklistItems.length > 0
+                ? `仅需补全 ${setupChecklistItems.join('、')}，完成后即可进入工作台。`
+                : '账号资料已完整，正在为你进入工作台。'}
             </CardDescription>
+            {setupChecklistItems.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {setupChecklistItems.map((item) => (
+                  <span
+                    key={item}
+                    className="rounded-full border border-[#e1bb35] bg-white/80 px-3 py-1 text-xs font-semibold text-[#7a5b00]"
+                  >
+                    待完成：{item}
+                  </span>
+                ))}
+              </div>
+            ) : null}
           </CardHeader>
           <CardContent className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             <div className="grid gap-2">
-              <Label htmlFor="setup-email">登录账号</Label>
-              <Input id="setup-email" value={profile?.email ?? ''} disabled />
+              <Label htmlFor="setup-login-account">登录账号</Label>
+              <Input id="setup-login-account" value={loginAccountValue} disabled />
+              <p className="text-xs text-neutral-500">{loginAccountHint}</p>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="setup-name">用户名（必填）</Label>
+              <Label htmlFor="setup-bound-phone">已绑定手机号</Label>
               <Input
-                id="setup-name"
-                value={nameDraft}
-                placeholder="请输入用户名"
-                onChange={(event) => setNameDraft(event.target.value)}
+                id="setup-bound-phone"
+                value={boundPhoneNumber ? maskPhoneNumber(boundPhoneNumber) : '未绑定'}
+                disabled
               />
+              <p className="text-xs text-neutral-500">手机号可用于“手机号 + 密码 / 验证码”登录。</p>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="setup-password">登录密码（必填）</Label>
-              <Input
-                id="setup-password"
-                type="password"
-                value={newPassword}
-                placeholder="至少 8 位"
-                onChange={(event) => setNewPassword(event.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="setup-password-confirm">确认密码（必填）</Label>
-              <Input
-                id="setup-password-confirm"
-                type="password"
-                value={confirmPassword}
-                placeholder="再次输入密码"
-                onChange={(event) => setConfirmPassword(event.target.value)}
-              />
-            </div>
-            <div className="grid gap-2 xl:col-span-2">
-              <Label htmlFor="setup-security-question-select">密保问题（必填）</Label>
-              <select
-                id="setup-security-question-select"
-                className="h-10 rounded-md border border-neutral-300 bg-white px-3 text-sm text-neutral-900"
-                value={selectedSecurityQuestion}
-                onChange={(event) => {
-                  const nextValue = event.target.value;
-                  setSecurityQuestionDraft(nextValue === CUSTOM_SECURITY_QUESTION_VALUE ? '' : nextValue);
-                }}
-              >
-                {SECURITY_QUESTION_OPTIONS.map((item) => (
-                  <option key={`setup-security-option-${item}`} value={item}>
-                    {item}
-                  </option>
-                ))}
-                <option value={CUSTOM_SECURITY_QUESTION_VALUE}>自定义问题</option>
-              </select>
-              {selectedSecurityQuestion === CUSTOM_SECURITY_QUESTION_VALUE ? (
+
+            {setupRequirements.needsDisplayName ? (
+              <div className="grid gap-2 xl:col-span-2">
+                <Label htmlFor="setup-name">显示名称（必填）</Label>
                 <Input
-                  id="setup-security-question-custom"
-                  value={securityQuestionDraft}
-                  placeholder="请输入自定义密保问题"
-                  onChange={(event) => setSecurityQuestionDraft(event.target.value)}
+                  id="setup-name"
+                  value={nameDraft}
+                  placeholder="例如：Siri 的龟舍"
+                  onChange={(event) => setNameDraft(event.target.value)}
                 />
-              ) : null}
-            </div>
-            <div className="grid gap-2 xl:col-span-2">
-              <Label htmlFor="setup-security-answer">密保答案（必填）</Label>
-              <Input
-                id="setup-security-answer"
-                value={securityAnswerDraft}
-                placeholder="至少 2 个字符"
-                onChange={(event) => setSecurityAnswerDraft(event.target.value)}
-              />
-            </div>
+                <p className="text-xs text-neutral-500">
+                  显示名称用于团队识别与页面展示，可后续随时修改。
+                </p>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/90 px-4 py-3 text-sm text-emerald-700 xl:col-span-2">
+                显示名称已准备好，后续可在“账号”页继续修改昵称。
+              </div>
+            )}
+
+            {setupRequirements.needsPassword ? (
+              <>
+                <div className="grid gap-2">
+                  <Label htmlFor="setup-password">登录密码（必填）</Label>
+                  <Input
+                    id="setup-password"
+                    type="password"
+                    value={newPassword}
+                    placeholder="至少 8 位"
+                    onChange={(event) => setNewPassword(event.target.value)}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="setup-password-confirm">确认密码（必填）</Label>
+                  <Input
+                    id="setup-password-confirm"
+                    type="password"
+                    value={confirmPassword}
+                    placeholder="再次输入密码"
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/90 px-4 py-3 text-sm text-emerald-700 xl:col-span-2">
+                登录密码已创建，可直接使用“账号/手机号 + 密码”登录。
+              </div>
+            )}
+
+            {setupRequirements.needsSecurity ? (
+              <>
+                <div className="grid gap-2 xl:col-span-2">
+                  <Label htmlFor="setup-security-question-select">密保问题（必填）</Label>
+                  <select
+                    id="setup-security-question-select"
+                    className="h-10 rounded-md border border-neutral-300 bg-white px-3 text-sm text-neutral-900"
+                    value={selectedSecurityQuestion}
+                    onChange={(event) => {
+                      const nextValue = event.target.value;
+                      setSecurityQuestionDraft(
+                        nextValue === CUSTOM_SECURITY_QUESTION_VALUE ? '' : nextValue,
+                      );
+                    }}
+                  >
+                    {SECURITY_QUESTION_OPTIONS.map((item) => (
+                      <option key={`setup-security-option-${item}`} value={item}>
+                        {item}
+                      </option>
+                    ))}
+                    <option value={CUSTOM_SECURITY_QUESTION_VALUE}>自定义问题</option>
+                  </select>
+                  {selectedSecurityQuestion === CUSTOM_SECURITY_QUESTION_VALUE ? (
+                    <Input
+                      id="setup-security-question-custom"
+                      value={securityQuestionDraft}
+                      placeholder="请输入自定义密保问题"
+                      onChange={(event) => setSecurityQuestionDraft(event.target.value)}
+                    />
+                  ) : null}
+                </div>
+                <div className="grid gap-2 xl:col-span-2">
+                  <Label htmlFor="setup-security-answer">密保答案（必填）</Label>
+                  <Input
+                    id="setup-security-answer"
+                    value={securityAnswerDraft}
+                    placeholder="至少 2 个字符"
+                    onChange={(event) => setSecurityAnswerDraft(event.target.value)}
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/90 px-4 py-3 text-sm text-emerald-700 xl:col-span-2">
+                密保信息已完善，当前账号无需补充其他首次设置项。
+              </div>
+            )}
+
             <div className="xl:col-span-2">
               <Button
                 variant="default"
@@ -588,7 +708,7 @@ export default function AccountPage() {
                 disabled={completingSetup}
                 onClick={() => void handleCompleteSetup()}
               >
-                {completingSetup ? '提交中...' : '完成并进入工作台'}
+                {completingSetup ? '提交中…' : setupSubmitLabel}
               </Button>
             </div>
           </CardContent>
@@ -625,31 +745,70 @@ export default function AccountPage() {
 
       {loading ? (
         <Card className="rounded-2xl border-neutral-200/90 bg-white p-6">
-          <p className="text-sm text-neutral-600">正在加载账户信息...</p>
+          <p className="text-sm text-neutral-600">正在加载账户信息…</p>
         </Card>
       ) : null}
 
       {!loading && activeTab === 'profile' ? (
         <section className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+          <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all xl:col-span-3">
+            <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-2xl">
+                  <ShieldCheck size={18} />
+                  我的业务工具
+                </CardTitle>
+                <CardDescription>
+                  证书中心不再占用底部一级导航，统一收口到“我的”里的二级入口。
+                </CardDescription>
+              </div>
+              <span className="inline-flex items-center rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                二级菜单
+              </span>
+            </CardHeader>
+            <CardContent className="grid gap-3 md:grid-cols-2">
+              <Link
+                href={`/app/${tenantSlug}/certificates`}
+                className={cn(
+                  'group flex items-center gap-4 rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-4 transition-colors hover:border-neutral-300 hover:bg-white',
+                )}
+              >
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#FFD400]/25 text-neutral-900">
+                  <Stamp size={18} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-neutral-900">证书中心</span>
+                  <span className="mt-1 block text-sm text-neutral-500">统一查看签发、补发、作废与公开验真。</span>
+                </span>
+                <ArrowRight
+                  size={16}
+                  className="text-neutral-400 transition-transform group-hover:translate-x-0.5 group-hover:text-neutral-700"
+                />
+              </Link>
+            </CardContent>
+          </Card>
           <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-2xl">
                 <UserRound size={18} />
                 个人资料
               </CardTitle>
-              <CardDescription>用户名可编辑，邮箱为登录账号。</CardDescription>
+              <CardDescription>
+                显示名称用于页面展示；登录账号与绑定手机号分开展示，避免混淆。
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-2">
-                <Label htmlFor="account-email">邮箱</Label>
-                <Input id="account-email" value={profile?.email ?? ''} disabled />
+                <Label htmlFor="account-login-id">登录账号</Label>
+                <Input id="account-login-id" value={loginAccountValue} disabled />
+                <p className="text-xs text-neutral-500">{loginAccountHint}</p>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="account-name">用户名</Label>
+                <Label htmlFor="account-name">显示名称 / 昵称</Label>
                 <Input
                   id="account-name"
                   value={nameDraft}
-                  placeholder="请输入用户名"
+                  placeholder="例如：Siri 的龟舍"
                   onChange={(event) => setNameDraft(event.target.value)}
                 />
               </div>
@@ -661,8 +820,13 @@ export default function AccountPage() {
                   inputMode="numeric"
                   maxLength={11}
                   placeholder="请输入 11 位手机号"
-                  onChange={(event) => setPhoneDraft(event.target.value.replace(/\D/g, '').slice(0, 11))}
+                  onChange={(event) =>
+                    setPhoneDraft(event.target.value.replace(/\D/g, '').slice(0, 11))
+                  }
                 />
+                <p className="text-xs text-neutral-500">
+                  当前绑定：{boundPhoneNumber ? maskPhoneNumber(boundPhoneNumber) : '未绑定'}
+                </p>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="account-phone-code">短信验证码</Label>
@@ -672,7 +836,9 @@ export default function AccountPage() {
                   inputMode="numeric"
                   maxLength={6}
                   placeholder="请输入 6 位验证码"
-                  onChange={(event) => setPhoneCodeDraft(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                  onChange={(event) =>
+                    setPhoneCodeDraft(event.target.value.replace(/\D/g, '').slice(0, 6))
+                  }
                 />
               </div>
               {isReplacingBoundPhone ? (
@@ -684,10 +850,13 @@ export default function AccountPage() {
                     inputMode="numeric"
                     maxLength={6}
                     placeholder="请输入原手机号收到的 6 位验证码"
-                    onChange={(event) => setOldPhoneCodeDraft(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                    onChange={(event) =>
+                      setOldPhoneCodeDraft(event.target.value.replace(/\D/g, '').slice(0, 6))
+                    }
                   />
                   <p className="text-xs text-neutral-500">
-                    正在更换绑定，需验证原手机号：{boundPhoneNumber ? maskPhoneNumber(boundPhoneNumber) : '-'}
+                    正在更换绑定，需验证原手机号：
+                    {boundPhoneNumber ? maskPhoneNumber(boundPhoneNumber) : '-'}
                   </p>
                 </div>
               ) : null}
@@ -698,7 +867,7 @@ export default function AccountPage() {
                   onClick={() => void handleSendPhoneCode()}
                 >
                   {sendingPhoneCode
-                    ? '发送中...'
+                    ? '发送中…'
                     : phoneCodeCooldown > 0
                       ? `${phoneCodeCooldown}s 后重发`
                       : '发送验证码'}
@@ -710,7 +879,7 @@ export default function AccountPage() {
                     onClick={() => void handleSendOldPhoneCode()}
                   >
                     {sendingOldPhoneCode
-                      ? '发送中...'
+                      ? '发送中…'
                       : oldPhoneCodeCooldown > 0
                         ? `${oldPhoneCodeCooldown}s 后重发`
                         : '发送原号验证码'}
@@ -721,12 +890,9 @@ export default function AccountPage() {
                   disabled={savingPhoneBinding}
                   onClick={() => void handleBindPhone()}
                 >
-                  {savingPhoneBinding ? '绑定中...' : '绑定手机号'}
+                  {savingPhoneBinding ? '绑定中…' : '绑定手机号'}
                 </Button>
               </div>
-              <p className="text-xs text-neutral-500">
-                当前绑定：{boundPhoneNumber ? maskPhoneNumber(boundPhoneNumber) : '未绑定'}
-              </p>
               <div className="grid gap-1 text-xs text-neutral-500">
                 <p>账号创建时间：{formatDate(profile?.createdAt)}</p>
                 <p>最近改密时间：{formatDate(profile?.passwordUpdatedAt)}</p>
@@ -736,7 +902,7 @@ export default function AccountPage() {
                 disabled={savingProfile}
                 onClick={() => void handleSaveProfile()}
               >
-                {savingProfile ? '保存中...' : '保存资料'}
+                {savingProfile ? '保存中…' : '保存资料'}
               </Button>
             </CardContent>
           </Card>
@@ -787,7 +953,7 @@ export default function AccountPage() {
                 disabled={savingPassword}
                 onClick={() => void handleChangePassword()}
               >
-                {savingPassword ? '更新中...' : '更新密码'}
+                {savingPassword ? '更新中…' : '更新密码'}
               </Button>
             </CardContent>
           </Card>
@@ -798,7 +964,9 @@ export default function AccountPage() {
                 <KeyRound size={18} />
                 密保信息
               </CardTitle>
-              <CardDescription>用于手机号不可用时找回账号，建议设置易记但不易猜的问答。</CardDescription>
+              <CardDescription>
+                用于手机号不可用时找回账号，建议设置易记但不易猜的问答。
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-2">
@@ -809,7 +977,9 @@ export default function AccountPage() {
                   value={selectedSecurityQuestion}
                   onChange={(event) => {
                     const nextValue = event.target.value;
-                    setSecurityQuestionDraft(nextValue === CUSTOM_SECURITY_QUESTION_VALUE ? '' : nextValue);
+                    setSecurityQuestionDraft(
+                      nextValue === CUSTOM_SECURITY_QUESTION_VALUE ? '' : nextValue,
+                    );
                   }}
                 >
                   {SECURITY_QUESTION_OPTIONS.map((item) => (
@@ -837,8 +1007,12 @@ export default function AccountPage() {
                   onChange={(event) => setSecurityAnswerDraft(event.target.value)}
                 />
               </div>
-              <Button variant="secondary" disabled={savingSecurity} onClick={() => void handleSaveSecurityProfile()}>
-                {savingSecurity ? '保存中...' : '保存密保'}
+              <Button
+                variant="secondary"
+                disabled={savingSecurity}
+                onClick={() => void handleSaveSecurityProfile()}
+              >
+                {savingSecurity ? '保存中…' : '保存密保'}
               </Button>
             </CardContent>
           </Card>
@@ -878,17 +1052,102 @@ export default function AccountPage() {
   );
 }
 
-function shouldRequireProfileSetup(profile: MeProfile, securityProfile: { question: string } | null) {
-  const hasName = Boolean(profile.name?.trim());
-  const hasPassword = Boolean(profile.passwordUpdatedAt);
-  const hasSecurityProfile = Boolean(securityProfile?.question?.trim());
-  return !(hasName && hasPassword && hasSecurityProfile);
+function resolveProfileSetupRequirements(
+  profile: MeProfile,
+  securityProfile: { question: string } | null,
+): SetupRequirements {
+  return {
+    needsDisplayName: !profile.name?.trim(),
+    needsPassword: !profile.passwordUpdatedAt,
+    needsSecurity: !securityProfile?.question?.trim(),
+  };
+}
+
+function formatLoginAccount(email: string | null | undefined, boundPhoneNumber: string | null) {
+  if (!email) {
+    return boundPhoneNumber ? `手机号 ${boundPhoneNumber}` : '-';
+  }
+
+  if (email.endsWith(`@${ACCOUNT_EMAIL_DOMAIN}`)) {
+    return email.slice(0, email.indexOf('@'));
+  }
+
+  if (email.endsWith(`@${PHONE_SHADOW_EMAIL_DOMAIN}`)) {
+    return boundPhoneNumber
+      ? `仅手机号登录 (${maskPhoneNumber(boundPhoneNumber)})`
+      : '当前仅支持手机号登录';
+  }
+
+  return email;
+}
+
+function describeLoginAccount(email: string | null | undefined, boundPhoneNumber: string | null) {
+  if (!email) {
+    return '当前未检测到独立登录账号，请优先使用手机号登录。';
+  }
+
+  if (email.endsWith(`@${ACCOUNT_EMAIL_DOMAIN}`)) {
+    return '该账号用于“账号 + 密码”登录，不支持直接修改。';
+  }
+
+  if (email.endsWith(`@${PHONE_SHADOW_EMAIL_DOMAIN}`)) {
+    return boundPhoneNumber
+      ? `当前请使用手机号 ${maskPhoneNumber(boundPhoneNumber)} 登录。`
+      : '当前请使用已绑定手机号登录。';
+  }
+
+  return '当前登录邮箱。';
+}
+
+function getSetupChecklistItems(setupRequirements: SetupRequirements) {
+  const items: string[] = [];
+
+  if (setupRequirements.needsDisplayName) {
+    items.push('显示名称');
+  }
+  if (setupRequirements.needsPassword) {
+    items.push('登录密码');
+  }
+  if (setupRequirements.needsSecurity) {
+    items.push('密保信息');
+  }
+
+  return items;
+}
+
+function getSetupSubmitLabel(setupRequirements: SetupRequirements) {
+  if (
+    setupRequirements.needsSecurity &&
+    !setupRequirements.needsDisplayName &&
+    !setupRequirements.needsPassword
+  ) {
+    return '保存密保并进入工作台';
+  }
+  if (
+    setupRequirements.needsPassword &&
+    !setupRequirements.needsDisplayName &&
+    !setupRequirements.needsSecurity
+  ) {
+    return '保存密码并进入工作台';
+  }
+  if (
+    setupRequirements.needsDisplayName &&
+    !setupRequirements.needsPassword &&
+    !setupRequirements.needsSecurity
+  ) {
+    return '保存资料并进入工作台';
+  }
+
+  return '完成设置并进入工作台';
 }
 
 function toBusinessSetupError(error: unknown) {
   const rawMessage = formatApiError(error);
 
-  if (rawMessage.includes('Password must be at least 8 characters') || rawMessage.includes('newPassword')) {
+  if (
+    rawMessage.includes('Password must be at least 8 characters') ||
+    rawMessage.includes('newPassword')
+  ) {
     return '登录密码至少 8 位，建议使用“字母+数字”的组合。';
   }
   if (rawMessage.includes('question')) {

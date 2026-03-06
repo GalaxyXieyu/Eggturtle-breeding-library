@@ -56,6 +56,7 @@ const NAV_ITEMS: NavItem[] = [
     href: (tenantSlug) => `/app/${tenantSlug}/products`,
     icon: Package,
   },
+
   {
     label: { zh: '我的', en: 'Account' },
     href: (tenantSlug) => `/app/${tenantSlug}/account`,
@@ -111,6 +112,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
   const [currentPlan, setCurrentPlan] = useState<PlanTier>('FREE');
   const [planLoading, setPlanLoading] = useState(true);
   const [setupRequired, setSetupRequired] = useState(false);
+  const [setupCheckReady, setSetupCheckReady] = useState(false);
   const { locale } = useUiPreferences();
   const copy = SHELL_COPY[locale];
   const displayTenantName = useMemo(
@@ -127,7 +129,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
   const visibleNavItems = setupRequired
     ? NAV_ITEMS.filter((item) => item.href(tenantSlug) === accountPath)
     : NAV_ITEMS;
-  const shouldBlockOtherPages = setupRequired && pathname !== accountPath;
+  const shouldBlockOtherPages = setupCheckReady && setupRequired && pathname !== accountPath;
 
   const floatingShareIntent = useMemo<TenantShareIntent>(() => {
     const segments = pathname.split('/').filter(Boolean);
@@ -190,6 +192,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
 
   useEffect(() => {
     let cancelled = false;
+    setSetupCheckReady(false);
 
     void (async () => {
       try {
@@ -216,10 +219,14 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
           return;
         }
 
-        setSetupRequired(shouldRequireProfileSetup(profileResponse.profile, securityResponse.profile));
+        setSetupRequired(
+          shouldRequireProfileSetup(profileResponse.profile, securityResponse.profile),
+        );
+        setSetupCheckReady(true);
       } catch {
         if (!cancelled) {
           setSetupRequired(true);
+          setSetupCheckReady(true);
         }
       }
     })();
@@ -227,10 +234,10 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
     return () => {
       cancelled = true;
     };
-  }, [router, tenantSlug]);
+  }, [pathname, router, tenantSlug]);
 
   useEffect(() => {
-    if (!setupRequired) {
+    if (!setupCheckReady || !setupRequired) {
       return;
     }
 
@@ -239,7 +246,15 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
     }
 
     router.replace(`${accountPath}?setup=1`);
-  }, [accountPath, pathname, router, setupQueryEnabled, setupRequired, tenantSlug]);
+  }, [
+    accountPath,
+    pathname,
+    router,
+    setupCheckReady,
+    setupQueryEnabled,
+    setupRequired,
+    tenantSlug,
+  ]);
 
   async function handleQuickShareOpen() {
     if (quickSharePending) {

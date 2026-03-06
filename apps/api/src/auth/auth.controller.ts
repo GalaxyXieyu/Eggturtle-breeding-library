@@ -38,7 +38,7 @@ export class AuthController {
   @Post('request-sms-code')
   async requestSmsCode(@Body() body: unknown) {
     const payload = parseOrThrow(requestSmsCodeRequestSchema, body);
-    const response = await this.authService.requestSmsCode(payload.phoneNumber);
+    const response = await this.authService.requestSmsCode(payload.phoneNumber, payload.purpose);
 
     return requestSmsCodeResponseSchema.parse(response);
   }
