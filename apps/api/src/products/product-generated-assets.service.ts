@@ -1567,6 +1567,7 @@ export class ProductGeneratedAssetsService {
       select: {
         id: true,
         name: true,
+        account: true,
         email: true
       }
     });
@@ -1578,7 +1579,7 @@ export class ProductGeneratedAssetsService {
       };
     }
 
-    const displayName = user.name?.trim() || user.email.split('@')[0] || '未登记用户';
+    const displayName = user.name?.trim() || user.account?.trim() || user.email.split('@')[0] || '未登记用户';
     return {
       name: displayName,
       id: user.id

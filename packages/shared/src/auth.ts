@@ -37,10 +37,15 @@ export const authPasswordSchema = z
   .string()
   .min(8, 'Password must be at least 8 characters.')
   .max(72, 'Password must be at most 72 characters.');
+export const authNullableAccountSchema = authAccountSchema
+  .nullable()
+  .optional()
+  .transform((value) => value ?? null);
 
 export const authUserSchema = z.object({
   id: z.string().min(1),
   email: z.string().email(),
+  account: authNullableAccountSchema,
   name: z.string().nullable(),
 });
 
@@ -109,6 +114,7 @@ export const meResponseSchema = z.object({
 export const meProfileSchema = z.object({
   id: z.string().min(1),
   email: z.string().email(),
+  account: authNullableAccountSchema,
   name: z.string().nullable(),
   createdAt: z.string().datetime(),
   passwordUpdatedAt: z.string().datetime().nullable(),

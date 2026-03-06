@@ -1,8 +1,7 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   meProfileResponseSchema,
   myPhoneBindingResponseSchema,
@@ -19,9 +18,10 @@ import {
   updateMyPasswordRequestSchema,
   updateMyPasswordResponseSchema,
 } from '@eggturtle/shared';
-import { ArrowRight, KeyRound, LogOut, ShieldCheck, Stamp, UserRound } from 'lucide-react';
+import { KeyRound, LogOut, UserRound } from 'lucide-react';
 
 import { Button } from '../../../../components/ui/button';
+import { AccountSectionNav } from '../../../../components/account-section-nav';
 import {
   Card,
   CardContent,
@@ -34,7 +34,6 @@ import { Label } from '../../../../components/ui/label';
 import { apiRequest, clearAccessToken } from '../../../../lib/api-client';
 import { formatApiError } from '../../../../lib/error-utils';
 import { ensureTenantRouteSession } from '../../../../lib/tenant-route-session';
-import { cn } from '../../../../lib/utils';
 import SubscriptionPageContent from '../subscription/page';
 
 type AccountTab = 'profile' | 'subscription';
@@ -44,10 +43,6 @@ type SetupRequirements = {
   needsSecurity: boolean;
 };
 
-const ACCOUNT_TABS: Array<{ key: AccountTab; label: string }> = [
-  { key: 'profile', label: '账号' },
-  { key: 'subscription', label: '订阅' },
-];
 const CUSTOM_SECURITY_QUESTION_VALUE = '__custom__';
 const SECURITY_QUESTION_OPTIONS = [
   '我第一只宠物的名字是？',
@@ -61,13 +56,10 @@ const EMPTY_SETUP_REQUIREMENTS: SetupRequirements = {
   needsPassword: false,
   needsSecurity: false,
 };
-const ACCOUNT_EMAIL_DOMAIN = 'account.eggturtle.local';
-const PHONE_SHADOW_EMAIL_DOMAIN = 'phone.eggturtle.local';
 
 export default function AccountPage() {
   const router = useRouter();
   const params = useParams<{ tenantSlug: string }>();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
   const tenantSlug = useMemo(() => params.tenantSlug ?? '', [params.tenantSlug]);
 
@@ -112,8 +104,8 @@ export default function AccountPage() {
   )
     ? securityQuestionDraft
     : CUSTOM_SECURITY_QUESTION_VALUE;
-  const loginAccountValue = formatLoginAccount(profile?.email, boundPhoneNumber);
-  const loginAccountHint = describeLoginAccount(profile?.email, boundPhoneNumber);
+  const loginAccountValue = formatLoginAccount(profile?.account, boundPhoneNumber);
+  const loginAccountHint = describeLoginAccount(profile?.account, boundPhoneNumber);
   const setupChecklistItems = getSetupChecklistItems(setupRequirements);
   const setupSubmitLabel = getSetupSubmitLabel(setupRequirements);
 
@@ -235,23 +227,6 @@ export default function AccountPage() {
       router.replace(`/app/${tenantSlug}`);
     }
   }, [loading, mustCompleteSetup, needsSetup, router, tenantSlug]);
-
-  function switchTab(nextTab: AccountTab) {
-    if (nextTab === activeTab) {
-      return;
-    }
-
-    setActiveTab(nextTab);
-    const nextSearchParams = new URLSearchParams(searchParams.toString());
-    if (nextTab === 'profile') {
-      nextSearchParams.delete('tab');
-    } else {
-      nextSearchParams.set('tab', nextTab);
-    }
-
-    const query = nextSearchParams.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname);
-  }
 
   async function handleSaveProfile() {
     setSavingProfile(true);
@@ -725,23 +700,7 @@ export default function AccountPage() {
 
   return (
     <main className="space-y-4 pb-10 sm:space-y-6">
-      <section className="flex flex-wrap gap-2">
-        {ACCOUNT_TABS.map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            onClick={() => switchTab(item.key)}
-            className={cn(
-              'rounded-full border px-4 py-1.5 text-sm font-semibold transition',
-              activeTab === item.key
-                ? 'border-neutral-900 bg-neutral-900 text-white'
-                : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:text-neutral-900',
-            )}
-          >
-            {item.label}
-          </button>
-        ))}
-      </section>
+      <AccountSectionNav tenantSlug={tenantSlug} active={activeTab} />
 
       {loading ? (
         <Card className="rounded-2xl border-neutral-200/90 bg-white p-6">
@@ -751,42 +710,6 @@ export default function AccountPage() {
 
       {!loading && activeTab === 'profile' ? (
         <section className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-          <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all xl:col-span-3">
-            <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2 text-2xl">
-                  <ShieldCheck size={18} />
-                  我的业务工具
-                </CardTitle>
-                <CardDescription>
-                  证书中心不再占用底部一级导航，统一收口到“我的”里的二级入口。
-                </CardDescription>
-              </div>
-              <span className="inline-flex items-center rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-                二级菜单
-              </span>
-            </CardHeader>
-            <CardContent className="grid gap-3 md:grid-cols-2">
-              <Link
-                href={`/app/${tenantSlug}/certificates`}
-                className={cn(
-                  'group flex items-center gap-4 rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-4 transition-colors hover:border-neutral-300 hover:bg-white',
-                )}
-              >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#FFD400]/25 text-neutral-900">
-                  <Stamp size={18} />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold text-neutral-900">证书中心</span>
-                  <span className="mt-1 block text-sm text-neutral-500">统一查看签发、补发、作废与公开验真。</span>
-                </span>
-                <ArrowRight
-                  size={16}
-                  className="text-neutral-400 transition-transform group-hover:translate-x-0.5 group-hover:text-neutral-700"
-                />
-              </Link>
-            </CardContent>
-          </Card>
           <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-2xl">
@@ -1063,40 +986,28 @@ function resolveProfileSetupRequirements(
   };
 }
 
-function formatLoginAccount(email: string | null | undefined, boundPhoneNumber: string | null) {
-  if (!email) {
-    return boundPhoneNumber ? `手机号 ${boundPhoneNumber}` : '-';
+function formatLoginAccount(account: string | null | undefined, boundPhoneNumber: string | null) {
+  if (account) {
+    return account;
   }
 
-  if (email.endsWith(`@${ACCOUNT_EMAIL_DOMAIN}`)) {
-    return email.slice(0, email.indexOf('@'));
+  if (boundPhoneNumber) {
+    return `仅手机号登录 (${maskPhoneNumber(boundPhoneNumber)})`;
   }
 
-  if (email.endsWith(`@${PHONE_SHADOW_EMAIL_DOMAIN}`)) {
-    return boundPhoneNumber
-      ? `仅手机号登录 (${maskPhoneNumber(boundPhoneNumber)})`
-      : '当前仅支持手机号登录';
-  }
-
-  return email;
+  return '-';
 }
 
-function describeLoginAccount(email: string | null | undefined, boundPhoneNumber: string | null) {
-  if (!email) {
-    return '当前未检测到独立登录账号，请优先使用手机号登录。';
+function describeLoginAccount(account: string | null | undefined, boundPhoneNumber: string | null) {
+  if (account) {
+    return '该账号用于“账号 + 密码”登录，当前不支持直接修改。';
   }
 
-  if (email.endsWith(`@${ACCOUNT_EMAIL_DOMAIN}`)) {
-    return '该账号用于“账号 + 密码”登录，不支持直接修改。';
+  if (boundPhoneNumber) {
+    return `当前请使用手机号 ${maskPhoneNumber(boundPhoneNumber)} 登录。`;
   }
 
-  if (email.endsWith(`@${PHONE_SHADOW_EMAIL_DOMAIN}`)) {
-    return boundPhoneNumber
-      ? `当前请使用手机号 ${maskPhoneNumber(boundPhoneNumber)} 登录。`
-      : '当前请使用已绑定手机号登录。';
-  }
-
-  return '当前登录邮箱。';
+  return '当前未设置独立登录账号，请先绑定手机号登录。';
 }
 
 function getSetupChecklistItems(setupRequirements: SetupRequirements) {

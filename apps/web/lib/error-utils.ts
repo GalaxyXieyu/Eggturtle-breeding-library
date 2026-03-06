@@ -141,8 +141,8 @@ function toBusinessErrorMessage(rawMessage: string, locale: ErrorLocale) {
 
   if (rawMessage.includes('Email code login is only available for existing accounts.')) {
     return locale === 'zh'
-      ? '邮箱验证码仅支持已有账号登录，不能用于新账号注册。'
-      : 'Email code login is only available for existing accounts.';
+      ? '当前验证码仅支持已有账号验证，不能用于新账号注册。'
+      : 'Verification by code is only available for existing accounts.';
   }
 
   return rawMessage;

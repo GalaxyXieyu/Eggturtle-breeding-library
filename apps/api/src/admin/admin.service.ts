@@ -620,6 +620,7 @@ export class AdminService {
       users: users.map((user) => ({
         id: user.id,
         email: user.email,
+        account: this.resolveUserAccount(user),
         name: user.name,
         createdAt: user.createdAt.toISOString()
       }))
@@ -691,6 +692,7 @@ export class AdminService {
         user: {
           id: member.user.id,
           email: member.user.email,
+          account: this.resolveUserAccount(member.user),
           name: member.user.name
         }
       }))
@@ -716,7 +718,7 @@ export class AdminService {
     }
 
     let result: {
-      user: { id: string; email: string; name: string | null };
+      user: { id: string; email: string; account: string | null; name: string | null };
       membership: { role: TenantMemberRole; createdAt: Date };
       created: boolean;
       previousRole: TenantMemberRole | null;
@@ -825,6 +827,7 @@ export class AdminService {
       user: {
         id: result.user.id,
         email: result.user.email,
+        account: this.resolveUserAccount(result.user),
         name: result.user.name
       },
       role: result.membership.role,
@@ -1731,6 +1734,32 @@ export class AdminService {
   private escapeCsvCell(value: string) {
     const escaped = value.replaceAll('"', '""');
     return `"${escaped}"`;
+  }
+
+  private normalizeValidAccount(value: string | null | undefined): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+
+    const normalized = value.trim().toLowerCase();
+    return /^[a-z][a-z0-9_-]{2,30}[a-z0-9]$/.test(normalized) ? normalized : null;
+  }
+
+  private resolveUserAccount(user: {
+    email: string;
+    account?: string | null;
+  }): string | null {
+    const directAccount = this.normalizeValidAccount(user.account);
+    if (directAccount) {
+      return directAccount;
+    }
+
+    const legacyMatch = user.email.match(/^([^@]+)@account\.eggturtle\.local$/i);
+    if (legacyMatch) {
+      return this.normalizeValidAccount(legacyMatch[1]);
+    }
+
+    return null;
   }
 
   private isTenantSlugConflict(error: unknown): boolean {

@@ -46,6 +46,7 @@ export class AuthService {
   private static readonly SMS_CODE_KEY_PREFIX = 'sms:';
   private static readonly ACCOUNT_EMAIL_DOMAIN = 'account.eggturtle.local';
   private static readonly PHONE_SHADOW_EMAIL_DOMAIN = 'phone.eggturtle.local';
+  private static readonly ACCOUNT_NAME_PATTERN = /^[a-z][a-z0-9_-]{2,30}[a-z0-9]$/;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -263,13 +264,14 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
+        account: this.resolveUserAccount(user),
         name: user.name,
       },
     };
   }
 
-  async passwordLogin(email: string, password: string): Promise<PasswordLoginResponse> {
-    const loginIdentifier = email.trim().toLowerCase();
+  async passwordLogin(login: string, password: string): Promise<PasswordLoginResponse> {
+    const loginIdentifier = login.trim().toLowerCase();
     let user = null;
 
     if (/^1\d{10}$/.test(loginIdentifier)) {
@@ -285,16 +287,16 @@ export class AuthService {
       user = binding?.user ?? null;
     }
 
-    if (!user) {
+    if (!user && !loginIdentifier.includes('@')) {
+      user = await this.findUserByAccountName(loginIdentifier);
+    }
+
+    if (!user && loginIdentifier.includes('@')) {
       user = await this.prisma.user.findUnique({
         where: {
           email: loginIdentifier,
         },
       });
-    }
-
-    if (!user && !loginIdentifier.includes('@')) {
-      user = await this.findUserByAccountName(loginIdentifier);
     }
 
     if (!user && !loginIdentifier.includes('@')) {
@@ -343,6 +345,7 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
+        account: this.resolveUserAccount(user),
         name: user.name,
       },
     };
@@ -465,6 +468,7 @@ export class AuthService {
           user: {
             id: user.id,
             email: user.email,
+            account: this.resolveUserAccount(user),
             name: user.name,
           },
           tenant: {
@@ -487,10 +491,15 @@ export class AuthService {
     }
   }
 
-  private async findUserByAccountName(accountName: string) {
-    const directMatch = await this.prisma.user.findUnique({
+  private async findUserByAccountName(
+    accountName: string,
+    client: Prisma.TransactionClient | PrismaService = this.prisma,
+  ) {
+    const normalizedAccount = this.normalizeAccountName(accountName);
+
+    const directMatch = await client.user.findUnique({
       where: {
-        email: this.toAccountEmail(accountName),
+        account: normalizedAccount,
       },
     });
 
@@ -498,27 +507,11 @@ export class AuthService {
       return directMatch;
     }
 
-    const candidates = await this.prisma.user.findMany({
+    return client.user.findUnique({
       where: {
-        passwordHash: {
-          not: null,
-        },
-        email: {
-          startsWith: `${accountName}@`,
-          mode: 'insensitive',
-        },
+        email: this.toAccountEmail(normalizedAccount),
       },
-      orderBy: {
-        createdAt: 'asc',
-      },
-      take: 2,
     });
-
-    if (candidates.length !== 1) {
-      return null;
-    }
-
-    return candidates[0];
   }
 
   private async resolveDefaultTenantId(userId: string): Promise<string | undefined> {
@@ -629,17 +622,7 @@ export class AuthService {
         }
 
         const accountEmail = this.toAccountEmail(payload.account);
-        const accountCollision = await tx.user.findFirst({
-          where: {
-            email: {
-              startsWith: `${payload.account}@`,
-              mode: 'insensitive',
-            },
-          },
-          select: {
-            id: true,
-          },
-        });
+        const accountCollision = await this.findUserByAccountName(payload.account, tx);
         const { shadowEmail, user: existingPhoneUser } = await this.loadPhoneIdentity(
           tx,
           payload.phoneNumber,
@@ -670,7 +653,8 @@ export class AuthService {
             },
             data: {
               email: accountEmail,
-              name: payload.account,
+              account: payload.account,
+              name: user.name,
               passwordHash,
               passwordUpdatedAt: now,
             },
@@ -679,7 +663,8 @@ export class AuthService {
           user = await tx.user.create({
             data: {
               email: accountEmail,
-              name: payload.account,
+              account: payload.account,
+              name: null,
               passwordHash,
               passwordUpdatedAt: now,
             },
@@ -769,6 +754,7 @@ export class AuthService {
           user: {
             id: user.id,
             email: user.email,
+            account: this.resolveUserAccount(user),
             name: user.name,
           },
           tenant: {
@@ -825,6 +811,7 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
+        account: this.resolveUserAccount(user),
         name: user.name,
       },
       tenantId: payload.tenantId,
@@ -1098,6 +1085,7 @@ export class AuthService {
   private toMeProfile(user: {
     id: string;
     email: string;
+    account: string | null;
     name: string | null;
     createdAt: Date;
     passwordUpdatedAt: Date | null;
@@ -1105,6 +1093,7 @@ export class AuthService {
     return {
       id: user.id,
       email: user.email,
+      account: this.resolveUserAccount(user),
       name: user.name,
       createdAt: user.createdAt.toISOString(),
       passwordUpdatedAt: user.passwordUpdatedAt ? user.passwordUpdatedAt.toISOString() : null,
@@ -1289,10 +1278,44 @@ export class AuthService {
   }
 
   private isRegisteredPhoneAccount(
-    user: { email: string; passwordHash: string | null },
+    user: { email: string; account?: string | null; passwordHash: string | null },
     shadowEmail: string,
   ): boolean {
-    return user.email !== shadowEmail || Boolean(user.passwordHash);
+    return user.email !== shadowEmail || Boolean(user.account) || Boolean(user.passwordHash);
+  }
+
+  private normalizeAccountName(value: string): string {
+    return value.trim().toLowerCase();
+  }
+
+  private normalizeValidAccount(value: string | null | undefined): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+
+    const normalized = this.normalizeAccountName(value);
+    return AuthService.ACCOUNT_NAME_PATTERN.test(normalized) ? normalized : null;
+  }
+
+  private extractEmailLocalPart(email: string): string {
+    const separatorIndex = email.indexOf('@');
+    return separatorIndex === -1 ? email : email.slice(0, separatorIndex);
+  }
+
+  private resolveUserAccount(user: {
+    email: string;
+    account?: string | null;
+  }): string | null {
+    const persistedAccount = this.normalizeValidAccount(user.account);
+    if (persistedAccount) {
+      return persistedAccount;
+    }
+
+    if (user.email.endsWith(`@${AuthService.ACCOUNT_EMAIL_DOMAIN}`)) {
+      return this.normalizeValidAccount(this.extractEmailLocalPart(user.email));
+    }
+
+    return null;
   }
 
   private buildRegisterTenantName(account: string): string {
