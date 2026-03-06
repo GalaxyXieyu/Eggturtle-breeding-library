@@ -28,15 +28,15 @@ import { parseOrThrow } from '../common/zod-parse';
 import { TenantSubscriptionsService } from '../subscriptions/tenant-subscriptions.service';
 
 import { AuthGuard } from './auth.guard';
+import { AuthProfileService } from './auth-profile.service';
 import { CurrentUser } from './current-user.decorator';
 import type { AuthenticatedRequest } from './auth.types';
-import { AuthService } from './auth.service';
 
 @Controller()
 @UseGuards(AuthGuard)
 export class MeController {
   constructor(
-    private readonly authService: AuthService,
+    private readonly authProfileService: AuthProfileService,
     private readonly tenantSubscriptionsService: TenantSubscriptionsService
   ) {}
 
@@ -53,7 +53,7 @@ export class MeController {
 
   @Get('me/profile')
   async getMyProfile(@CurrentUser() user: NonNullable<AuthenticatedRequest['user']>) {
-    const profile = await this.authService.getMyProfile(user.id);
+    const profile = await this.authProfileService.getMyProfile(user.id);
     return meProfileResponseSchema.parse({ profile });
   }
 
@@ -63,7 +63,7 @@ export class MeController {
     @Body() body: unknown
   ) {
     const payload = parseOrThrow(updateMeProfileRequestSchema, body);
-    const profile = await this.authService.updateMyProfile(user.id, payload);
+    const profile = await this.authProfileService.updateMyProfile(user.id, payload);
     return updateMeProfileResponseSchema.parse({ profile });
   }
 
@@ -73,7 +73,7 @@ export class MeController {
     @Body() body: unknown
   ) {
     const payload = parseOrThrow(updateMyPasswordRequestSchema, body);
-    const response = await this.authService.updateMyPassword(user.id, payload);
+    const response = await this.authProfileService.updateMyPassword(user.id, payload);
     return updateMyPasswordResponseSchema.parse({
       ok: true,
       passwordUpdatedAt: response.passwordUpdatedAt
@@ -82,7 +82,7 @@ export class MeController {
 
   @Get('me/security-profile')
   async getMySecurityProfile(@CurrentUser() user: NonNullable<AuthenticatedRequest['user']>) {
-    const profile = await this.authService.getMySecurityProfile(user.id);
+    const profile = await this.authProfileService.getMySecurityProfile(user.id);
     return mySecurityProfileResponseSchema.parse({ profile });
   }
 
@@ -92,7 +92,7 @@ export class MeController {
     @Body() body: unknown
   ) {
     const payload = parseOrThrow(upsertMySecurityProfileRequestSchema, body);
-    const response = await this.authService.upsertMySecurityProfile(user.id, payload);
+    const response = await this.authProfileService.upsertMySecurityProfile(user.id, payload);
     return upsertMySecurityProfileResponseSchema.parse({
       ok: true,
       updatedAt: response.updatedAt
@@ -101,7 +101,7 @@ export class MeController {
 
   @Get('me/phone-binding')
   async getMyPhoneBinding(@CurrentUser() user: NonNullable<AuthenticatedRequest['user']>) {
-    const binding = await this.authService.getMyPhoneBinding(user.id);
+    const binding = await this.authProfileService.getMyPhoneBinding(user.id);
     return myPhoneBindingResponseSchema.parse({ binding });
   }
 
@@ -111,7 +111,7 @@ export class MeController {
     @Body() body: unknown
   ) {
     const payload = parseOrThrow(upsertMyPhoneBindingRequestSchema, body);
-    const response = await this.authService.upsertMyPhoneBinding(user.id, payload);
+    const response = await this.authProfileService.upsertMyPhoneBinding(user.id, payload);
     return upsertMyPhoneBindingResponseSchema.parse({
       ok: true,
       binding: response

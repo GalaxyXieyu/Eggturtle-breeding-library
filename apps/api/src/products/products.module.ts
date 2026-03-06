@@ -7,14 +7,31 @@ import { StorageModule } from '../storage/storage.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 
 import { ProductCertificatesPublicController } from './product-certificates-public.controller';
+import { ProductCertificateVerificationService } from './product-certificate-verification.service';
+import { ProductCertificatesService } from './product-certificates.service';
+import { ProductCouplePhotosService } from './product-couple-photos.service';
+import { ProductGeneratedAssetsSupportService } from './product-generated-assets-support.service';
+import { ProductsEventsService } from './products-events.service';
+import { ProductsImagesService } from './products-images.service';
+import { ProductsReadService } from './products-read.service';
+import { ProductSaleBatchesService } from './product-sale-batches.service';
 import { SaleBatchesPublicController } from './sale-batches-public.controller';
-import { ProductGeneratedAssetsService } from './product-generated-assets.service';
 import { ProductsController } from './products.controller';
 import { ProductsService } from './products.service';
 
 @Module({
   imports: [PrismaModule, StorageModule, AuthModule, AuditLogsModule, SubscriptionsModule],
   controllers: [ProductsController, ProductCertificatesPublicController, SaleBatchesPublicController],
-  providers: [ProductsService, ProductGeneratedAssetsService]
+  providers: [
+    ProductsService,
+    ProductsReadService,
+    ProductsEventsService,
+    ProductsImagesService,
+    ProductGeneratedAssetsSupportService,
+    ProductCertificatesService,
+    ProductCertificateVerificationService,
+    ProductSaleBatchesService,
+    ProductCouplePhotosService,
+  ]
 })
 export class ProductsModule {}

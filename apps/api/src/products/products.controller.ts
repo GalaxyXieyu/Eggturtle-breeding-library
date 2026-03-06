@@ -73,7 +73,9 @@ import { RequireTenantRole } from '../auth/require-tenant-role.decorator';
 import { TenantSubscriptionGuard } from '../auth/tenant-subscription.guard';
 import { parseOrThrow } from '../common/zod-parse';
 
-import { ProductGeneratedAssetsService } from './product-generated-assets.service';
+import { ProductCertificatesService } from './product-certificates.service';
+import { ProductCouplePhotosService } from './product-couple-photos.service';
+import { ProductSaleBatchesService } from './product-sale-batches.service';
 import { ProductsService } from './products.service';
 
 type UploadedBinaryFile = {
@@ -93,7 +95,9 @@ type PassthroughResponse = {
 export class ProductsController {
   constructor(
     private readonly productsService: ProductsService,
-    private readonly generatedAssetsService: ProductGeneratedAssetsService
+    private readonly productCertificatesService: ProductCertificatesService,
+    private readonly productSaleBatchesService: ProductSaleBatchesService,
+    private readonly productCouplePhotosService: ProductCouplePhotosService
   ) {}
 
   @Post()
@@ -161,7 +165,7 @@ export class ProductsController {
   async listCertificateCenter(@Req() request: AuthenticatedRequest, @Query() query: unknown) {
     const tenantId = this.requireTenantId(request.tenantId);
     const parsedQuery = parseOrThrow(listProductCertificateCenterQuerySchema, query);
-    const response = await this.generatedAssetsService.listCertificateCenter(tenantId, parsedQuery);
+    const response = await this.productCertificatesService.listCertificateCenter(tenantId, parsedQuery);
 
     return listProductCertificateCenterResponseSchema.parse(response);
   }
@@ -176,7 +180,7 @@ export class ProductsController {
     const tenantId = this.requireTenantId(request.tenantId);
     const actorUserId = this.requireUserId(request.user?.id);
     const payload = parseOrThrow(voidProductCertificateRequestSchema, body);
-    const response = await this.generatedAssetsService.voidCertificate(
+    const response = await this.productCertificatesService.voidCertificate(
       tenantId,
       actorUserId,
       certificateId,
@@ -198,7 +202,7 @@ export class ProductsController {
     const tenantId = this.requireTenantId(request.tenantId);
     const actorUserId = this.requireUserId(request.user?.id);
     const payload = parseOrThrow(reissueProductCertificateRequestSchema, body);
-    const response = await this.generatedAssetsService.previewReissueCertificate(
+    const response = await this.productCertificatesService.previewReissueCertificate(
       tenantId,
       actorUserId,
       certificateId,
@@ -218,7 +222,7 @@ export class ProductsController {
     const tenantId = this.requireTenantId(request.tenantId);
     const actorUserId = this.requireUserId(request.user?.id);
     const payload = parseOrThrow(reissueProductCertificateRequestSchema, body);
-    const response = await this.generatedAssetsService.confirmReissueCertificate(
+    const response = await this.productCertificatesService.confirmReissueCertificate(
       tenantId,
       actorUserId,
       certificateId,
@@ -306,7 +310,7 @@ export class ProductsController {
   async listSaleBatches(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
     const tenantId = this.requireTenantId(request.tenantId);
     const productId = parseOrThrow(productIdParamSchema, id);
-    const response = await this.generatedAssetsService.listSaleBatches(tenantId, productId);
+    const response = await this.productSaleBatchesService.listSaleBatches(tenantId, productId);
 
     return listSaleBatchesResponseSchema.parse(response);
   }
@@ -322,7 +326,7 @@ export class ProductsController {
     const actorUserId = this.requireUserId(request.user?.id);
     const productId = parseOrThrow(productIdParamSchema, id);
     const payload = parseOrThrow(createSaleBatchRequestSchema, body);
-    const response = await this.generatedAssetsService.createSaleBatch(
+    const response = await this.productSaleBatchesService.createSaleBatch(
       tenantId,
       actorUserId,
       productId,
@@ -343,7 +347,7 @@ export class ProductsController {
     const actorUserId = this.requireUserId(request.user?.id);
     const productId = parseOrThrow(productIdParamSchema, id);
     const payload = parseOrThrow(createSaleAllocationRequestSchema, body);
-    const response = await this.generatedAssetsService.createSaleAllocation(
+    const response = await this.productSaleBatchesService.createSaleAllocation(
       tenantId,
       actorUserId,
       productId,
@@ -378,7 +382,7 @@ export class ProductsController {
       throw new BadRequestException('A single image file is required in form field "file".');
     }
 
-    const response = await this.generatedAssetsService.uploadSaleSubjectMedia(
+    const response = await this.productSaleBatchesService.uploadSaleSubjectMedia(
       tenantId,
       actorUserId,
       productId,
@@ -393,7 +397,7 @@ export class ProductsController {
   async getCertificateEligibility(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
     const tenantId = this.requireTenantId(request.tenantId);
     const productId = parseOrThrow(productIdParamSchema, id);
-    const result = await this.generatedAssetsService.getCertificateEligibility(tenantId, productId);
+    const result = await this.productCertificatesService.getCertificateEligibility(tenantId, productId);
 
     return getProductCertificateEligibilityResponseSchema.parse(result);
   }
@@ -409,7 +413,7 @@ export class ProductsController {
     const actorUserId = this.requireUserId(request.user?.id);
     const productId = parseOrThrow(productIdParamSchema, id);
     const payload = parseOrThrow(productCertificateGenerateRequestSchema, body);
-    const response = await this.generatedAssetsService.previewCertificate(
+    const response = await this.productCertificatesService.previewCertificate(
       tenantId,
       actorUserId,
       productId,
@@ -430,7 +434,7 @@ export class ProductsController {
     const actorUserId = this.requireUserId(request.user?.id);
     const productId = parseOrThrow(productIdParamSchema, id);
     const payload = parseOrThrow(productCertificateGenerateRequestSchema, body);
-    const response = await this.generatedAssetsService.confirmCertificate(
+    const response = await this.productCertificatesService.confirmCertificate(
       tenantId,
       actorUserId,
       productId,
@@ -444,7 +448,7 @@ export class ProductsController {
   async listCertificates(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
     const tenantId = this.requireTenantId(request.tenantId);
     const productId = parseOrThrow(productIdParamSchema, id);
-    const response = await this.generatedAssetsService.listCertificates(tenantId, productId);
+    const response = await this.productCertificatesService.listCertificates(tenantId, productId);
 
     return listProductCertificatesResponseSchema.parse(response);
   }
@@ -457,7 +461,7 @@ export class ProductsController {
     @Res({ passthrough: true }) response: PassthroughResponse
   ) {
     const tenantId = this.requireTenantId(request.tenantId);
-    const content = await this.generatedAssetsService.getCertificateContent(
+    const content = await this.productCertificatesService.getCertificateContent(
       tenantId,
       productId,
       certificateId
@@ -488,7 +492,7 @@ export class ProductsController {
     const actorUserId = this.requireUserId(request.user?.id);
     const productId = parseOrThrow(productIdParamSchema, id);
     const payload = parseOrThrow(generateProductCouplePhotoRequestSchema, body);
-    const result = await this.generatedAssetsService.generateCouplePhoto(
+    const result = await this.productCouplePhotosService.generateCouplePhoto(
       tenantId,
       actorUserId,
       productId,
@@ -502,7 +506,7 @@ export class ProductsController {
   async getCurrentCouplePhoto(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
     const tenantId = this.requireTenantId(request.tenantId);
     const productId = parseOrThrow(productIdParamSchema, id);
-    const result = await this.generatedAssetsService.getCurrentCouplePhoto(tenantId, productId);
+    const result = await this.productCouplePhotosService.getCurrentCouplePhoto(tenantId, productId);
 
     return getCurrentProductCouplePhotoResponseSchema.parse(result);
   }
@@ -511,7 +515,7 @@ export class ProductsController {
   async listCouplePhotoHistory(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
     const tenantId = this.requireTenantId(request.tenantId);
     const productId = parseOrThrow(productIdParamSchema, id);
-    const result = await this.generatedAssetsService.listCouplePhotosHistory(tenantId, productId);
+    const result = await this.productCouplePhotosService.listCouplePhotosHistory(tenantId, productId);
 
     return listProductCouplePhotosResponseSchema.parse(result);
   }
@@ -524,7 +528,7 @@ export class ProductsController {
     @Res({ passthrough: true }) response: PassthroughResponse
   ) {
     const tenantId = this.requireTenantId(request.tenantId);
-    const content = await this.generatedAssetsService.getCouplePhotoContent(tenantId, productId, photoId);
+    const content = await this.productCouplePhotosService.getCouplePhotoContent(tenantId, productId, photoId);
 
     response.setHeader('Cache-Control', 'private, no-store');
 

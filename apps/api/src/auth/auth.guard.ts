@@ -1,14 +1,14 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ErrorCode } from '@eggturtle/shared';
 
-import { AuthService } from './auth.service';
+import { AuthAccessService } from './auth-access.service';
 import type { AuthenticatedRequest } from './auth.types';
 
 const PRODUCT_IMAGE_CONTENT_PATH_PATTERN = /^\/products\/[^/]+\/images\/[^/]+\/content$/;
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authAccessService: AuthAccessService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
@@ -21,7 +21,7 @@ export class AuthGuard implements CanActivate {
       });
     }
 
-    const authContext = await this.authService.getAuthContextFromAccessToken(token);
+    const authContext = await this.authAccessService.getAuthContextFromAccessToken(token);
     if (!authContext) {
       throw new UnauthorizedException({
         message: 'Invalid access token.',

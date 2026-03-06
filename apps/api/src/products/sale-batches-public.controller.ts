@@ -1,6 +1,6 @@
 import { Controller, Get, Param, Res, StreamableFile } from '@nestjs/common';
 
-import { ProductGeneratedAssetsService } from './product-generated-assets.service';
+import { ProductSaleBatchesService } from './product-sale-batches.service';
 
 type PublicPassthroughResponse = {
   setHeader: (name: string, value: string) => void;
@@ -9,7 +9,7 @@ type PublicPassthroughResponse = {
 
 @Controller('public/sale-batches')
 export class SaleBatchesPublicController {
-  constructor(private readonly generatedAssetsService: ProductGeneratedAssetsService) {}
+  constructor(private readonly productSaleBatchesService: ProductSaleBatchesService) {}
 
   @Get(':batchId/subject-media/:mediaId/content')
   async getSaleSubjectMediaContent(
@@ -17,7 +17,7 @@ export class SaleBatchesPublicController {
     @Param('mediaId') mediaId: string,
     @Res({ passthrough: true }) response: PublicPassthroughResponse
   ) {
-    const content = await this.generatedAssetsService.getSaleSubjectMediaContent(
+    const content = await this.productSaleBatchesService.getSaleSubjectMediaContent(
       saleBatchId.trim(),
       mediaId.trim()
     );

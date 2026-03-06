@@ -40,13 +40,19 @@ import { RequireSuperAdmin } from '../auth/require-super-admin.decorator';
 import { SuperAdminGuard } from '../auth/super-admin.guard';
 import { parseOrThrow } from '../common/zod-parse';
 
-import { AdminService } from './admin.service';
+import { AdminAnalyticsService } from './admin-analytics.service';
+import { AdminAuditService } from './admin-audit.service';
+import { AdminTenantsService } from './admin-tenants.service';
 
 @Controller('admin')
 @UseGuards(AuthGuard, SuperAdminGuard)
 @RequireSuperAdmin()
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminTenantsService: AdminTenantsService,
+    private readonly adminAnalyticsService: AdminAnalyticsService,
+    private readonly adminAuditService: AdminAuditService
+  ) {}
 
   @Get('tenants')
   async listTenants(
@@ -54,7 +60,7 @@ export class AdminController {
     @Query() query: unknown
   ) {
     const parsedQuery = parseOrThrow(listAdminTenantsQuerySchema, query);
-    const response = await this.adminService.listTenants(user.id, parsedQuery);
+    const response = await this.adminTenantsService.listTenants(user.id, parsedQuery);
     return listAdminTenantsResponseSchema.parse(response);
   }
 
@@ -63,7 +69,7 @@ export class AdminController {
     @CurrentUser() user: NonNullable<AuthenticatedRequest['user']>,
     @Param('tenantId') tenantId: string
   ) {
-    const response = await this.adminService.getTenant(user.id, tenantId);
+    const response = await this.adminTenantsService.getTenant(user.id, tenantId);
     return getAdminTenantResponseSchema.parse(response);
   }
 
@@ -72,7 +78,7 @@ export class AdminController {
     @CurrentUser() user: NonNullable<AuthenticatedRequest['user']>,
     @Param('tenantId') tenantId: string
   ) {
-    const response = await this.adminService.getTenantSubscription(user.id, tenantId);
+    const response = await this.adminTenantsService.getTenantSubscription(user.id, tenantId);
     return getAdminTenantSubscriptionResponseSchema.parse(response);
   }
 
@@ -83,7 +89,7 @@ export class AdminController {
     @Body() body: unknown
   ) {
     const payload = parseOrThrow(updateTenantSubscriptionRequestSchema, body);
-    const response = await this.adminService.updateTenantSubscription(user.id, tenantId, payload);
+    const response = await this.adminTenantsService.updateTenantSubscription(user.id, tenantId, payload);
 
     return updateTenantSubscriptionResponseSchema.parse(response);
   }
@@ -95,7 +101,7 @@ export class AdminController {
     @Body() body: unknown
   ) {
     const payload = parseOrThrow(suspendAdminTenantRequestSchema, body);
-    const response = await this.adminService.suspendTenant(user.id, tenantId, payload);
+    const response = await this.adminTenantsService.suspendTenant(user.id, tenantId, payload);
 
     return suspendAdminTenantResponseSchema.parse(response);
   }
@@ -105,7 +111,7 @@ export class AdminController {
     @CurrentUser() user: NonNullable<AuthenticatedRequest['user']>,
     @Param('tenantId') tenantId: string
   ) {
-    const response = await this.adminService.reactivateTenant(user.id, tenantId);
+    const response = await this.adminTenantsService.reactivateTenant(user.id, tenantId);
 
     return reactivateAdminTenantResponseSchema.parse(response);
   }
@@ -117,7 +123,7 @@ export class AdminController {
     @Body() body: unknown
   ) {
     const payload = parseOrThrow(offboardAdminTenantRequestSchema, body);
-    const response = await this.adminService.offboardTenant(user.id, tenantId, payload);
+    const response = await this.adminTenantsService.offboardTenant(user.id, tenantId, payload);
 
     return offboardAdminTenantResponseSchema.parse(response);
   }
@@ -128,7 +134,7 @@ export class AdminController {
     @Body() body: unknown
   ) {
     const payload = parseOrThrow(createTenantSubscriptionActivationCodeRequestSchema, body);
-    const response = await this.adminService.createSubscriptionActivationCode(user.id, payload);
+    const response = await this.adminTenantsService.createSubscriptionActivationCode(user.id, payload);
     return createTenantSubscriptionActivationCodeResponseSchema.parse(response);
   }
 
@@ -138,14 +144,14 @@ export class AdminController {
     @Body() body: unknown
   ) {
     const payload = parseOrThrow(createAdminTenantRequestSchema, body);
-    const response = await this.adminService.createTenant(user.id, payload);
+    const response = await this.adminTenantsService.createTenant(user.id, payload);
 
     return createAdminTenantResponseSchema.parse(response);
   }
 
   @Get('users')
   async listUsers(@CurrentUser() user: NonNullable<AuthenticatedRequest['user']>) {
-    const response = await this.adminService.listUsers(user.id);
+    const response = await this.adminTenantsService.listUsers(user.id);
     return listAdminUsersResponseSchema.parse(response);
   }
 
@@ -156,7 +162,7 @@ export class AdminController {
     @Query() query: unknown
   ) {
     const parsedQuery = parseOrThrow(listAdminTenantMembersQuerySchema, query);
-    const response = await this.adminService.listTenantMembers(user.id, tenantId, parsedQuery);
+    const response = await this.adminTenantsService.listTenantMembers(user.id, tenantId, parsedQuery);
 
     return listAdminTenantMembersResponseSchema.parse(response);
   }
@@ -168,7 +174,7 @@ export class AdminController {
     @Body() body: unknown
   ) {
     const payload = parseOrThrow(upsertTenantMemberRequestSchema, body);
-    const response = await this.adminService.upsertTenantMember(user.id, tenantId, payload);
+    const response = await this.adminTenantsService.upsertTenantMember(user.id, tenantId, payload);
 
     return upsertTenantMemberResponseSchema.parse(response);
   }
@@ -179,7 +185,7 @@ export class AdminController {
     @Param('tenantId') tenantId: string,
     @Param('userId') userId: string
   ) {
-    const response = await this.adminService.deleteTenantMember(user.id, tenantId, userId);
+    const response = await this.adminTenantsService.deleteTenantMember(user.id, tenantId, userId);
 
     return deleteTenantMemberResponseSchema.parse(response);
   }
@@ -190,7 +196,7 @@ export class AdminController {
     @Query() query: unknown
   ) {
     const parsedQuery = parseOrThrow(listSuperAdminAuditLogsQuerySchema, query);
-    const response = await this.adminService.listAuditLogs(user.id, parsedQuery);
+    const response = await this.adminAuditService.listAuditLogs(user.id, parsedQuery);
 
     return listSuperAdminAuditLogsResponseSchema.parse(response);
   }
@@ -201,7 +207,7 @@ export class AdminController {
     @Query() query: unknown
   ) {
     const parsedQuery = parseOrThrow(getAdminActivityOverviewQuerySchema, query);
-    const response = await this.adminService.getActivityOverview(user.id, parsedQuery);
+    const response = await this.adminAnalyticsService.getActivityOverview(user.id, parsedQuery);
 
     return adminActivityOverviewResponseSchema.parse(response);
   }
@@ -212,7 +218,7 @@ export class AdminController {
     @Query() query: unknown
   ) {
     const parsedQuery = parseOrThrow(getAdminUsageOverviewQuerySchema, query);
-    const response = await this.adminService.getUsageOverview(user.id, parsedQuery);
+    const response = await this.adminAnalyticsService.getUsageOverview(user.id, parsedQuery);
 
     return adminUsageOverviewResponseSchema.parse(response);
   }
@@ -222,7 +228,7 @@ export class AdminController {
     @CurrentUser() user: NonNullable<AuthenticatedRequest['user']>,
     @Param('tenantId') tenantId: string
   ) {
-    const response = await this.adminService.getTenantUsage(user.id, tenantId);
+    const response = await this.adminAnalyticsService.getTenantUsage(user.id, tenantId);
 
     return getAdminTenantUsageResponseSchema.parse(response);
   }
@@ -233,7 +239,7 @@ export class AdminController {
     @Query() query: unknown
   ) {
     const parsedQuery = parseOrThrow(getAdminRevenueOverviewQuerySchema, query);
-    const response = await this.adminService.getRevenueOverview(user.id, parsedQuery);
+    const response = await this.adminAnalyticsService.getRevenueOverview(user.id, parsedQuery);
 
     return adminRevenueOverviewResponseSchema.parse(response);
   }
@@ -249,7 +255,7 @@ export class AdminController {
     }
   ) {
     const parsedQuery = parseOrThrow(exportSuperAdminAuditLogsQuerySchema, query);
-    const result = await this.adminService.exportAuditLogs(user.id, parsedQuery);
+    const result = await this.adminAuditService.exportAuditLogs(user.id, parsedQuery);
     const filename = `audit-logs-${new Date().toISOString().replaceAll(':', '-').slice(0, 19)}.csv`;
 
     response.setHeader('Content-Type', 'text/csv; charset=utf-8');

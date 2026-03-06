@@ -8,7 +8,9 @@ import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { TenantSharePresentationModule } from '../tenant-share-presentation/tenant-share-presentation.module';
 
 import { SharesController } from './shares.controller';
-import { SharesService } from './shares.service';
+import { SharesCoreService } from './shares-core.service';
+import { SharesEntryService } from './shares-entry.service';
+import { SharesPublicService } from './shares-public.service';
 
 @Module({
   imports: [
@@ -20,6 +22,6 @@ import { SharesService } from './shares.service';
     TenantSharePresentationModule
   ],
   controllers: [SharesController],
-  providers: [SharesService]
+  providers: [SharesCoreService, SharesEntryService, SharesPublicService]
 })
 export class SharesModule {}

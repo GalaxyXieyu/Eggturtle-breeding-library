@@ -1,9 +1,8 @@
 import {
   BadRequestException,
   ConflictException,
-  Inject,
   Injectable,
-  NotFoundException
+  NotFoundException,
 } from '@nestjs/common';
 import { AuditAction, ErrorCode } from '@eggturtle/shared';
 import type {
@@ -13,84 +12,42 @@ import type {
   Product,
   ProductEvent,
   ProductFamilyTree,
-  ProductFamilyTreeLink,
-  ProductListStats,
-  ProductPublicClicksItem,
-  ProductPublicClicksSummary,
   ProductImage,
-  ReorderProductImagesRequest
+  ProductPublicClicksSummary,
+  ReorderProductImagesRequest,
 } from '@eggturtle/shared';
 import { Prisma } from '@prisma/client';
-import type {
-  Product as PrismaProduct,
-  ProductEvent as PrismaProductEvent,
-  ProductImage as PrismaProductImage
-} from '@prisma/client';
-import { randomUUID } from 'node:crypto';
-import * as path from 'node:path';
-
-import { resolveAllowedMaxEdge, resizeToWebpMaxEdge } from '../images/image-variants';
+import type { Product as PrismaProduct } from '@prisma/client';
 
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { PrismaService } from '../prisma.service';
-import { STORAGE_PROVIDER_TOKEN } from '../storage/storage.constants';
-import type { StorageProvider } from '../storage/storage.provider';
 import { TenantSubscriptionsService } from '../subscriptions/tenant-subscriptions.service';
+
 import {
   buildTaggedNote,
-  canonicalMateCodeCandidates,
   normalizeCodeUpper,
-  parseCurrentMateCode,
-  parseEventDateInput,
-  processPairTransitionDescription
+  processPairTransitionDescription,
 } from './breeding-rules';
-import {
-  calculateDaysSince,
-  parseTaggedProductEventNote,
-  resolveNeedMatingStatus
-} from './product-event-utils';
+import { ProductsEventsService } from './products-events.service';
+import { ProductsImagesService } from './products-images.service';
+import { ProductsReadService } from './products-read.service';
+import type {
+  CreateEggRecordInput,
+  CreateMatingRecordInput,
+  CreateProductEventInput,
+  ProductImageContentResult,
+  UpdateProductInput,
+  UploadedBinaryFile,
+} from './products.types';
 
-export type UploadedBinaryFile = {
-  originalname: string;
-  mimetype: string;
-  buffer: Buffer;
-};
-
-export type ProductImageContentResult =
-  | {
-      content: Buffer;
-      contentType: string | null;
-    }
-  | {
-      redirectUrl: string;
-      contentType: string | null;
-    };
-
-export type UpdateProductInput = Partial<CreateProductRequest>;
-
-export type CreateMatingRecordInput = {
-  femaleProductId: string;
-  maleProductId: string;
-  eventDate: string;
-  note?: string | null;
-};
-
-export type CreateEggRecordInput = {
-  femaleProductId: string;
-  eventDate: string;
-  eggCount?: number | null;
-  note?: string | null;
-};
-
-export type CreateProductEventInput = {
-  eventType: 'mating' | 'egg' | 'change_mate';
-  eventDate: string;
-  maleCode?: string | null;
-  eggCount?: number | null;
-  note?: string | null;
-  oldMateCode?: string | null;
-  newMateCode?: string | null;
-};
+export type {
+  CreateEggRecordInput,
+  CreateMatingRecordInput,
+  CreateProductEventInput,
+  ProductImageContentResult,
+  UpdateProductInput,
+  UploadedBinaryFile,
+} from './products.types';
 
 @Injectable()
 export class ProductsService {
@@ -98,18 +55,15 @@ export class ProductsService {
     private readonly prisma: PrismaService,
     private readonly auditLogsService: AuditLogsService,
     private readonly tenantSubscriptionsService: TenantSubscriptionsService,
-    @Inject(STORAGE_PROVIDER_TOKEN) private readonly storageProvider: StorageProvider
+    private readonly productsReadService: ProductsReadService,
+    private readonly productsEventsService: ProductsEventsService,
+    private readonly productsImagesService: ProductsImagesService,
   ) {}
-
-  private readonly naturalCodeCollator = new Intl.Collator('zh-Hans-CN', {
-    numeric: true,
-    sensitivity: 'base'
-  });
 
   async createProduct(
     tenantId: string,
     actorUserId: string,
-    payload: CreateProductRequest
+    payload: CreateProductRequest,
   ): Promise<Product> {
     await this.tenantSubscriptionsService.assertProductCreateAllowed(tenantId);
     const normalizedCode = this.normalizeRequiredCode(payload.code);
@@ -118,12 +72,12 @@ export class ProductsService {
         tenantId,
         code: {
           equals: normalizedCode,
-          mode: 'insensitive'
-        }
+          mode: 'insensitive',
+        },
       },
       select: {
-        id: true
-      }
+        id: true,
+      },
     });
 
     if (existingByCode) {
@@ -155,8 +109,8 @@ export class ProductsService {
           hasSample: payload.hasSample ?? false,
           inStock: payload.inStock ?? true,
           popularityScore: payload.popularityScore ?? 0,
-          isFeatured: payload.isFeatured ?? false
-        }
+          isFeatured: payload.isFeatured ?? false,
+        },
       });
 
       await this.auditLogsService.createLog({
@@ -167,8 +121,8 @@ export class ProductsService {
         resourceId: product.id,
         metadata: {
           code: product.code,
-          name: product.name
-        }
+          name: product.name,
+        },
       });
 
       return this.toProduct(product);
@@ -185,7 +139,7 @@ export class ProductsService {
     tenantId: string,
     actorUserId: string,
     productId: string,
-    payload: UpdateProductInput
+    payload: UpdateProductInput,
   ): Promise<Product> {
     const product = await this.findProductOrThrow(tenantId, productId);
     const updateData: Prisma.ProductUncheckedUpdateInput = {};
@@ -205,16 +159,16 @@ export class ProductsService {
         where: {
           tenantId,
           id: {
-            not: product.id
+            not: product.id,
           },
           code: {
             equals: nextCode,
-            mode: 'insensitive'
-          }
+            mode: 'insensitive',
+          },
         },
         select: {
-          id: true
-        }
+          id: true,
+        },
       });
 
       if (existingByCode) {
@@ -235,7 +189,7 @@ export class ProductsService {
     if (payload.description !== undefined) {
       updateData.description = processPairTransitionDescription(
         product.description,
-        this.normalizeOptionalText(payload.description)
+        this.normalizeOptionalText(payload.description),
       );
     }
 
@@ -296,9 +250,9 @@ export class ProductsService {
       const updated = await this.prisma.$transaction(async (tx) => {
         const updatedProduct = await tx.product.update({
           where: {
-            id: product.id
+            id: product.id,
           },
-          data: updateData
+          data: updateData,
         });
 
         if (mateCodeChanged && (resolvedSex ?? '').toLowerCase() === 'female') {
@@ -306,12 +260,12 @@ export class ProductsService {
             where: {
               tenantId,
               femaleProductId: updatedProduct.id,
-              isCurrent: true
+              isCurrent: true,
             },
             data: {
               isCurrent: false,
-              staleReason: 'mate_changed'
-            }
+              staleReason: 'mate_changed',
+            },
           });
 
           await tx.productEvent.create({
@@ -322,9 +276,9 @@ export class ProductsService {
               eventDate: new Date(),
               note: buildTaggedNote('自动记录：配偶变更', {
                 oldMateCode: previousMateCode,
-                newMateCode: nextMateCode
-              })
-            }
+                newMateCode: nextMateCode,
+              }),
+            },
           });
         }
 
@@ -339,8 +293,8 @@ export class ProductsService {
         resourceId: updated.id,
         metadata: {
           previousMateCode,
-          nextMateCode
-        }
+          nextMateCode,
+        },
       });
 
       return this.toProduct(updated);
@@ -356,959 +310,98 @@ export class ProductsService {
   async createMatingRecord(
     tenantId: string,
     actorUserId: string,
-    payload: CreateMatingRecordInput
+    payload: CreateMatingRecordInput,
   ): Promise<ProductEvent> {
-    const female = await this.findProductOrThrow(tenantId, payload.femaleProductId);
-    const male = await this.findProductOrThrow(tenantId, payload.maleProductId);
-
-    this.assertFemaleProduct(female, 'femaleProductId');
-    this.assertMaleProduct(male, 'maleProductId');
-    this.assertSameSeries(female, male);
-
-    const eventDate = this.parseEventDate(payload.eventDate);
-    const maleCode = this.normalizeRequiredCode(male.code);
-    const note = buildTaggedNote(payload.note, {
-      maleCode
-    });
-
-    const existing = await this.findDuplicateMatingEvent(tenantId, female.id, eventDate, maleCode);
-    if (existing) {
-      return this.toProductEvent(existing);
-    }
-
-    const event = await this.prisma.productEvent.create({
-      data: {
-        tenantId,
-        productId: female.id,
-        eventType: 'mating',
-        eventDate,
-        note
-      }
-    });
-
-    await this.auditLogsService.createLog({
-      tenantId,
-      actorUserId,
-      action: AuditAction.ProductEventCreate,
-      resourceType: 'product_event',
-      resourceId: event.id,
-      metadata: {
-        eventType: event.eventType,
-        femaleProductId: female.id,
-        maleProductId: male.id
-      }
-    });
-
-    return this.toProductEvent(event);
+    return this.productsEventsService.createMatingRecord(tenantId, actorUserId, payload);
   }
 
   async createEggRecord(
     tenantId: string,
     actorUserId: string,
-    payload: CreateEggRecordInput
+    payload: CreateEggRecordInput,
   ): Promise<ProductEvent> {
-    const female = await this.findProductOrThrow(tenantId, payload.femaleProductId);
-    this.assertFemaleProduct(female, 'femaleProductId');
-
-    const eventDate = this.parseEventDate(payload.eventDate);
-    const eggCount = payload.eggCount ?? null;
-    const note = buildTaggedNote(payload.note, {
-      eggCount: eggCount ?? undefined
-    });
-
-    const existing = await this.findDuplicateEggEvent(tenantId, female.id, eventDate, eggCount);
-    if (existing) {
-      return this.toProductEvent(existing);
-    }
-
-    const event = await this.prisma.productEvent.create({
-      data: {
-        tenantId,
-        productId: female.id,
-        eventType: 'egg',
-        eventDate,
-        note
-      }
-    });
-
-    await this.auditLogsService.createLog({
-      tenantId,
-      actorUserId,
-      action: AuditAction.ProductEventCreate,
-      resourceType: 'product_event',
-      resourceId: event.id,
-      metadata: {
-        eventType: event.eventType,
-        femaleProductId: female.id,
-        eggCount
-      }
-    });
-
-    return this.toProductEvent(event);
+    return this.productsEventsService.createEggRecord(tenantId, actorUserId, payload);
   }
 
   async createProductEvent(
     tenantId: string,
     actorUserId: string,
     productId: string,
-    payload: CreateProductEventInput
+    payload: CreateProductEventInput,
   ): Promise<ProductEvent> {
-    const product = await this.findProductOrThrow(tenantId, productId);
-    this.assertFemaleProduct(product, 'productId');
-
-    const eventDate = this.parseEventDate(payload.eventDate);
-    const maleCode =
-      payload.eventType === 'mating'
-        ? this.normalizeOptionalCode(payload.maleCode) ?? this.normalizeOptionalCode(product.mateCode)
-        : this.normalizeOptionalCode(payload.maleCode);
-
-    const oldMateCode = this.normalizeOptionalCode(payload.oldMateCode);
-    const newMateCode = this.normalizeOptionalCode(payload.newMateCode);
-    const eggCount = payload.eggCount ?? null;
-
-    const note = buildTaggedNote(payload.note, {
-      maleCode,
-      eggCount: eggCount ?? undefined,
-      oldMateCode,
-      newMateCode
-    });
-
-    const existing = await this.findDuplicateProductEvent(
-      tenantId,
-      product.id,
-      payload.eventType,
-      eventDate,
-      {
-        maleCode,
-        eggCount,
-        oldMateCode,
-        newMateCode
-      }
-    );
-    if (existing) {
-      return this.toProductEvent(existing);
-    }
-
-    const event = await this.prisma.productEvent.create({
-      data: {
-        tenantId,
-        productId: product.id,
-        eventType: payload.eventType,
-        eventDate,
-        note
-      }
-    });
-
-    await this.auditLogsService.createLog({
-      tenantId,
-      actorUserId,
-      action: AuditAction.ProductEventCreate,
-      resourceType: 'product_event',
-      resourceId: event.id,
-      metadata: {
-        eventType: payload.eventType,
-        productId
-      }
-    });
-
-    return this.toProductEvent(event);
+    return this.productsEventsService.createProductEvent(tenantId, actorUserId, productId, payload);
   }
 
   async listProducts(tenantId: string, query: ListProductsQuery) {
-    const skip = (query.page - 1) * query.pageSize;
-    const exactCode = query.code?.trim();
-    const keyword = query.search?.trim();
-    const productType = query.type?.trim();
-    const sex = query.sex?.trim();
-    const seriesId = query.seriesId?.trim();
-    const sortDir: Prisma.SortOrder = query.sortDir ?? 'desc';
-
-    const where: Prisma.ProductWhereInput = {
-      tenantId
-    };
-
-    if (keyword) {
-      where.OR = [
-        {
-          code: {
-            contains: keyword,
-            mode: 'insensitive'
-          }
-        },
-        {
-          name: {
-            contains: keyword,
-            mode: 'insensitive'
-          }
-        },
-        {
-          description: {
-            contains: keyword,
-            mode: 'insensitive'
-          }
-        }
-      ];
-    }
-
-    if (exactCode) {
-      where.code = {
-        equals: exactCode,
-        mode: 'insensitive'
-      };
-    }
-
-    if (sex) {
-      where.sex = {
-        equals: sex,
-        mode: 'insensitive'
-      };
-    }
-
-    if (productType) {
-      where.type = {
-        equals: productType,
-        mode: 'insensitive'
-      };
-    }
-
-    if (seriesId) {
-      where.seriesId = {
-        equals: seriesId,
-        mode: 'insensitive'
-      };
-    }
-
-    const include = {
-      images: {
-        where: {
-          isMain: true
-        },
-        orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
-        take: 1,
-        select: {
-          id: true
-        }
-      }
-    } satisfies Prisma.ProductInclude;
-
-    let items: Array<
-      PrismaProduct & {
-        images: Array<{ id: string }>;
-      }
-    > = [];
-    let total = 0;
-
-    if (query.sortBy !== 'updatedAt') {
-      const all = await this.prisma.product.findMany({
-        where,
-        include
-      });
-      all.sort((left, right) => this.compareProductsDefault(left, right, sortDir));
-      total = all.length;
-      items = all.slice(skip, skip + query.pageSize);
-    } else {
-      const [pagedItems, countedTotal] = await Promise.all([
-        this.prisma.product.findMany({
-          where,
-          include,
-          orderBy: {
-            updatedAt: sortDir
-          },
-          skip,
-          take: query.pageSize
-        }),
-        this.prisma.product.count({
-          where
-        })
-      ]);
-      items = pagedItems;
-      total = countedTotal;
-    }
-
-    const needMatingSummaryByProductId = await this.loadNeedMatingSummaryByProductIds(
-      tenantId,
-      items.map((item) => item.id)
-    );
-    const stats = await this.loadListStats(tenantId, where);
-
-    return {
-      products: items.map((item) =>
-        this.toProduct(item, {
-          coverImageUrl: item.images[0] ? this.buildImageAccessPath(item.id, item.images[0].id) : null,
-          needMatingSummary: needMatingSummaryByProductId.get(item.id)
-        })
-      ),
-      total,
-      page: query.page,
-      pageSize: query.pageSize,
-      totalPages: Math.max(1, Math.ceil(total / query.pageSize)),
-      stats
-    };
-  }
-
-  private async loadListStats(
-    tenantId: string,
-    where: Prisma.ProductWhereInput
-  ): Promise<ProductListStats> {
-    const products = await this.prisma.product.findMany({
-      where,
-      select: {
-        id: true,
-        sex: true
-      }
-    });
-
-    if (products.length === 0) {
-      return {
-        maleCount: 0,
-        femaleCount: 0,
-        unknownCount: 0,
-        yearEggCount: 0,
-        needMatingCount: 0,
-        warningCount: 0
-      };
-    }
-
-    let maleCount = 0;
-    let femaleCount = 0;
-    let unknownCount = 0;
-    const productIds: string[] = [];
-    const femaleProductIds: string[] = [];
-
-    for (const product of products) {
-      productIds.push(product.id);
-      const normalizedSex = product.sex?.trim().toLowerCase() ?? '';
-      if (normalizedSex === 'male') {
-        maleCount += 1;
-      } else if (normalizedSex === 'female') {
-        femaleCount += 1;
-        femaleProductIds.push(product.id);
-      } else {
-        unknownCount += 1;
-      }
-    }
-
-    const [{ needMatingCount, warningCount }, yearEggCount] = await Promise.all([
-      this.loadNeedMatingCounters(tenantId, femaleProductIds),
-      this.loadCurrentYearEggCount(tenantId, productIds)
-    ]);
-
-    return {
-      maleCount,
-      femaleCount,
-      unknownCount,
-      yearEggCount,
-      needMatingCount,
-      warningCount
-    };
-  }
-
-  private async loadNeedMatingCounters(tenantId: string, femaleProductIds: string[]): Promise<{
-    needMatingCount: number;
-    warningCount: number;
-  }> {
-    if (femaleProductIds.length === 0) {
-      return {
-        needMatingCount: 0,
-        warningCount: 0
-      };
-    }
-
-    const summaryByProductId = await this.loadNeedMatingSummaryByProductIds(
-      tenantId,
-      femaleProductIds
-    );
-    let needMatingCount = 0;
-    let warningCount = 0;
-
-    for (const summary of summaryByProductId.values()) {
-      if (summary.status === 'need_mating') {
-        needMatingCount += 1;
-      } else if (summary.status === 'warning') {
-        warningCount += 1;
-      }
-    }
-
-    return {
-      needMatingCount,
-      warningCount
-    };
-  }
-
-  private async loadCurrentYearEggCount(tenantId: string, productIds: string[]): Promise<number> {
-    if (productIds.length === 0) {
-      return 0;
-    }
-
-    const currentYear = new Date().getUTCFullYear();
-    const yearStart = new Date(Date.UTC(currentYear, 0, 1, 0, 0, 0, 0));
-    const yearEnd = new Date(Date.UTC(currentYear + 1, 0, 1, 0, 0, 0, 0));
-
-    const events = await this.prisma.productEvent.findMany({
-      where: {
-        tenantId,
-        productId: {
-          in: productIds
-        },
-        eventType: 'egg',
-        eventDate: {
-          gte: yearStart,
-          lt: yearEnd
-        }
-      },
-      select: {
-        note: true
-      }
-    });
-
-    let yearEggCount = 0;
-    for (const event of events) {
-      const parsedEggCount = parseTaggedProductEventNote(event.note).eggCount ?? 0;
-      yearEggCount += parsedEggCount;
-    }
-
-    return yearEggCount;
+    return this.productsReadService.listProducts(tenantId, query);
   }
 
   async getProductByCode(tenantId: string, code: string): Promise<Product> {
-    const normalizedCode = code.trim();
-    const product = await this.prisma.product.findFirst({
-      where: {
-        tenantId,
-        code: {
-          equals: normalizedCode,
-          mode: 'insensitive'
-        }
-      },
-      include: {
-        images: {
-          where: {
-            isMain: true
-          },
-          orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
-          take: 1,
-          select: {
-            id: true
-          }
-        }
-      }
-    });
-
-    if (!product) {
-      throw new NotFoundException({
-        message: 'Product not found.',
-        errorCode: ErrorCode.ProductNotFound
-      });
-    }
-
-    return this.toProduct(product, {
-      coverImageUrl: product.images[0] ? this.buildImageAccessPath(product.id, product.images[0].id) : null
-    });
+    return this.productsReadService.getProductByCode(tenantId, code);
   }
 
   async getProductById(tenantId: string, productId: string): Promise<Product> {
-    const product = await this.prisma.product.findFirst({
-      where: {
-        id: productId,
-        tenantId
-      },
-      include: {
-        images: {
-          where: {
-            isMain: true
-          },
-          orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
-          take: 1,
-          select: {
-            id: true
-          }
-        }
-      }
-    });
-
-    if (!product) {
-      throw new NotFoundException({
-        message: 'Product not found.',
-        errorCode: ErrorCode.ProductNotFound
-      });
-    }
-
-    return this.toProduct(product, {
-      coverImageUrl: product.images[0] ? this.buildImageAccessPath(product.id, product.images[0].id) : null
-    });
+    return this.productsReadService.getProductById(tenantId, productId);
   }
 
   async getProductPublicClicks(
     tenantId: string,
     productId: string,
-    days: number
+    days: number,
   ): Promise<ProductPublicClicksSummary> {
-    await this.findProductOrThrow(tenantId, productId);
-
-    const since = this.getSinceDate(days);
-    const rows = await this.prisma.$queryRaw<
-      Array<{ ip: string | null; userAgent: string | null; createdAt: Date }>
-    >(Prisma.sql`
-      SELECT
-        metadata->>'ip' AS "ip",
-        metadata->>'userAgent' AS "userAgent",
-        "created_at" AS "createdAt"
-      FROM "audit_logs"
-      WHERE "tenant_id" = ${tenantId}
-        AND "action" = ${AuditAction.ShareAccess}
-        AND "resource_type" = 'public_share'
-        AND "created_at" >= ${since}
-        AND metadata->>'phase' = 'data'
-        AND metadata->>'requestedProductId' = ${productId}
-      ORDER BY "created_at" DESC
-    `);
-
-    const visitorKeys = new Set(rows.map((row) => this.buildVisitorKey(row.ip, row.userAgent)));
-
-    return {
-      productId,
-      totalClicks: rows.length,
-      uniqueVisitors: visitorKeys.size,
-      days,
-      lastClickedAt: rows[0]?.createdAt ? rows[0].createdAt.toISOString() : null
-    };
+    return this.productsReadService.getProductPublicClicks(tenantId, productId, days);
   }
 
-  async listProductPublicClicks(
-    tenantId: string,
-    query: ListProductsPublicClicksQuery
-  ): Promise<{ days: number; items: ProductPublicClicksItem[] }> {
-    const since = this.getSinceDate(query.days);
-    const rows = await this.prisma.$queryRaw<
-      Array<{
-        productId: string;
-        totalClicks: number;
-        uniqueVisitors: number;
-        lastClickedAt: Date | null;
-      }>
-    >(Prisma.sql`
-      SELECT
-        metadata->>'requestedProductId' AS "productId",
-        COUNT(*)::int AS "totalClicks",
-        COUNT(
-          DISTINCT (
-            COALESCE(NULLIF(metadata->>'ip', ''), 'unknown')
-            || '|'
-            || COALESCE(NULLIF(metadata->>'userAgent', ''), 'unknown')
-          )
-        )::int AS "uniqueVisitors",
-        MAX("created_at") AS "lastClickedAt"
-      FROM "audit_logs"
-      WHERE "tenant_id" = ${tenantId}
-        AND "action" = ${AuditAction.ShareAccess}
-        AND "resource_type" = 'public_share'
-        AND "created_at" >= ${since}
-        AND metadata->>'phase' = 'data'
-        AND COALESCE(metadata->>'requestedProductId', '') <> ''
-      GROUP BY metadata->>'requestedProductId'
-      ORDER BY COUNT(*) DESC, MAX("created_at") DESC
-      LIMIT ${query.limit}
-    `);
-
-    if (rows.length === 0) {
-      return {
-        days: query.days,
-        items: []
-      };
-    }
-
-    const productIds = rows.map((row) => row.productId);
-    const products = await this.prisma.product.findMany({
-      where: {
-        tenantId,
-        id: {
-          in: productIds
-        }
-      },
-      select: {
-        id: true,
-        code: true,
-        name: true
-      }
-    });
-    const productMap = new Map(products.map((item) => [item.id, item]));
-    const items: ProductPublicClicksItem[] = [];
-
-    for (const row of rows) {
-      const product = productMap.get(row.productId);
-      if (!product) {
-        continue;
-      }
-
-      items.push({
-        productId: row.productId,
-        code: product.code,
-        name: product.name,
-        totalClicks: row.totalClicks,
-        uniqueVisitors: row.uniqueVisitors,
-        lastClickedAt: row.lastClickedAt ? row.lastClickedAt.toISOString() : null
-      });
-    }
-
-    return {
-      days: query.days,
-      items
-    };
+  async listProductPublicClicks(tenantId: string, query: ListProductsPublicClicksQuery) {
+    return this.productsReadService.listProductPublicClicks(tenantId, query);
   }
 
   async listProductEvents(tenantId: string, productId: string): Promise<ProductEvent[]> {
-    await this.findProductOrThrow(tenantId, productId);
-
-    const events = await this.prisma.productEvent.findMany({
-      where: {
-        tenantId,
-        productId
-      },
-      orderBy: [{ eventDate: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }]
-    });
-
-    return events.map((event) => this.toProductEvent(event));
+    return this.productsEventsService.listProductEvents(tenantId, productId);
   }
 
   async getProductFamilyTree(tenantId: string, productId: string): Promise<ProductFamilyTree> {
-    const product = await this.findProductOrThrow(tenantId, productId);
-    const currentMateCode = await this.resolveCurrentMateCode(tenantId, product);
-
-    const [sire, dam, mate, children] = await Promise.all([
-      this.findProductByCode(tenantId, product.sireCode),
-      this.findProductByCode(tenantId, product.damCode),
-      this.findProductByCandidates(tenantId, canonicalMateCodeCandidates(currentMateCode)),
-      this.prisma.product.findMany({
-        where: {
-          tenantId,
-          OR: [
-            {
-              sireCode: {
-                equals: product.code,
-                mode: 'insensitive'
-              }
-            },
-            {
-              damCode: {
-                equals: product.code,
-                mode: 'insensitive'
-              }
-            }
-          ]
-        },
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-        take: 100
-      })
-    ]);
-
-    return {
-      self: this.toFamilyTreeNode(product),
-      sire: this.toFamilyTreeNodeOrNull(sire),
-      dam: this.toFamilyTreeNodeOrNull(dam),
-      mate: this.toFamilyTreeNodeOrNull(mate),
-      children: children.map((child) => this.toFamilyTreeNode(child)),
-      links: {
-        sire: this.toFamilyTreeLink(product.sireCode, sire),
-        dam: this.toFamilyTreeLink(product.damCode, dam),
-        mate: this.toFamilyTreeLink(currentMateCode, mate)
-      },
-      limitations:
-        '当前家族谱系仅展示自己、直属父母、当前配偶与直系子代。'
-    };
+    return this.productsReadService.getProductFamilyTree(tenantId, productId);
   }
 
   async listProductImages(tenantId: string, productId: string): Promise<ProductImage[]> {
-    await this.findProductOrThrow(tenantId, productId);
-
-    const images = await this.prisma.productImage.findMany({
-      where: {
-        tenantId,
-        productId
-      },
-      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }]
-    });
-
-    return images.map((image) => this.toProductImage(image));
+    return this.productsImagesService.listProductImages(tenantId, productId);
   }
 
   async uploadProductImage(
     tenantId: string,
     actorUserId: string,
     productId: string,
-    file: UploadedBinaryFile
+    file: UploadedBinaryFile,
   ): Promise<ProductImage> {
-    const product = await this.findProductOrThrow(tenantId, productId);
-    await this.tenantSubscriptionsService.assertImageUploadAllowed(tenantId, file.buffer.length);
-
-    const nextSortOrder = await this.getNextSortOrder(tenantId, product.id);
-    const existingImageCount = await this.prisma.productImage.count({
-      where: {
-        tenantId,
-        productId: product.id
-      }
-    });
-
-    const extension = this.getFileExtension(file.originalname, file.mimetype);
-    const key = `${tenantId}/products/${product.id}/${Date.now()}-${randomUUID()}${extension}`;
-    const contentType = file.mimetype?.trim() || 'application/octet-stream';
-
-    let uploadResult: { key: string; url: string } | null = null;
-
-    try {
-      uploadResult = await this.storageProvider.putObject({
-        key,
-        body: file.buffer,
-        contentType,
-        metadata: {
-          tenantId,
-          productId: product.id,
-          uploadedBy: actorUserId,
-          source: 'products.upload'
-        }
-      });
-
-      const image = await this.prisma.productImage.create({
-        data: {
-          tenantId,
-          productId: product.id,
-          key: uploadResult.key,
-          url: uploadResult.url,
-          contentType,
-          sizeBytes: BigInt(file.buffer.length),
-          sortOrder: nextSortOrder,
-          isMain: existingImageCount === 0
-        }
-      });
-
-      await this.auditLogsService.createLog({
-        tenantId,
-        actorUserId,
-        action: AuditAction.ProductImageUpload,
-        resourceType: 'product_image',
-        resourceId: image.id,
-        metadata: {
-          productId: product.id,
-          sortOrder: image.sortOrder,
-          isMain: image.isMain
-        }
-      });
-
-      return this.toProductImage(image);
-    } catch (error) {
-      if (uploadResult) {
-        await this.storageProvider.deleteObject(uploadResult.key).catch(() => undefined);
-      }
-      throw error;
-    }
+    return this.productsImagesService.uploadProductImage(tenantId, actorUserId, productId, file);
   }
 
   async deleteProductImage(
     tenantId: string,
     actorUserId: string,
     productId: string,
-    imageId: string
+    imageId: string,
   ) {
-    await this.findProductOrThrow(tenantId, productId);
-
-    const image = await this.prisma.productImage.findFirst({
-      where: {
-        id: imageId,
-        tenantId,
-        productId
-      }
-    });
-
-    if (!image) {
-      throw new NotFoundException({
-        message: 'Product image not found.',
-        errorCode: ErrorCode.ProductImageNotFound
-      });
-    }
-
-    await this.prisma.$transaction(async (tx) => {
-      await tx.productImage.delete({
-        where: {
-          id: image.id
-        }
-      });
-
-      if (!image.isMain) {
-        return;
-      }
-
-      const nextMainImage = await tx.productImage.findFirst({
-        where: {
-          tenantId,
-          productId
-        },
-        orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }]
-      });
-
-      if (!nextMainImage) {
-        return;
-      }
-
-      await tx.productImage.update({
-        where: {
-          id: nextMainImage.id
-        },
-        data: {
-          isMain: true
-        }
-      });
-    });
-
-    await this.storageProvider.deleteObject(image.key);
-
-    await this.auditLogsService.createLog({
-      tenantId,
-      actorUserId,
-      action: AuditAction.ProductImageDelete,
-      resourceType: 'product_image',
-      resourceId: image.id,
-      metadata: {
-        productId,
-        wasMain: image.isMain
-      }
-    });
-
-    return { deleted: true, imageId: image.id };
+    return this.productsImagesService.deleteProductImage(tenantId, actorUserId, productId, imageId);
   }
 
   async setMainImage(
     tenantId: string,
     actorUserId: string,
     productId: string,
-    imageId: string
+    imageId: string,
   ): Promise<ProductImage> {
-    await this.findProductOrThrow(tenantId, productId);
-
-    const targetImage = await this.prisma.productImage.findFirst({
-      where: {
-        id: imageId,
-        tenantId,
-        productId
-      }
-    });
-
-    if (!targetImage) {
-      throw new NotFoundException({
-        message: 'Product image not found.',
-        errorCode: ErrorCode.ProductImageNotFound
-      });
-    }
-
-    const previousMainImage = await this.prisma.productImage.findFirst({
-      where: {
-        tenantId,
-        productId,
-        isMain: true
-      },
-      select: {
-        id: true
-      }
-    });
-
-    const updatedImage = await this.prisma.$transaction(async (tx) => {
-      await tx.productImage.updateMany({
-        where: {
-          tenantId,
-          productId
-        },
-        data: {
-          isMain: false
-        }
-      });
-
-      return tx.productImage.update({
-        where: {
-          id: targetImage.id
-        },
-        data: {
-          isMain: true
-        }
-      });
-    });
-
-    await this.auditLogsService.createLog({
-      tenantId,
-      actorUserId,
-      action: AuditAction.ProductImageSetMain,
-      resourceType: 'product_image',
-      resourceId: updatedImage.id,
-      metadata: {
-        productId,
-        previousMainImageId: previousMainImage?.id ?? null
-      }
-    });
-
-    return this.toProductImage(updatedImage);
+    return this.productsImagesService.setMainImage(tenantId, actorUserId, productId, imageId);
   }
 
   async reorderImages(
     tenantId: string,
     actorUserId: string,
     productId: string,
-    payload: ReorderProductImagesRequest
+    payload: ReorderProductImagesRequest,
   ): Promise<ProductImage[]> {
-    await this.findProductOrThrow(tenantId, productId);
-
-    const uniqueIds = new Set(payload.imageIds);
-    if (uniqueIds.size !== payload.imageIds.length) {
-      throw new BadRequestException('imageIds contains duplicate values.');
-    }
-
-    const existingImages = await this.prisma.productImage.findMany({
-      where: {
-        tenantId,
-        productId
-      },
-      select: {
-        id: true
-      }
-    });
-
-    const existingIdSet = new Set(existingImages.map((image) => image.id));
-    if (
-      payload.imageIds.length !== existingImages.length ||
-      payload.imageIds.some((imageId) => !existingIdSet.has(imageId))
-    ) {
-      throw new BadRequestException('imageIds must include all images for this product exactly once.');
-    }
-
-    await this.prisma.$transaction(
-      payload.imageIds.map((imageId, index) =>
-        this.prisma.productImage.update({
-          where: {
-            id: imageId
-          },
-          data: {
-            sortOrder: index
-          }
-        })
-      )
-    );
-
-    const images = await this.prisma.productImage.findMany({
-      where: {
-        tenantId,
-        productId
-      },
-      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }]
-    });
-
-    await this.auditLogsService.createLog({
-      tenantId,
-      actorUserId,
-      action: AuditAction.ProductImageReorder,
-      resourceType: 'product',
-      resourceId: productId,
-      metadata: {
-        imageIds: payload.imageIds
-      }
-    });
-
-    return images.map((image) => this.toProductImage(image));
+    return this.productsImagesService.reorderImages(tenantId, actorUserId, productId, payload);
   }
 
   async getProductImageContent(
@@ -1317,394 +410,27 @@ export class ProductsService {
     imageId: string,
     options?: {
       maxEdge?: number;
-    }
+    },
   ): Promise<ProductImageContentResult> {
-    await this.findProductOrThrow(tenantId, productId);
-
-    const image = await this.prisma.productImage.findFirst({
-      where: {
-        id: imageId,
-        tenantId,
-        productId
-      }
-    });
-
-    if (!image) {
-      throw new NotFoundException({
-        message: 'Product image not found.',
-        errorCode: ErrorCode.ProductImageNotFound
-      });
-    }
-
-    if (!this.isManagedStorageKey(tenantId, image.key)) {
-      const redirectUrl = (image.url ?? '').trim();
-      // Avoid open redirects or accidental exposure of internal URLs.
-      if (!redirectUrl.startsWith('http://') && !redirectUrl.startsWith('https://')) {
-        throw new NotFoundException({
-          message: 'Product image not found.',
-          errorCode: ErrorCode.ProductImageNotFound
-        });
-      }
-
-      return {
-        redirectUrl,
-        contentType: image.contentType
-      };
-    }
-
-    const maxEdge = resolveAllowedMaxEdge(options?.maxEdge);
-
-    try {
-      const storedObject = await this.storageProvider.getObject(image.key);
-      const resized = maxEdge ? await resizeToWebpMaxEdge({ body: storedObject.body, maxEdge }) : null;
-      return {
-        content: resized?.body ?? storedObject.body,
-        contentType: resized?.contentType ?? image.contentType ?? storedObject.contentType
-      };
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw new NotFoundException({
-          message: 'Stored image binary was not found.',
-          errorCode: ErrorCode.ProductImageNotFound
-        });
-      }
-
-      throw error;
-    }
-  }
-
-  private async findProductByCode(
-    tenantId: string,
-    code: string | null | undefined
-  ): Promise<PrismaProduct | null> {
-    const normalizedCode = code?.trim();
-    if (!normalizedCode) {
-      return null;
-    }
-
-    return this.prisma.product.findFirst({
-      where: {
-        tenantId,
-        code: {
-          equals: normalizedCode,
-          mode: 'insensitive'
-        }
-      }
-    });
-  }
-
-  private async findProductByCandidates(tenantId: string, candidates: string[]): Promise<PrismaProduct | null> {
-    for (const candidate of candidates) {
-      const found = await this.findProductByCode(tenantId, candidate);
-      if (found) {
-        return found;
-      }
-    }
-
-    return null;
-  }
-
-  private async resolveCurrentMateCode(tenantId: string, product: PrismaProduct): Promise<string | null> {
-    const explicitMateCode = this.normalizeOptionalCode(product.mateCode);
-    if (explicitMateCode) {
-      return explicitMateCode;
-    }
-
-    const parsedFromDescription = this.normalizeOptionalCode(parseCurrentMateCode(product.description));
-    if (parsedFromDescription) {
-      return parsedFromDescription;
-    }
-
-    const latestMatingEvent = await this.prisma.productEvent.findFirst({
-      where: {
-        tenantId,
-        productId: product.id,
-        eventType: 'mating'
-      },
-      orderBy: [{ eventDate: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }]
-    });
-
-    if (!latestMatingEvent) {
-      return null;
-    }
-
-    const taggedMaleCode = this.normalizeOptionalCode(this.extractTagValue(latestMatingEvent.note, 'maleCode'));
-    if (taggedMaleCode) {
-      return taggedMaleCode;
-    }
-
-    return null;
+    return this.productsImagesService.getProductImageContent(tenantId, productId, imageId, options);
   }
 
   private async findProductOrThrow(tenantId: string, productId: string) {
     const product = await this.prisma.product.findFirst({
       where: {
         id: productId,
-        tenantId
-      }
+        tenantId,
+      },
     });
 
     if (!product) {
       throw new NotFoundException({
         message: 'Product not found.',
-        errorCode: ErrorCode.ProductNotFound
+        errorCode: ErrorCode.ProductNotFound,
       });
     }
 
     return product;
-  }
-
-  private async getNextSortOrder(tenantId: string, productId: string): Promise<number> {
-    const aggregate = await this.prisma.productImage.aggregate({
-      where: {
-        tenantId,
-        productId
-      },
-      _max: {
-        sortOrder: true
-      }
-    });
-
-    return (aggregate._max.sortOrder ?? -1) + 1;
-  }
-
-  private getFileExtension(originalName: string, mimeType: string): string {
-    const extensionFromName = path.extname(originalName).trim();
-    if (extensionFromName) {
-      return extensionFromName.toLowerCase();
-    }
-
-    const extensionMap: Record<string, string> = {
-      'image/jpeg': '.jpg',
-      'image/png': '.png',
-      'image/webp': '.webp',
-      'image/gif': '.gif'
-    };
-
-    return extensionMap[mimeType] ?? '';
-  }
-
-  private getSinceDate(days: number) {
-    return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-  }
-
-  private parseEventDate(input: string): Date {
-    try {
-      return parseEventDateInput(input);
-    } catch (error) {
-      throw new BadRequestException(error instanceof Error ? error.message : 'Invalid event_date format');
-    }
-  }
-
-  private utcDayRange(date: Date): { start: Date; end: Date } {
-    const start = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0, 0));
-    const end = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 1, 0, 0, 0, 0));
-    return { start, end };
-  }
-
-  private async listProductEventsForUtcDay(
-    tenantId: string,
-    productId: string,
-    eventType: string,
-    eventDate: Date
-  ): Promise<PrismaProductEvent[]> {
-    const { start, end } = this.utcDayRange(eventDate);
-    return this.prisma.productEvent.findMany({
-      where: {
-        tenantId,
-        productId,
-        eventType,
-        eventDate: {
-          gte: start,
-          lt: end
-        }
-      },
-      orderBy: {
-        createdAt: 'asc'
-      }
-    });
-  }
-
-  private async findDuplicateMatingEvent(
-    tenantId: string,
-    femaleProductId: string,
-    eventDate: Date,
-    maleCode: string | null
-  ): Promise<PrismaProductEvent | null> {
-    const candidates = await this.listProductEventsForUtcDay(tenantId, femaleProductId, 'mating', eventDate);
-    if (candidates.length === 0) {
-      return null;
-    }
-
-    // If male code is missing, treat any same-day mating as duplicate to avoid spam.
-    if (!maleCode) {
-      return candidates[0] ?? null;
-    }
-
-    for (const e of candidates) {
-      const parsed = parseTaggedProductEventNote(e.note);
-      if (parsed.maleCode === maleCode) {
-        return e;
-      }
-    }
-
-    return null;
-  }
-
-  private async findDuplicateEggEvent(
-    tenantId: string,
-    femaleProductId: string,
-    eventDate: Date,
-    eggCount: number | null
-  ): Promise<PrismaProductEvent | null> {
-    const candidates = await this.listProductEventsForUtcDay(tenantId, femaleProductId, 'egg', eventDate);
-    if (candidates.length === 0) {
-      return null;
-    }
-
-    // If eggCount is omitted, treat any same-day egg as duplicate.
-    if (eggCount === null) {
-      return candidates[0] ?? null;
-    }
-
-    for (const e of candidates) {
-      const parsed = parseTaggedProductEventNote(e.note);
-      if (parsed.eggCount === eggCount) {
-        return e;
-      }
-    }
-
-    return null;
-  }
-
-  private async findDuplicateProductEvent(
-    tenantId: string,
-    productId: string,
-    eventType: 'mating' | 'egg' | 'change_mate',
-    eventDate: Date,
-    detail: {
-      maleCode: string | null;
-      eggCount: number | null;
-      oldMateCode: string | null;
-      newMateCode: string | null;
-    }
-  ): Promise<PrismaProductEvent | null> {
-    if (eventType === 'mating') {
-      return this.findDuplicateMatingEvent(tenantId, productId, eventDate, detail.maleCode);
-    }
-
-    if (eventType === 'egg') {
-      return this.findDuplicateEggEvent(tenantId, productId, eventDate, detail.eggCount);
-    }
-
-    const candidates = await this.listProductEventsForUtcDay(tenantId, productId, 'change_mate', eventDate);
-    for (const e of candidates) {
-      const parsed = parseTaggedProductEventNote(e.note);
-      if (parsed.oldMateCode === detail.oldMateCode && parsed.newMateCode === detail.newMateCode) {
-        return e;
-      }
-    }
-
-    return null;
-  }
-
-  private compareProductCode(left: string, right: string, sortDir: Prisma.SortOrder): number {
-    const compared = this.naturalCodeCollator.compare(left, right);
-    return sortDir === 'desc' ? -compared : compared;
-  }
-
-  private compareProductsDefault(
-    left: PrismaProduct,
-    right: PrismaProduct,
-    sortDir: Prisma.SortOrder,
-  ): number {
-    const leftPinned = this.isPinnedNewUploadCode(left.code);
-    const rightPinned = this.isPinnedNewUploadCode(right.code);
-
-    // Codes with Chinese characters are treated as new uploads and pinned to top.
-    if (leftPinned && !rightPinned) {
-      return -1;
-    }
-    if (!leftPinned && rightPinned) {
-      return 1;
-    }
-
-    const leftOrder = this.parseProductOrder(left.code);
-    const rightOrder = this.parseProductOrder(right.code);
-
-    const leftSexRank = this.getSexRank(left.sex);
-    const rightSexRank = this.getSexRank(right.sex);
-    if (leftSexRank !== rightSexRank) {
-      return leftSexRank - rightSexRank;
-    }
-
-    // If both have no 1..100 order number, fall back to natural code compare.
-    if (leftOrder === null && rightOrder === null) {
-      return this.compareProductCode(left.code, right.code, sortDir);
-    }
-
-    // Items without numeric order come after numeric ones (unless pinned above).
-    if (leftOrder === null && rightOrder !== null) {
-      return 1;
-    }
-    if (leftOrder !== null && rightOrder === null) {
-      return -1;
-    }
-
-    const factor = sortDir === 'asc' ? 1 : -1;
-    const leftOrderValue = leftOrder ?? 0;
-    const rightOrderValue = rightOrder ?? 0;
-
-    if (leftOrderValue !== rightOrderValue) {
-      return (leftOrderValue - rightOrderValue) * factor;
-    }
-
-    return this.compareProductCode(left.code, right.code, sortDir);
-  }
-
-  private parseProductOrder(code: string): number | null {
-    const trimmed = (code ?? '').trim();
-    if (!trimmed) {
-      return null;
-    }
-
-    const match = trimmed.match(/\d+/);
-    if (!match) {
-      return null;
-    }
-
-    const value = Number(match[0]);
-    if (!Number.isFinite(value) || value < 1 || value > 100) {
-      return null;
-    }
-
-    return value;
-  }
-
-  private isPinnedNewUploadCode(code: string | null): boolean {
-    const trimmed = (code ?? '').trim();
-    if (!trimmed) {
-      return false;
-    }
-
-    return /[\u4e00-\u9fff]/.test(trimmed);
-  }
-
-  private getSexRank(value: string | null): number {
-    const normalized = (value ?? '').trim().toLowerCase();
-    if (normalized === 'female') {
-      return 0;
-    }
-    if (normalized === 'male') {
-      return 1;
-    }
-    return 2;
-  }
-
-  private buildVisitorKey(ip: string | null, userAgent: string | null) {
-    const normalizedIp = ip?.trim() || 'unknown-ip';
-    const normalizedUserAgent = userAgent?.trim() || 'unknown-ua';
-    return `${normalizedIp}|${normalizedUserAgent}`;
   }
 
   private isProductCodeConflict(error: unknown): boolean {
@@ -1743,116 +469,7 @@ export class ProductsService {
     return normalizedValue ? normalizedValue.toLowerCase() : null;
   }
 
-  private assertFemaleProduct(product: PrismaProduct, field: string): void {
-    if ((product.sex ?? '').toLowerCase() !== 'female') {
-      throw new BadRequestException(`${field} must reference a female breeder.`);
-    }
-  }
-
-  private assertMaleProduct(product: PrismaProduct, field: string): void {
-    if ((product.sex ?? '').toLowerCase() !== 'male') {
-      throw new BadRequestException(`${field} must reference a male breeder.`);
-    }
-  }
-
-  private assertSameSeries(left: PrismaProduct, right: PrismaProduct): void {
-    if (!left.seriesId || !right.seriesId || left.seriesId !== right.seriesId) {
-      throw new BadRequestException('Mating must be within the same series.');
-    }
-  }
-
-  private extractTagValue(note: string | null, key: string): string | null {
-    if (!note) {
-      return null;
-    }
-
-    const normalizedKey = key.trim().toLowerCase();
-    if (!normalizedKey) {
-      return null;
-    }
-
-    for (const rawLine of note.split(/\r?\n/)) {
-      const line = rawLine.trim();
-      if (!line.startsWith('#') || !line.includes('=')) {
-        continue;
-      }
-
-      const [rawTag, ...rest] = line.slice(1).split('=');
-      if (rawTag.trim().toLowerCase() !== normalizedKey) {
-        continue;
-      }
-
-      const value = rest.join('=').trim();
-      return value.length > 0 ? value : null;
-    }
-
-    return null;
-  }
-
-  private toProductEvent(event: PrismaProductEvent): ProductEvent {
-    const parsedNote = parseTaggedProductEventNote(event.note);
-
-    return {
-      id: event.id,
-      tenantId: event.tenantId,
-      productId: event.productId,
-      eventType: event.eventType,
-      eventDate: event.eventDate.toISOString(),
-      maleCode: parsedNote.maleCode,
-      eggCount: parsedNote.eggCount,
-      oldMateCode: parsedNote.oldMateCode,
-      newMateCode: parsedNote.newMateCode,
-      // Keep raw note for now to avoid behavior changes; UI can choose to ignore tagged lines.
-      note: event.note,
-      createdAt: event.createdAt.toISOString(),
-      updatedAt: event.updatedAt.toISOString()
-    };
-  }
-
-  private toFamilyTreeNode(product: PrismaProduct) {
-    return {
-      id: product.id,
-      code: product.code,
-      name: product.name,
-      sex: product.sex
-    };
-  }
-
-  private toFamilyTreeLink(
-    code: string | null | undefined,
-    product: PrismaProduct | null
-  ): ProductFamilyTreeLink | null {
-    const normalizedCode = code?.trim();
-    if (!normalizedCode) {
-      return null;
-    }
-
-    return {
-      code: normalizedCode,
-      product: this.toFamilyTreeNodeOrNull(product)
-    };
-  }
-
-  private toFamilyTreeNodeOrNull(product: PrismaProduct | null) {
-    if (!product) {
-      return null;
-    }
-
-    return this.toFamilyTreeNode(product);
-  }
-
-  private toProduct(
-    product: PrismaProduct,
-    options: {
-      coverImageUrl?: string | null;
-      needMatingSummary?: {
-        status: 'normal' | 'need_mating' | 'warning';
-        lastEggAt: Date | null;
-        lastMatingAt: Date | null;
-        daysSinceEgg: number | null;
-      };
-    } = {}
-  ): Product {
+  private toProduct(product: PrismaProduct): Product {
     return {
       id: product.id,
       tenantId: product.tenantId,
@@ -1862,10 +479,10 @@ export class ProductsService {
       description: product.description,
       seriesId: product.seriesId,
       sex: product.sex,
-      needMatingStatus: options.needMatingSummary?.status ?? null,
-      lastEggAt: options.needMatingSummary?.lastEggAt?.toISOString() ?? null,
-      lastMatingAt: options.needMatingSummary?.lastMatingAt?.toISOString() ?? null,
-      daysSinceEgg: options.needMatingSummary?.daysSinceEgg ?? null,
+      needMatingStatus: null,
+      lastEggAt: null,
+      lastMatingAt: null,
+      daysSinceEgg: null,
       offspringUnitPrice: product.offspringUnitPrice?.toNumber() ?? null,
       sireCode: product.sireCode,
       damCode: product.damCode,
@@ -1875,85 +492,9 @@ export class ProductsService {
       inStock: product.inStock,
       popularityScore: product.popularityScore,
       isFeatured: product.isFeatured,
-      coverImageUrl: options.coverImageUrl ?? null,
+      coverImageUrl: null,
       createdAt: product.createdAt.toISOString(),
-      updatedAt: product.updatedAt.toISOString()
+      updatedAt: product.updatedAt.toISOString(),
     };
-  }
-
-  private async loadNeedMatingSummaryByProductIds(tenantId: string, productIds: string[]) {
-    const summaryByProductId = new Map<
-      string,
-      {
-        status: 'normal' | 'need_mating' | 'warning';
-        lastEggAt: Date | null;
-        lastMatingAt: Date | null;
-        daysSinceEgg: number | null;
-      }
-    >();
-
-    if (productIds.length === 0) {
-      return summaryByProductId;
-    }
-
-    const rows = await this.prisma.$queryRaw<
-      Array<{
-        productId: string;
-        excludeFromBreeding: boolean;
-        lastEggAt: Date | null;
-        lastMatingAt: Date | null;
-      }>
-    >(Prisma.sql`
-      SELECT
-        p.id AS "productId",
-        p.exclude_from_breeding AS "excludeFromBreeding",
-        MAX(CASE WHEN e.event_type = 'egg' THEN e.event_date END) AS "lastEggAt",
-        MAX(CASE WHEN e.event_type = 'mating' THEN e.event_date END) AS "lastMatingAt"
-      FROM "products" p
-      LEFT JOIN "product_events" e
-        ON e.tenant_id = p.tenant_id
-       AND e.product_id = p.id
-      WHERE p.tenant_id = ${tenantId}
-        AND p.id IN (${Prisma.join(productIds)})
-        AND LOWER(COALESCE(p.sex, '')) = 'female'
-      GROUP BY p.id, p.exclude_from_breeding
-    `);
-
-    for (const row of rows) {
-      const status = resolveNeedMatingStatus(row.lastEggAt, row.lastMatingAt, row.excludeFromBreeding);
-      summaryByProductId.set(row.productId, {
-        status,
-        lastEggAt: row.lastEggAt,
-        lastMatingAt: row.lastMatingAt,
-        daysSinceEgg: calculateDaysSince(row.lastEggAt)
-      });
-    }
-
-    return summaryByProductId;
-  }
-
-  private toProductImage(image: PrismaProductImage): ProductImage {
-    return {
-      id: image.id,
-      tenantId: image.tenantId,
-      productId: image.productId,
-      key: image.key,
-      url: this.buildImageAccessPath(image.productId, image.id),
-      contentType: image.contentType,
-      sizeBytes: image.sizeBytes.toString(),
-      sortOrder: image.sortOrder,
-      isMain: image.isMain,
-      createdAt: image.createdAt.toISOString(),
-      updatedAt: image.updatedAt.toISOString()
-    };
-  }
-
-  private isManagedStorageKey(tenantId: string, key: string): boolean {
-    const normalizedKey = key.replace(/\\/g, '/').replace(/^\/+/, '');
-    return normalizedKey.startsWith(`${tenantId}/`);
-  }
-
-  private buildImageAccessPath(productId: string, imageId: string): string {
-    return `/products/${productId}/images/${imageId}/content`;
   }
 }

@@ -3,7 +3,6 @@
 import { FormEvent, Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  passwordLoginRequestSchema,
   passwordLoginResponseSchema,
   phoneLoginRequestSchema,
   phoneLoginResponseSchema,
@@ -62,6 +61,7 @@ type LoginCopy = {
   phoneInvalid: string;
   codeInvalid: string;
   accountInvalid: string;
+  emailLoginNotSupported: string;
   confirmPasswordMismatch: string;
   requestCode: string;
   resendCode: string;
@@ -95,11 +95,11 @@ const COPY: Record<UiLocale, LoginCopy> = {
     modePassword: '账号密码',
     modeCode: '验证码登录',
     passwordIdentifierLabel: '账号或手机号',
-    passwordIdentifierPlaceholder: '请输入账号或 11 位手机号',
+    passwordIdentifierPlaceholder: '请输入账号或手机号（支持 +86）',
     passwordLabel: '密码',
     passwordPlaceholder: '请输入登录密码',
     passwordLogin: '登录',
-    passwordHint: '支持用注册账号或已绑定手机号直接登录。',
+    passwordHint: '输入账号或手机号会自动识别登录类型。',
     codeLoginTitle: '手机号验证码登录',
     codeLoginHint: '适合已完成注册并绑定手机号的用户。',
     registerHint:
@@ -118,6 +118,7 @@ const COPY: Record<UiLocale, LoginCopy> = {
     phoneInvalid: '请输入正确的 11 位手机号。',
     codeInvalid: '请输入 6 位验证码。',
     accountInvalid: '账号需 4-32 位、以字母开头、以字母或数字结尾，仅支持字母、数字、下划线、连字符。',
+    emailLoginNotSupported: '当前不支持邮箱登录，请使用账号或手机号。',
     confirmPasswordMismatch: '两次输入的密码不一致，请重新确认。',
     requestCode: '发送验证码',
     resendCode: '重新发送',
@@ -147,11 +148,11 @@ const COPY: Record<UiLocale, LoginCopy> = {
     modePassword: 'Password',
     modeCode: 'SMS code',
     passwordIdentifierLabel: 'Account or phone',
-    passwordIdentifierPlaceholder: 'Enter your account or 11-digit phone',
+    passwordIdentifierPlaceholder: 'Enter account or phone (+86 supported)',
     passwordLabel: 'Password',
     passwordPlaceholder: 'Enter your password',
     passwordLogin: 'Sign in',
-    passwordHint: 'Use your account or bound phone number to sign in.',
+    passwordHint: 'The app automatically detects account vs phone sign-in.',
     codeLoginTitle: 'Phone code sign-in',
     codeLoginHint: 'Best for existing accounts with a bound phone number.',
     registerHint:
@@ -171,6 +172,7 @@ const COPY: Record<UiLocale, LoginCopy> = {
     codeInvalid: 'Please enter a valid 6-digit code.',
     accountInvalid:
       'Account must start with a letter and use 4-32 letters, numbers, underscores, or hyphens.',
+    emailLoginNotSupported: 'Email sign-in is not supported. Use account or phone number.',
     confirmPasswordMismatch: 'Passwords do not match.',
     requestCode: 'Send code',
     resendCode: 'Resend',
@@ -358,14 +360,60 @@ function LoginPageContent() {
   }
 
   function normalizePhone(value: string) {
-    return value.replace(/\D/g, '').slice(0, 11);
+    const digitsOnly = value.replace(/\D/g, '');
+    if (digitsOnly.startsWith('86') && digitsOnly.length > 11) {
+      return digitsOnly.slice(2, 13);
+    }
+
+    return digitsOnly.slice(0, 11);
   }
 
   function normalizeAccount(value: string) {
     return value
       .replace(/\s+/g, '')
       .replace(/[^a-zA-Z0-9_-]/g, '')
+      .toLowerCase()
       .slice(0, 32);
+  }
+
+  function parseMainlandPhone(value: string): string | null {
+    const compact = value.trim().replace(/[\s-]/g, '');
+    if (!compact) {
+      return null;
+    }
+
+    if (!/^(?:\+?86)?1\d{10}$/.test(compact)) {
+      return null;
+    }
+
+    return compact.replace(/^\+?86/, '');
+  }
+
+  function resolvePasswordLoginIdentifier(rawValue: string): { ok: true; login: string } | { ok: false; message: string } {
+    const compact = rawValue.trim().replace(/\s+/g, '');
+    if (!compact) {
+      return { ok: false, message: copy.accountInvalid };
+    }
+
+    const normalizedPhone = parseMainlandPhone(compact);
+    if (normalizedPhone) {
+      return { ok: true, login: normalizedPhone };
+    }
+
+    if (compact.includes('@')) {
+      return { ok: false, message: copy.emailLoginNotSupported };
+    }
+
+    if (/^\d+$/.test(compact)) {
+      return { ok: false, message: copy.phoneInvalid };
+    }
+
+    const normalizedAccount = compact.toLowerCase();
+    if (!ACCOUNT_PATTERN.test(normalizedAccount)) {
+      return { ok: false, message: copy.accountInvalid };
+    }
+
+    return { ok: true, login: normalizedAccount };
   }
 
   function switchEntryView(nextView: EntryView) {
@@ -398,7 +446,8 @@ function LoginPageContent() {
   }
 
   async function requestSmsCode(phoneNumber: string, flow: SmsFlow) {
-    if (!/^1\d{10}$/.test(phoneNumber)) {
+    const normalizedPhoneNumber = parseMainlandPhone(phoneNumber);
+    if (!normalizedPhoneNumber) {
       setError(copy.phoneInvalid);
       return;
     }
@@ -413,7 +462,7 @@ function LoginPageContent() {
     }
 
     try {
-      const payload = requestSmsCodeRequestSchema.parse({ phoneNumber, purpose: flow });
+      const payload = requestSmsCodeRequestSchema.parse({ phoneNumber: normalizedPhoneNumber, purpose: flow });
       const response = await apiRequest('/auth/request-sms-code', {
         method: 'POST',
         auth: false,
@@ -423,17 +472,19 @@ function LoginPageContent() {
       });
 
       if (flow === 'login') {
+        setLoginPhoneNumber(normalizedPhoneNumber);
         setLoginPhoneDevCode(response.devCode ?? null);
         setLoginSmsCooldown(60);
       } else {
+        setRegisterPhoneNumber(normalizedPhoneNumber);
         setRegisterDevCode(response.devCode ?? null);
         setRegisterSmsCooldown(60);
       }
 
       setSuccess(
         locale === 'zh'
-          ? `${copy.codeSentTo} ${phoneNumber}，${copy.successCodeHint}`
-          : `${copy.codeSentTo} ${phoneNumber}. ${copy.successCodeHint}`,
+          ? `${copy.codeSentTo} ${normalizedPhoneNumber}，${copy.successCodeHint}`
+          : `${copy.codeSentTo} ${normalizedPhoneNumber}. ${copy.successCodeHint}`,
       );
     } catch (requestError) {
       setError(formatApiError(requestError, copy.unknownError, locale));
@@ -453,19 +504,21 @@ function LoginPageContent() {
     setSuccess(null);
 
     try {
-      const normalizedLoginIdentifier = loginIdentifier.trim();
-      const payload = passwordLoginRequestSchema.parse({
-        ...(/^1\d{10}$/.test(normalizedLoginIdentifier)
-          ? { phoneNumber: normalizedLoginIdentifier }
-          : { account: normalizedLoginIdentifier }),
+      const resolvedIdentifier = resolvePasswordLoginIdentifier(loginIdentifier);
+      if (!resolvedIdentifier.ok) {
+        setError(resolvedIdentifier.message);
+        return;
+      }
+
+      const payload = {
+        login: resolvedIdentifier.login,
         password: loginPassword,
-      });
+      };
 
       const response = await apiRequest('/auth/password-login', {
         method: 'POST',
         auth: false,
         body: payload,
-        requestSchema: passwordLoginRequestSchema,
         responseSchema: passwordLoginResponseSchema,
       });
 
@@ -481,7 +534,8 @@ function LoginPageContent() {
   async function handleCodeLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!/^1\d{10}$/.test(loginPhoneNumber)) {
+    const normalizedPhoneNumber = parseMainlandPhone(loginPhoneNumber);
+    if (!normalizedPhoneNumber) {
       setError(copy.phoneInvalid);
       return;
     }
@@ -497,7 +551,7 @@ function LoginPageContent() {
 
     try {
       const payload = phoneLoginRequestSchema.parse({
-        phoneNumber: loginPhoneNumber,
+        phoneNumber: normalizedPhoneNumber,
         code: loginPhoneCode,
       });
 
@@ -534,7 +588,8 @@ function LoginPageContent() {
       return;
     }
 
-    if (!/^1\d{10}$/.test(registerPhoneNumber)) {
+    const normalizedPhoneNumber = parseMainlandPhone(registerPhoneNumber);
+    if (!normalizedPhoneNumber) {
       setError(copy.phoneInvalid);
       return;
     }
@@ -556,7 +611,7 @@ function LoginPageContent() {
     try {
       const payload = registerRequestSchema.parse({
         account: registerAccount,
-        phoneNumber: registerPhoneNumber,
+        phoneNumber: normalizedPhoneNumber,
         code: registerCode,
         password: registerPassword,
       });
@@ -650,6 +705,22 @@ function LoginPageContent() {
                         value={loginIdentifier}
                         placeholder={copy.passwordIdentifierPlaceholder}
                         onChange={(event) => setLoginIdentifier(event.target.value)}
+                        onBlur={() => {
+                          const compact = loginIdentifier.trim().replace(/\s+/g, '');
+                          if (!compact) {
+                            return;
+                          }
+
+                          const normalizedPhone = parseMainlandPhone(compact);
+                          if (normalizedPhone) {
+                            setLoginIdentifier(normalizedPhone);
+                            return;
+                          }
+
+                          if (!compact.includes('@')) {
+                            setLoginIdentifier(compact.toLowerCase());
+                          }
+                        }}
                         disabled={!hydrated || isBusy}
                         required
                       />

@@ -26,7 +26,8 @@ import { RequireTenantRole } from '../auth/require-tenant-role.decorator';
 import { TenantSubscriptionGuard } from '../auth/tenant-subscription.guard';
 import { parseOrThrow } from '../common/zod-parse';
 
-import { SharesService } from './shares.service';
+import { SharesEntryService } from './shares-entry.service';
+import { SharesPublicService } from './shares-public.service';
 
 type PublicRequest = {
   headers: {
@@ -38,7 +39,10 @@ type PublicRequest = {
 
 @Controller()
 export class SharesController {
-  constructor(private readonly sharesService: SharesService) {}
+  constructor(
+    private readonly sharesEntryService: SharesEntryService,
+    private readonly sharesPublicService: SharesPublicService
+  ) {}
 
   @Post('shares')
   @UseGuards(AuthGuard, RbacGuard, TenantSubscriptionGuard)
@@ -48,7 +52,7 @@ export class SharesController {
     const actorUserId = this.requireUserId(request.user?.id);
     const payload = parseOrThrow(createShareRequestSchema, body);
 
-    const share = await this.sharesService.createShare(tenantId, actorUserId, payload);
+    const share = await this.sharesEntryService.createShare(tenantId, actorUserId, payload);
 
     return createShareResponseSchema.parse({ share });
   }
@@ -59,7 +63,7 @@ export class SharesController {
     @Req() request: PublicRequest,
     @Res() response: { redirect: (statusCode: number, url: string) => unknown }
   ) {
-    const result = await this.sharesService.resolveShareEntry(shareToken, {
+    const result = await this.sharesEntryService.resolveShareEntry(shareToken, {
       ip: this.getRequestIp(request),
       userAgent: this.getUserAgent(request)
     });
@@ -75,7 +79,7 @@ export class SharesController {
   ) {
     const parsedQuery = parseOrThrow(publicShareQuerySchema, query);
 
-    const data = await this.sharesService.getPublicShare(shareId, parsedQuery, {
+    const data = await this.sharesPublicService.getPublicShare(shareId, parsedQuery, {
       ip: this.getRequestIp(request),
       userAgent: this.getUserAgent(request)
     });
@@ -107,7 +111,7 @@ export class SharesController {
       });
     }
 
-    const asset = await this.sharesService.getPublicShareAsset(
+    const asset = await this.sharesPublicService.getPublicShareAsset(
       shareId,
       { ...parsedQuery, key: rawKey.trim() },
       {

@@ -12,7 +12,7 @@ import {
   listPublicFeaturedProductsResponseSchema
 } from '@eggturtle/shared';
 
-import { AuthService } from '../auth/auth.service';
+import { AuthAccessService } from '../auth/auth-access.service';
 import type { AuthenticatedRequest } from '../auth/auth.types';
 import { parseOrThrow } from '../common/zod-parse';
 
@@ -22,7 +22,7 @@ import { FeaturedProductsService } from './featured-products.service';
 export class ProductsPublicController {
   constructor(
     private readonly featuredProductsService: FeaturedProductsService,
-    private readonly authService: AuthService
+    private readonly authAccessService: AuthAccessService
   ) {}
 
   @Get('featured')
@@ -68,7 +68,7 @@ export class ProductsPublicController {
     }
 
     try {
-      const context = await this.authService.getAuthContextFromAccessToken(token);
+      const context = await this.authAccessService.getAuthContextFromAccessToken(token);
       return context?.tenantId ?? null;
     } catch {
       // Treat invalid/malformed tokens as anonymous for this public endpoint.

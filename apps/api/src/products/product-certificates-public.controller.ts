@@ -3,7 +3,7 @@ import {
   verifyProductCertificateResponseSchema
 } from '@eggturtle/shared';
 
-import { ProductGeneratedAssetsService } from './product-generated-assets.service';
+import { ProductCertificateVerificationService } from './product-certificate-verification.service';
 
 type PublicPassthroughResponse = {
   setHeader: (name: string, value: string) => void;
@@ -12,11 +12,11 @@ type PublicPassthroughResponse = {
 
 @Controller('public/certificates')
 export class ProductCertificatesPublicController {
-  constructor(private readonly generatedAssetsService: ProductGeneratedAssetsService) {}
+  constructor(private readonly productCertificateVerificationService: ProductCertificateVerificationService) {}
 
   @Get('verify/:verifyId')
   async verifyCertificate(@Param('verifyId') verifyId: string) {
-    const response = await this.generatedAssetsService.verifyCertificate(verifyId.trim());
+    const response = await this.productCertificateVerificationService.verifyCertificate(verifyId.trim());
     return verifyProductCertificateResponseSchema.parse(response);
   }
 
@@ -25,7 +25,7 @@ export class ProductCertificatesPublicController {
     @Param('verifyId') verifyId: string,
     @Res({ passthrough: true }) response: PublicPassthroughResponse
   ) {
-    const content = await this.generatedAssetsService.getVerifiedCertificateContent(verifyId.trim());
+    const content = await this.productCertificateVerificationService.getVerifiedCertificateContent(verifyId.trim());
 
     response.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300');
 

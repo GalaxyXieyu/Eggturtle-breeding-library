@@ -3,9 +3,12 @@ import { Module } from '@nestjs/common';
 import { PrismaModule } from '../prisma.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 
+import { AuthAccessService } from './auth-access.service';
 import { AuthController } from './auth.controller';
 import { AuthGuard } from './auth.guard';
-import { AuthService } from './auth.service';
+import { AuthIdentityService } from './auth-identity.service';
+import { AuthProfileService } from './auth-profile.service';
+import { AuthSharedService } from './auth-shared.service';
 import { JwtTokenService } from './jwt-token.service';
 import { MeController } from './me.controller';
 import { RbacGuard } from './rbac.guard';
@@ -18,7 +21,10 @@ import { TenantSubscriptionGuard } from './tenant-subscription.guard';
   imports: [PrismaModule, SubscriptionsModule],
   controllers: [AuthController, MeController, SubscriptionActivationCodesController],
   providers: [
-    AuthService,
+    AuthSharedService,
+    AuthAccessService,
+    AuthIdentityService,
+    AuthProfileService,
     AuthGuard,
     RbacGuard,
     SuperAdminGuard,
@@ -26,6 +32,6 @@ import { TenantSubscriptionGuard } from './tenant-subscription.guard';
     JwtTokenService,
     SmsVerificationService
   ],
-  exports: [AuthGuard, RbacGuard, SuperAdminGuard, TenantSubscriptionGuard, AuthService]
+  exports: [AuthGuard, RbacGuard, SuperAdminGuard, TenantSubscriptionGuard, AuthAccessService]
 })
 export class AuthModule {}
