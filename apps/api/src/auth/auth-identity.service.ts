@@ -121,30 +121,32 @@ export class AuthIdentityService {
       },
     });
 
-    try {
-      await this.smsVerificationService.sendSmsCode({
-        phoneNumber,
-        code,
-        validTimeSeconds,
-        outId: `${purpose}-${Date.now()}-${randomInt(1000, 10_000)}`,
-      });
-    } catch (error) {
-      await this.prisma.authCode
-        .updateMany({
-          where: {
-            id: authCode.id,
-            consumedAt: null,
-          },
-          data: {
-            consumedAt: now,
-          },
-        })
-        .catch(() => undefined);
+    const shouldExposeDevCode = this.authSharedService.isDevCodeEnabled();
+    if (!shouldExposeDevCode) {
+      try {
+        await this.smsVerificationService.sendSmsCode({
+          phoneNumber,
+          code,
+          validTimeSeconds,
+          outId: `${purpose}-${Date.now()}-${randomInt(1000, 10_000)}`,
+        });
+      } catch (error) {
+        await this.prisma.authCode
+          .updateMany({
+            where: {
+              id: authCode.id,
+              consumedAt: null,
+            },
+            data: {
+              consumedAt: now,
+            },
+          })
+          .catch(() => undefined);
 
-      throw error;
+        throw error;
+      }
     }
 
-    const shouldExposeDevCode = this.authSharedService.isDevCodeEnabled();
     if (shouldExposeDevCode) {
       console.info('[Auth v0] request-sms-code', {
         phoneNumber,

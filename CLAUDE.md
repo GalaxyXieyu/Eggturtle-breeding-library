@@ -1,6 +1,6 @@
 # TurtleAlbum Breeding Library - Claude 项目配置
 
-更新日期: 2026-02-28
+更新日期: 2026-03-07
 
 ## 项目概览
 
@@ -197,3 +197,26 @@
 - 暂无暗黑模式计划
 - Admin 移除金色渐变品牌文字 (`.gold-text`)
 - Admin 调色板应与 waterfall feed 黑白黄对齐 (accent `#FFD400`)
+
+---
+
+## 本地登录与启动（2026-03-07）
+
+### 登录账号（仅保留 2 个）
+- 租户后台（Web, `http://localhost:30010/login`）：
+  - 账号：`galaxyxieyu`
+  - 密码：`Siri@2026`
+  - 邮箱：`galaxyxieyu@account.eggturtle.local`
+- 超级管理后台（Admin, `http://localhost:30020/login`）：
+  - 账号：`admin`
+  - 密码：`Siri@2026`
+  - 邮箱：`admin@local.test`（需在 `SUPER_ADMIN_EMAILS` 白名单）
+
+### 启动与重启
+- 启动（含重启）：`./dev.sh start`
+- 查看状态：`./dev.sh status`
+- 停止服务：`./dev.sh stop`
+
+### 登录接口校验
+- API 健康检查：`curl http://127.0.0.1:30011/health`
+- 密码登录接口：`POST /auth/password-login`

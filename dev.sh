@@ -172,17 +172,23 @@ extract_port_from_url() {
 get_listener_pid_from_url() {
   local url="$1"
   local port
+  local lsof_bin
 
   port="$(extract_port_from_url "$url")"
   if [ -z "$port" ]; then
     return 1
   fi
 
-  if ! command -v lsof >/dev/null 2>&1; then
+  lsof_bin="$(command -v lsof 2>/dev/null || true)"
+  if [ -z "$lsof_bin" ] && [ -x "/usr/sbin/lsof" ]; then
+    lsof_bin="/usr/sbin/lsof"
+  fi
+
+  if [ -z "$lsof_bin" ]; then
     return 1
   fi
 
-  lsof -nP -t -iTCP:"$port" -sTCP:LISTEN 2>/dev/null | head -n 1
+  "$lsof_bin" -nP -t -iTCP:"$port" -sTCP:LISTEN 2>/dev/null | head -n 1
 }
 
 start_service() {

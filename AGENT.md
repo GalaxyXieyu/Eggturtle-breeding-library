@@ -1,6 +1,6 @@
 # TurtleAlbum Breeding Library - Claude 项目配置
 
-更新日期: 2026-02-28
+更新日期: 2026-03-07
 
 ## 项目概览
 
@@ -210,11 +210,14 @@
   - 已确认“有图片有数据”的主租户：`turtle-album`
     - 当前统计：`products=32`、`product_images=64`（该租户图片数据最完整）
   - 本地可用账号（已设置密码）：
-    - 租户端（图片数据主账号）：`admin@turtlealbum.local` / `Turtle@2026!`
-    - 平台后台（super-admin）：`admin@local.test` / `Siri@2026`（可用账号名 `admin` 登录）
-    - 兼容旧账号：`synthetic.superadmin@local.test` / `Super@2026!`
+    - 租户端（apps/web）：`galaxyxieyu` / `Siri@2026`（邮箱：`galaxyxieyu@account.eggturtle.local`）
+    - 平台后台（apps/admin，super-admin）：`admin` / `Siri@2026`（邮箱：`admin@local.test`，需在 `SUPER_ADMIN_EMAILS` allowlist）
+    - 本地数据库已清理：仅保留以上 2 个账号，避免开发上下文污染
     - 本地后台 allowlist 已写入：`apps/admin/.env.local`
-  - 当前删除其它租户会影响 smoke/回归样例，默认先不做破坏性清理；如确认清理再执行“只保留 turtle-album”。
+  - 本地启动/重启命令：
+    - 启动（含重启）：`./dev.sh start`
+    - 查看状态：`./dev.sh status`
+    - 停止：`./dev.sh stop`
 - 2026-02-28 UI_STYLE_GUIDE 对齐优化补充（apps/web）：
   - 登录页重构为“单卡片居中”标准布局，移除冗余说明块，保留中英文切换与双模式登录（密码/验证码）
   - 批量收口 v0 页面视觉风格（`/app`、`/tenant-select`、`/app/[tenantSlug]/series|breeders|featured-products|tenants|breeders/[id]`、`/public/s/[shareToken]`）
