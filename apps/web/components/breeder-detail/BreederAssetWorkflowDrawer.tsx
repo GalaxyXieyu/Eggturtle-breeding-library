@@ -1,6 +1,13 @@
 'use client';
 
-import { useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction
+} from 'react';
 import type {
   GetProductCertificateEligibilityResponse,
   ProductCertificate,
@@ -11,7 +18,16 @@ import type {
   SaleBatch,
   SaleSubjectMedia
 } from '@eggturtle/shared';
-import { FileBadge2, HeartHandshake, Layers3, ShieldCheck, Workflow, X } from 'lucide-react';
+import {
+  FileBadge2,
+  HeartHandshake,
+  Layers3,
+  Link2,
+  Share2,
+  Sparkles,
+  Workflow,
+  X
+} from 'lucide-react';
 
 import {
   AllocationStep,
@@ -22,7 +38,9 @@ import {
   SubjectMediaStep
 } from '@/components/certificate-studio';
 import { buildFilterPillClass } from '@/components/filter-pill';
-import { modalCloseButtonClass } from '@/components/ui/floating-actions';
+import { FloatingActionButton, FloatingActionDock, modalCloseButtonClass } from '@/components/ui/floating-actions';
+import { formatApiError } from '@/lib/error-utils';
+import { createTenantFeedShareLink } from '@/lib/tenant-share';
 
 type CertificateStudioState = {
   selectedEggEventId: string;
@@ -47,9 +65,11 @@ type CertificateStudioState = {
   subjectFile: File | null;
 };
 
-type WorkflowMode = 'certificate' | 'couple-photo';
+type DrawerSection = 'overview' | 'certificate' | 'couple-photo' | 'share';
 
 type BreederAssetWorkflowDrawerProps = {
+  breederId: string;
+  breederName: string;
   tenantSlug: string;
   eggEvents: ProductEvent[];
   eggEventOptionLabels: Map<string, string>;
@@ -83,8 +103,9 @@ type BreederAssetWorkflowDrawerProps = {
   onGenerateCouplePhoto: () => Promise<void>;
 };
 
-function QuickActionCard({
+function QuickEntryCard({
   icon,
+  eyebrow,
   title,
   description,
   meta,
@@ -92,6 +113,7 @@ function QuickActionCard({
   onClick
 }: {
   icon: ReactNode;
+  eyebrow: string;
   title: string;
   description: string;
   meta: string;
@@ -109,6 +131,7 @@ function QuickActionCard({
         </button>
       </div>
       <div className="mt-4 space-y-2">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-500">{eyebrow}</p>
         <h3 className="text-lg font-semibold text-neutral-900">{title}</h3>
         <p className="text-sm leading-6 text-neutral-500">{description}</p>
       </div>
@@ -120,6 +143,8 @@ function QuickActionCard({
 }
 
 export function BreederAssetWorkflowDrawer({
+  breederId,
+  breederName,
   tenantSlug,
   eggEvents,
   eggEventOptionLabels,
@@ -152,7 +177,20 @@ export function BreederAssetWorkflowDrawer({
   onUploadSubjectMedia,
   onGenerateCouplePhoto
 }: BreederAssetWorkflowDrawerProps) {
-  const [openMode, setOpenMode] = useState<WorkflowMode | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState<DrawerSection>('overview');
+  const [sharePending, setSharePending] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
+  const [shareNotice, setShareNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!shareNotice) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => setShareNotice(null), 2500);
+    return () => window.clearTimeout(timer);
+  }, [shareNotice]);
 
   const certificateMeta = useMemo(() => {
     const remaining = certificateEligibility?.quota.remaining ?? 0;
@@ -162,7 +200,7 @@ export function BreederAssetWorkflowDrawer({
 
   const coupleMeta = useMemo(() => {
     if (!isFemaleBreeder) {
-      return '当前为公龟，仅展示生成能力占位与历史记录框架。';
+      return '当前为公龟，本轮先保留入口和状态说明，不开放生成。';
     }
 
     return currentCouplePhoto
@@ -170,193 +208,383 @@ export function BreederAssetWorkflowDrawer({
       : `当前暂无生效夫妻照，历史累计 ${couplePhotoHistory.length} 张。`;
   }, [couplePhotoHistory.length, currentCouplePhoto, isFemaleBreeder]);
 
+  const certificateStatus = useMemo(() => {
+    if (!certificateEligibility) {
+      return '待检查';
+    }
+
+    return certificateEligibility.eligible ? '可出证' : '待补齐';
+  }, [certificateEligibility]);
+
+  async function handleShareEntry() {
+    if (sharePending) {
+      return;
+    }
+
+    setSharePending(true);
+    setShareError(null);
+    setShareNotice(null);
+
+    try {
+      const share = await createTenantFeedShareLink({
+        intent: { productId: breederId },
+        missingTenantMessage: '当前租户上下文未就绪，暂时无法生成分享链接。'
+      });
+      const url = share.permanentUrl;
+
+      try {
+        await navigator.clipboard.writeText(url);
+        setShareNotice('已复制分享链接。');
+      } catch {
+        setShareError('分享链接已生成，但自动复制失败，请手动复制。');
+      }
+
+      const opened = window.open(url, '_blank');
+      if (!opened) {
+        const link = document.createElement('a');
+        link.href = url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch (error) {
+      setShareError(formatApiError(error, '创建分享链接失败'));
+    } finally {
+      setSharePending(false);
+    }
+  }
+
+  function openDrawer(section: DrawerSection) {
+    setIsOpen(true);
+    setActiveSection(section);
+  }
+
   return (
     <>
-      <div className="tenant-card-lift rounded-3xl border border-neutral-200/90 bg-white p-6 shadow-[0_12px_36px_rgba(15,23,42,0.08)] transition-all">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-600">
-              <Workflow size={14} />
-              Asset Workflow
-            </div>
-            <div>
-              <h2 className="text-2xl font-semibold text-neutral-900">证书与夫妻照改为快捷工作流</h2>
-              <p className="mt-1 text-sm text-neutral-500">
-                详情页主内容回到事件与谱系，复杂生成动作放进抽屉中分步处理。
-              </p>
-            </div>
-          </div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-[#FFD400]/50 bg-[#FFF6BF] px-3 py-1.5 text-xs font-semibold text-neutral-800">
-            <Layers3 size={14} />
-            轻量入口，保留完整流程骨架
-          </div>
-        </div>
+      <FloatingActionDock className="bottom-[calc(env(safe-area-inset-bottom)+1.25rem)]">
+        <FloatingActionButton
+          aria-label="打开证书、夫妻图与分享抽屉"
+          title="打开快捷抽屉"
+          className="h-14 w-14 rounded-full bg-neutral-950 text-white shadow-[0_18px_40px_rgba(15,23,42,0.3)] hover:bg-neutral-900"
+          onClick={() => openDrawer('overview')}
+        >
+          <Sparkles size={22} />
+        </FloatingActionButton>
+      </FloatingActionDock>
 
-        {assetError ? (
-          <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
-            {assetError}
-          </p>
-        ) : null}
-
-        <div className="mt-5 grid gap-4 xl:grid-cols-2">
-          <QuickActionCard
-            icon={<FileBadge2 size={18} />}
-            title="生成证书"
-            description="继续沿用批次、客户分配、主体图和预览出证四步，只是入口改成详情页快捷按钮。"
-            meta={certificateMeta}
-            actionLabel="打开证书抽屉"
-            onClick={() => setOpenMode('certificate')}
-          />
-          <QuickActionCard
-            icon={<HeartHandshake size={18} />}
-            title="生成夫妻图"
-            description="保留母龟专属生成逻辑与历史浏览，先用抽屉承接快捷工作流，避免挤占详情主体。"
-            meta={coupleMeta}
-            actionLabel="打开夫妻图抽屉"
-            onClick={() => setOpenMode('couple-photo')}
-          />
-        </div>
-      </div>
-
-      {openMode ? (
+      {isOpen ? (
         <div
-          className="fixed inset-0 z-[80] flex items-end bg-black/45 p-3 sm:items-center sm:p-4"
+          className="fixed inset-0 z-[80] bg-black/45"
           role="dialog"
           aria-modal="true"
-          aria-label={openMode === 'certificate' ? '证书工作流' : '夫妻图工作流'}
-          onClick={() => setOpenMode(null)}
+          aria-label="种龟快捷工作流抽屉"
+          onClick={() => setIsOpen(false)}
         >
           <section
-            className="relative mx-auto flex h-[78svh] w-[min(96vw,78rem)] flex-col overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-2xl sm:h-[88svh]"
+            className="absolute inset-x-0 bottom-0 flex h-[86svh] flex-col overflow-hidden rounded-t-[32px] border border-neutral-200 bg-[#fcfcfa] shadow-2xl sm:inset-y-0 sm:right-0 sm:left-auto sm:h-full sm:w-[min(92vw,44rem)] sm:rounded-none sm:rounded-l-[32px]"
             onClick={(event) => event.stopPropagation()}
           >
-            <header className="sticky top-0 z-20 border-b border-neutral-200 bg-white/95 px-4 py-3 backdrop-blur sm:px-6">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-600">
-                    {openMode === 'certificate' ? <ShieldCheck size={14} /> : <HeartHandshake size={14} />}
-                    {openMode === 'certificate' ? 'Certificate Workflow' : 'Couple Photo Workflow'}
+            <header className="sticky top-0 z-20 border-b border-neutral-200 bg-[#fcfcfa]/95 px-4 py-4 backdrop-blur sm:px-6">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-600">
+                    <Workflow size={14} />
+                    Quick Asset Drawer
                   </div>
-                  <p className="mt-2 text-sm font-semibold text-neutral-900">
-                    {openMode === 'certificate' ? '证书生成抽屉' : '夫妻图生成抽屉'}
-                  </p>
-                  <p className="text-xs text-neutral-500">租户 {tenantSlug} · 延续筛选面板与产品抽屉的交互语言</p>
+                  <div>
+                    <p className="text-lg font-semibold text-neutral-900">{breederName || '当前种龟'} 的快捷工作流</p>
+                    <p className="text-sm text-neutral-500">证书、夫妻图、分享入口与额度状态统一收进抽屉，详情主体只保留核心信息。</p>
+                  </div>
                 </div>
                 <button
                   type="button"
                   className={modalCloseButtonClass}
-                  onClick={() => setOpenMode(null)}
+                  onClick={() => setIsOpen(false)}
                   aria-label="关闭抽屉"
                 >
                   <X size={17} strokeWidth={2.6} />
                 </button>
               </div>
+
+              <div className="mt-4 grid gap-2 sm:grid-cols-4">
+                <button
+                  type="button"
+                  className={buildFilterPillClass(activeSection === 'overview')}
+                  onClick={() => setActiveSection('overview')}
+                >
+                  总览
+                </button>
+                <button
+                  type="button"
+                  className={buildFilterPillClass(activeSection === 'certificate')}
+                  onClick={() => setActiveSection('certificate')}
+                >
+                  证书生成
+                </button>
+                <button
+                  type="button"
+                  className={buildFilterPillClass(activeSection === 'couple-photo')}
+                  onClick={() => setActiveSection('couple-photo')}
+                >
+                  夫妻图
+                </button>
+                <button
+                  type="button"
+                  className={buildFilterPillClass(activeSection === 'share')}
+                  onClick={() => setActiveSection('share')}
+                >
+                  分享入口
+                </button>
+              </div>
             </header>
 
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
-              {openMode === 'certificate' ? (
-                <div className="space-y-4 pb-[calc(env(safe-area-inset-bottom)+2rem)]">
-                  <CertificateStudioCard
-                    certificateEligibility={certificateEligibility}
-                    selectedBatch={selectedBatch}
-                    selectedSubjectMedia={selectedSubjectMedia}
-                  />
+              <div className="space-y-4 pb-[calc(env(safe-area-inset-bottom)+2rem)]">
+                {assetError ? (
+                  <p className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+                    {assetError}
+                  </p>
+                ) : null}
 
-                  <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
-                    <div className="space-y-4">
-                      <BatchStep
-                        studio={studio}
-                        setStudio={setStudio}
-                        eggEvents={eggEvents}
-                        eggEventOptionLabels={eggEventOptionLabels}
-                        saleBatches={saleBatches}
-                        selectedBatch={selectedBatch}
-                        creatingSaleBatch={creatingSaleBatch}
-                        onCreateBatch={onCreateBatch}
+                {shareError ? (
+                  <p className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+                    {shareError}
+                  </p>
+                ) : null}
+
+                {shareNotice ? (
+                  <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
+                    {shareNotice}
+                  </p>
+                ) : null}
+
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-[26px] border border-neutral-200 bg-white px-4 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-neutral-500">Certificate</p>
+                    <p className="mt-2 text-2xl font-semibold text-neutral-950">{certificateStatus}</p>
+                    <p className="mt-1 text-xs text-neutral-500">{certificateMeta}</p>
+                  </div>
+                  <div className="rounded-[26px] border border-neutral-200 bg-white px-4 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-neutral-500">Couple Photo</p>
+                    <p className="mt-2 text-2xl font-semibold text-neutral-950">{currentCouplePhoto ? '已就绪' : '待生成'}</p>
+                    <p className="mt-1 text-xs text-neutral-500">{coupleMeta}</p>
+                  </div>
+                  <div className="rounded-[26px] border border-neutral-200 bg-white px-4 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-neutral-500">Share</p>
+                    <p className="mt-2 text-2xl font-semibold text-neutral-950">可分享</p>
+                    <p className="mt-1 text-xs text-neutral-500">分享当前种龟详情页，先提供外链入口与复制动作，不引入海报生成链路。</p>
+                  </div>
+                </div>
+
+                {activeSection === 'overview' ? (
+                  <div className="space-y-4">
+                    <div className="rounded-[30px] border border-neutral-200 bg-neutral-950 px-5 py-5 text-white shadow-[0_24px_60px_rgba(15,23,42,0.24)]">
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div className="max-w-2xl space-y-2">
+                          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/72">
+                            <Layers3 size={14} />
+                            Drawer First
+                          </div>
+                          <h3 className="text-2xl font-semibold leading-tight">右下角只留一个快捷入口，主体信息不再被大卡片挤占。</h3>
+                          <p className="text-sm leading-6 text-white/70">
+                            这一版先把证书、夫妻图、分享入口和额度状态都收进同一抽屉，后续再按使用频次继续细分。
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-neutral-950 transition hover:bg-[#FFF6BF] disabled:cursor-not-allowed disabled:opacity-60"
+                          onClick={() => void handleShareEntry()}
+                          disabled={sharePending}
+                        >
+                          <Share2 size={16} />
+                          {sharePending ? '正在生成分享链接...' : '立即分享'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 xl:grid-cols-3">
+                      <QuickEntryCard
+                        icon={<FileBadge2 size={18} />}
+                        eyebrow="Certificate"
+                        title="生成证书"
+                        description="继续沿用批次、客户分配、主体图和预览出证四步，入口改为抽屉内切换。"
+                        meta={certificateMeta}
+                        actionLabel="进入"
+                        onClick={() => setActiveSection('certificate')}
                       />
+                      <QuickEntryCard
+                        icon={<HeartHandshake size={18} />}
+                        eyebrow="Couple Photo"
+                        title="夫妻图"
+                        description="保留当前生效图与历史浏览，母龟可直接在抽屉里发起生成。"
+                        meta={coupleMeta}
+                        actionLabel="进入"
+                        onClick={() => setActiveSection('couple-photo')}
+                      />
+                      <QuickEntryCard
+                        icon={<Link2 size={18} />}
+                        eyebrow="Share Entry"
+                        title="分享入口"
+                        description="本轮先做分享外链入口，生成即复制并打开，不把用户带进海报制作流程。"
+                        meta="点击后会打开当前种龟的公开详情页。"
+                        actionLabel="打开"
+                        onClick={() => setActiveSection('share')}
+                      />
+                    </div>
+                  </div>
+                ) : null}
 
-                      <AllocationStep
-                        studio={studio}
-                        setStudio={setStudio}
+                {activeSection === 'certificate' ? (
+                  <div className="space-y-4">
+                    <CertificateStudioCard
+                      certificateEligibility={certificateEligibility}
+                      selectedBatch={selectedBatch}
+                      selectedSubjectMedia={selectedSubjectMedia}
+                    />
+
+                    <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+                      <div className="space-y-4">
+                        <BatchStep
+                          studio={studio}
+                          setStudio={setStudio}
+                          eggEvents={eggEvents}
+                          eggEventOptionLabels={eggEventOptionLabels}
+                          saleBatches={saleBatches}
+                          selectedBatch={selectedBatch}
+                          creatingSaleBatch={creatingSaleBatch}
+                          onCreateBatch={onCreateBatch}
+                        />
+
+                        <AllocationStep
+                          studio={studio}
+                          setStudio={setStudio}
+                          selectedBatch={selectedBatch}
+                          selectedAllocation={selectedAllocation}
+                          creatingSaleAllocation={creatingSaleAllocation}
+                          onCreateAllocation={onCreateAllocation}
+                        />
+
+                        <SubjectMediaStep
+                          studio={studio}
+                          setStudio={setStudio}
+                          selectedBatch={selectedBatch}
+                          selectedSubjectMedia={selectedSubjectMedia}
+                          uploadingSubjectMedia={uploadingSubjectMedia}
+                          onUploadMedia={onUploadSubjectMedia}
+                        />
+                      </div>
+
+                      <PreviewStep
+                        tenantSlug={tenantSlug}
+                        certificateEligibility={certificateEligibility}
+                        certificateRequirements={certificateRequirements}
                         selectedBatch={selectedBatch}
                         selectedAllocation={selectedAllocation}
-                        creatingSaleAllocation={creatingSaleAllocation}
-                        onCreateAllocation={onCreateAllocation}
-                      />
-
-                      <SubjectMediaStep
-                        studio={studio}
-                        setStudio={setStudio}
-                        selectedBatch={selectedBatch}
                         selectedSubjectMedia={selectedSubjectMedia}
-                        uploadingSubjectMedia={uploadingSubjectMedia}
-                        onUploadMedia={onUploadSubjectMedia}
+                        certificatePreview={certificatePreview}
+                        certificates={certificates}
+                        canPreviewCertificate={canPreviewCertificate}
+                        canConfirmCertificate={canConfirmCertificate}
+                        previewingCertificate={previewingCertificate}
+                        confirmingCertificate={confirmingCertificate}
+                        onPreview={onPreviewCertificate}
+                        onConfirm={onConfirmCertificate}
                       />
                     </div>
+                  </div>
+                ) : null}
 
-                    <PreviewStep
-                      tenantSlug={tenantSlug}
-                      certificateEligibility={certificateEligibility}
-                      certificateRequirements={certificateRequirements}
-                      selectedBatch={selectedBatch}
-                      selectedAllocation={selectedAllocation}
-                      selectedSubjectMedia={selectedSubjectMedia}
-                      certificatePreview={certificatePreview}
-                      certificates={certificates}
-                      canPreviewCertificate={canPreviewCertificate}
-                      canConfirmCertificate={canConfirmCertificate}
-                      previewingCertificate={previewingCertificate}
-                      confirmingCertificate={confirmingCertificate}
-                      onPreview={onPreviewCertificate}
-                      onConfirm={onConfirmCertificate}
+                {activeSection === 'couple-photo' ? (
+                  <div className="space-y-4">
+                    <div className="rounded-[28px] border border-neutral-900 bg-neutral-950 px-5 py-5 text-white shadow-[0_24px_60px_rgba(15,23,42,0.28)]">
+                      <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+                        <div className="space-y-2">
+                          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/72">
+                            <HeartHandshake size={14} />
+                            Couple Photo Studio
+                          </div>
+                          <h3 className="text-2xl font-semibold leading-tight">夫妻图现在只在抽屉里处理，不再占据详情页主体版面。</h3>
+                          <p className="text-sm leading-6 text-white/70">
+                            当前保留生成入口、当前生效图和历史记录；公龟仍可看到状态说明，但不会误触生成动作。
+                          </p>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+                          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                            <p className="text-[11px] uppercase tracking-[0.2em] text-white/45">Current</p>
+                            <p className="mt-2 text-lg font-semibold text-white">{currentCouplePhoto ? '已生成' : '暂无'}</p>
+                            <p className="text-xs text-white/60">当前生效夫妻图</p>
+                          </div>
+                          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                            <p className="text-[11px] uppercase tracking-[0.2em] text-white/45">History</p>
+                            <p className="mt-2 text-2xl font-semibold text-white">{couplePhotoHistory.length}</p>
+                            <p className="text-xs text-white/60">历史生成记录</p>
+                          </div>
+                          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                            <p className="text-[11px] uppercase tracking-[0.2em] text-white/45">Eligibility</p>
+                            <p className="mt-2 text-lg font-semibold text-white">{isFemaleBreeder ? '可生成' : '仅母龟可生成'}</p>
+                            <p className="text-xs text-white/60">沿用现有业务限制</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <CouplePhotoSection
+                      isFemaleBreeder={isFemaleBreeder}
+                      currentCouplePhoto={currentCouplePhoto}
+                      couplePhotoHistory={couplePhotoHistory}
+                      generatingCouplePhoto={generatingCouplePhoto}
+                      onGenerate={onGenerateCouplePhoto}
                     />
                   </div>
-                </div>
-              ) : (
-                <div className="space-y-4 pb-[calc(env(safe-area-inset-bottom)+2rem)]">
-                  <div className="rounded-[28px] border border-neutral-900 bg-neutral-950 px-5 py-5 text-white shadow-[0_24px_60px_rgba(15,23,42,0.28)]">
-                    <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-                      <div className="space-y-2">
-                        <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/72">
-                          <HeartHandshake size={14} />
-                          Couple Photo Studio
+                ) : null}
+
+                {activeSection === 'share' ? (
+                  <div className="space-y-4">
+                    <div className="rounded-[30px] border border-neutral-200 bg-white p-5 shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div className="max-w-2xl space-y-2">
+                          <div className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-600">
+                            <Share2 size={14} />
+                            Share Entry
+                          </div>
+                          <h3 className="text-2xl font-semibold text-neutral-950">先把分享动作做轻，不把用户推进海报生成链路。</h3>
+                          <p className="text-sm leading-6 text-neutral-500">
+                            点击后会创建当前种龟的公开详情链接，自动复制到剪贴板，并在新标签页打开，适合客服或销售直接转发。
+                          </p>
                         </div>
-                        <h3 className="text-2xl font-semibold leading-tight">
-                          夫妻图保留为售种物料工具，不再占据详情页主体版面。
-                        </h3>
-                        <p className="text-sm leading-6 text-white/70">
-                          这一版先落地生成入口、当前生效图和历史浏览；后续如需扩展模板选择、文案参数，可继续在此抽屉追加步骤。
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-2 rounded-full bg-neutral-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-neutral-900 disabled:cursor-not-allowed disabled:opacity-60"
+                          onClick={() => void handleShareEntry()}
+                          disabled={sharePending}
+                        >
+                          <Share2 size={16} />
+                          {sharePending ? '正在生成...' : '复制并打开分享链接'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="rounded-[28px] border border-neutral-200 bg-white p-5 shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-500">Audience</p>
+                        <p className="mt-2 text-lg font-semibold text-neutral-950">面向客户的种龟详情分享</p>
+                        <p className="mt-2 text-sm leading-6 text-neutral-500">
+                          直接落到该种龟的公开详情页，减少销售再解释“去哪里看”的中间步骤。
                         </p>
                       </div>
-                      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
-                        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                          <p className="text-[11px] uppercase tracking-[0.2em] text-white/45">Current</p>
-                          <p className="mt-2 text-lg font-semibold text-white">{currentCouplePhoto ? '已生成' : '暂无'}</p>
-                          <p className="text-xs text-white/60">当前生效夫妻图</p>
-                        </div>
-                        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                          <p className="text-[11px] uppercase tracking-[0.2em] text-white/45">History</p>
-                          <p className="mt-2 text-2xl font-semibold text-white">{couplePhotoHistory.length}</p>
-                          <p className="text-xs text-white/60">历史生成记录</p>
-                        </div>
-                        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                          <p className="text-[11px] uppercase tracking-[0.2em] text-white/45">Eligibility</p>
-                          <p className="mt-2 text-lg font-semibold text-white">{isFemaleBreeder ? '可生成' : '仅母龟可生成'}</p>
-                          <p className="text-xs text-white/60">沿用现有业务限制</p>
-                        </div>
+                      <div className="rounded-[28px] border border-neutral-200 bg-white p-5 shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-500">Current Scope</p>
+                        <p className="mt-2 text-lg font-semibold text-neutral-950">只做入口，不做海报编辑</p>
+                        <p className="mt-2 text-sm leading-6 text-neutral-500">
+                          业务先验证“能快速分享”是否足够，再决定是否补图文模板、海报下载和文案配置。
+                        </p>
                       </div>
                     </div>
                   </div>
-
-                  <CouplePhotoSection
-                    isFemaleBreeder={isFemaleBreeder}
-                    currentCouplePhoto={currentCouplePhoto}
-                    couplePhotoHistory={couplePhotoHistory}
-                    generatingCouplePhoto={generatingCouplePhoto}
-                    onGenerate={onGenerateCouplePhoto}
-                  />
-                </div>
-              )}
+                ) : null}
+              </div>
             </div>
           </section>
         </div>

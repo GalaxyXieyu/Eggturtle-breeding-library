@@ -532,8 +532,10 @@ export default function BreederDetailPage() {
         <FamilyTreeView tree={data.tree} openBreederDetail={openBreederDetail} />
       ) : null}
 
-      {!loading && isFemaleBreeder ? (
+      {!loading && currentBreeder ? (
         <BreederAssetWorkflowDrawer
+          breederId={currentBreeder.id}
+          breederName={currentBreeder.name?.trim() || currentBreeder.code || '当前种龟'}
           tenantSlug={tenantSlug}
           eggEvents={certificateData.eggEvents}
           eggEventOptionLabels={certificateData.eggEventOptionLabels}
