@@ -31,7 +31,7 @@ export function AllocationStep({ studio, setStudio, selectedBatch, selectedAlloc
       </div>
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         <div className="space-y-2 md:col-span-2">
-          <Label>客户分配</Label>
+          <Label>历史客户列表</Label>
           <NativeSelect value={studio.selectedAllocationId} onChange={(event) => setStudio((current) => ({ ...current, selectedAllocationId: event.target.value }))} disabled={!selectedBatch}>
             <option value="">请选择或先新增成交分配</option>
             {selectedBatch?.allocations.map((allocation) => (
@@ -41,13 +41,9 @@ export function AllocationStep({ studio, setStudio, selectedBatch, selectedAlloc
             ))}
           </NativeSelect>
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2 md:col-span-2">
           <Label>买家名称</Label>
           <Input value={studio.buyerName} onChange={(event) => setStudio((current) => ({ ...current, buyerName: event.target.value }))} placeholder="如：张先生 / 深圳龟友会" />
-        </div>
-        <div className="space-y-2">
-          <Label>买家账号</Label>
-          <Input value={studio.buyerAccountId} onChange={(event) => setStudio((current) => ({ ...current, buyerAccountId: event.target.value }))} placeholder="微信号 / 小红书号" />
         </div>
         <div className="space-y-2">
           <Label>联系方式</Label>
@@ -66,10 +62,6 @@ export function AllocationStep({ studio, setStudio, selectedBatch, selectedAlloc
           <Input value={studio.channel} onChange={(event) => setStudio((current) => ({ ...current, channel: event.target.value }))} placeholder="朋友圈 / 私聊 / 直播" />
         </div>
         <div className="space-y-2">
-          <Label>活动标识</Label>
-          <Input value={studio.campaignId} onChange={(event) => setStudio((current) => ({ ...current, campaignId: event.target.value }))} placeholder="如 spring-2026" />
-        </div>
-        <div className="space-y-2">
           <Label>成交时间</Label>
           <Input type="datetime-local" value={studio.soldAt} onChange={(event) => setStudio((current) => ({ ...current, soldAt: event.target.value }))} />
         </div>
@@ -80,7 +72,7 @@ export function AllocationStep({ studio, setStudio, selectedBatch, selectedAlloc
       </div>
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 px-4 py-3">
         <div className="space-y-1 text-sm text-neutral-600">
-          <p className="font-semibold text-neutral-900">{selectedAllocation?.allocationNo ?? '尚未绑定客户分配'}</p>
+          <p className="font-semibold text-neutral-900">{selectedAllocation?.allocationNo ?? '尚未绑定历史客户记录'}</p>
           <p>
             买家：{selectedAllocation?.buyerName ?? '待登记'} · 渠道：{selectedAllocation?.channel ?? '待登记'} · 数量：{selectedAllocation?.quantity ?? 0}
           </p>

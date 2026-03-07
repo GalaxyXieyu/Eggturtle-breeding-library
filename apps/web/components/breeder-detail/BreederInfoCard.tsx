@@ -4,7 +4,6 @@ import { formatSex } from '@/lib/pet-format';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardTitle } from '@/components/ui/card';
-import { MetaItem } from './MetaItem';
 
 type BreederInfoCardProps = {
   breeder: Product | null;
@@ -14,6 +13,23 @@ type BreederInfoCardProps = {
   onManageImages: () => void;
   resolveImageUrl: (url: string) => string;
 };
+
+const relationPillStyles = {
+  父本: 'border-sky-200 bg-sky-50 text-sky-700',
+  母本: 'border-pink-200 bg-pink-50 text-pink-700',
+  配偶: 'border-amber-200 bg-amber-50 text-amber-700'
+} as const;
+
+function RelationPill({ label, value }: { label: keyof typeof relationPillStyles; value: string }) {
+  return (
+    <div
+      className={`inline-flex w-full min-w-0 items-center justify-center gap-1.5 rounded-full border px-2.5 py-2 text-center ${relationPillStyles[label]}`}
+    >
+      <span className="shrink-0 text-[10px] font-semibold tracking-[0.12em]">{label}</span>
+      <span className="min-w-0 truncate text-xs font-semibold sm:text-sm">{value}</span>
+    </div>
+  );
+}
 
 export function BreederInfoCard({
   breeder,
@@ -61,10 +77,10 @@ export function BreederInfoCard({
             <CardTitle className="text-4xl text-neutral-900">{breeder?.code ?? '种龟详情'}</CardTitle>
             <CardDescription className="mt-2 text-base text-neutral-600">{breeder?.description ?? '暂无描述'}</CardDescription>
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <MetaItem label="父本" value={breeder?.sireCode ?? '未关联'} />
-            <MetaItem label="母本" value={breeder?.damCode ?? '未关联'} />
-            <MetaItem label="配偶" value={breeder?.mateCode ?? '未关联'} />
+          <div className="grid grid-cols-3 gap-2">
+            <RelationPill label="父本" value={breeder?.sireCode ?? '未关联'} />
+            <RelationPill label="母本" value={breeder?.damCode ?? '未关联'} />
+            <RelationPill label="配偶" value={breeder?.mateCode ?? '未关联'} />
           </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="secondary" onClick={onBack}>
