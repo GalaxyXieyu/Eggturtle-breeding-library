@@ -36,17 +36,9 @@ import {
   buildEventDetailLabel
 } from '@/lib/breeder-utils';
 import ProductDrawer from '@/components/product-drawer';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  CertificateStudioCard,
-  CouplePhotoSection,
-  BatchStep,
-  AllocationStep,
-  SubjectMediaStep,
-  PreviewStep,
-  useCertificateData,
-  useCertificateStudio
-} from '@/components/certificate-studio';
+import { Card } from '@/components/ui/card';
+import { useCertificateData, useCertificateStudio } from '@/components/certificate-studio';
+import { BreederAssetWorkflowDrawer } from '@/components/breeder-detail/BreederAssetWorkflowDrawer';
 import { BreederInfoCard } from '@/components/breeder-detail/BreederInfoCard';
 import { BreederImageGallery } from '@/components/breeder-detail/BreederImageGallery';
 import { FamilyTreeView } from '@/components/breeder-detail/FamilyTreeView';
@@ -509,94 +501,6 @@ export default function BreederDetailPage() {
       ) : null}
 
       {!loading ? (
-        <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
-          <CardHeader>
-            <CardTitle className="text-2xl">证书与夫妻照</CardTitle>
-            <CardDescription>证书按租户每月 100 张配额控制；夫妻照不限，归属母龟资产。</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {certificateStudioHandlers.assetError ? (
-              <p className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
-                {certificateStudioHandlers.assetError}
-              </p>
-            ) : null}
-
-            <div className="space-y-4">
-              <CertificateStudioCard
-                certificateEligibility={certificateEligibility}
-                selectedBatch={selectedBatch}
-                selectedSubjectMedia={selectedSubjectMedia}
-              />
-
-              <div className="grid gap-4 xl:grid-cols-[1.18fr_0.82fr]">
-                <div className="space-y-4">
-                  <BatchStep
-                    studio={studio}
-                    setStudio={setStudio}
-                    eggEvents={certificateData.eggEvents}
-                    eggEventOptionLabels={certificateData.eggEventOptionLabels}
-                    saleBatches={saleBatches}
-                    selectedBatch={selectedBatch}
-                    creatingSaleBatch={certificateStudioHandlers.creatingSaleBatch}
-                    onCreateBatch={certificateStudioHandlers.handleCreateSaleBatch}
-                  />
-
-                  <AllocationStep
-                    studio={studio}
-                    setStudio={setStudio}
-                    selectedBatch={selectedBatch}
-                    selectedAllocation={selectedAllocation}
-                    creatingSaleAllocation={certificateStudioHandlers.creatingSaleAllocation}
-                    onCreateAllocation={certificateStudioHandlers.handleCreateSaleAllocation}
-                  />
-
-                  <SubjectMediaStep
-                    studio={studio}
-                    setStudio={setStudio}
-                    selectedBatch={selectedBatch}
-                    selectedSubjectMedia={selectedSubjectMedia}
-                    uploadingSubjectMedia={certificateStudioHandlers.uploadingSubjectMedia}
-                    onUploadMedia={certificateStudioHandlers.handleUploadSubjectMedia}
-                  />
-                </div>
-
-                <div className="space-y-4">
-                  <PreviewStep
-                    tenantSlug={tenantSlug}
-                    certificateEligibility={certificateEligibility}
-                    certificateRequirements={certificateRequirements}
-                    selectedBatch={selectedBatch}
-                    selectedAllocation={selectedAllocation}
-                    selectedSubjectMedia={selectedSubjectMedia}
-                    certificatePreview={generatedAssets.certificatePreview}
-                    certificates={generatedAssets.certificates}
-                    canPreviewCertificate={canPreviewCertificate}
-                    canConfirmCertificate={canConfirmCertificate}
-                    previewingCertificate={certificateStudioHandlers.previewingCertificate}
-                    confirmingCertificate={certificateStudioHandlers.confirmingCertificate}
-                    onPreview={certificateStudioHandlers.handlePreviewCertificate}
-                    onConfirm={certificateStudioHandlers.handleConfirmCertificate}
-                  />
-
-                  <CouplePhotoSection
-                    isFemaleBreeder={isFemaleBreeder}
-                    currentCouplePhoto={generatedAssets.currentCouplePhoto}
-                    couplePhotoHistory={generatedAssets.couplePhotoHistory}
-                    generatingCouplePhoto={generatingCouplePhoto}
-                    onGenerate={handleGenerateCouplePhoto}
-                  />
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {!loading && data.tree ? (
-        <FamilyTreeView tree={data.tree} openBreederDetail={openBreederDetail} />
-      ) : null}
-
-      {!loading ? (
         <BreederEventTimeline
           events={data.events}
           eventFilter={eventFilter}
@@ -606,6 +510,46 @@ export default function BreederDetailPage() {
           filteredEvents={filteredEvents}
           groupedEvents={groupedEvents}
           eventDetailLabels={eventDetailLabels}
+        />
+      ) : null}
+
+      {!loading && data.tree ? (
+        <FamilyTreeView tree={data.tree} openBreederDetail={openBreederDetail} />
+      ) : null}
+
+      {!loading ? (
+        <BreederAssetWorkflowDrawer
+          tenantSlug={tenantSlug}
+          eggEvents={certificateData.eggEvents}
+          eggEventOptionLabels={certificateData.eggEventOptionLabels}
+          certificateEligibility={certificateEligibility}
+          certificateRequirements={certificateRequirements}
+          saleBatches={saleBatches}
+          selectedBatch={selectedBatch}
+          selectedAllocation={selectedAllocation}
+          selectedSubjectMedia={selectedSubjectMedia}
+          certificates={generatedAssets.certificates}
+          certificatePreview={generatedAssets.certificatePreview}
+          canPreviewCertificate={canPreviewCertificate}
+          canConfirmCertificate={canConfirmCertificate}
+          previewingCertificate={certificateStudioHandlers.previewingCertificate}
+          confirmingCertificate={certificateStudioHandlers.confirmingCertificate}
+          creatingSaleBatch={certificateStudioHandlers.creatingSaleBatch}
+          creatingSaleAllocation={certificateStudioHandlers.creatingSaleAllocation}
+          uploadingSubjectMedia={certificateStudioHandlers.uploadingSubjectMedia}
+          assetError={certificateStudioHandlers.assetError}
+          studio={studio}
+          setStudio={setStudio}
+          isFemaleBreeder={isFemaleBreeder}
+          currentCouplePhoto={generatedAssets.currentCouplePhoto}
+          couplePhotoHistory={generatedAssets.couplePhotoHistory}
+          generatingCouplePhoto={generatingCouplePhoto}
+          onPreviewCertificate={certificateStudioHandlers.handlePreviewCertificate}
+          onConfirmCertificate={certificateStudioHandlers.handleConfirmCertificate}
+          onCreateBatch={certificateStudioHandlers.handleCreateSaleBatch}
+          onCreateAllocation={certificateStudioHandlers.handleCreateSaleAllocation}
+          onUploadSubjectMedia={certificateStudioHandlers.handleUploadSubjectMedia}
+          onGenerateCouplePhoto={handleGenerateCouplePhoto}
         />
       ) : null}
 
