@@ -200,13 +200,14 @@ function toFamilyTreeNode(node: {
   code: string;
   name: string | null;
   sex: string | null;
+  coverImageUrl?: string | null;
 }, coverImageByProductId: Map<string, string | undefined>) {
   return {
     id: node.id,
     code: node.code,
     name: node.name ?? node.code,
     sex: normalizeSex(node.sex),
-    thumbnailUrl: coverImageByProductId.get(node.id)
+    thumbnailUrl: node.coverImageUrl ?? coverImageByProductId.get(node.id)
   };
 }
 
@@ -217,6 +218,7 @@ function toFamilyTreeNodeOrUndefined(
         code: string;
         name: string | null;
         sex: string | null;
+        coverImageUrl?: string | null;
       }
     | null,
   coverImageByProductId: Map<string, string | undefined>

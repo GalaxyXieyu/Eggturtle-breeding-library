@@ -380,16 +380,22 @@ export class ProductsReadService {
       }),
     ]);
 
+    const coverImageUrlByProductId = await this.loadFamilyTreeCoverImageUrls(
+      [product, sire, dam, mate, ...children]
+        .filter((item): item is PrismaProduct => Boolean(item))
+        .map((item) => item.id),
+    );
+
     return {
-      self: this.toFamilyTreeNode(product),
-      sire: this.toFamilyTreeNodeOrNull(sire),
-      dam: this.toFamilyTreeNodeOrNull(dam),
-      mate: this.toFamilyTreeNodeOrNull(mate),
-      children: children.map((child) => this.toFamilyTreeNode(child)),
+      self: this.toFamilyTreeNode(product, coverImageUrlByProductId),
+      sire: this.toFamilyTreeNodeOrNull(sire, coverImageUrlByProductId),
+      dam: this.toFamilyTreeNodeOrNull(dam, coverImageUrlByProductId),
+      mate: this.toFamilyTreeNodeOrNull(mate, coverImageUrlByProductId),
+      children: children.map((child) => this.toFamilyTreeNode(child, coverImageUrlByProductId)),
       links: {
-        sire: this.toFamilyTreeLink(product.sireCode, sire),
-        dam: this.toFamilyTreeLink(product.damCode, dam),
-        mate: this.toFamilyTreeLink(currentMateCode, mate),
+        sire: this.toFamilyTreeLink(product.sireCode, sire, coverImageUrlByProductId),
+        dam: this.toFamilyTreeLink(product.damCode, dam, coverImageUrlByProductId),
+        mate: this.toFamilyTreeLink(currentMateCode, mate, coverImageUrlByProductId),
       },
       limitations: '当前家族谱系仅展示自己、直属父母、当前配偶与直系子代。',
     };
@@ -738,18 +744,63 @@ export class ProductsReadService {
     return null;
   }
 
-  private toFamilyTreeNode(product: PrismaProduct) {
+  private async loadFamilyTreeCoverImageUrls(productIds: string[]) {
+    const dedupedProductIds = Array.from(new Set(productIds));
+    const coverImageUrlByProductId = new Map<string, string | null>();
+
+    for (const productId of dedupedProductIds) {
+      coverImageUrlByProductId.set(productId, null);
+    }
+
+    if (dedupedProductIds.length === 0) {
+      return coverImageUrlByProductId;
+    }
+
+    const images = await this.prisma.productImage.findMany({
+      where: {
+        productId: {
+          in: dedupedProductIds,
+        },
+        isMain: true,
+      },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+      select: {
+        id: true,
+        productId: true,
+      },
+    });
+
+    for (const image of images) {
+      if ((coverImageUrlByProductId.get(image.productId) ?? null) !== null) {
+        continue;
+      }
+
+      coverImageUrlByProductId.set(
+        image.productId,
+        this.buildImageAccessPath(image.productId, image.id),
+      );
+    }
+
+    return coverImageUrlByProductId;
+  }
+
+  private toFamilyTreeNode(
+    product: PrismaProduct,
+    coverImageUrlByProductId?: Map<string, string | null>,
+  ) {
     return {
       id: product.id,
       code: product.code,
       name: product.name,
       sex: product.sex,
+      coverImageUrl: coverImageUrlByProductId?.get(product.id) ?? null,
     };
   }
 
   private toFamilyTreeLink(
     code: string | null | undefined,
     product: PrismaProduct | null,
+    coverImageUrlByProductId?: Map<string, string | null>,
   ): ProductFamilyTreeLink | null {
     const normalizedCode = code?.trim();
     if (!normalizedCode) {
@@ -758,16 +809,19 @@ export class ProductsReadService {
 
     return {
       code: normalizedCode,
-      product: this.toFamilyTreeNodeOrNull(product),
+      product: this.toFamilyTreeNodeOrNull(product, coverImageUrlByProductId),
     };
   }
 
-  private toFamilyTreeNodeOrNull(product: PrismaProduct | null) {
+  private toFamilyTreeNodeOrNull(
+    product: PrismaProduct | null,
+    coverImageUrlByProductId?: Map<string, string | null>,
+  ) {
     if (!product) {
       return null;
     }
 
-    return this.toFamilyTreeNode(product);
+    return this.toFamilyTreeNode(product, coverImageUrlByProductId);
   }
 
   private toProduct(

@@ -235,7 +235,8 @@ export const productFamilyTreeNodeSchema = z.object({
   id: productIdParamSchema,
   code: productCodeSchema,
   name: z.string().nullable(),
-  sex: z.string().nullable()
+  sex: z.string().nullable(),
+  coverImageUrl: z.string().nullable().optional()
 });
 
 export const productFamilyTreeLinkSchema = z.object({

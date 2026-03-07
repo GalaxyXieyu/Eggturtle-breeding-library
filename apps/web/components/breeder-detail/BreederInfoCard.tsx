@@ -1,9 +1,9 @@
 import { type Product, type ProductImage } from '@eggturtle/shared';
 import { ArrowLeft, Image as ImageIcon, PencilRuler } from 'lucide-react';
-import { formatSex } from '@/lib/pet-format';
+import { formatPrice, formatSex, formatShortDate } from '@/lib/pet-format';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardTitle } from '@/components/ui/card';
 
 type BreederInfoCardProps = {
   breeder: Product | null;
@@ -107,17 +107,54 @@ export function BreederInfoCard({
             <Badge variant={breeder?.inStock ? 'success' : 'default'}>
               {breeder?.inStock ? '启用中' : '停用'}
             </Badge>
-            <Badge variant="accent">{formatSex(breeder?.sex, { unknownLabel: 'unknown' })}</Badge>
+            <Badge variant="accent">{formatSex(breeder?.sex, { unknownLabel: '未知' })}</Badge>
             <Badge variant="sky">{seriesLabel ?? '未关联系列'}</Badge>
+            {typeof breeder?.offspringUnitPrice === 'number' ? (
+              <Badge variant="warning">子代 ¥ {formatPrice(breeder.offspringUnitPrice)}</Badge>
+            ) : null}
           </div>
-          <div>
-            <CardTitle className="text-4xl text-neutral-900">{breeder?.code ?? '种龟详情'}</CardTitle>
-            <CardDescription className="mt-2 text-base text-neutral-600">{breeder?.description ?? '暂无描述'}</CardDescription>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">名称</p>
+              <CardTitle className="text-3xl text-neutral-900 sm:text-4xl">
+                {breeder?.name?.trim() || breeder?.code || '种龟详情'}
+              </CardTitle>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">状态</p>
+                <p className="mt-2 text-sm font-semibold text-neutral-900">
+                  {breeder?.needMatingStatus === 'warning'
+                    ? '逾期待配'
+                    : breeder?.needMatingStatus === 'need_mating'
+                      ? '待配'
+                      : '正常'}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">待配天数</p>
+                <p className="mt-2 text-sm font-semibold text-neutral-900">
+                  {typeof breeder?.daysSinceEgg === 'number' ? `第 ${breeder.daysSinceEgg} 天` : '暂无'}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4 sm:col-span-2 xl:col-span-1">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">最近产蛋 / 交配</p>
+                <p className="mt-2 text-sm font-semibold text-neutral-900">
+                  {breeder?.lastEggAt ? formatShortDate(breeder.lastEggAt) : '暂无'} / {breeder?.lastMatingAt ? formatShortDate(breeder.lastMatingAt) : '暂无'}
+                </p>
+              </div>
+            </div>
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             <RelationPill label="父本" value={breeder?.sireCode ?? '未关联'} />
             <RelationPill label="母本" value={breeder?.damCode ?? '未关联'} />
             <RelationPill label="配偶" value={breeder?.mateCode ?? '未关联'} />
+          </div>
+          <div className="rounded-2xl border border-neutral-200 bg-white p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">说明</p>
+            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-neutral-700">
+              {breeder?.description?.trim() || '暂无说明'}
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="secondary" onClick={onBack}>
