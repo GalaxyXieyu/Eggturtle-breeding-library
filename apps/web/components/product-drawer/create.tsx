@@ -24,11 +24,9 @@ import {
   createSeriesIfNeeded,
   parseOffspringUnitPrice,
   parsePopularityScore,
-  resolveSeriesInput,
   toSuggestedSeriesCode,
   type ProductSeriesOption,
-  type ProductSex,
-  type SeriesResolveResult
+  type ProductSex
 } from '@/components/product-drawer/shared';
 import ProductCreateImageWorkbench from '@/components/product-drawer/create-image-workbench';
 import {
@@ -81,7 +79,8 @@ export default function ProductCreateDrawer({
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const [code, setCode] = useState('');
-  const [seriesInput, setSeriesInput] = useState('');
+  const [selectedSeriesId, setSelectedSeriesId] = useState('');
+  const [isCreatingSeries, setIsCreatingSeries] = useState(false);
   const [sex, setSex] = useState<CreateSex>('');
   const [offspringUnitPrice, setOffspringUnitPrice] = useState('');
   const [sireCode, setSireCode] = useState('');
@@ -104,11 +103,11 @@ export default function ProductCreateDrawer({
 
   const pendingImagesRef = useRef<PendingImageItem[]>([]);
 
-  const seriesResolveResult = useMemo<SeriesResolveResult>(() => {
-    return resolveSeriesInput(seriesInput, seriesOptions);
-  }, [seriesInput, seriesOptions]);
+  const selectedSeries = useMemo(
+    () => seriesOptions.find((item) => item.id === selectedSeriesId) ?? null,
+    [selectedSeriesId, seriesOptions],
+  );
 
-  const needsNewSeries = seriesResolveResult.type === 'requireNewSeries';
   const currentImage = pendingImages[currentImageIndex] ?? null;
   const hasMultipleImages = pendingImages.length > 1;
   const selectedImageCount = pendingImages.length;
@@ -132,23 +131,22 @@ export default function ProductCreateDrawer({
   }, [open]);
 
   useEffect(() => {
-    if (!needsNewSeries) {
+    if (!isCreatingSeries) {
       return;
     }
 
-    const trimmedInput = seriesResolveResult.input.trim();
-    if (!trimmedInput) {
+    if (newSeriesName.trim() || newSeriesCode.trim()) {
       return;
     }
 
-    if (!newSeriesName.trim()) {
-      setNewSeriesName(trimmedInput);
+    const fallbackName = code.trim();
+    if (!fallbackName) {
+      return;
     }
 
-    if (!newSeriesCode.trim()) {
-      setNewSeriesCode(toSuggestedSeriesCode(trimmedInput));
-    }
-  }, [needsNewSeries, newSeriesCode, newSeriesName, seriesResolveResult]);
+    setNewSeriesName(fallbackName);
+    setNewSeriesCode(toSuggestedSeriesCode(fallbackName));
+  }, [code, isCreatingSeries, newSeriesCode, newSeriesName]);
 
   useEffect(() => {
     if (pendingImages.length === 0) {
@@ -168,7 +166,8 @@ export default function ProductCreateDrawer({
   function resetFormState() {
     setSubmitting(false);
     setCode('');
-    setSeriesInput('');
+    setSelectedSeriesId('');
+    setIsCreatingSeries(false);
     setSex('');
     setOffspringUnitPrice('');
     setSireCode('');
@@ -301,13 +300,10 @@ export default function ProductCreateDrawer({
 
     try {
       const orderedPendingImages = normalizePendingImages([...pendingImages]);
-      const seriesResolution = resolveSeriesInput(seriesInput, seriesOptions);
 
-      let resolvedSeriesId: string | null = null;
+      let resolvedSeriesId: string | null = selectedSeriesId.trim() || null;
 
-      if (seriesResolution.type === 'matchedExisting') {
-        resolvedSeriesId = seriesResolution.seriesId;
-      } else {
+      if (isCreatingSeries) {
         const createdSeries = await createSeriesIfNeeded({
           isDemoMode,
           code: newSeriesCode,
@@ -550,46 +546,59 @@ export default function ProductCreateDrawer({
                       onChange={(event) => setCode(event.target.value.toUpperCase())}
                     />
                   </div>
-                  <div className="grid gap-1.5">
+                  <div className="grid gap-2">
                     <label
                       htmlFor="create-drawer-series"
                       className="text-xs font-semibold text-neutral-600"
                     >
-                      系列（可输入自动识别）
+                      系列
                     </label>
-                    <Input
-                      id="create-drawer-series"
-                      type="text"
-                      list="create-drawer-series-options"
-                      placeholder="输入系列编码 / 名称 / ID"
-                      value={seriesInput}
-                      onChange={(event) => setSeriesInput(event.target.value)}
-                    />
-                    <datalist id="create-drawer-series-options">
-                      {seriesOptions.flatMap((item) => [
-                        <option key={`${item.id}-code`} value={item.code}>
-                          {item.name}
-                        </option>,
-                        <option key={`${item.id}-name`} value={item.name}>
-                          {item.code}
-                        </option>,
-                        <option key={`${item.id}-id`} value={item.id}>
-                          {item.name}
-                        </option>,
-                      ])}
-                    </datalist>
-                    {seriesResolveResult.type === 'matchedExisting' &&
-                    seriesResolveResult.matched ? (
+                    <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                      <NativeSelect
+                        id="create-drawer-series"
+                        value={isCreatingSeries ? '__create__' : selectedSeriesId}
+                        onChange={(event) => {
+                          const nextValue = event.target.value;
+                          if (nextValue === '__create__') {
+                            setIsCreatingSeries(true);
+                            setSelectedSeriesId('');
+                            return;
+                          }
+
+                          setIsCreatingSeries(false);
+                          setSelectedSeriesId(nextValue);
+                        }}
+                        disabled={submitting}
+                      >
+                        <option value="">不选择系列</option>
+                        {seriesOptions.map((item) => (
+                          <option key={`create-drawer-series-option-${item.id}`} value={item.id}>
+                            {item.code} - {item.name}
+                          </option>
+                        ))}
+                      </NativeSelect>
+                      <Button
+                        type="button"
+                        variant={isCreatingSeries ? 'default' : 'secondary'}
+                        className="w-full sm:w-auto"
+                        onClick={() => {
+                          setIsCreatingSeries(true);
+                          setSelectedSeriesId('');
+                        }}
+                        disabled={submitting}
+                      >
+                        新建系列
+                      </Button>
+                    </div>
+                    {isCreatingSeries ? (
+                      <p className="text-xs text-amber-700">将先创建系列，再完成当前乌龟创建。</p>
+                    ) : selectedSeries ? (
                       <p className="text-xs text-emerald-600">
-                        已匹配系列：{seriesResolveResult.matched.name}（
-                        {seriesResolveResult.matched.code}）
+                        已选择系列：{selectedSeries.name}（{selectedSeries.code}）
                       </p>
-                    ) : null}
-                    {needsNewSeries ? (
-                      <p className="text-xs text-amber-700">
-                        未匹配历史系列，将在提交时先创建新系列。
-                      </p>
-                    ) : null}
+                    ) : (
+                      <p className="text-xs text-neutral-500">可留空，或先新建系列后直接关联。</p>
+                    )}
                   </div>
                   <div className="grid gap-1.5">
                     <label
@@ -629,31 +638,52 @@ export default function ProductCreateDrawer({
                   ) : null}
                 </div>
 
-                {needsNewSeries ? (
+                {isCreatingSeries ? (
                   <div className="space-y-3 rounded-2xl border border-[#FFD400]/35 bg-[#FFF9D8] p-3">
-                    <p className="text-xs font-semibold text-neutral-700">新系列补充信息</p>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-semibold text-neutral-700">新系列信息</p>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="h-8 px-2 text-xs text-neutral-600"
+                        onClick={() => setIsCreatingSeries(false)}
+                        disabled={submitting}
+                      >
+                        返回选择
+                      </Button>
+                    </div>
                     <div className="grid gap-3 sm:grid-cols-2">
                       <Input
                         placeholder="系列编码（必填）"
                         value={newSeriesCode}
                         onChange={(event) => setNewSeriesCode(event.target.value.toUpperCase())}
+                        disabled={submitting}
                       />
                       <Input
                         placeholder="系列名称（必填）"
                         value={newSeriesName}
-                        onChange={(event) => setNewSeriesName(event.target.value)}
+                        onChange={(event) => {
+                          const value = event.target.value;
+                          setNewSeriesName(value);
+                          if (!newSeriesCode.trim()) {
+                            setNewSeriesCode(toSuggestedSeriesCode(value));
+                          }
+                        }}
+                        disabled={submitting}
                       />
                       <Input
                         type="number"
                         placeholder="排序（可选）"
                         value={newSeriesSortOrder}
                         onChange={(event) => setNewSeriesSortOrder(event.target.value)}
+                        disabled={submitting}
                       />
                       <label className="inline-flex items-center gap-2 text-sm text-neutral-700">
                         <input
                           type="checkbox"
                           checked={newSeriesIsActive}
                           onChange={(event) => setNewSeriesIsActive(event.target.checked)}
+                          disabled={submitting}
                         />
                         启用系列
                       </label>
@@ -664,6 +694,7 @@ export default function ProductCreateDrawer({
                       placeholder="系列描述（可选）"
                       value={newSeriesDescription}
                       onChange={(event) => setNewSeriesDescription(event.target.value)}
+                      disabled={submitting}
                     />
                   </div>
                 ) : null}

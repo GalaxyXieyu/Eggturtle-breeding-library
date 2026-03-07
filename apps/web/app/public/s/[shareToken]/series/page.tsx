@@ -135,7 +135,7 @@ export default async function PublicShareSeriesPage({
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="truncate text-[15px] font-semibold tracking-tight text-neutral-950 dark:text-neutral-50">{series.name}</p>
-                        <p className="truncate text-sm text-neutral-600 dark:text-neutral-300">{series.id}</p>
+                        <p className="truncate text-sm text-neutral-600 dark:text-neutral-300">{series.code || '系列'}</p>
                       </div>
                       <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">在库 {seriesCounts.get(series.id) ?? 0}</span>
                     </div>

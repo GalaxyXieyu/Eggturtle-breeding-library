@@ -96,14 +96,8 @@ export default function SharePresentationPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
-  const primaryColorOptions = useMemo(
-    () => withCurrentColorOption(PRIMARY_COLOR_OPTIONS, normalizeColor(form.brandPrimary)),
-    [form.brandPrimary],
-  );
-  const secondaryColorOptions = useMemo(
-    () => withCurrentColorOption(SECONDARY_COLOR_OPTIONS, normalizeColor(form.brandSecondary)),
-    [form.brandSecondary],
-  );
+  const primaryColorOptions = useMemo(() => PRIMARY_COLOR_OPTIONS, []);
+  const secondaryColorOptions = useMemo(() => SECONDARY_COLOR_OPTIONS, []);
   const heroImageUrls = useMemo(
     () => normalizeHeroImageList(form.heroImagesText, form.previewImageUrl),
     [form.heroImagesText, form.previewImageUrl],
@@ -431,7 +425,6 @@ export default function SharePresentationPage() {
 
                   <div className="grid gap-3 sm:grid-cols-2">
                     <ThemeColorPicker
-                      id="brand-primary"
                       label="主题主色"
                       value={form.brandPrimary}
                       fallback="#FFD400"
@@ -441,7 +434,6 @@ export default function SharePresentationPage() {
                       }
                     />
                     <ThemeColorPicker
-                      id="brand-secondary"
                       label="主题辅色"
                       value={form.brandSecondary}
                       fallback="#1f2937"
@@ -781,7 +773,6 @@ export default function SharePresentationPage() {
 }
 
 type ThemeColorPickerProps = {
-  id: string;
   label: string;
   value: string;
   fallback: string;
@@ -790,7 +781,6 @@ type ThemeColorPickerProps = {
 };
 
 function ThemeColorPicker({
-  id,
   label,
   value,
   fallback,
@@ -812,12 +802,13 @@ function ThemeColorPicker({
               type="button"
               aria-pressed={active}
               className={`rounded-xl border px-2 py-2 text-left transition ${
-                active ? 'shadow-[0_6px_16px_rgba(15,23,42,0.12)]' : 'hover:border-neutral-400'
+                active
+                  ? 'border-amber-400 bg-amber-200 shadow-[0_10px_24px_rgba(245,158,11,0.22)]'
+                  : 'bg-white hover:border-neutral-400'
               }`}
               style={{
-                backgroundColor: active ? '#fff7d0' : '#ffffff',
                 color: '#111827',
-                borderColor: active ? option.value : '#e5e7eb',
+                borderColor: active ? '#FBBF24' : '#e5e7eb',
               }}
               onClick={() => onChange(option.value)}
             >
@@ -834,46 +825,15 @@ function ThemeColorPicker({
           );
         })}
       </div>
-      <div className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-2.5 py-2">
-        <input
-          id={id}
-          type="color"
-          value={resolvedColor}
-          className="h-8 w-10 cursor-pointer rounded-md border border-neutral-300 bg-white p-0"
-          aria-label={`${label} 自定义颜色`}
-          onChange={(event) => onChange(event.target.value)}
+      <div className="flex items-center justify-end gap-1.5 rounded-xl border border-neutral-200 bg-neutral-50 px-2.5 py-2 text-xs text-neutral-600">
+        <span
+          className="h-4 w-4 rounded-full border border-black/10"
+          style={{ backgroundColor: resolvedColor }}
         />
-        <Label htmlFor={id} className="text-xs text-neutral-600">
-          自定义颜色
-        </Label>
-        <div className="ml-auto flex items-center gap-1.5 text-xs text-neutral-600">
-          <span
-            className="h-4 w-4 rounded-full border border-black/10"
-            style={{ backgroundColor: resolvedColor }}
-          />
-          当前已选
-        </div>
+        当前已选
       </div>
     </div>
   );
-}
-
-function withCurrentColorOption(
-  options: ThemeColorOption[],
-  currentColor: string | null,
-): ThemeColorOption[] {
-  if (!currentColor) {
-    return options;
-  }
-
-  const hasCurrent = options.some(
-    (option) => option.value.toLowerCase() === currentColor.toLowerCase(),
-  );
-  if (hasCurrent) {
-    return options;
-  }
-
-  return [{ label: '当前色', value: currentColor }, ...options];
 }
 
 function toFormState(presentation: TenantSharePresentation): FormState {

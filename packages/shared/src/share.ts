@@ -139,6 +139,8 @@ export const publicShareFeedItemSchema = z.object({
   name: z.string().nullable(),
   description: z.string().nullable(),
   seriesId: z.string().nullable(),
+  seriesCode: z.string().nullable().optional(),
+  seriesName: z.string().nullable().optional(),
   sex: z.string().nullable(),
   needMatingStatus: productNeedMatingStatusSchema.nullable().optional(),
   lastEggAt: z.string().datetime().nullable().optional(),
@@ -151,6 +153,8 @@ export const publicShareFeedItemSchema = z.object({
 });
 
 export const publicShareProductSchema = productSchema.extend({
+  seriesCode: z.string().nullable().optional(),
+  seriesName: z.string().nullable().optional(),
   images: z.array(productImageSchema)
 });
 

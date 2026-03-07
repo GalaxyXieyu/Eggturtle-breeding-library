@@ -4,6 +4,7 @@ export type BreederEventType = 'mating' | 'egg' | 'change_mate';
 
 export type Series = {
   id: string;
+  code?: string;
   name: string;
   description?: string;
 };

@@ -196,6 +196,10 @@ export class SharesPublicService {
       share.tenantId,
       products.map((product) => product.id)
     );
+    const seriesSummaryById = await this.loadSeriesSummaryByIds(
+      share.tenantId,
+      products.map((product) => product.seriesId)
+    );
 
     const items = await Promise.all(
       products.map(async (product) => {
@@ -214,6 +218,8 @@ export class SharesPublicService {
             })
           : null;
 
+        const seriesSummary = product.seriesId ? seriesSummaryById.get(product.seriesId) ?? null : null;
+
         return {
           id: product.id,
           tenantId: product.tenantId,
@@ -222,6 +228,8 @@ export class SharesPublicService {
           name: product.name,
           description: product.description,
           seriesId: product.seriesId,
+          seriesCode: seriesSummary?.code ?? null,
+          seriesName: seriesSummary?.name ?? null,
           sex: product.sex,
           needMatingStatus: needMatingSummary?.status ?? null,
           lastEggAt: needMatingSummary?.lastEggAt?.toISOString() ?? null,
@@ -284,6 +292,10 @@ export class SharesPublicService {
         });
       }
 
+      const detailSeriesSummary = detailProduct.seriesId
+        ? seriesSummaryById.get(detailProduct.seriesId) ?? null
+        : null;
+
       product = {
         id: detailProduct.id,
         tenantId: detailProduct.tenantId,
@@ -292,6 +304,8 @@ export class SharesPublicService {
         name: detailProduct.name,
         description: detailProduct.description,
         seriesId: detailProduct.seriesId,
+        seriesCode: detailSeriesSummary?.code ?? null,
+        seriesName: detailSeriesSummary?.name ?? null,
         sex: detailProduct.sex,
         offspringUnitPrice: detailProduct?.offspringUnitPrice?.toNumber() ?? null,
         sireCode: detailProduct.sireCode,
@@ -328,6 +342,38 @@ export class SharesPublicService {
       detail,
       expiresAt: expiresAt.toISOString()
     };
+  }
+
+  private async loadSeriesSummaryByIds(tenantId: string, seriesIds: Array<string | null | undefined>) {
+    const summaryById = new Map<string, { code: string; name: string }>();
+    const uniqueSeriesIds = [...new Set(seriesIds.map((seriesId) => seriesId?.trim() ?? '').filter(Boolean))];
+
+    if (uniqueSeriesIds.length === 0) {
+      return summaryById;
+    }
+
+    const rows = await this.prisma.series.findMany({
+      where: {
+        tenantId,
+        id: {
+          in: uniqueSeriesIds
+        }
+      },
+      select: {
+        id: true,
+        code: true,
+        name: true
+      }
+    });
+
+    rows.forEach((row) => {
+      summaryById.set(row.id, {
+        code: row.code,
+        name: row.name
+      });
+    });
+
+    return summaryById;
   }
 
   private async loadNeedMatingSummaryByProductIds(tenantId: string, productIds: string[]) {

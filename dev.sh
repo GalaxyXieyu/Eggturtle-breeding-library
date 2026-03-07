@@ -29,9 +29,9 @@ API_LOG="/tmp/eggturtle-api.log"
 WEB_LOG="/tmp/eggturtle-web.log"
 ADMIN_LOG="/tmp/eggturtle-admin.log"
 
-API_PROCESS_MARKER=""
-WEB_PROCESS_MARKER=""
-ADMIN_PROCESS_MARKER=""
+API_PROCESS_MARKER="pnpm --filter @eggturtle/api dev"
+WEB_PROCESS_MARKER="pnpm --filter @eggturtle/web dev"
+ADMIN_PROCESS_MARKER="pnpm --filter @eggturtle/admin dev"
 
 API_HEALTH_URL="${API_HEALTH_URL:-http://127.0.0.1:30011/health}"
 WEB_HEALTH_URL="${WEB_HEALTH_URL:-http://127.0.0.1:30010/login}"
@@ -191,6 +191,74 @@ get_listener_pid_from_url() {
   "$lsof_bin" -nP -t -iTCP:"$port" -sTCP:LISTEN 2>/dev/null | head -n 1
 }
 
+find_pids_by_marker() {
+  local process_marker="$1"
+
+  if [ -z "$process_marker" ]; then
+    return 1
+  fi
+
+  ps -axo pid=,command= | awk -v marker="$process_marker" 'index($0, marker) { print $1 }'
+}
+
+collect_descendant_pids() {
+  local root_pid="$1"
+
+  python3 - "$root_pid" <<'PY2'
+import subprocess
+import sys
+from collections import defaultdict, deque
+
+root = int(sys.argv[1])
+out = subprocess.check_output(["ps", "-axo", "pid=,ppid="], text=True)
+children = defaultdict(list)
+for line in out.splitlines():
+    parts = line.split()
+    if len(parts) != 2:
+        continue
+    pid, ppid = map(int, parts)
+    children[ppid].append(pid)
+
+seen = set()
+queue = deque([root])
+result = []
+while queue:
+    pid = queue.popleft()
+    for child in children.get(pid, []):
+        if child in seen:
+            continue
+        seen.add(child)
+        result.append(child)
+        queue.append(child)
+
+print(" ".join(map(str, result)))
+PY2
+}
+
+kill_pid_and_descendants() {
+  local root_pid="$1"
+
+  if ! [[ "$root_pid" =~ ^[0-9]+$ ]]; then
+    return 0
+  fi
+
+  local descendants
+  descendants="$(collect_descendant_pids "$root_pid")"
+
+  if [ -n "$descendants" ]; then
+    kill $descendants >/dev/null 2>&1 || true
+  fi
+  kill "$root_pid" >/dev/null 2>&1 || true
+  sleep 1
+
+  if [ -n "$descendants" ]; then
+    kill -9 $descendants >/dev/null 2>&1 || true
+  fi
+  if ps -p "$root_pid" >/dev/null 2>&1; then
+    kill -9 "$root_pid" >/dev/null 2>&1 || true
+  fi
+}
+
 start_service() {
   local name="$1"
   local cmd="$2"
@@ -211,7 +279,7 @@ start_service() {
 
   print_info "启动 $name ..."
   cd "$PROJECT_DIR" || return 1
-  nohup sh -c "$cmd" >"$log_file" 2>&1 &
+  sh -c "$cmd" </dev/null >"$log_file" 2>&1 &
   printf '%s\n' "$!" >"$pid_file"
 
   sleep 2
@@ -221,12 +289,6 @@ start_service() {
     LAST_START_WAS_RUNNING=0
     if [ -n "$health_url" ]; then
       if wait_for_url "$health_url" 60 0.5; then
-        local listener_pid
-        listener_pid="$(get_listener_pid_from_url "$health_url" || true)"
-        if [[ "$listener_pid" =~ ^[0-9]+$ ]]; then
-          printf '%s\n' "$listener_pid" >"$pid_file"
-          pid="$listener_pid"
-        fi
         print_info "$name 启动成功 (PID: $pid)"
       else
         print_error "$name 启动后健康检查失败: $health_url"
@@ -249,22 +311,33 @@ stop_service() {
   local name="$1"
   local pid_file="$2"
   local process_marker="${3:-}"
+  local pid=""
+  local marker_pids=""
+  local matched_pids=""
 
-  if ! is_running "$pid_file" "$process_marker"; then
-    print_warn "$name 未运行"
-    rm -f "$pid_file"
-    return 0
+  marker_pids="$(find_pids_by_marker "$process_marker" || true)"
+
+  if is_running "$pid_file" "$process_marker"; then
+    pid=$(cat "$pid_file")
+    matched_pids="$(printf '%s
+%s
+' "$pid" "$marker_pids" | awk 'NF && !seen[$1]++' | paste -sd' ' -)"
+  else
+    matched_pids="$(printf '%s
+' "$marker_pids" | awk 'NF && !seen[$1]++' | paste -sd' ' -)"
+    if [ -n "$matched_pids" ]; then
+      print_warn "$name 的 PID 文件无效，改为按进程特征清理: $matched_pids"
+    else
+      print_warn "$name 未运行"
+      rm -f "$pid_file"
+      return 0
+    fi
   fi
 
-  local pid
-  pid=$(cat "$pid_file")
-  print_info "停止 $name (PID: $pid) ..."
-  kill "$pid" >/dev/null 2>&1 || true
-  sleep 1
-
-  if ps -p "$pid" >/dev/null 2>&1; then
-    kill -9 "$pid" >/dev/null 2>&1 || true
-  fi
+  print_info "停止 $name (PID: $matched_pids) ..."
+  for target_pid in $matched_pids; do
+    kill_pid_and_descendants "$target_pid"
+  done
 
   rm -f "$pid_file"
   print_info "$name 已停止"

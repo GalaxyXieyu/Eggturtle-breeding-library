@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardTitle } from '@/components/ui/c
 
 type BreederInfoCardProps = {
   breeder: Product | null;
+  seriesLabel: string | null;
   images: ProductImage[];
   activeImage: ProductImage | null;
   activeImageId: string | null;
@@ -36,6 +37,7 @@ function RelationPill({ label, value }: { label: keyof typeof relationPillStyles
 
 export function BreederInfoCard({
   breeder,
+  seriesLabel,
   images,
   activeImage,
   activeImageId,
@@ -106,7 +108,7 @@ export function BreederInfoCard({
               {breeder?.inStock ? '启用中' : '停用'}
             </Badge>
             <Badge variant="accent">{formatSex(breeder?.sex, { unknownLabel: 'unknown' })}</Badge>
-            <Badge variant="sky">{breeder?.seriesId ?? '未关联系列'}</Badge>
+            <Badge variant="sky">{seriesLabel ?? '未关联系列'}</Badge>
           </div>
           <div>
             <CardTitle className="text-4xl text-neutral-900">{breeder?.code ?? '种龟详情'}</CardTitle>

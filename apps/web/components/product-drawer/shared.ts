@@ -114,7 +114,7 @@ export function toSuggestedSeriesCode(input: string) {
     .trim()
     .toUpperCase()
     .replace(/\s+/g, '-')
-    .replace(/[^A-Z0-9-_]/g, '-');
+    .replace(/[^A-Z0-9\u4E00-\u9FFF-_]/g, '-');
   const compact = normalized.replace(/-+/g, '-').replace(/^-|-$/g, '');
 
   return compact || 'NEW-SERIES';

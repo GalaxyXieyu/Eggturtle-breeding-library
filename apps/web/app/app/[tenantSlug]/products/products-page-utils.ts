@@ -21,6 +21,11 @@ type SeriesOptionLike = {
   name: string;
 };
 
+function isPlaceholderSeriesCode(code: string) {
+  const normalized = normalizeText(code);
+  return normalized === 'new-series' || normalized === 'new';
+}
+
 export const PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
 
 export const DEFAULT_LIST_QUERY: ProductsListQuery = {
@@ -200,6 +205,10 @@ export function formatSeriesLabelById(seriesId: string, options: SeriesOptionLik
   const matched = options.find((item) => item.id === seriesId);
   if (!matched) {
     return seriesId;
+  }
+
+  if (isPlaceholderSeriesCode(matched.code)) {
+    return matched.name || matched.code;
   }
 
   return `${matched.name}（${matched.code}）`;

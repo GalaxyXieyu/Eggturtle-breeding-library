@@ -36,7 +36,7 @@ export function mapPublicProductToLegacyBreeder(product: TenantFeedDetail): Bree
     code: product.code,
     name: product.name || product.code,
     description: product.description || undefined,
-    seriesId: resolveSeriesKey(product.seriesId, product.code),
+    seriesId: resolveSeriesKey(product.seriesId),
     sex: normalizeSex(product.sex),
     offspringUnitPrice: product.offspringUnitPrice ?? undefined,
     sireCode: product.sireCode || undefined,
@@ -87,7 +87,7 @@ function mapFeedItemToBreeder(item: PublicShareFeedItem): Breeder {
     code: item.code,
     name: item.name || item.code,
     description: item.description || undefined,
-    seriesId: resolveSeriesKey(item.seriesId, item.code),
+    seriesId: resolveSeriesKey(item.seriesId),
     sex: normalizeSex(item.sex),
     needMatingStatus: item.needMatingStatus ?? undefined,
     lastEggAt: item.lastEggAt ?? undefined,
@@ -102,14 +102,18 @@ function buildSeriesFromItems(items: PublicShareFeedItem[]): Series[] {
   const byId = new Map<string, Series>();
 
   for (const item of items) {
-    const id = resolveSeriesKey(item.seriesId, item.code);
+    const id = resolveSeriesKey(item.seriesId);
     if (byId.has(id)) {
       continue;
     }
 
+    const code = item.seriesCode?.trim() || undefined;
+    const name = item.seriesName?.trim() || code || (id === NO_SERIES_ID ? NO_SERIES_NAME : '未命名系列');
+
     byId.set(id, {
       id,
-      name: id === NO_SERIES_ID ? NO_SERIES_NAME : id
+      code,
+      name
     });
   }
 
@@ -125,23 +129,8 @@ function normalizeSeriesId(value: string | null | undefined): string {
   return normalized;
 }
 
-function resolveSeriesKey(seriesId: string | null | undefined, code: string): string {
-  const codePrefix = extractCodePrefix(code);
-  if (codePrefix) {
-    return codePrefix;
-  }
-
+function resolveSeriesKey(seriesId: string | null | undefined): string {
   return normalizeSeriesId(seriesId);
-}
-
-function extractCodePrefix(code: string | null | undefined): string | null {
-  const normalized = code?.trim();
-  if (!normalized) {
-    return null;
-  }
-
-  const match = normalized.match(/^([^-_/\\\s]+)/);
-  return match?.[1]?.trim() || null;
 }
 
 function normalizeSex(value: string | null | undefined): Sex {

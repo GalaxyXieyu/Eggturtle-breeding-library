@@ -14,6 +14,7 @@ import {
   listProductEventsResponseSchema,
   listProductImagesResponseSchema,
   listSaleBatchesResponseSchema,
+  listSeriesResponseSchema,
   type GetProductCertificateEligibilityResponse,
   type Product,
   type ProductCertificate,
@@ -35,13 +36,14 @@ import {
   buildEventCollisionMeta,
   buildEventDetailLabel
 } from '@/lib/breeder-utils';
-import ProductDrawer from '@/components/product-drawer';
+import ProductDrawer, { type ProductSeriesOption } from '@/components/product-drawer';
 import { Card } from '@/components/ui/card';
 import { useCertificateData, useCertificateStudio } from '@/components/certificate-studio';
 import { BreederAssetWorkflowDrawer } from '@/components/breeder-detail/BreederAssetWorkflowDrawer';
 import { BreederInfoCard } from '@/components/breeder-detail/BreederInfoCard';
 import { FamilyTreeView } from '@/components/breeder-detail/FamilyTreeView';
 import { BreederEventTimeline } from '@/components/breeder-detail/BreederEventTimeline';
+import { formatSeriesLabelById } from '@/app/app/[tenantSlug]/products/products-page-utils';
 
 type DetailState = {
   breeder: Product | null;
@@ -125,6 +127,7 @@ export default function BreederDetailPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [seriesOptions, setSeriesOptions] = useState<ProductSeriesOption[]>([]);
   const [activeImageId, setActiveImageId] = useState<string | null>(null);
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
   const [eventFilter, setEventFilter] = useState<'all' | 'mating' | 'egg' | 'change_mate'>('all');
@@ -234,7 +237,7 @@ export default function BreederDetailPage() {
       try {
         await switchTenantBySlug(tenantSlug);
 
-        const [productResponse, eventsResponse, treeResponse] = await Promise.all([
+        const [productResponse, eventsResponse, treeResponse, seriesResponse] = await Promise.all([
           apiRequest(`/products/${breederId}`, {
             responseSchema: getProductResponseSchema
           }),
@@ -243,6 +246,9 @@ export default function BreederDetailPage() {
           }),
           apiRequest(`/products/${breederId}/family-tree`, {
             responseSchema: getProductFamilyTreeResponseSchema
+          }),
+          apiRequest('/series?page=1&pageSize=100', {
+            responseSchema: listSeriesResponseSchema
           })
         ]);
 
@@ -266,6 +272,13 @@ export default function BreederDetailPage() {
             tree: treeResponse.tree,
             images
           });
+          setSeriesOptions(
+            seriesResponse.items.map((item) => ({
+              id: item.id,
+              code: item.code,
+              name: item.name
+            }))
+          );
           setActiveImageId(images[0]?.id ?? null);
           setError(null);
           setLoading(false);
@@ -285,6 +298,14 @@ export default function BreederDetailPage() {
   }, [breederId, loadGeneratedAssets, router, tenantSlug]);
 
   const activeImage = data.images.find((image) => image.id === activeImageId) ?? data.images[0] ?? null;
+  const seriesLabel = useMemo(() => {
+    const seriesId = currentBreeder?.seriesId?.trim();
+    if (!seriesId) {
+      return null;
+    }
+
+    return formatSeriesLabelById(seriesId, seriesOptions);
+  }, [currentBreeder?.seriesId, seriesOptions]);
   const listHref = useMemo(() => {
     const query = new URLSearchParams();
     if (isDemoMode) {
@@ -477,6 +498,7 @@ export default function BreederDetailPage() {
     <main className="space-y-4 pb-10 sm:space-y-6">
       <BreederInfoCard
         breeder={currentBreeder}
+        seriesLabel={seriesLabel}
         images={data.images}
         activeImage={activeImage}
         activeImageId={activeImageId}

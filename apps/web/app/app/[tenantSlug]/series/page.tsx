@@ -705,7 +705,7 @@ function SeriesCardMeta({ item }: { item: SeriesItem }) {
       </p>
       <div className="mt-3 flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-300">
         <span>排序 #{item.sortOrder}</span>
-        <span className="truncate">ID {item.id.slice(0, 8)}</span>
+        <span className="truncate">编码 {item.code}</span>
       </div>
     </>
   );
