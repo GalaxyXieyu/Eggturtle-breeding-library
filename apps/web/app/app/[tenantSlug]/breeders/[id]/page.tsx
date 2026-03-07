@@ -40,7 +40,6 @@ import { Card } from '@/components/ui/card';
 import { useCertificateData, useCertificateStudio } from '@/components/certificate-studio';
 import { BreederAssetWorkflowDrawer } from '@/components/breeder-detail/BreederAssetWorkflowDrawer';
 import { BreederInfoCard } from '@/components/breeder-detail/BreederInfoCard';
-import { BreederImageGallery } from '@/components/breeder-detail/BreederImageGallery';
 import { FamilyTreeView } from '@/components/breeder-detail/FamilyTreeView';
 import { BreederEventTimeline } from '@/components/breeder-detail/BreederEventTimeline';
 
@@ -478,7 +477,10 @@ export default function BreederDetailPage() {
     <main className="space-y-4 pb-10 sm:space-y-6">
       <BreederInfoCard
         breeder={currentBreeder}
+        images={data.images}
         activeImage={activeImage}
+        activeImageId={activeImageId}
+        onImageClick={setActiveImageId}
         onBack={() => router.push(listHref)}
         onEdit={() => setIsEditDrawerOpen(true)}
         onManageImages={() => router.push(`/app/${tenantSlug}/products/${currentBreeder?.id}`)}
@@ -489,15 +491,6 @@ export default function BreederDetailPage() {
         <Card className="rounded-3xl border-neutral-200/90 bg-white p-6">
           <p className="text-sm text-neutral-600">正在加载种龟、事件和家族树数据...</p>
         </Card>
-      ) : null}
-
-      {!loading ? (
-        <BreederImageGallery
-          images={data.images}
-          activeImageId={activeImageId}
-          onImageClick={setActiveImageId}
-          resolveImageUrl={resolveImageUrl}
-        />
       ) : null}
 
       {!loading ? (
@@ -517,7 +510,7 @@ export default function BreederDetailPage() {
         <FamilyTreeView tree={data.tree} openBreederDetail={openBreederDetail} />
       ) : null}
 
-      {!loading ? (
+      {!loading && isFemaleBreeder ? (
         <BreederAssetWorkflowDrawer
           tenantSlug={tenantSlug}
           eggEvents={certificateData.eggEvents}
