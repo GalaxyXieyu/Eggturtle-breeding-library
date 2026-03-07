@@ -545,7 +545,6 @@ export default function ProductCreateDrawer({
                       id="create-drawer-code"
                       type="text"
                       required
-                      autoFocus
                       placeholder="例如 HB-108"
                       value={code}
                       onChange={(event) => setCode(event.target.value.toUpperCase())}
