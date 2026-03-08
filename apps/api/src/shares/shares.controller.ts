@@ -30,10 +30,7 @@ import { SharesEntryService } from './shares-entry.service';
 import { SharesPublicService } from './shares-public.service';
 
 type PublicRequest = {
-  headers: {
-    'x-forwarded-for'?: string;
-    'user-agent'?: string;
-  };
+  headers: Record<string, string | string[] | undefined>;
   ip?: string;
 };
 
@@ -52,7 +49,12 @@ export class SharesController {
     const actorUserId = this.requireUserId(request.user?.id);
     const payload = parseOrThrow(createShareRequestSchema, body);
 
-    const share = await this.sharesEntryService.createShare(tenantId, actorUserId, payload);
+    const share = await this.sharesEntryService.createShare(
+      tenantId,
+      actorUserId,
+      payload,
+      this.getRequestOrigin(request.headers as Record<string, string | string[] | undefined>)
+    );
 
     return createShareResponseSchema.parse({ share });
   }
@@ -63,10 +65,14 @@ export class SharesController {
     @Req() request: PublicRequest,
     @Res() response: { redirect: (statusCode: number, url: string) => unknown }
   ) {
-    const result = await this.sharesEntryService.resolveShareEntry(shareToken, {
-      ip: this.getRequestIp(request),
-      userAgent: this.getUserAgent(request)
-    });
+    const result = await this.sharesEntryService.resolveShareEntry(
+      shareToken,
+      {
+        ip: this.getRequestIp(request),
+        userAgent: this.getUserAgent(request)
+      },
+      this.getRequestOrigin(request.headers)
+    );
 
     return response.redirect(result.statusCode, result.redirectUrl);
   }
@@ -175,5 +181,34 @@ export class SharesController {
     }
 
     return null;
+  }
+
+  private getRequestOrigin(headers: Record<string, string | string[] | undefined>): string | null {
+    const forwardedHost = this.readFirstHeaderValue(headers['x-forwarded-host']);
+    const host = this.readFirstHeaderValue(headers.host);
+    const resolvedHost = forwardedHost ?? host;
+
+    if (!resolvedHost) {
+      return null;
+    }
+
+    const forwardedProto = this.readFirstHeaderValue(headers['x-forwarded-proto'])?.toLowerCase();
+    const protocol = forwardedProto === 'http' || forwardedProto === 'https' ? forwardedProto : 'https';
+
+    return `${protocol}://${resolvedHost}`;
+  }
+
+  private readFirstHeaderValue(value: string | string[] | undefined): string | null {
+    if (Array.isArray(value)) {
+      const first = value[0]?.trim();
+      return first ? first : null;
+    }
+
+    if (typeof value !== 'string') {
+      return null;
+    }
+
+    const first = value.split(',')[0]?.trim();
+    return first ? first : null;
   }
 }

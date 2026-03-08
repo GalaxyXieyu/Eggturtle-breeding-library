@@ -42,13 +42,6 @@ export class SuperAdminGuard implements CanActivate {
       });
     }
 
-    if (process.env.SUPER_ADMIN_ENABLED !== 'true') {
-      throw new ForbiddenException({
-        message: 'Super-admin backoffice is disabled by environment.',
-        errorCode: ErrorCode.Forbidden
-      });
-    }
-
     const allowlist = parseSuperAdminEmails(process.env.SUPER_ADMIN_EMAILS);
     if (allowlist.size === 0 || !allowlist.has(user.email.toLowerCase())) {
       throw new ForbiddenException({

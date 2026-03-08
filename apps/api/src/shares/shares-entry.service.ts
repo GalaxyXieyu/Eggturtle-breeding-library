@@ -25,7 +25,12 @@ export class SharesEntryService {
     private readonly sharesCoreService: SharesCoreService
   ) {}
 
-  async createShare(tenantId: string, actorUserId: string, payload: CreateShareRequest) {
+  async createShare(
+    tenantId: string,
+    actorUserId: string,
+    payload: CreateShareRequest,
+    requestOrigin?: string | null
+  ) {
     if (payload.resourceType !== 'tenant_feed') {
       throw new BadRequestException({
         message: `Unsupported resourceType: ${payload.resourceType}`,
@@ -90,13 +95,13 @@ export class SharesEntryService {
       resourceType: share.resourceType,
       resourceId: share.resourceId,
       shareToken: share.shareToken,
-      entryUrl: this.sharesCoreService.buildShareEntryUrl(share.shareToken),
+      entryUrl: this.sharesCoreService.buildShareEntryUrl(share.shareToken, requestOrigin),
       createdAt: share.createdAt.toISOString(),
       updatedAt: share.updatedAt.toISOString()
     };
   }
 
-  async resolveShareEntry(shareToken: string, meta: ShareAccessMeta) {
+  async resolveShareEntry(shareToken: string, meta: ShareAccessMeta, requestOrigin?: string | null) {
     this.assertEntryRateLimit(shareToken, meta.ip);
 
     const share = await this.prisma.publicShare.findUnique({
@@ -128,14 +133,17 @@ export class SharesEntryService {
 
     const resourceType = this.sharesCoreService.parseShareResourceType(share.resourceType);
 
-    const { redirectUrl, expiresAt } = this.sharesCoreService.buildRedirectUrl({
-      id: share.id,
-      tenantId: share.tenantId,
-      tenantSlug: share.tenant.slug,
-      shareToken: share.shareToken,
-      resourceType,
-      resourceId: share.resourceId
-    });
+    const { redirectUrl, expiresAt } = this.sharesCoreService.buildRedirectUrl(
+      {
+        id: share.id,
+        tenantId: share.tenantId,
+        tenantSlug: share.tenant.slug,
+        shareToken: share.shareToken,
+        resourceType,
+        resourceId: share.resourceId
+      },
+      requestOrigin
+    );
 
     await this.sharesCoreService.writeShareAccessAuditLog(
       {

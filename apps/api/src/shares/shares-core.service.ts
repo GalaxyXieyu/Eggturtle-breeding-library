@@ -29,19 +29,26 @@ export class SharesCoreService {
     private readonly auditLogsService: AuditLogsService
   ) {}
 
-  buildShareEntryUrl(shareToken: string): string {
-    const apiBaseUrl = process.env.API_PUBLIC_BASE_URL ?? DEFAULT_API_PUBLIC_BASE_URL;
+  buildShareEntryUrl(shareToken: string, requestOrigin?: string | null): string {
+    const apiBaseUrl = this.resolvePublicBaseUrl(
+      process.env.API_PUBLIC_BASE_URL,
+      requestOrigin,
+      DEFAULT_API_PUBLIC_BASE_URL
+    );
     return new URL(`/s/${shareToken}`, apiBaseUrl).toString();
   }
 
-  buildRedirectUrl(payload: {
-    id: string;
-    tenantId: string;
-    tenantSlug: string;
-    shareToken: string;
-    resourceType: ShareResourceType;
-    resourceId: string;
-  }): { redirectUrl: string; expiresAt: Date } {
+  buildRedirectUrl(
+    payload: {
+      id: string;
+      tenantId: string;
+      tenantSlug: string;
+      shareToken: string;
+      resourceType: ShareResourceType;
+      resourceId: string;
+    },
+    requestOrigin?: string | null
+  ): { redirectUrl: string; expiresAt: Date } {
     const ttlSeconds = this.getSignedUrlTtlSeconds();
     const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
     const exp = Math.floor(expiresAt.getTime() / 1000).toString();
@@ -54,7 +61,11 @@ export class SharesCoreService {
       exp
     });
 
-    const webBaseUrl = process.env.WEB_PUBLIC_BASE_URL ?? DEFAULT_WEB_PUBLIC_BASE_URL;
+    const webBaseUrl = this.resolvePublicBaseUrl(
+      process.env.WEB_PUBLIC_BASE_URL,
+      requestOrigin,
+      DEFAULT_WEB_PUBLIC_BASE_URL
+    );
     const redirectPath = `/public/s/${payload.shareToken}`;
 
     const redirectUrl = new URL(redirectPath, webBaseUrl);
@@ -69,6 +80,20 @@ export class SharesCoreService {
       redirectUrl: redirectUrl.toString(),
       expiresAt
     };
+  }
+
+  private resolvePublicBaseUrl(configuredBaseUrl: string | undefined, requestOrigin: string | null | undefined, fallback: string): string {
+    const configured = configuredBaseUrl?.trim();
+    if (configured) {
+      return configured.replace(/\/+$/, '');
+    }
+
+    const origin = requestOrigin?.trim();
+    if (origin) {
+      return origin.replace(/\/+$/, '');
+    }
+
+    return fallback;
   }
 
   verifySignature(payload: {
