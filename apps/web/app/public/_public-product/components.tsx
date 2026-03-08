@@ -2,6 +2,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PublicSharePresentation } from '@eggturtle/shared';
 
@@ -258,6 +259,7 @@ export function BreederCarousel({
   shareQuery?: string;
   homeHref?: string;
 }) {
+  const router = useRouter();
   const [slide, setSlide] = useState(series?.description ? 1 : 0);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
@@ -277,15 +279,25 @@ export function BreederCarousel({
     }
   }, [activeImageUrl]);
 
+  function handleBack() {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+      return;
+    }
+
+    router.push(resolvedHomeHref);
+  }
+
   return (
     <div className="overflow-hidden rounded-3xl border border-black/5 bg-white shadow-[0_14px_38px_rgba(0,0,0,0.14)]">
       <div className="relative aspect-[4/5] bg-neutral-100">
-        <Link
-          href={resolvedHomeHref}
+        <button
+          type="button"
+          onClick={handleBack}
           className="absolute left-3 top-3 z-10 flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-2 text-sm text-neutral-800 shadow-lg backdrop-blur-sm transition hover:bg-white hover:shadow-xl"
         >
           返回
-        </Link>
+        </button>
 
         {hasSeriesIntro ? (
           <div className="absolute right-3 top-3 z-10 flex gap-1.5 rounded-full bg-black/40 px-2 py-1.5 backdrop-blur-sm">
