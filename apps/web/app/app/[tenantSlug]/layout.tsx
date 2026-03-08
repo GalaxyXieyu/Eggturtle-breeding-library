@@ -21,6 +21,7 @@ import TenantFloatingShareButton, {
 import { apiRequest, clearAccessToken } from '@/lib/api-client';
 import { formatApiError } from '@/lib/error-utils';
 import { ensureTenantRouteSession } from '@/lib/tenant-route-session';
+import { openUrlWithFallback } from '@/lib/browser-share';
 import { createTenantFeedShareLink } from '@/lib/tenant-share';
 import { formatTenantDisplayName } from '@/lib/tenant-display';
 import { cn } from '@/lib/utils';
@@ -69,9 +70,13 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
+// 分享入口先隐藏，保留原逻辑便于后续恢复。
+const ENABLE_SHARE_ENTRY = false;
+// 系列入口先隐藏，保留原逻辑便于后续恢复。
+const ENABLE_SERIES_ENTRY = false;
 const SHELL_COPY = {
   zh: {
-    workspace: '租户工作台',
+    workspace: '用户工作台',
     controlCenter: '控制中心',
     upgradePlan: '升级套餐',
     createShare: '创建并复制分享链接',
@@ -80,7 +85,7 @@ const SHELL_COPY = {
     defaultTenant: '蛋龟选育库',
     quickSharePending: '正在打开分享页...',
     quickShareSuccess: '已打开分享页',
-    quickShareMissingTenant: '当前租户上下文未就绪，暂时无法生成链接。',
+    quickShareMissingTenant: '当前用户上下文未就绪，暂时无法生成链接。',
     quickShareErrorFallback: '创建分享链接失败。',
     planLoading: '加载套餐中...',
   },
@@ -121,6 +126,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
   );
 
   const shouldRenderLayoutFloatingShare =
+    ENABLE_SHARE_ENTRY &&
     pathname !== `/app/${tenantSlug}` &&
     !pathname?.endsWith('/products') &&
     !pathname?.endsWith('/series') &&
@@ -128,9 +134,21 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
     !pathname?.endsWith('/certificates');
   const setupQueryEnabled = searchParams.get('setup') === '1';
   const accountPath = `/app/${tenantSlug}/account`;
+  const sharePresentationPath = `/app/${tenantSlug}/share-presentation`;
+  const seriesPath = `/app/${tenantSlug}/series`;
+  const navItemsWithoutShare = NAV_ITEMS.filter((item) => {
+    const itemHref = item.href(tenantSlug);
+    if (!ENABLE_SHARE_ENTRY && itemHref === sharePresentationPath) {
+      return false;
+    }
+    if (!ENABLE_SERIES_ENTRY && itemHref === seriesPath) {
+      return false;
+    }
+    return true;
+  });
   const visibleNavItems = setupRequired
-    ? NAV_ITEMS.filter((item) => item.href(tenantSlug) === accountPath)
-    : NAV_ITEMS;
+    ? navItemsWithoutShare.filter((item) => item.href(tenantSlug) === accountPath)
+    : navItemsWithoutShare;
   const shouldBlockOtherPages = setupCheckReady && setupRequired && pathname !== accountPath;
 
   const floatingShareIntent = useMemo<TenantShareIntent>(() => {
@@ -272,11 +290,8 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
         missingTenantMessage: copy.quickShareMissingTenant,
       });
       const permanentLink = share.permanentUrl;
-      const popupWindow = window.open(permanentLink, '_blank', 'noopener');
-      if (!popupWindow) {
-        window.location.href = permanentLink;
-      }
-      setQuickShareNotice(copy.quickShareSuccess);
+      const opened = openUrlWithFallback(permanentLink);
+      setQuickShareNotice(opened ? copy.quickShareSuccess : `${copy.quickShareSuccess} ${permanentLink}`);
     } catch (error) {
       setQuickShareError(formatApiError(error, copy.quickShareErrorFallback));
     } finally {
@@ -341,7 +356,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
           </nav>
 
           <div className="shrink-0 border-t border-neutral-200 px-3 pb-2 pt-3 dark:border-neutral-800">
-            {!setupRequired ? (
+            {ENABLE_SHARE_ENTRY && !setupRequired ? (
               <Button
                 type="button"
                 variant="outline"
@@ -397,76 +412,37 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
       </div>
 
       <nav
-        className="fixed inset-x-0 bottom-0 z-40 h-[calc(var(--tenant-mobile-nav-height)+var(--tenant-mobile-nav-safe-bottom))] px-2 pt-0 pb-[var(--tenant-mobile-nav-safe-bottom)] text-[13px] lg:hidden"
-        aria-label="租户移动端主导航"
+        className="tenant-mobile-nav fixed inset-x-0 bottom-0 z-40 lg:hidden"
+        aria-label="用户移动端主导航"
       >
-        {/* 半透明背景仅保留在下半区，顶部完全透明（含中间按钮两侧） */}
         <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 top-6 border-t border-black/10 bg-white/96 backdrop-blur dark:border-white/10 dark:bg-neutral-950/92"
+          className="tenant-mobile-nav-shell"
           aria-hidden
         />
-        <ul className="relative z-0 mx-auto flex w-full max-w-xl items-end justify-between px-1 leading-[15.85px] mt-[5px] mb-[5px]">
-          {visibleNavItems.map((item, index) => {
+        <ul className="tenant-mobile-nav-list list-none">
+          {visibleNavItems.map((item) => {
             const href = item.href(tenantSlug);
             const active = isActive(pathname, href);
             const Icon = item.icon;
-            const isCenter = index === 2;
-
-            if (isCenter) {
-              return (
-                <li key={`mobile-${href}`} className="flex min-w-[72px] justify-center">
-                  <Link
-                    href={href}
-                    className="flex flex-col items-center gap-1 transition-opacity active:opacity-90 -translate-y-2"
-                    aria-label={item.label[locale]}
-                  >
-                    <span
-                      className={cn(
-                        'flex h-14 w-14 shrink-0 items-center justify-center rounded-full shadow-[0_4px_14px_rgba(0,0,0,0.15)] transition dark:shadow-[0_4px_18px_rgba(0,0,0,0.4)]',
-                        active
-                          ? 'bg-[#FFD400] text-neutral-900 ring-2 ring-[#FFD400] ring-offset-2 ring-offset-white dark:ring-offset-neutral-950'
-                          : 'bg-[#FFD400] text-neutral-900',
-                      )}
-                    >
-                      <Icon size={26} />
-                    </span>
-                    <span
-                      className={cn(
-                        'text-[11px] font-medium whitespace-nowrap',
-                        active
-                          ? 'text-neutral-900 dark:text-neutral-100'
-                          : 'text-neutral-600 dark:text-neutral-400',
-                      )}
-                    >
-                      {item.label[locale]}
-                    </span>
-                  </Link>
-                </li>
-              );
-            }
 
             return (
-              <li key={`mobile-${href}`} className="flex min-w-[56px] justify-center">
+              <li key={`mobile-${href}`} className="tenant-mobile-nav-item list-none">
                 <Link
                   href={href}
+                  aria-label={item.label[locale]}
                   className={cn(
-                    'inline-flex min-w-[56px] flex-col items-center gap-0.5 px-1 pb-0.5 text-[11px] font-medium transition-colors',
+                    'tenant-mobile-nav-link',
                     active
-                      ? 'text-neutral-900 dark:text-neutral-100'
+                      ? 'is-active'
                       : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200',
                   )}
                 >
-                  <span
-                    className={cn(
-                      'inline-flex h-9 w-9 items-center justify-center rounded-2xl transition-colors',
-                      active
-                        ? 'bg-neutral-900 text-white dark:bg-[#FFD400]/20 dark:text-[#FFD400]'
-                        : 'bg-transparent text-current',
-                    )}
-                  >
-                    <Icon size={18} />
+                  <span className="tenant-mobile-nav-stack">
+                    <span className="tenant-mobile-nav-icon">
+                      <Icon className="tenant-mobile-nav-icon-glyph" />
+                    </span>
+                    <span className="tenant-mobile-nav-label">{item.label[locale]}</span>
                   </span>
-                  <span>{item.label[locale]}</span>
                 </Link>
               </li>
             );

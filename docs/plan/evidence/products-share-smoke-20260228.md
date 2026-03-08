@@ -13,9 +13,9 @@
   - `AUTH_DEV_CODE_ENABLED=true`（便于验证码登录）
   - `WEB_PUBLIC_BASE_URL=http://localhost:30010`
 
-### 账号与租户
+### 账号与用户
 - 执行账号（OWNER/EDITOR）：`synthetic.owner@ux-sandbox.local`
-- 租户：`tenantSlug=ux-sandbox`
+- 用户：`tenantSlug=ux-sandbox`
 - 登录方式：邮箱验证码（devCode）
 
 ### Seed 数据（执行前至少满足）
@@ -56,7 +56,7 @@
 
 | Step | 操作 | 预期结果 | 截图文件名 |
 |---|---|---|---|
-| S01 | 登录后进入目标租户产品管理页（通过工作台入口点击“产品管理”） | 页面可见产品列表与“新建产品”入口 | `S01-products-page-ready.png` |
+| S01 | 登录后进入目标用户产品管理页（通过工作台入口点击“产品管理”） | 页面可见产品列表与“新建产品”入口 | `S01-products-page-ready.png` |
 | S02 | 新建产品（填写 code/name/description）并提交 | 成功提示出现，列表出现新产品 | `S02-product-created.png` |
 | S03 | 进入该产品编辑态，修改文案字段并暂存 | 编辑表单加载正常，改动已呈现 | `S03-product-edit-updated-fields.png` |
 | S04 | 上传第 1 张图片（`mg_01.jpg`） | 图片 1 上传成功并出现在图片列表 | `S04-upload-image-1.png` |
@@ -91,7 +91,7 @@
 - 捕获前端控制台错误到：`console/console-errors.log`
 - 重点关注：
   - `Failed to fetch`
-  - `401/403`（租户 token 或角色不匹配）
+  - `401/403`（用户 token 或角色不匹配）
   - 图片上传相关 `413/415`（大小/类型）
 
 ### Network 定位
@@ -99,7 +99,7 @@
 - 优先检查：
   - `/s/:token` 是否返回 `302` 和 `Location`
   - `/shares/:shareId/public` 查询参数 `sid/tenantId/resourceType/resourceId/exp/sig` 是否齐全
-  - 图片内容请求是否存在跨租户或鉴权错误
+  - 图片内容请求是否存在跨用户或鉴权错误
 
 ## 5) 执行记录模板（每次 smoke 追加）
 

@@ -115,11 +115,11 @@ export default function TenantManagementPage() {
     <main className="workspace-shell">
       <section className="card panel stack">
         <div className="row between">
-          <h2>我的租户</h2>
+          <h2>我的用户</h2>
           {!loading ? <p className="muted">共 {tenants.length} 个</p> : null}
         </div>
-        {loading ? <p className="notice notice-info">正在加载租户信息...</p> : null}
-        {!loading && tenants.length === 0 ? <p className="notice notice-warning">当前账号还没有租户。</p> : null}
+        {loading ? <p className="notice notice-info">正在加载用户信息...</p> : null}
+        {!loading && tenants.length === 0 ? <p className="notice notice-warning">当前账号还没有用户。</p> : null}
 
         {!loading && tenants.length > 0 ? (
           <div className="table-wrap">
@@ -161,7 +161,7 @@ export default function TenantManagementPage() {
       </section>
 
       <form className="card panel stack" onSubmit={handleCreateTenant}>
-        <h2>创建新租户</h2>
+        <h2>创建新用户</h2>
         <div className="form-grid form-grid-2">
           <div className="stack">
             <label htmlFor="tenant-slug">Slug</label>
@@ -190,7 +190,7 @@ export default function TenantManagementPage() {
 
         <div className="row">
           <button type="submit" disabled={saving}>
-            {saving ? '创建中...' : '创建租户'}
+            {saving ? '创建中...' : '创建用户'}
           </button>
         </div>
       </form>

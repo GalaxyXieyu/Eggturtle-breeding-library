@@ -547,7 +547,7 @@ export default function ProductEditDrawer({
             </span>
             <div className="flex-1 text-center">
               <p className="text-sm font-semibold text-neutral-900">编辑乌龟资料</p>
-              <p className="text-xs text-neutral-500">租户 {tenantSlug}</p>
+              <p className="text-xs text-neutral-500">用户 {tenantSlug}</p>
             </div>
             <button
               type="button"

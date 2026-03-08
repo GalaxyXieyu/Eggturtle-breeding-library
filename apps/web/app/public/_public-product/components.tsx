@@ -6,6 +6,7 @@ import { useMemo, useState } from 'react';
 import type { PublicSharePresentation } from '@eggturtle/shared';
 
 import { PetCard } from '@/components/pet';
+import { FamilyNodeCard } from '@/components/family-tree/FamilyNodeCard';
 import { formatSex, formatShortDate } from '@/lib/pet-format';
 import type { Breeder, BreederEventItem, FamilyTree, MaleMateLoadItem, NeedMatingStatus, Series } from '@/app/public/_public-product/types';
 
@@ -654,36 +655,12 @@ function TreeNode({
   shareToken: string;
   shareQuery?: string;
 }) {
-  if (!node) {
-    return (
-      <div className="flex h-24 w-20 items-center justify-center rounded-lg border-2 border-dashed border-neutral-300 bg-neutral-50 text-xs text-neutral-400">
-        未知
-      </div>
-    );
-  }
+  const href = node?.id ? withDemo(publicPath(shareToken, `/products/${node.id}`, shareQuery), demo) : undefined;
 
   return (
-    <Link
-      href={withDemo(publicPath(shareToken, `/products/${node.id}`, shareQuery), demo)}
-      className="group relative block h-24 w-20 overflow-hidden rounded-lg border-2 border-neutral-200 bg-white shadow-sm transition hover:border-amber-400 hover:shadow-md"
-    >
-      {node.thumbnailUrl ? (
-        <img
-          src={node.thumbnailUrl}
-          alt={node.code}
-          className="h-full w-full object-cover"
-          loading="lazy"
-          decoding="async"
-          fetchPriority="low"
-        />
-      ) : (
-        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-neutral-100 to-neutral-200">
-          <span className="text-xs text-neutral-400">暂无图</span>
-        </div>
-      )}
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-1 py-1">
-        <div className="truncate text-[10px] font-medium text-white">{node.code}</div>
-      </div>
-    </Link>
+    <FamilyNodeCard
+      node={node}
+      href={href}
+    />
   );
 }

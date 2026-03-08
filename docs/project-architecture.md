@@ -7,10 +7,10 @@
 
 | 平台域 | 主要职责 | 代码入口 | 边界约束 |
 |---|---|---|---|
-| 租户后台（Tenant Workspace） | 租户内管理：宠物/系列/账户/分享配置 | `apps/web/app/app/[tenantSlug]/*` | 仅操作当前租户数据，不做跨租户治理 |
+| 用户后台（Tenant Workspace） | 用户内管理：宠物/系列/账户/分享配置 | `apps/web/app/app/[tenantSlug]/*` | 仅操作当前用户数据，不做跨用户治理 |
 | 公开分享端（Public Share） | 面向访客的只读浏览与转化入口 | `apps/web/app/public/s/[shareToken]/*` | 不提供写操作 |
-| 平台管理后台（Platform Admin） | 跨租户治理、审计、分析 | `apps/admin/app/dashboard/*` | 仅 super admin 可访问 |
-| API（统一后端） | 认证、租户隔离、业务接口、审计 | `apps/api/src/*` | `/admin/*` 与租户业务接口分域 |
+| 平台管理后台（Platform Admin） | 跨用户治理、审计、分析 | `apps/admin/app/dashboard/*` | 仅 super admin 可访问 |
+| API（统一后端） | 认证、用户隔离、业务接口、审计 | `apps/api/src/*` | `/admin/*` 与用户业务接口分域 |
 
 ## 2. 本轮架构收敛（核心）
 
@@ -57,7 +57,7 @@
 
 ## 3. 请求链路（简版）
 
-### 3.1 租户产品链路
+### 3.1 用户产品链路
 
 1. 列表页加载：`GET /products`、`GET /series`
 2. 新建抽屉：`POST /products` -> 上传/排序/主图设置（同抽屉内）
@@ -66,7 +66,7 @@
 
 ### 3.2 公开分享链路
 
-1. 租户端创建分享：`POST /shares`
+1. 用户端创建分享：`POST /shares`
 2. 访客浏览：`GET /s/:shareToken` 或 `GET /shares/:shareId/public`
 3. 公开页仅读，不触发写接口
 

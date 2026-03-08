@@ -22,7 +22,7 @@ type PublicFloatingActionsProps = {
   className?: string;
   /** 与默认按钮同一容器内上下排列的额外按钮（如筛选），统一在右侧 */
   children?: ReactNode;
-  /** 租户在分享配置里上传的联系二维码 */
+  /** 用户在分享配置里上传的联系二维码 */
   tenantQrImageUrl?: string | null;
   tenantWechatId?: string | null;
   shareCardTitle?: string;
@@ -239,8 +239,8 @@ export default function PublicFloatingActions({
         </FloatingActionButton>
 
         <FloatingActionButton
-          aria-label="租户联系二维码"
-          title="租户联系二维码"
+          aria-label="用户联系二维码"
+          title="用户联系二维码"
           onClick={() => setTenantQrOpen(true)}
         >
           <QrCode size={20} />
@@ -263,7 +263,7 @@ export default function PublicFloatingActions({
           className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
           role="dialog"
           aria-modal="true"
-          aria-label="租户联系二维码"
+          aria-label="用户联系二维码"
           onClick={() => setTenantQrOpen(false)}
         >
           <div
@@ -272,8 +272,8 @@ export default function PublicFloatingActions({
           >
             <div className="mb-3 flex items-center justify-between">
               <div>
-                <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">租户联系二维码</p>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400">扫码可直接联系当前租户</p>
+                <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">用户联系二维码</p>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">扫码可直接联系当前用户</p>
               </div>
               <button
                 type="button"
@@ -288,13 +288,13 @@ export default function PublicFloatingActions({
             {tenantQrImageUrl ? (
               <img
                 src={tenantQrImageUrl}
-                alt="租户联系二维码"
+                alt="用户联系二维码"
                 className="mx-auto h-64 w-64 rounded-2xl border border-black/5 bg-white object-cover p-1"
               />
             ) : (
               <div className="mx-auto flex h-64 w-64 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 text-center text-xs text-neutral-500 dark:border-white/20 dark:bg-neutral-950/50 dark:text-neutral-400">
                 <QrCode size={20} />
-                当前租户暂未上传联系二维码
+                当前用户暂未上传联系二维码
               </div>
             )}
 

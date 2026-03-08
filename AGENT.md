@@ -8,16 +8,16 @@
 
 ## 架构定位
 
-### apps/web - 租户端应用
-- 登录后，面向单个租户的用户
-- 包含：租户用户自己的产品/种龟/系列/轮播/设置管理
+### apps/web - 用户端应用
+- 登录后，面向单个用户的用户
+- 包含：用户用户自己的产品/种龟/系列/轮播/设置管理
 - 通过 RBAC 控制权限（OWNER/ADMIN 可操作，VIEWER 只读）
 - 路由：`/app/[tenantSlug]/...`
 
 ### apps/admin - 平台级后台
 - 面向平台运营方
-- 只需要：租户管理、会员/套餐管理、审计日志、平台配置
-- **不需要也不应该**去管理单个租户的业务数据
+- 只需要：用户管理、会员/套餐管理、审计日志、平台配置
+- **不需要也不应该**去管理单个用户的业务数据
 - 路由：`/dashboard/...`
 
 ### Legacy 参考
@@ -56,8 +56,8 @@
 ### 角色定义
 | 角色 | 说明 |
 |-------|------|
-| OWNER | 租户创建者，拥有所有权限 |
-| ADMIN | 租户管理员，可管理产品/种龟/系列/轮播/设置/成员 |
+| OWNER | 用户创建者，拥有所有权限 |
+| ADMIN | 用户管理员，可管理产品/种龟/系列/轮播/设置/成员 |
 | EDITOR | 编辑者，可创建/编辑产品/种龟/事件 |
 | VIEWER | 只读用户，只能查看，不能编辑 |
 
@@ -149,7 +149,8 @@
 ## 开发执行计划
 
 ### 执行入口
-- `/Volumes/DATABASE/code/Eggturtle-breeding-library/docs/plan/EggsTask.csv` - 今晚任务计划（SSOT, git 管理）
+- `/Users/apple/coding/.openclaw/workspace/workspaces/groups/eggturtle/eggturtle/tasks/Tasks.csv` - 当前任务 SSOT（workspace 唯一写入口）
+- `docs/plan/EggsTask.csv` - 历史归档，只读参考，不再写入
 - `docs/DEVELOPMENT_PLAN_GUIDE.md` - 开发计划结构指南
 
 ### Excel Sheet 结构
@@ -165,9 +166,20 @@
 - Status / Evidence / Depends On / Legacy Ref
 
 ### 任务同步规则（强制）
-- 完成任何任务后，必须立即更新 `docs/plan/EggsTask.csv` 中对应任务行（至少包含 `Status` 与 `Evidence`）。
-- 在执行 `git commit` 前，必须再次核对并同步 `docs/plan/EggsTask.csv`，避免任务状态与代码提交不一致。
-- 若本次改动涉及多个任务，提交前需要逐条确认 CSV 中每个任务状态与实际完成情况一致。
+- 完成任何任务后，必须立即更新 workspace `tasks/Tasks.csv` 中对应任务行（至少包含 `Status` 与 `Evidence`）。
+- 在执行 `git commit` 前，必须再次核对并同步 workspace `tasks/Tasks.csv`，避免任务状态与代码提交不一致。
+- 若本次改动涉及多个任务，提交前需要逐条确认 workspace `tasks/Tasks.csv` 中每个任务状态与实际完成情况一致。
+- 默认串行推进：优先按 workspace `tasks/Tasks.csv` 做任务管理，做完一个再开下一个，避免并发派出多个 subagent 抢同一批任务。
+- `docs/plan/EggsTask.csv` 仅作为历史归档保留，不再写入。
+
+### 2026-03-07 执行流程补充（强制）
+- 不要轻易改代码；业务逻辑优先，先搞清楚真实规则、字段含义、用户场景和边界，再决定是否开发。
+- 收到需求后，第一棒默认是需求评估：先由 codex 判断是否存在逻辑漏洞、字段误露、流程误解或口径冲突；若有问题，先反馈，不直接开改。
+- 只有在业务口径明确后，才进入开发；开发完成后必须先走 `reviewer` 做 code review。
+- review 后，必须再走 `eggturtle-qa` 做 `ui-ux-test`，并把截图证据、报错清单落到真实仓库 `outbound/` 或用户指定目录。
+- QA 未完成前，不直接 `git push`；只有 review 和 QA 都通过后，才由 `ops` 执行 push、监控 GitHub Actions / Deploy，并在群里同步结果。
+- 若用户需要本地验收，项目根目录统一使用：`./dev.sh start`；状态检查：`./dev.sh status`；前端缓存异常时使用：`CLEAN_ON_START=1 ./dev.sh start`；全部停止：`./dev.sh stop`。
+- 如需测试登录，可直接读取仓库 `.env` 中已有测试账号信息，不再向用户重复追问账号密码。
 
 ---
 
@@ -184,12 +196,12 @@
 - `apps/web` 登录页完成双语切换（中文/英文）与视觉重构：
   - 文件：`apps/web/app/login/page.tsx`、`apps/web/app/globals.css`
   - 能力：中英文文案切换、双栏登录信息块、devCode 提示块
-- `apps/web` 租户端统一壳层与迁移入口已落地（Phase 1）：
+- `apps/web` 用户端统一壳层与迁移入口已落地（Phase 1）：
   - 证据：`docs/evidence/web-ui-redesign-phase1-smoke-20260228.md`
 - 数据复核结论（避免误判“账号错了”）：
   - `turtle-album`：当前有 `products`（已从 legacy 导入），但没有 `series/breeders`
   - `ux-sandbox`：已通过 `scripts/seed/synthetic_dataset.ts --confirm` 补齐 `series/breeders/events`
-  - 因此测试 `series/breeders` 页面时应优先使用 `synthetic.owner@ux-sandbox.local` + `ux-sandbox` 租户
+  - 因此测试 `series/breeders` 页面时应优先使用 `synthetic.owner@ux-sandbox.local` + `ux-sandbox` 用户
 - 生产数据拉取复核（来源：`/Volumes/DATABASE/code/turtle_album/backend/data/app.db`）：
   - dry-run 导出统计：`users=1`、`products=32`、`product_images=32`（合计 65 条记录，满足“50+”口径）
   - `--confirm` 导出文件：`out/turtle_album_export_from_prod_20260228_reimport.json`
@@ -201,16 +213,16 @@
   - `synthetic.owner@ux-sandbox.local` 访问 `ux-sandbox/series` 显示 `3/3` 条 series，链路正常
 - 2026-02-28 合并回退后的重建补充：
   - `apps/web` 与 `apps/admin` 已统一改为 Admin Mode 紧凑比例（小字号/小间距/小控件/紧凑表格行高）
-  - `apps/admin` 全部核心页面改为中文文案（登录、总览、租户、成员、审计日志、侧边栏/顶栏）
+  - `apps/admin` 全部核心页面改为中文文案（登录、总览、用户、成员、审计日志、侧边栏/顶栏）
   - 登录链路已升级为“双模式”：账号密码 + 邮箱验证码（admin/web 同步可用）
   - 密码登录后端已落地并迁移：
     - 共享协议：`packages/shared/src/auth.ts`
     - API：`POST /auth/password-login` + `verify-code` 支持可选 `password`
     - 数据库迁移：`apps/api/prisma/migrations/20260228160000_auth_password_login`
-  - 已确认“有图片有数据”的主租户：`turtle-album`
-    - 当前统计：`products=32`、`product_images=64`（该租户图片数据最完整）
+  - 已确认“有图片有数据”的主用户：`turtle-album`
+    - 当前统计：`products=32`、`product_images=64`（该用户图片数据最完整）
   - 本地可用账号（已设置密码）：
-    - 租户端（apps/web）：`galaxyxieyu` / `Siri@2026`（邮箱：`galaxyxieyu@account.eggturtle.local`）
+    - 用户端（apps/web）：`galaxyxieyu` / `Siri@2026`（邮箱：`galaxyxieyu@account.eggturtle.local`）
     - 平台后台（apps/admin，super-admin）：`admin` / `Siri@2026`（邮箱：`admin@local.test`，需在 `SUPER_ADMIN_EMAILS` allowlist）
     - 本地数据库已清理：仅保留以上 2 个账号，避免开发上下文污染
     - 本地后台 allowlist 已写入：`apps/admin/.env.local`
@@ -229,7 +241,7 @@
 - 2026-02-28 任务归属调整与收口：
   - `T40`（Milestone1 收口）已由“宇宇”接手并完成，证据：`docs/plan/evidence/milestone1-closeout-20260228.md`
   - `T41`（Membership/Quota v1 规划审阅）已由“宇宇”接手并完成，证据：`docs/plan/evidence/membership-v1-plan-review-20260228.md`
-  - 其余进行中任务继续由 openclaw/宇仔推进（按 `docs/plan/EggsTask.csv` 为准）
+  - 其余进行中任务继续由 openclaw/宇仔推进（当前以 workspace `tasks/Tasks.csv` 为准；`docs/plan/EggsTask.csv` 仅历史归档）
 - 2026-02-28 Membership 补充收口（宇宇）：
   - `T48` 激活码接口已落地：`POST /admin/subscription-activation-codes`（生成）、`POST /subscriptions/activation-codes/redeem`（兑换）
   - `T49` 验收与回滚证据已补齐：`docs/plan/evidence/membership-v1-acceptance-rollback-20260228.md`
@@ -237,9 +249,9 @@
 - 2026-02-28 UX Smoke（Codex 实测）：
   - 运行时段：16:23~16:55（Asia/Shanghai）
   - 证据目录：`out/ui-smoke/20260228-162328/`
-  - 已覆盖：Web 登录/守卫/租户切换/series/breeders/detail/public-share；Admin 登录/租户列表/订阅面板/成员页/审计筛选
+  - 已覆盖：Web 登录/守卫/用户切换/series/breeders/detail/public-share；Admin 登录/用户列表/订阅面板/成员页/审计筛选
   - 证据文档：`docs/plan/evidence/ux-smoke-20260228.md`
-  - 任务表回填：`docs/plan/EggsTask.csv` 已补 `T50/T51` 最新 evidence 路径
+  - 历史任务表回填：`docs/plan/EggsTask.csv` 曾补 `T50/T51` 最新 evidence 路径（现已归档，不再写入）
   - 中断说明（非产品缺陷）：`30011` API 临时中断一次、Chrome DevTools MCP 会话断开两次，均已恢复
 - 2026-02-28 T51 补测收口（Codex）：
   - 补齐 pending：`products-create-upload`、`featured CRUD`、`share-public`（API-backed）
@@ -261,7 +273,7 @@
 3. **一个规格目录**: docs/spec/ 存放所有业务规格
 4. **Legacy 参考优先**: 开发 UI 时优先参考 legacy 组件
 5. **并行开发**: 业务功能、Web UI 迁移/重设计、Admin UI 增强三者并行
-6. **任务闭环**: 每次任务完成与每次 Git 提交前，都必须同步 `docs/plan/EggsTask.csv`
+6. **任务闭环**: 每次任务完成与每次 Git 提交前，都必须同步 workspace `tasks/Tasks.csv`；`docs/plan/EggsTask.csv` 仅历史归档
 
 ---
 

@@ -2,12 +2,12 @@
 
 更新时间：2026-03-04
 
-本目录已按“业务主线 + 技术实现 + UI 规范”收敛，以下 6 份文档为当前有效主文档。
+本目录已按“业务主线 + 技术实现 + UI 规范”收敛，以下 7 份文档为当前有效主文档。
 
 ## 核心文档
 
 - [project-architecture.md](./project-architecture.md)
-  - 系统边界与模块职责（租户端 / 公开分享端 / 平台管理端 / API）
+  - 系统边界与模块职责（用户端 / 公开分享端 / 平台管理端 / API）
 - [business-flows.md](./business-flows.md)
   - 业务主流程与交互链路（创建、编辑、筛选、分享、回流）
 - [api-views.md](./api-views.md)
@@ -16,6 +16,8 @@
   - 关键技术口径、MUST/SHOULD 规则、组件复用边界
 - [uiux-design.md](./uiux-design.md)
   - UI 设计规范与交互契约（抽屉、药丸筛选、FAB、移动端行为）
+- [deploy/sealos-domain-hardening.md](./deploy/sealos-domain-hardening.md)
+  - Sealos 域名/HTTPS/301 收口方案与发布后自动验收闸门
 
 ## 本轮重点变更（2026-03-04）
 

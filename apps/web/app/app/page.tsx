@@ -22,11 +22,11 @@ type AppIntent = 'dashboard' | 'account' | 'subscription';
 const COPY = {
   zh: {
     title: '正在进入工作台',
-    subtitle: '正在解析租户上下文。',
-    loading: '正在解析租户信息...',
-    loadingDetail: '正在同步租户权限与工作台配置，通常只需几秒。',
+    subtitle: '正在解析用户上下文。',
+    loading: '正在解析用户信息...',
+    loadingDetail: '正在同步用户权限与工作台配置，通常只需几秒。',
     loadingStage: '连接工作台服务',
-    noTenantContext: '当前账号未绑定租户，请重新登录后重试。',
+    noTenantContext: '当前账号未绑定用户，请重新登录后重试。',
     retryLogin: '重新登录',
     backToLogin: '返回登录',
     unknownError: '未知错误'

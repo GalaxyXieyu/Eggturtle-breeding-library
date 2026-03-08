@@ -25,7 +25,6 @@ import { ensureTenantRouteSession } from '@/lib/tenant-route-session';
 import ProductDrawer, {
   type ProductSeriesOption,
 } from '@/components/product-drawer';
-import TenantFloatingShareButton from '@/components/tenant-floating-share-button';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
@@ -115,7 +114,6 @@ export default function TenantProductsPage() {
       DEFAULT_SHARE_PREVIEW_HERO,
   );
   const shareOverlayColor = hexToRgba(sharePreview.brandSecondary, 0.4);
-  const shareAccentShadow = `0 8px 24px ${hexToRgba(sharePreview.brandPrimary, 0.3)}`;
 
   useEffect(() => {
     setSharePreview(buildFallbackSharePreview(tenantSlug));
@@ -753,8 +751,9 @@ export default function TenantProductsPage() {
           shareHeroImageUrl={shareHeroImageUrl}
           shareHeroIndex={shareHeroIndex}
           shareOverlayColor={shareOverlayColor}
-          shareAccentShadow={shareAccentShadow}
           activeFilterCount={activeFilterCount}
+          useLegacySharePreviewStyle
+          showShareConfigEntry
           onHeroIndexChange={setShareHeroIndex}
           onOpenFilter={(event) => {
             setIsCreateDrawerOpen(false);
@@ -829,7 +828,6 @@ export default function TenantProductsPage() {
             >
               <Plus size={18} />
             </FloatingActionButton>
-            <TenantFloatingShareButton intent="feed" inline className="h-11 w-11" />
             {showMobileFilterFab ? (
               <div className="relative" data-products-filter-root="true">
                 <Button

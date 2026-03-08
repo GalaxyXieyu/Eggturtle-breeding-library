@@ -8,16 +8,16 @@
 
 ## 架构定位
 
-### apps/web - 租户端应用
-- 登录后，面向单个租户的用户
-- 包含：租户用户自己的产品/种龟/系列/轮播/设置管理
+### apps/web - 用户端应用
+- 登录后，面向单个用户的用户
+- 包含：用户用户自己的产品/种龟/系列/轮播/设置管理
 - 通过 RBAC 控制权限（OWNER/ADMIN 可操作，VIEWER 只读）
 - 路由：`/app/[tenantSlug]/...`
 
 ### apps/admin - 平台级后台
 - 面向平台运营方
-- 只需要：租户管理、会员/套餐管理、审计日志、平台配置
-- **不需要也不应该**去管理单个租户的业务数据
+- 只需要：用户管理、会员/套餐管理、审计日志、平台配置
+- **不需要也不应该**去管理单个用户的业务数据
 - 路由：`/dashboard/...`
 
 ### Legacy 参考
@@ -56,8 +56,8 @@
 ### 角色定义
 | 角色 | 说明 |
 |-------|------|
-| OWNER | 租户创建者，拥有所有权限 |
-| ADMIN | 租户管理员，可管理产品/种龟/系列/轮播/设置/成员 |
+| OWNER | 用户创建者，拥有所有权限 |
+| ADMIN | 用户管理员，可管理产品/种龟/系列/轮播/设置/成员 |
 | EDITOR | 编辑者，可创建/编辑产品/种龟/事件 |
 | VIEWER | 只读用户，只能查看，不能编辑 |
 
@@ -149,7 +149,8 @@
 ## 开发执行计划
 
 ### 执行入口
-- `/Volumes/DATABASE/code/Eggturtle-breeding-library/docs/plan/EggsTask.csv` - 今晚任务计划（SSOT, git 管理）
+- `/Users/apple/coding/.openclaw/workspace/workspaces/groups/eggturtle/eggturtle/tasks/Tasks.csv` - 当前任务 SSOT（workspace 唯一写入口）
+- `docs/plan/EggsTask.csv` - 历史归档，只读参考，不再写入
 - `docs/DEVELOPMENT_PLAN_GUIDE.md` - 开发计划结构指南
 
 ### Excel Sheet 结构
@@ -165,9 +166,10 @@
 - Status / Evidence / Depends On / Legacy Ref
 
 ### 任务同步规则（强制）
-- 完成任何任务后，必须立即更新 `docs/plan/EggsTask.csv` 中对应任务行（至少包含 `Status` 与 `Evidence`）。
-- 在执行 `git commit` 前，必须再次核对并同步 `docs/plan/EggsTask.csv`，避免任务状态与代码提交不一致。
-- 若本次改动涉及多个任务，提交前需要逐条确认 CSV 中每个任务状态与实际完成情况一致。
+- 完成任何任务后，必须立即更新 workspace `tasks/Tasks.csv` 中对应任务行（至少包含 `Status` 与 `Evidence`）。
+- 在执行 `git commit` 前，必须再次核对并同步 workspace `tasks/Tasks.csv`，避免任务状态与代码提交不一致。
+- 若本次改动涉及多个任务，提交前需要逐条确认 workspace `tasks/Tasks.csv` 中每个任务状态与实际完成情况一致。
+- `docs/plan/EggsTask.csv` 仅作为历史归档保留，不再写入。
 
 ---
 
@@ -188,7 +190,7 @@
 3. **一个规格目录**: docs/spec/ 存放所有业务规格
 4. **Legacy 参考优先**: 开发 UI 时优先参考 legacy 组件
 5. **并行开发**: 业务功能、Web UI 迁移/重设计、Admin UI 增强三者并行
-6. **任务闭环**: 每次任务完成与每次 Git 提交前，都必须同步 `docs/plan/EggsTask.csv`
+6. **任务闭环**: 每次任务完成与每次 Git 提交前，都必须同步 workspace `tasks/Tasks.csv`；`docs/plan/EggsTask.csv` 仅历史归档
 
 ---
 
@@ -203,7 +205,7 @@
 ## 本地登录与启动（2026-03-07）
 
 ### 登录账号（仅保留 2 个）
-- 租户后台（Web, `http://localhost:30010/login`）：
+- 用户后台（Web, `http://localhost:30010/login`）：
   - 账号：`galaxyxieyu`
   - 密码：`Siri@2026`
   - 邮箱：`galaxyxieyu@account.eggturtle.local`

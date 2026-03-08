@@ -192,8 +192,8 @@ export class AdminAnalyticsService {
         activeTenants: bucket.tenants.size
       })),
       definitions: {
-        activeTenant: '7 天内发生至少 1 次写操作的租户。',
-        tenantRetention7d: '前 7 天活跃租户中，在最近 7 天仍保持活跃的占比。'
+        activeTenant: '7 天内发生至少 1 次写操作的用户。',
+        tenantRetention7d: '前 7 天活跃用户中，在最近 7 天仍保持活跃的占比。'
       }
     };
 

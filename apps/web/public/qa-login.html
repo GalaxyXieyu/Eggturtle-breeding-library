@@ -1,0 +1,14 @@
+<!doctype html>
+<html>
+  <body>
+    <script>
+      const hash = new URLSearchParams(location.hash.slice(1));
+      const token = hash.get('token');
+      const next = hash.get('next') || '/';
+      if (token) {
+        localStorage.setItem('eggturtle.accessToken', token);
+      }
+      location.replace(next);
+    </script>
+  </body>
+</html>

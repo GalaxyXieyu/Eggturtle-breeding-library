@@ -46,7 +46,7 @@ pnpm api-tests -- --api-base http://localhost:30113 --allow-remote --confirm-wri
    - 或直接 DB 禁用：
      - `UPDATE subscription_activation_codes SET disabled_at = NOW() WHERE disabled_at IS NULL;`
 3. 订阅回滚：
-   - 使用 admin `PUT /admin/tenants/:tenantId/subscription` 将目标租户切回 `FREE`（并按需清空配额字段）
+   - 使用 admin `PUT /admin/tenants/:tenantId/subscription` 将目标用户切回 `FREE`（并按需清空配额字段）
 4. 回归验证：
    - 重跑 `pnpm api-tests -- --only subscription ...`
    - 关键断言：Share 在 FREE 下被拒绝、写入拦截符合预期

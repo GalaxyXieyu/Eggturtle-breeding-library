@@ -34,7 +34,7 @@ export default async function TenantPublicFeedPage({
       <main className="share-shell">
         <section className="card panel stack">
           <h1>公开图鉴不可用</h1>
-          <p className="notice notice-warning">该链接不是租户图鉴分享链接。</p>
+          <p className="notice notice-warning">该链接不是用户图鉴分享链接。</p>
         </section>
       </main>
     );
@@ -46,7 +46,7 @@ export default async function TenantPublicFeedPage({
       <main className="share-shell">
         <section className="card panel stack">
           <h1>公开图鉴不可用</h1>
-          <p className="notice notice-warning">链接租户与分享租户不一致，请检查访问地址。</p>
+          <p className="notice notice-warning">链接用户与分享用户不一致，请检查访问地址。</p>
         </section>
       </main>
     );
@@ -77,7 +77,7 @@ export default async function TenantPublicFeedPage({
 
       {items.length === 0 ? (
         <section className="card panel stack">
-          <p className="notice notice-warning">当前租户还没有可展示的产品。</p>
+          <p className="notice notice-warning">当前用户还没有可展示的产品。</p>
         </section>
       ) : (
         <section className="public-feed-waterfall">

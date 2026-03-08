@@ -62,7 +62,7 @@ const MANAGEMENT_TAB_ITEMS: TopTabItem[] = [
   {
     href: '/dashboard/tenants',
     match: 'prefix',
-    label: { zh: '租户目录', en: 'Tenant Directory' }
+    label: { zh: '用户目录', en: 'Tenant Directory' }
   },
   {
     href: '/dashboard/audit-logs',

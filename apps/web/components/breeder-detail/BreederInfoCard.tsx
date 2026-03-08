@@ -1,6 +1,6 @@
 import { type Product, type ProductImage } from '@eggturtle/shared';
-import { ArrowLeft, Image as ImageIcon, PencilRuler } from 'lucide-react';
-import { formatPrice, formatSex, formatShortDate } from '@/lib/pet-format';
+import { ArrowLeft, FileBadge2, HeartHandshake, Image as ImageIcon, PencilRuler } from 'lucide-react';
+import { formatPrice, formatSex } from '@/lib/pet-format';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
@@ -14,23 +14,26 @@ type BreederInfoCardProps = {
   onImageClick: (imageId: string) => void;
   onBack: () => void;
   onEdit: () => void;
-  onManageImages: () => void;
+  onOpenCertificateDrawer: () => void;
+  onOpenCouplePhotoDrawer: () => void;
+  actionsDisabled?: boolean;
+  actionErrorMessage?: string | null;
   resolveImageUrl: (url: string) => string;
 };
 
 const relationPillStyles = {
-  父本: 'border-sky-200 bg-sky-50 text-sky-700',
-  母本: 'border-pink-200 bg-pink-50 text-pink-700',
-  配偶: 'border-amber-200 bg-amber-50 text-amber-700'
+  父本: 'border-sky-200 bg-sky-50/90 text-sky-700',
+  母本: 'border-pink-200 bg-pink-50/90 text-pink-700',
+  配偶: 'border-amber-200 bg-amber-50/90 text-amber-700'
 } as const;
 
 function RelationPill({ label, value }: { label: keyof typeof relationPillStyles; value: string }) {
   return (
     <div
-      className={`inline-flex w-full min-w-0 items-center justify-center gap-1.5 rounded-full border px-2.5 py-2 text-center ${relationPillStyles[label]}`}
+      className={`inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${relationPillStyles[label]}`}
     >
-      <span className="shrink-0 text-[10px] font-semibold tracking-[0.12em]">{label}</span>
-      <span className="min-w-0 truncate text-xs font-semibold sm:text-sm">{value}</span>
+      <span className="shrink-0 tracking-[0.08em]">{label}</span>
+      <span className="min-w-0 truncate text-neutral-800/90">{value}</span>
     </div>
   );
 }
@@ -44,7 +47,10 @@ export function BreederInfoCard({
   onImageClick,
   onBack,
   onEdit,
-  onManageImages,
+  onOpenCertificateDrawer,
+  onOpenCouplePhotoDrawer,
+  actionsDisabled = false,
+  actionErrorMessage = null,
   resolveImageUrl
 }: BreederInfoCardProps) {
   return (
@@ -54,6 +60,7 @@ export function BreederInfoCard({
           <div className="relative overflow-hidden rounded-[28px] bg-neutral-100">
             <button
               type="button"
+              data-ui="button"
               onClick={onBack}
               className="absolute left-3 top-3 z-10 inline-flex h-9 items-center gap-1 rounded-full border border-white/40 bg-black/55 px-3 text-xs font-semibold text-white shadow-[0_8px_20px_rgba(0,0,0,0.28)] backdrop-blur-sm transition hover:bg-black/65"
               aria-label="返回列表"
@@ -86,6 +93,7 @@ export function BreederInfoCard({
                   <button
                     key={image.id}
                     type="button"
+                    data-ui="button"
                     onClick={() => onImageClick(image.id)}
                     className={`overflow-hidden rounded-2xl border bg-white transition-all ${
                       image.id === activeImageId
@@ -113,39 +121,13 @@ export function BreederInfoCard({
               <Badge variant="warning">子代 ¥ {formatPrice(breeder.offspringUnitPrice)}</Badge>
             ) : null}
           </div>
-          <div className="space-y-3">
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">名称</p>
-              <CardTitle className="text-3xl text-neutral-900 sm:text-4xl">
-                {breeder?.name?.trim() || breeder?.code || '种龟详情'}
-              </CardTitle>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">状态</p>
-                <p className="mt-2 text-sm font-semibold text-neutral-900">
-                  {breeder?.needMatingStatus === 'warning'
-                    ? '逾期待配'
-                    : breeder?.needMatingStatus === 'need_mating'
-                      ? '待配'
-                      : '正常'}
-                </p>
-              </div>
-              <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">待配天数</p>
-                <p className="mt-2 text-sm font-semibold text-neutral-900">
-                  {typeof breeder?.daysSinceEgg === 'number' ? `第 ${breeder.daysSinceEgg} 天` : '暂无'}
-                </p>
-              </div>
-              <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4 sm:col-span-2 xl:col-span-1">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">最近产蛋 / 交配</p>
-                <p className="mt-2 text-sm font-semibold text-neutral-900">
-                  {breeder?.lastEggAt ? formatShortDate(breeder.lastEggAt) : '暂无'} / {breeder?.lastMatingAt ? formatShortDate(breeder.lastMatingAt) : '暂无'}
-                </p>
-              </div>
-            </div>
+          <div className="space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">名称</p>
+            <CardTitle className="text-3xl text-neutral-900 sm:text-4xl">
+              {breeder?.name?.trim() || breeder?.code || '种龟详情'}
+            </CardTitle>
           </div>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <div className="flex flex-wrap items-center gap-2">
             <RelationPill label="父本" value={breeder?.sireCode ?? '未关联'} />
             <RelationPill label="母本" value={breeder?.damCode ?? '未关联'} />
             <RelationPill label="配偶" value={breeder?.mateCode ?? '未关联'} />
@@ -157,21 +139,28 @@ export function BreederInfoCard({
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={onBack}>
-              返回列表
-            </Button>
             {breeder ? (
               <Button variant="primary" onClick={onEdit}>
                 <PencilRuler size={16} />
                 编辑资料
               </Button>
             ) : null}
-            {breeder ? (
-              <Button variant="secondary" onClick={onManageImages}>
-                图片管理
+            <Button variant="outline" className="bg-white" onClick={onOpenCertificateDrawer} disabled={actionsDisabled}>
+              <FileBadge2 size={16} />
+              生成证书
+            </Button>
+            {breeder?.sex?.toLowerCase() === 'female' ? (
+              <Button variant="outline" className="bg-white" onClick={onOpenCouplePhotoDrawer} disabled={actionsDisabled}>
+                <HeartHandshake size={16} />
+                生成夫妻图
               </Button>
             ) : null}
           </div>
+          {actionErrorMessage ? (
+            <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {actionErrorMessage}
+            </p>
+          ) : null}
         </div>
       </CardContent>
     </Card>

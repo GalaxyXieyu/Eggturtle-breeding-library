@@ -5,7 +5,7 @@
 
 ## 1. 前端页面 -> API 映射（核心链路）
 
-### 1.1 租户端（`apps/web/app/app/[tenantSlug]/*`）
+### 1.1 用户端（`apps/web/app/app/[tenantSlug]/*`）
 
 | 路由 | 页面文件 | 页面职责 | 主要 API |
 |---|---|---|---|
@@ -31,8 +31,8 @@
 | 路由 | 页面职责 | 主要 API |
 |---|---|---|
 | `/dashboard` | 平台总览 | `GET /admin/tenants`、`GET /admin/audit-logs` |
-| `/dashboard/tenants` | 租户管理 | `GET /admin/tenants` |
-| `/dashboard/tenants/[tenantId]` | 租户详情/订阅 | `GET /admin/tenants/:tenantId`、`PUT /admin/tenants/:tenantId/subscription` |
+| `/dashboard/tenants` | 用户管理 | `GET /admin/tenants` |
+| `/dashboard/tenants/[tenantId]` | 用户详情/订阅 | `GET /admin/tenants/:tenantId`、`PUT /admin/tenants/:tenantId/subscription` |
 | `/dashboard/memberships` | 成员治理 | `GET /admin/tenants/:tenantId/members`、`POST /admin/tenants/:tenantId/members` |
 | `/dashboard/analytics` | 活跃度分析 | `GET /admin/analytics/activity/overview` |
 | `/dashboard/usage` | 用量分析 | `GET /admin/analytics/usage/overview` |

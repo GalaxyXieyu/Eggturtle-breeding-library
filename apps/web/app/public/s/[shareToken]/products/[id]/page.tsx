@@ -59,7 +59,7 @@ export default async function PublicShareProductDetailPage({
       <main className="share-shell">
         <section className="card panel stack">
           <h1>公开详情不可用</h1>
-          <p className="notice notice-warning">该链接不是租户图鉴分享链接。</p>
+          <p className="notice notice-warning">该链接不是用户图鉴分享链接。</p>
         </section>
       </main>
     );

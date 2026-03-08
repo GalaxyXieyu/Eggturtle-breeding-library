@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Share2 } from 'lucide-react';
 
+import { copyTextWithFallback, openUrlWithFallback } from '@/lib/browser-share';
 import { formatApiError } from '@/lib/error-utils';
 import { createTenantFeedShareLink } from '@/lib/tenant-share';
 import { cn } from '@/lib/utils';
@@ -44,26 +45,20 @@ export default function TenantFloatingShareButton({
     try {
       const share = await createTenantFeedShareLink({
         intent,
-        missingTenantMessage: '当前租户上下文未就绪，暂时无法生成链接。',
+        missingTenantMessage: '当前用户上下文未就绪，暂时无法生成链接。',
       });
       const url = share.permanentUrl;
-      try {
-        await navigator.clipboard.writeText(url);
-        setNotice('已复制分享链接。');
-      } catch {
-        setError('链接已生成，但自动复制失败，请手动复制。');
-      }
+      const copied = await copyTextWithFallback(url);
+      const opened = openUrlWithFallback(url);
 
-      const opened = window.open(url, '_blank');
-      if (!opened) {
-        // 某些浏览器在隐私模式会返回 null，这里走 a 标签降级，避免误报“被拦截”。
-        const link = document.createElement('a');
-        link.href = url;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+      if (copied && opened) {
+        setNotice('已复制分享链接，并在新标签页打开。');
+      } else if (copied) {
+        setNotice(`已复制分享链接，请手动打开：${url}`);
+      } else if (opened) {
+        setNotice(`已打开分享页，如需转发请手动复制：${url}`);
+      } else {
+        setError(`链接已生成，请手动复制并打开：${url}`);
       }
     } catch (err) {
       setError(formatApiError(err, '创建分享链接失败'));

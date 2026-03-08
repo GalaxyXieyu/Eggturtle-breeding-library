@@ -1,0 +1,79 @@
+{
+  "startedAt": "2026-03-07T18:47:29.571362",
+  "tenantSlug": "u-74792153",
+  "productId": "cmmg78za600159k18cjnjjegp",
+  "shareToken": "shr_CdztyJsY8J45TCtG0D1yZvZ2",
+  "seriesId": "cmmg78z7700139k18x6fl4gkf",
+  "seriesCode": "ZZ80449571",
+  "seriesName": "白化",
+  "screenshots": [
+    "outbound/retest-t65-create-drawer-default.png",
+    "outbound/retest-t65-create-drawer-new-series.png",
+    "outbound/retest-t65-series-page.png",
+    "outbound/retest-t69-share-presentation-initial.png"
+  ],
+  "consoleErrors": [],
+  "pageErrors": [],
+  "checks": [
+    {
+      "level": "PASS",
+      "title": "本地 API 健康检查",
+      "detail": "status=200"
+    },
+    {
+      "level": "PASS",
+      "title": "新建乌龟系列下拉 + 新建系列按钮是否顺手",
+      "detail": "selectBox={'x': 725.25, 'y': 511.5, 'width': 203.71875, 'height': 36}; buttonBox={'x': 935.96875, 'y': 511.5, 'width': 78.03125, 'height': 36}"
+    },
+    {
+      "level": "PASS",
+      "title": "新建乌龟提交成功",
+      "detail": "用户工作台\n\nu-74792153\n\n免费版\n数据\n系列\n宠物\n我的\n分享\n创建并复制分享链接\n退出登录\n分享端同款预览\n\nPUBLIC SHARE PREVIEW\n\nu-74792153 · 公开图鉴\n\n管理端顶部已切换为分享端视觉，可直接预览分享配置效果。\n\n分享配置实时映射\n主色\n辅色\n筛选\n新建产品\n分享配置\n0公0母 今年已产0蛋 0只待交配\n暂无封面\n未知\nQA-880095\n暂无封面\n未知\nZZ80274372\n暂无封面\n未知\nZZ80449571\n\n已展示全部 3 条\n\n产品 ZZ80449571 创建成功。"
+    },
+    {
+      "level": "PASS",
+      "title": "新建系列名称回显为白化",
+      "detail": "{\"id\": \"cmmg78z7700139k18x6fl4gkf\", \"tenantId\": \"cmmd4zirh00025i9umezo9meh\", \"code\": \"ZZ80449571\", \"name\": \"白化\", \"sortOrder\": 3, \"isActive\": true, \"description\": null, \"coverImageUrl\": null, \"createdAt\": \"2026-03-07T10:47:36.500Z\", \"updatedAt\": \"2026-03-07T10:47:36.500Z\"}"
+    },
+    {
+      "level": "FAIL",
+      "title": "新建系列编码未异常回显为产品编码/内部值",
+      "detail": "{\"id\": \"cmmg78z7700139k18x6fl4gkf\", \"tenantId\": \"cmmd4zirh00025i9umezo9meh\", \"code\": \"ZZ80449571\", \"name\": \"白化\", \"sortOrder\": 3, \"isActive\": true, \"description\": null, \"coverImageUrl\": null, \"createdAt\": \"2026-03-07T10:47:36.500Z\", \"updatedAt\": \"2026-03-07T10:47:36.500Z\"}"
+    },
+    {
+      "level": "PASS",
+      "title": "新建系列未回退成 NEW-SERIES/NEW",
+      "detail": "{\"id\": \"cmmg78z7700139k18x6fl4gkf\", \"tenantId\": \"cmmd4zirh00025i9umezo9meh\", \"code\": \"ZZ80449571\", \"name\": \"白化\", \"sortOrder\": 3, \"isActive\": true, \"description\": null, \"coverImageUrl\": null, \"createdAt\": \"2026-03-07T10:47:36.500Z\", \"updatedAt\": \"2026-03-07T10:47:36.500Z\"}"
+    },
+    {
+      "level": "PASS",
+      "title": "系列页面可见白化",
+      "detail": "用户工作台\n\nu-74792153\n\n免费版\n数据\n系列\n宠物\n我的\n分享\n创建并复制分享链接\n退出登录\n系列列表\n\n共 3 条记录，卡片右上角可快速编辑。\n\n应用筛选\n重置\n当前第 1/1 页\n每页 50 条\n白化\n暂无封面\n编辑 白化\n\n白化\n\n白化\n\n启用\n\n暂无描述\n\n排序 #1\nID cmmg71dx\n进入宠物\nZZ80274372\n暂无封面\n编辑 ZZ80274372\n\nZZ80274372\n\n白化\n\n启用\n\n暂无描述\n\n排序 #2\nID cmmg756x\n进入宠物\nZZ80449571\n暂无封面\n编辑 ZZ80449571\n\nZZ80449571\n\n白化\n\n启用\n\n暂无描述\n\n排序 #3\nID cmmg78z7\n进入宠物"
+    },
+    {
+      "level": "FAIL",
+      "title": "系列页面不应暴露内部 ID",
+      "detail": "用户工作台\n\nu-74792153\n\n免费版\n数据\n系列\n宠物\n我的\n分享\n创建并复制分享链接\n退出登录\n系列列表\n\n共 3 条记录，卡片右上角可快速编辑。\n\n应用筛选\n重置\n当前第 1/1 页\n每页 50 条\n白化\n暂无封面\n编辑 白化\n\n白化\n\n白化\n\n启用\n\n暂无描述\n\n排序 #1\nID cmmg71dx\n进入宠物\nZZ80274372\n暂无封面\n编辑 ZZ80274372\n\nZZ80274372\n\n白化\n\n启用\n\n暂无描述\n\n排序 #2\nID cmmg756x\n进入宠物\nZZ80449571\n暂无封面\n编辑 ZZ80449571\n\nZZ80449571\n\n白化\n\n启用\n\n暂无描述\n\n排序 #3\nID cmmg78z7\n进入宠物"
+    },
+    {
+      "level": "FAIL",
+      "title": "系列编码不应错误等于产品编码",
+      "detail": "productCode=ZZ80449571; seriesCode=ZZ80449571; seriesName=白化"
+    },
+    {
+      "level": "PASS",
+      "title": "分享配置取消自定义颜色后默认选中态是否为黄色 - 不应再有“自定义颜色”入口",
+      "detail": "customColorLabelCount=0"
+    },
+    {
+      "level": "PASS",
+      "title": "分享配置默认选中态为黄色",
+      "detail": "[{\"text\": \"金黄\", \"borderColor\": \"#fbbf24\", \"bgColor\": \"#fde68a\"}, {\"text\": \"石墨\", \"borderColor\": \"#fbbf24\", \"bgColor\": \"#fde68a\"}]"
+    }
+  ],
+  "health": {
+    "api": 200
+  },
+  "finishedAt": "2026-03-07T18:47:45.745173",
+  "conclusion": "不可 push"
+}

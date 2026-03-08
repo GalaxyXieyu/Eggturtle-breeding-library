@@ -172,7 +172,7 @@ export default function DashboardAuditLogsPage() {
       <AdminPageHeader
         eyebrow="操作记录"
         title="审计日志"
-        description="按租户、用户、动作和时间范围过滤平台级操作日志。"
+        description="按用户、用户、动作和时间范围过滤平台级操作日志。"
       />
 
       <AdminPanel className="stack admin-filter-panel">
@@ -184,7 +184,7 @@ export default function DashboardAuditLogsPage() {
         <form className="stack" onSubmit={handleFilterSubmit}>
           <div className="form-grid filter-grid">
             <div className="stack">
-              <label htmlFor="audit-tenant">租户</label>
+              <label htmlFor="audit-tenant">用户</label>
               <select
                 id="audit-tenant"
                 value={filtersDraft.tenantId}
@@ -192,7 +192,7 @@ export default function DashboardAuditLogsPage() {
                   setFiltersDraft((previous) => ({ ...previous, tenantId: event.target.value }))
                 }
               >
-                <option value="">全部租户</option>
+                <option value="">全部用户</option>
                 {tenants.map((tenant) => (
                   <option key={tenant.id} value={tenant.id}>
                     {tenant.name} ({tenant.slug})
@@ -306,7 +306,7 @@ export default function DashboardAuditLogsPage() {
               <tr>
                 <th>动作</th>
                 <th>操作者</th>
-                <th>目标租户</th>
+                <th>目标用户</th>
                 <th>元数据</th>
                 <th>时间</th>
               </tr>

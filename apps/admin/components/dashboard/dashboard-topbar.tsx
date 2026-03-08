@@ -208,7 +208,7 @@ function resolveSectionLabel(firstSegment: string, locale: UiLocale) {
   }
 
   if (firstSegment === 'tenants' || firstSegment === 'memberships' || firstSegment === 'audit-logs') {
-    return locale === 'zh' ? '租户治理' : 'Tenant Governance';
+    return locale === 'zh' ? '用户治理' : 'Tenant Governance';
   }
 
   return null;
@@ -216,7 +216,7 @@ function resolveSectionLabel(firstSegment: string, locale: UiLocale) {
 
 function resolveSegmentLabel(segment: string, locale: UiLocale) {
   const labelMap: Record<string, { zh: string; en: string }> = {
-    tenants: { zh: '租户目录', en: 'Tenant Directory' },
+    tenants: { zh: '用户目录', en: 'Tenant Directory' },
     memberships: { zh: '成员权限', en: 'Member Access' },
     'audit-logs': { zh: '操作记录', en: 'Activity Logs' },
     analytics: { zh: '活跃度', en: 'Activity' },
@@ -245,7 +245,7 @@ function formatTenantLabel(tenantId: string, tenantName: string | null, locale: 
   }
 
   const shortTenantId = tenantId.length > 8 ? tenantId.slice(0, 8) : tenantId;
-  return locale === 'zh' ? `租户 ${shortTenantId}` : `Tenant ${shortTenantId}`;
+  return locale === 'zh' ? `用户 ${shortTenantId}` : `Tenant ${shortTenantId}`;
 }
 
 function extractTenantId(pathname: string) {

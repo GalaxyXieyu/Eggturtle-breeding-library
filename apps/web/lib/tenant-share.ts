@@ -46,14 +46,22 @@ export async function createTenantFeedShareLink(
   };
 }
 
+const DEFAULT_PUBLIC_SHARE_ORIGIN = 'https://xuanyuku.cn';
+
 export function buildTenantSharePermanentUrl(shareToken: string, intent: TenantShareIntent = 'feed') {
   const pathSuffix = buildSharePath(intent);
+  const publicShareOrigin = resolvePublicShareOrigin();
 
-  if (typeof window !== 'undefined' && window.location?.origin) {
-    return `${window.location.origin}/public/s/${shareToken}${pathSuffix}`;
+  return `${publicShareOrigin}/public/s/${shareToken}${pathSuffix}`;
+}
+
+function resolvePublicShareOrigin() {
+  const configuredOrigin = process.env.NEXT_PUBLIC_PUBLIC_APP_ORIGIN?.trim();
+  if (configuredOrigin) {
+    return configuredOrigin.replace(/\/$/, '');
   }
 
-  return `/public/s/${shareToken}${pathSuffix}`;
+  return DEFAULT_PUBLIC_SHARE_ORIGIN;
 }
 
 async function resolveTenantId(rawTenantId: string | null | undefined, missingTenantMessage?: string) {

@@ -36,7 +36,7 @@ export default async function TenantPublicDetailPage({
       <main className="share-shell">
         <section className="card panel stack">
           <h1>公开详情不可用</h1>
-          <p className="notice notice-warning">该链接不是租户图鉴分享链接。</p>
+          <p className="notice notice-warning">该链接不是用户图鉴分享链接。</p>
         </section>
       </main>
     );
@@ -47,7 +47,7 @@ export default async function TenantPublicDetailPage({
       <main className="share-shell">
         <section className="card panel stack">
           <h1>公开详情不可用</h1>
-          <p className="notice notice-warning">未找到该产品，或该产品不在分享租户中。</p>
+          <p className="notice notice-warning">未找到该产品，或该产品不在分享用户中。</p>
         </section>
       </main>
     );
@@ -59,7 +59,7 @@ export default async function TenantPublicDetailPage({
       <main className="share-shell">
         <section className="card panel stack">
           <h1>公开详情不可用</h1>
-          <p className="notice notice-warning">链接租户与分享租户不一致，请检查访问地址。</p>
+          <p className="notice notice-warning">链接用户与分享用户不一致，请检查访问地址。</p>
         </section>
       </main>
     );
@@ -75,7 +75,7 @@ export default async function TenantPublicDetailPage({
         <h1>{product.name || product.code}</h1>
         <p className="muted">{presentation.feedTitle}</p>
         <p className="muted">
-          租户 <strong>{tenant.name}</strong>（{tenant.slug}）
+          用户 <strong>{tenant.name}</strong>（{tenant.slug}）
         </p>
         <div className="row">
           <Link href={feedHref} className="secondary">

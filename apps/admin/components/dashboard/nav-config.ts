@@ -36,7 +36,7 @@ export const dashboardNavGroups: DashboardNavGroup[] = [
         icon: 'overview',
         label: { zh: '平台总览', en: 'Platform Overview' },
         description: {
-          zh: '跨租户关键指标与最近操作。',
+          zh: '跨用户关键指标与最近操作。',
           en: 'Cross-tenant key metrics and recent activities.'
         },
         matchStrategy: 'exact'
@@ -52,7 +52,7 @@ export const dashboardNavGroups: DashboardNavGroup[] = [
         icon: 'activity',
         label: { zh: '活跃度', en: 'Activity' },
         description: {
-          zh: '查看 DAU/WAU/MAU 与活跃租户趋势。',
+          zh: '查看 DAU/WAU/MAU 与活跃用户趋势。',
           en: 'Track DAU/WAU/MAU and tenant activity trends.'
         }
       },
@@ -78,14 +78,14 @@ export const dashboardNavGroups: DashboardNavGroup[] = [
   },
   {
     id: 'governance',
-    title: { zh: '租户治理', en: 'Tenant Governance' },
+    title: { zh: '用户治理', en: 'Tenant Governance' },
     items: [
       {
         href: '/dashboard/tenants',
         icon: 'tenants',
-        label: { zh: '租户目录', en: 'Tenant Directory' },
+        label: { zh: '用户目录', en: 'Tenant Directory' },
         description: {
-          zh: '浏览租户信息并进入详情治理。',
+          zh: '浏览用户信息并进入详情治理。',
           en: 'Browse tenants and open governance details.'
         }
       },
@@ -94,7 +94,7 @@ export const dashboardNavGroups: DashboardNavGroup[] = [
         icon: 'memberships',
         label: { zh: '成员权限', en: 'Member Access' },
         description: {
-          zh: '按租户管理成员角色与权限。',
+          zh: '按用户管理成员角色与权限。',
           en: 'Manage tenant member roles and access.'
         }
       },

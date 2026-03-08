@@ -18,6 +18,7 @@ import {
 } from '@/lib/api-client';
 import { formatApiError } from '@/lib/error-utils';
 import { ensureTenantRouteSession } from '@/lib/tenant-route-session';
+import { copyTextWithFallback } from '@/lib/browser-share';
 import { createTenantFeedShareLink } from '@/lib/tenant-share';
 import { uploadSingleFileWithAuth } from '@/lib/upload-client';
 import { Button } from '@/components/ui/button';
@@ -163,7 +164,7 @@ export default function SharePresentationPage() {
         missingTenantMessage: '当前会话没有 tenantId，无法生成分享链接。',
       });
 
-      setShareLink(share.entryUrl);
+      setShareLink(share.permanentUrl);
       setMessage('分享链接已生成，可直接复制。');
     } catch (requestError) {
       setError(formatApiError(requestError));
@@ -177,22 +178,25 @@ export default function SharePresentationPage() {
       return;
     }
 
-    try {
-      await navigator.clipboard.writeText(shareLink);
+    const copied = await copyTextWithFallback(shareLink);
+
+    if (copied) {
       setMessage('分享链接已复制。');
       setError(null);
-    } catch (requestError) {
-      setError(formatApiError(requestError));
+      return;
     }
+
+    setMessage(`自动复制失败，请手动复制：${shareLink}`);
+    setError(null);
   }
 
   const preview = useMemo(() => {
     const heroImages = buildHeroImages(form.previewImageUrl, form.heroImagesText);
 
     return {
-      feedTitle: normalizeNullableString(form.feedTitle) ?? `${tenantSlug || '租户'} · 公开图鉴`,
+      feedTitle: normalizeNullableString(form.feedTitle) ?? `${tenantSlug || '用户'} · 公开图鉴`,
       feedSubtitle:
-        normalizeNullableString(form.feedSubtitle) ?? `${tenantSlug || '租户'} 在库产品展示`,
+        normalizeNullableString(form.feedSubtitle) ?? `${tenantSlug || '用户'} 在库产品展示`,
       brandPrimary: normalizeColor(form.brandPrimary) ?? '#FFD400',
       brandSecondary: normalizeColor(form.brandSecondary) ?? '#1f2937',
       heroImages: heroImages.length > 0 ? heroImages : [DEFAULT_HERO_IMAGE],
@@ -364,7 +368,7 @@ export default function SharePresentationPage() {
                 <Link2 size={18} />
                 创建分享链接
               </CardTitle>
-              <CardDescription>一键生成租户公开图鉴入口。</CardDescription>
+              <CardDescription>一键生成用户公开图鉴入口。</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="break-all rounded-2xl border border-neutral-200 bg-neutral-50 p-3 text-xs text-neutral-700">

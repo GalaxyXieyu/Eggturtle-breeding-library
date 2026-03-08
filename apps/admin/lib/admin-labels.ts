@@ -42,23 +42,23 @@ const USAGE_STATUS_LABELS: Record<AdminUsageLimitStatus, string> = {
 };
 
 const AUDIT_ACTION_LABELS: Record<SuperAdminAuditActionType, string> = {
-  [SuperAdminAuditAction.ListTenants]: '查看租户列表',
-  [SuperAdminAuditAction.CreateTenant]: '创建租户',
+  [SuperAdminAuditAction.ListTenants]: '查看用户列表',
+  [SuperAdminAuditAction.CreateTenant]: '创建用户',
   [SuperAdminAuditAction.ListUsers]: '查看用户列表',
   [SuperAdminAuditAction.UpsertTenantMember]: '新增或更新成员角色',
   [SuperAdminAuditAction.RemoveTenantMember]: '移除成员',
   [SuperAdminAuditAction.ListAuditLogs]: '查看审计日志',
   [SuperAdminAuditAction.ExportAuditLogs]: '导出审计日志',
-  [SuperAdminAuditAction.GetTenantSubscription]: '查看租户订阅',
-  [SuperAdminAuditAction.UpdateTenantSubscription]: '更新租户订阅',
+  [SuperAdminAuditAction.GetTenantSubscription]: '查看用户订阅',
+  [SuperAdminAuditAction.UpdateTenantSubscription]: '更新用户订阅',
   [SuperAdminAuditAction.CreateSubscriptionActivationCode]: '创建激活码',
-  [SuperAdminAuditAction.SuspendTenantLifecycle]: '冻结租户',
-  [SuperAdminAuditAction.ReactivateTenantLifecycle]: '恢复租户',
-  [SuperAdminAuditAction.OffboardTenantLifecycle]: '租户下线',
+  [SuperAdminAuditAction.SuspendTenantLifecycle]: '冻结用户',
+  [SuperAdminAuditAction.ReactivateTenantLifecycle]: '恢复用户',
+  [SuperAdminAuditAction.OffboardTenantLifecycle]: '用户下线',
   [SuperAdminAuditAction.GetActivityAnalyticsOverview]: '查看活跃分析概览',
   [SuperAdminAuditAction.GetActivityOverview]: '查看活跃度概览',
   [SuperAdminAuditAction.GetUsageOverview]: '查看用量概览',
-  [SuperAdminAuditAction.GetTenantUsage]: '查看租户用量',
+  [SuperAdminAuditAction.GetTenantUsage]: '查看用户用量',
   [SuperAdminAuditAction.GetRevenueOverview]: '查看营收概览'
 };
 

@@ -5,7 +5,7 @@
 # UI/UX Design Spec（V4.2）
 
 更新时间：2026-03-04
-适用范围：`apps/web`（租户端 + 公开分享端）
+适用范围：`apps/web`（用户端 + 公开分享端）
 
 ## 1. 设计目标
 
@@ -81,7 +81,7 @@
 
 ## 4. 筛选交互规范（重点）
 
-## 4.1 租户端产品页
+## 4.1 用户端产品页
 
 实现：`apps/web/app/app/[tenantSlug]/products/page.tsx`
 
@@ -323,7 +323,7 @@ body, p, span, div { font-family: 'Inter', sans-serif; }
 
 ### V4.1 移动端导航与分享入口
 
-租户端移动端采用“4 个一级导航 + 1 个悬浮分享动作”：
+用户端移动端采用“4 个一级导航 + 1 个悬浮分享动作”：
 
 - 底部 Dock 一级导航固定为：`看板 / 系列 / 宠物 / 我的`
 - “分享”不再作为 Dock 标签，改为 Dock 上方悬浮按钮（Floating Action）

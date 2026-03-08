@@ -1,0 +1,40 @@
+{
+  "startedAt": "2026-03-07T10:24:41.471867",
+  "tenantSlug": "u-74792153",
+  "screenshots": [
+    "outbound/qa-mobile-product-create-series-default.png",
+    "outbound/qa-mobile-product-create-series-inline-create.png",
+    "outbound/qa-mobile-share-presentation-theme.png"
+  ],
+  "consoleErrors": [],
+  "pageErrors": [],
+  "findings": [
+    {
+      "level": "INFO",
+      "title": "已补齐密保状态",
+      "detail": "测试账号原本缺少密保，QA 通过 API 补齐后继续。"
+    },
+    {
+      "level": "PASS",
+      "title": "新建乌龟抽屉可见系列字段",
+      "detail": "移动端抽屉已打开，页面中可见“系列”字段。"
+    },
+    {
+      "level": "PASS",
+      "title": "系列内联创建入口可用",
+      "detail": "已点击“新建系列”按钮并完成截图留证。"
+    },
+    {
+      "level": "PASS",
+      "title": "自定义颜色入口已移除",
+      "detail": "移动端分享页中未检出“自定义颜色”文案。"
+    },
+    {
+      "level": "PASS",
+      "title": "默认配色黄色信息可见",
+      "detail": "移动端分享页中可见默认配色相关文案，截图可复核黄色选中态。"
+    }
+  ],
+  "finishedAt": "2026-03-07T10:24:52.822673",
+  "conclusion": "可 push"
+}

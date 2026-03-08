@@ -256,7 +256,7 @@ export default function TenantDetailPage() {
     }
 
     const confirmMessage = [
-      `确认更新租户 ${tenantId} 的订阅配置吗？`,
+      `确认更新用户 ${tenantId} 的订阅配置吗？`,
       `套餐：${formatPlanLabel(subscriptionPlan)}（${subscriptionPlan}）`,
       `到期时间：${subscriptionExpiresAtInput ? subscriptionExpiresAtInput : '无到期'}`
     ].join('\n');
@@ -312,7 +312,7 @@ export default function TenantDetailPage() {
       return;
     }
 
-    const confirmMessage = [`确认冻结租户 ${tenantId} 吗？`, `原因：${reason}`].join('\n');
+    const confirmMessage = [`确认冻结用户 ${tenantId} 吗？`, `原因：${reason}`].join('\n');
     if (!window.confirm(confirmMessage)) {
       return;
     }
@@ -328,7 +328,7 @@ export default function TenantDetailPage() {
       const response = await suspendAdminTenant(tenantId, { reason });
       applySubscriptionSnapshot(
         response.subscription,
-        response.auditLogId ? `生命周期状态已更新。审计ID：${response.auditLogId}` : '租户已冻结。'
+        response.auditLogId ? `生命周期状态已更新。审计ID：${response.auditLogId}` : '用户已冻结。'
       );
       setLifecycleState((previous) => ({
         ...previous,
@@ -336,8 +336,8 @@ export default function TenantDetailPage() {
         suspending: false,
         error: null,
         actionMessage: response.auditLogId
-          ? `租户已冻结。审计ID：${response.auditLogId}`
-          : '租户已冻结。'
+          ? `用户已冻结。审计ID：${response.auditLogId}`
+          : '用户已冻结。'
       }));
     } catch (error) {
       setLifecycleState((previous) => ({
@@ -349,7 +349,7 @@ export default function TenantDetailPage() {
   }
 
   async function handleReactivateTenant() {
-    const confirmMessage = `确认恢复租户 ${tenantId} 吗？`;
+    const confirmMessage = `确认恢复用户 ${tenantId} 吗？`;
     if (!window.confirm(confirmMessage)) {
       return;
     }
@@ -365,7 +365,7 @@ export default function TenantDetailPage() {
       const response = await reactivateAdminTenant(tenantId);
       applySubscriptionSnapshot(
         response.subscription,
-        response.auditLogId ? `生命周期状态已更新。审计ID：${response.auditLogId}` : '租户已恢复。'
+        response.auditLogId ? `生命周期状态已更新。审计ID：${response.auditLogId}` : '用户已恢复。'
       );
       setLifecycleState((previous) => ({
         ...previous,
@@ -373,8 +373,8 @@ export default function TenantDetailPage() {
         reactivating: false,
         error: null,
         actionMessage: response.auditLogId
-          ? `租户已恢复。审计ID：${response.auditLogId}`
-          : '租户已恢复。'
+          ? `用户已恢复。审计ID：${response.auditLogId}`
+          : '用户已恢复。'
       }));
     } catch (error) {
       setLifecycleState((previous) => ({
@@ -388,12 +388,12 @@ export default function TenantDetailPage() {
   return (
     <section className="page admin-page">
       <AdminPageHeader
-        eyebrow="租户治理"
-        title="租户详情"
-        description="统一管理租户基础信息、订阅配额与成员关系。"
+        eyebrow="用户治理"
+        title="用户详情"
+        description="统一管理用户基础信息、订阅配额与成员关系。"
         actions={
           <div className="inline-actions">
-            <AdminActionLink href="/dashboard/tenants">返回租户列表</AdminActionLink>
+            <AdminActionLink href="/dashboard/tenants">返回用户列表</AdminActionLink>
             <AdminActionLink href={`/dashboard/memberships?tenantId=${tenantId}`}>打开成员管理</AdminActionLink>
           </div>
         }
@@ -403,7 +403,7 @@ export default function TenantDetailPage() {
         <AdminPanel className="stack">
           <div className="admin-section-head">
             <h3>基础信息</h3>
-            <p>租户标识、创建信息与成员规模。</p>
+            <p>用户标识、创建信息与成员规模。</p>
           </div>
           <dl className="detail-list admin-detail-list">
             <div>
@@ -415,7 +415,7 @@ export default function TenantDetailPage() {
               <dd className="mono">{state.tenant.slug}</dd>
             </div>
             <div>
-              <dt>租户 ID</dt>
+              <dt>用户 ID</dt>
               <dd className="mono">{state.tenant.id}</dd>
             </div>
             <div>
@@ -580,7 +580,7 @@ export default function TenantDetailPage() {
 
         <form className="stack admin-subscription-form" onSubmit={handleSuspendSubmit}>
           <h3>生命周期控制</h3>
-          <p className="muted">冻结后租户写操作会被拒绝，直至恢复。</p>
+          <p className="muted">冻结后用户写操作会被拒绝，直至恢复。</p>
 
           <label className="stack row-tight" htmlFor="tenant-suspend-reason">
             <span>冻结原因</span>
@@ -606,7 +606,7 @@ export default function TenantDetailPage() {
               type="submit"
               disabled={subscriptionState.saving || lifecycleState.suspending || lifecycleState.reactivating}
             >
-              {lifecycleState.suspending ? '冻结中...' : '冻结租户'}
+              {lifecycleState.suspending ? '冻结中...' : '冻结用户'}
             </button>
             <button
               className="secondary"
@@ -614,7 +614,7 @@ export default function TenantDetailPage() {
               onClick={handleReactivateTenant}
               disabled={subscriptionState.saving || lifecycleState.suspending || lifecycleState.reactivating}
             >
-              {lifecycleState.reactivating ? '恢复中...' : '恢复租户'}
+              {lifecycleState.reactivating ? '恢复中...' : '恢复用户'}
             </button>
           </div>
         </form>
@@ -628,7 +628,7 @@ export default function TenantDetailPage() {
       <AdminPanel className="stack">
         <div className="admin-section-head">
           <h3>成员列表</h3>
-          <p>按邮箱筛选当前租户成员。</p>
+          <p>按邮箱筛选当前用户成员。</p>
         </div>
 
         <form className="inline-actions admin-inline-form" onSubmit={handleMemberSearch}>
@@ -651,9 +651,9 @@ export default function TenantDetailPage() {
           </button>
         </form>
 
-        {state.loading ? <p className="muted">加载租户详情中...</p> : null}
+        {state.loading ? <p className="muted">加载用户详情中...</p> : null}
         {!state.loading && state.members.length === 0 ? (
-          <p className="muted">当前租户暂无成员。</p>
+          <p className="muted">当前用户暂无成员。</p>
         ) : null}
 
         {state.members.length > 0 ? (
@@ -685,10 +685,10 @@ export default function TenantDetailPage() {
       <AdminPanel className="stack">
         <div className="admin-section-head">
           <h3>近期审计日志</h3>
-          <p>默认展示最近 8 条与当前租户相关的操作记录。</p>
+          <p>默认展示最近 8 条与当前用户相关的操作记录。</p>
         </div>
 
-        {state.recentLogs.length === 0 ? <p className="muted">该租户暂无审计记录。</p> : null}
+        {state.recentLogs.length === 0 ? <p className="muted">该用户暂无审计记录。</p> : null}
         {state.recentLogs.length > 0 ? (
           <AdminTableFrame>
             <thead>

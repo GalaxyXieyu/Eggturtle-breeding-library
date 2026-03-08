@@ -29,16 +29,16 @@ type OverviewState = {
 const COPY = {
   zh: {
     pageTitle: '后台总览',
-    pageDesc: '这里展示平台级租户与审计概况，仅白名单超级管理员可访问。',
-    tenantTotal: '租户总数',
-    openTenants: '打开租户管理',
+    pageDesc: '这里展示平台级用户与审计概况，仅白名单超级管理员可访问。',
+    tenantTotal: '用户总数',
+    openTenants: '打开用户管理',
     recentOps: '近期平台操作',
     openAudit: '打开审计日志',
     latestAudit: '最新审计记录',
     noAudit: '当前暂无审计记录。',
     thAction: '动作',
     thActor: '操作者',
-    thTenant: '目标租户',
+    thTenant: '目标用户',
     thTime: '时间',
     loading: '加载总览中...',
     unknownError: '未知错误'

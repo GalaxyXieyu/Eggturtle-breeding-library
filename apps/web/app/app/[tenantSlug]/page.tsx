@@ -24,6 +24,7 @@ import {
 import { apiRequest } from '@/lib/api-client';
 import { formatApiError } from '@/lib/error-utils';
 import { ensureTenantRouteSession } from '@/lib/tenant-route-session';
+import { copyTextWithFallback } from '@/lib/browser-share';
 import { createTenantFeedShareLink } from '@/lib/tenant-share';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -215,20 +216,23 @@ export default function TenantAppPage() {
 
     const fallback = links.permanentUrl || links.entryUrl;
 
-    try {
-      await navigator.clipboard.writeText(fallback);
+    const copied = await copyTextWithFallback(fallback);
+
+    if (copied) {
       setShareMessage(`已复制：${fallback}`);
       setShareError(null);
-    } catch (nextError) {
-      setShareError(formatApiError(nextError));
+      return;
     }
+
+    setShareMessage(`自动复制失败，请手动复制：${fallback}`);
+    setShareError(null);
   }
 
   return (
     <main className="space-y-4 pb-16 sm:space-y-6 sm:pb-8">
       {loading ? (
         <Card className="rounded-3xl border-neutral-200/90 bg-white/90 p-8">
-          <p className="text-sm text-neutral-600">正在加载租户仪表盘...</p>
+          <p className="text-sm text-neutral-600">正在加载用户仪表盘...</p>
         </Card>
       ) : null}
 

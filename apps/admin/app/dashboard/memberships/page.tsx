@@ -301,23 +301,23 @@ export default function DashboardMembershipsPage() {
   return (
     <section className="page admin-page">
       <AdminPageHeader
-        eyebrow="租户治理"
+        eyebrow="用户治理"
         title="成员权限管理"
-        description="按租户查看成员并调整角色，所有写操作都会记录审计日志。"
+        description="按用户查看成员并调整角色，所有写操作都会记录审计日志。"
       />
 
       <AdminPanel className="stack">
         <div className="admin-section-head">
-          <h3>租户范围</h3>
-          <p>先选择租户，再执行成员检索与权限调整。</p>
+          <h3>用户范围</h3>
+          <p>先选择用户，再执行成员检索与权限调整。</p>
         </div>
-        {status.loadingTenants ? <p className="muted">加载租户中...</p> : null}
+        {status.loadingTenants ? <p className="muted">加载用户中...</p> : null}
         {!status.loadingTenants && tenants.length === 0 ? (
-          <p className="muted">暂无可用租户。</p>
+          <p className="muted">暂无可用用户。</p>
         ) : null}
 
         <div className="inline-actions">
-          <label htmlFor="membership-tenant">租户</label>
+          <label htmlFor="membership-tenant">用户</label>
           <select
             id="membership-tenant"
             value={selectedTenantId}
@@ -335,7 +335,7 @@ export default function DashboardMembershipsPage() {
           </select>
           {selectedTenant ? (
             <AdminActionLink href={`/dashboard/tenants/${selectedTenant.id}`}>
-              查看租户详情
+              查看用户详情
             </AdminActionLink>
           ) : null}
         </div>
@@ -393,7 +393,7 @@ export default function DashboardMembershipsPage() {
 
         {status.loadingMembers ? <p className="muted">加载成员中...</p> : null}
         {!status.loadingMembers && members.length === 0 ? (
-          <p className="muted">该租户下没有匹配成员。</p>
+          <p className="muted">该用户下没有匹配成员。</p>
         ) : null}
 
         {members.length > 0 ? (

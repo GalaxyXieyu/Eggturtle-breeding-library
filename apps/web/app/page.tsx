@@ -40,7 +40,7 @@ const COPY: Record<'zh' | 'en', HomeCopy> = {
     heroPrimaryAction: '进入控制台',
     heroSecondaryAction: '查看能力',
     heroMeta: [
-      { title: '多租户', desc: '团队独立管理' },
+      { title: '多用户', desc: '团队独立管理' },
       { title: '可审计', desc: '关键操作可追踪' },
       { title: '结构化', desc: '数据与业务对齐' }
     ],
@@ -66,7 +66,7 @@ const COPY: Record<'zh' | 'en', HomeCopy> = {
       },
       {
         title: '经营数据',
-        desc: '通过统计面板查看关键繁育指标，支持团队按租户独立运营。',
+        desc: '通过统计面板查看关键繁育指标，支持团队按用户独立运营。',
         icon: '数'
       }
     ],
