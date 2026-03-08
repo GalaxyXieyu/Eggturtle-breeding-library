@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Copy, QrCode, Share2, Sparkles, X } from 'lucide-react';
+import { Copy, Download, QrCode, Share2, Sparkles, X } from 'lucide-react';
 import QRCode from 'qrcode';
 
 import { copyTextWithFallback } from '@/lib/browser-share';
@@ -330,6 +330,29 @@ export default function TenantShareDialogTrigger({
     setError('复制失败，请手动复制当前链接。');
   }
 
+  function handleSaveImage() {
+    if (!posterDataUrl) {
+      setError('海报尚未生成完成，请稍后再试。');
+      return;
+    }
+
+    try {
+      const fileBase = cardTitle.replace(/[^\w\u4e00-\u9fa5-]+/g, '').slice(0, 24) || 'eggturtle-share';
+      const fileName = `${fileBase}.png`;
+      const anchor = document.createElement('a');
+      anchor.href = posterDataUrl;
+      anchor.download = fileName;
+      anchor.rel = 'noopener';
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      setError(null);
+      setNotice('海报已开始下载。');
+    } catch {
+      setError('保存失败，请长按海报图片手动保存。');
+    }
+  }
+
   function handleRetryShareLink() {
     if (!open || pending) {
       return;
@@ -347,7 +370,7 @@ export default function TenantShareDialogTrigger({
 
       {open ? (
         <div
-          className="fixed inset-0 z-[70] flex items-end justify-center bg-[radial-gradient(circle_at_top,rgba(28,25,23,0.58),rgba(10,10,10,0.76))] p-2.5 backdrop-blur-[2px] sm:items-center sm:p-6"
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-[radial-gradient(circle_at_top,rgba(28,25,23,0.58),rgba(10,10,10,0.76))] p-3 backdrop-blur-[2px] sm:p-6"
           role="dialog"
           aria-modal="true"
           aria-labelledby={titleId}
@@ -422,20 +445,21 @@ export default function TenantShareDialogTrigger({
             <div className="relative z-10 mt-2.5 grid grid-cols-1 gap-2 sm:mt-3 sm:grid-cols-2">
               <button
                 type="button"
+                onClick={handleSaveImage}
+                disabled={!posterDataUrl}
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[linear-gradient(160deg,#0f172a,#111827)] px-3 text-sm font-semibold text-[#fef3c7] shadow-[0_10px_20px_rgba(15,23,42,0.35)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Download size={15} />
+                保存图片
+              </button>
+              <button
+                type="button"
                 onClick={() => void handleCopyLink()}
                 disabled={!link}
                 className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-[#d5bf98] bg-[#fffaf0] px-3 text-sm font-semibold text-[#4b5563] transition hover:bg-[#fff3de] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Copy size={15} />
                 复制链接
-              </button>
-              <button
-                type="button"
-                onClick={handleClose}
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[linear-gradient(160deg,#0f172a,#111827)] px-3 text-sm font-semibold text-[#fef3c7] shadow-[0_10px_20px_rgba(15,23,42,0.35)] transition hover:brightness-110"
-              >
-                <Share2 size={15} />
-                完成
               </button>
             </div>
           </div>
@@ -727,7 +751,7 @@ async function drawGenericPosterHero(
 ) {
   const imageUrls = Array.from(
     new Set([payload.previewImageUrl, ...(payload.posterImageUrls ?? [])].filter(Boolean)),
-  ).slice(0, 9) as string[];
+  ).slice(0, 8) as string[];
 
   if (imageUrls.length === 0) {
     drawHeroFallback(ctx, x, y, width, height);
@@ -740,7 +764,7 @@ async function drawGenericPosterHero(
     return;
   }
 
-  drawPosterCollage(ctx, ensureMasonryImages(images, 6), x, y, width, height);
+  drawPosterCollage(ctx, ensureMasonryImages(images, 8), x, y, width, height);
 }
 
 function drawPosterCollage(
@@ -752,32 +776,44 @@ function drawPosterCollage(
   height: number,
 ) {
   const heroGradient = ctx.createLinearGradient(x, y, x + width, y + height);
-  heroGradient.addColorStop(0, '#0f1c34');
-  heroGradient.addColorStop(1, '#1f2f4d');
+  heroGradient.addColorStop(0, '#0d1a33');
+  heroGradient.addColorStop(1, '#1b2f55');
   ctx.fillStyle = heroGradient;
   roundedRect(ctx, x, y, width, height, 30);
   ctx.fill();
 
-  const innerPaddingX = 26;
-  const innerPaddingY = 26;
-  const columnGap = 18;
-  const rowGap = 14;
+  const headPillX = x + 20;
+  const headPillY = y + 16;
+  const headPillWidth = 184;
+  const headPillHeight = 34;
+  ctx.fillStyle = 'rgba(255,255,255,0.16)';
+  roundedRect(ctx, headPillX, headPillY, headPillWidth, headPillHeight, 17);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.92)';
+  ctx.font = '700 18px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
+  ctx.fillText('TOP 8 在售精选', headPillX + 14, headPillY + 23);
+
+  const innerPaddingX = 24;
+  const innerPaddingY = 62;
+  const columnGap = 14;
+  const rowGap = 10;
   const innerX = x + innerPaddingX;
   const innerY = y + innerPaddingY;
   const innerWidth = width - innerPaddingX * 2;
   const innerHeight = height - innerPaddingY * 2;
   const columnWidth = (innerWidth - columnGap) / 2;
-
-  const leftColumnHeights = [0.31, 0.23, 0.34];
-  const rightColumnHeights = [0.26, 0.37, 0.23];
+  const leftColumnRatios = [0.24, 0.27, 0.2, 0.29];
+  const rightColumnRatios = [0.31, 0.19, 0.28, 0.22];
+  const columnContentHeight = innerHeight - rowGap * 3;
+  const leftHeights = resolveColumnHeights(columnContentHeight, leftColumnRatios);
+  const rightHeights = resolveColumnHeights(columnContentHeight, rightColumnRatios);
 
   ctx.save();
   roundedRect(ctx, x, y, width, height, 30);
   ctx.clip();
 
   let leftY = innerY;
-  leftColumnHeights.forEach((ratio, index) => {
-    const tileHeight = Math.round(innerHeight * ratio);
+  leftHeights.forEach((tileHeight, index) => {
     drawMasonryTile(
       ctx,
       images[index % images.length]!,
@@ -791,9 +827,8 @@ function drawPosterCollage(
   });
 
   let rightY = innerY;
-  rightColumnHeights.forEach((ratio, index) => {
-    const tileHeight = Math.round(innerHeight * ratio);
-    const imageIndex = index + leftColumnHeights.length;
+  rightHeights.forEach((tileHeight, index) => {
+    const imageIndex = index + leftHeights.length;
     drawMasonryTile(
       ctx,
       images[imageIndex % images.length]!,
@@ -807,8 +842,8 @@ function drawPosterCollage(
   });
 
   const overlay = ctx.createLinearGradient(0, y + height * 0.4, 0, y + height);
-  overlay.addColorStop(0, 'rgba(15,23,42,0.02)');
-  overlay.addColorStop(0.55, 'rgba(15,23,42,0.26)');
+  overlay.addColorStop(0, 'rgba(15,23,42,0)');
+  overlay.addColorStop(0.55, 'rgba(15,23,42,0.22)');
   overlay.addColorStop(1, 'rgba(15,23,42,0.68)');
   ctx.fillStyle = overlay;
   ctx.fillRect(x, y, width, height);
@@ -838,8 +873,7 @@ function drawMasonryTile(
   roundedRect(ctx, x, y, width, height, radius);
   ctx.stroke();
 
-  // Listing-card style footer improves the "waterfall feed" feeling.
-  const footerHeight = Math.max(40, Math.min(56, height * 0.2));
+  const footerHeight = Math.max(34, Math.min(48, height * 0.24));
   ctx.save();
   roundedRect(ctx, x, y, width, height, radius);
   ctx.clip();
@@ -850,20 +884,24 @@ function drawMasonryTile(
   ctx.fillRect(x, y + height - footerHeight, width, footerHeight);
   ctx.restore();
 
-  ctx.fillStyle = 'rgba(255,255,255,0.94)';
-  ctx.font = '700 22px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
-  ctx.fillText(`${index}`, x + 14, y + height - 16);
+  ctx.fillStyle = 'rgba(255,255,255,0.96)';
+  ctx.font = '700 13px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
+  ctx.fillText(`TOP ${String(index).padStart(2, '0')}`, x + 12, y + height - 14);
 
-  const badgeWidth = Math.min(86, width * 0.42);
-  const badgeHeight = 24;
-  const badgeX = x + width - badgeWidth - 10;
-  const badgeY = y + 10;
-  ctx.fillStyle = 'rgba(255,255,255,0.92)';
-  roundedRect(ctx, badgeX, badgeY, badgeWidth, badgeHeight, 12);
+  const rankSize = 28;
+  const rankX = x + 10;
+  const rankY = y + 10;
+  const rankGradient = ctx.createLinearGradient(rankX, rankY, rankX + rankSize, rankY + rankSize);
+  rankGradient.addColorStop(0, '#facc15');
+  rankGradient.addColorStop(1, '#f59e0b');
+  ctx.fillStyle = rankGradient;
+  roundedRect(ctx, rankX, rankY, rankSize, rankSize, 14);
   ctx.fill();
   ctx.fillStyle = '#0f172a';
-  ctx.font = '700 13px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
-  ctx.fillText('母', badgeX + badgeWidth / 2 - 6, badgeY + 16);
+  ctx.font = '700 15px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
+  const rankText = String(index);
+  const rankWidth = ctx.measureText(rankText).width;
+  ctx.fillText(rankText, rankX + (rankSize - rankWidth) / 2, rankY + 19);
 
   ctx.restore();
 }
@@ -884,6 +922,23 @@ function ensureMasonryImages(images: HTMLImageElement[], minCount: number) {
   }
 
   return filled;
+}
+
+function resolveColumnHeights(totalHeight: number, ratios: number[]) {
+  const safeTotal = Math.max(120, Math.floor(totalHeight));
+  const safeRatios = ratios.length > 0 ? ratios : [1];
+  const sum = safeRatios.reduce((acc, item) => acc + item, 0) || 1;
+
+  let used = 0;
+  return safeRatios.map((item, index) => {
+    if (index === safeRatios.length - 1) {
+      return Math.max(40, safeTotal - used);
+    }
+
+    const value = Math.max(40, Math.round((safeTotal * item) / sum));
+    used += value;
+    return value;
+  });
 }
 
 function drawGlowCircle(
