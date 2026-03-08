@@ -58,8 +58,7 @@ function resolveRelatedMates(tree: ProductFamilyTree): { items: FamilyTreeMateLi
 export function FamilyTreeView({ tree, openBreederDetail }: FamilyTreeViewProps) {
   const relatedMatesState = resolveRelatedMates(tree);
   const mates = relatedMatesState.items;
-  const primaryChild = tree.children[0] ?? null;
-  const extraChildren = tree.children.slice(1);
+  const children = tree.children;
 
   return (
     <Card className="rounded-3xl border-black/5 bg-white p-4 shadow-[0_8px_24px_rgba(0,0,0,0.06)] sm:p-5">
@@ -98,29 +97,21 @@ export function FamilyTreeView({ tree, openBreederDetail }: FamilyTreeViewProps)
                     <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-neutral-200 text-[10px] text-neutral-700">3</span>
                     <span>子代</span>
                   </div>
-                  <TreeCard node={primaryChild} onOpen={openBreederDetail} className="w-[5.2rem]" />
-                  {tree.children.length > 1 ? (
-                    <p className="text-[10px] font-medium text-neutral-500">+{tree.children.length - 1} 只子代</p>
+                  <div className="flex w-full flex-col items-center gap-2">
+                    {children.length > 0 ? (
+                      children.map((child) => (
+                        <TreeCard key={child.id} node={child} onOpen={openBreederDetail} className="w-[5rem] sm:w-[5.2rem]" />
+                      ))
+                    ) : (
+                      <TreeCard node={null} onOpen={openBreederDetail} className="w-[5rem] sm:w-[5.2rem]" />
+                    )}
+                  </div>
+                  {children.length > 1 ? (
+                    <p className="text-[10px] font-medium text-neutral-500">共 {children.length} 只子代</p>
                   ) : null}
                 </div>
               </div>
             </div>
-
-            {extraChildren.length > 0 ? (
-              <section className="space-y-2 rounded-2xl border border-neutral-200 bg-white/70 px-3 py-3">
-                <div className="flex items-center gap-2 text-xs font-semibold text-neutral-600">
-                  <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-neutral-200 text-[10px] text-neutral-700">4</span>
-                  <span>其余子代</span>
-                </div>
-                <div className="overflow-x-auto pb-1">
-                  <div className="flex min-w-fit gap-2">
-                    {extraChildren.map((child) => (
-                      <TreeCard key={child.id} node={child} onOpen={openBreederDetail} className="w-[5rem] shrink-0" />
-                    ))}
-                  </div>
-                </div>
-              </section>
-            ) : null}
           </section>
 
           <aside className="space-y-3 xl:w-[18rem] xl:shrink-0">
