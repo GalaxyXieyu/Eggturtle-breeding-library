@@ -342,6 +342,7 @@ export default function SharePresentationPage() {
                 title="公开图鉴分享"
                 subtitle="扫码查看公开瀑布流，或复制链接直接转发。"
                 previewImageUrl={normalizeNullableString(form.previewImageUrl)}
+                posterImageUrls={preview.heroImages.map((item) => resolveAuthenticatedAssetUrl(item))}
                 trigger={({ onClick, pending }) => (
                   <Button variant="primary" disabled={pending} onClick={onClick}>
                     {pending ? '正在准备分享弹窗...' : '打开分享弹窗'}

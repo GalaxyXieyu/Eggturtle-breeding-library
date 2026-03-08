@@ -1837,6 +1837,17 @@ button.auth-action {
   --tenant-mobile-nav-float-gap: 14px;
   --tenant-mobile-nav-safe-inset: max(0px, env(safe-area-inset-bottom));
   --tenant-mobile-nav-bottom-offset: calc(var(--tenant-mobile-nav-safe-inset) + var(--tenant-mobile-nav-float-gap));
+  --tenant-mobile-fab-size: 44px;
+  --tenant-mobile-fab-gap: 8px;
+  --tenant-mobile-dock-offset: calc(
+    var(--tenant-mobile-nav-height) + var(--tenant-mobile-nav-bottom-offset) + 12px
+  );
+  --tenant-mobile-dock-clearance: calc(
+    var(--tenant-mobile-dock-offset) + var(--tenant-mobile-fab-size) + 20px
+  );
+  --tenant-mobile-dock-stack-clearance: calc(
+    var(--tenant-mobile-dock-offset) + (var(--tenant-mobile-fab-size) * 3) + (var(--tenant-mobile-fab-gap) * 2) + 20px
+  );
 }
 
 .tenant-shell-bg {
@@ -1852,6 +1863,14 @@ button.auth-action {
 
 .tenant-mobile-content-safe {
   padding-bottom: calc(var(--tenant-mobile-nav-height) + var(--tenant-mobile-nav-bottom-offset));
+}
+
+.tenant-mobile-dock-safe {
+  padding-bottom: max(2.5rem, var(--tenant-mobile-dock-clearance));
+}
+
+.tenant-mobile-dock-safe-stack {
+  padding-bottom: max(2.5rem, var(--tenant-mobile-dock-stack-clearance));
 }
 
 .tenant-mobile-nav {
@@ -1987,7 +2006,7 @@ button.auth-action {
 
 /* 悬浮按钮：统一在底部导航之上，避免被遮挡；多 FAB 时用同一容器垂直堆叠 */
 .mobile-fab {
-  bottom: calc(var(--tenant-mobile-nav-height) + var(--tenant-mobile-nav-bottom-offset) + 12px);
+  bottom: var(--tenant-mobile-dock-offset);
   z-index: 50;
 }
 

@@ -656,20 +656,25 @@ export function FamilyTreeSection({
 
               <div className="flex flex-col gap-4">
                 <div className="text-center text-xs font-medium text-amber-600">当前</div>
-                <div className="relative">
-                  <div className="absolute -inset-1 rounded-lg bg-gradient-to-r from-amber-400 to-orange-400 opacity-75 blur" />
+                <div className="flex flex-col items-center gap-3">
+                  <div className="relative">
+                    <div className="absolute -inset-1 rounded-lg bg-gradient-to-r from-amber-400 to-orange-400 opacity-75 blur" />
                     <div className="relative">
-                    <TreeNode node={familyTree.current} demo={demo} shareToken={shareToken} shareQuery={shareQuery} />
+                      <TreeNode node={familyTree.current} demo={demo} shareToken={shareToken} shareQuery={shareQuery} />
+                    </div>
                   </div>
+                  {familyTree.currentMate?.id ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="h-4 w-px rounded-full bg-amber-200" />
+                      <FamilyNodeCard
+                        node={familyTree.currentMate}
+                        href={withDemo(publicPath(shareToken, `/products/${familyTree.currentMate.id}`, shareQuery), demo)}
+                        className="border-amber-200 bg-amber-50/70 hover:border-amber-300"
+                        codeClassName="text-amber-900"
+                      />
+                    </div>
+                  ) : null}
                 </div>
-                {familyTree.currentMate?.id ? (
-                  <Link
-                    href={withDemo(publicPath(shareToken, `/products/${familyTree.currentMate.id}`, shareQuery), demo)}
-                    className="inline-flex h-10 items-center justify-center rounded-lg border-2 border-amber-200 bg-amber-50/70 px-2 text-xs font-semibold text-amber-900"
-                  >
-                    配偶 {familyTree.currentMate.code}
-                  </Link>
-                ) : null}
               </div>
 
               <div className="flex flex-col gap-4">

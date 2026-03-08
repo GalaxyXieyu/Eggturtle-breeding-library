@@ -418,6 +418,15 @@ rollback_started_services() {
   fi
 }
 
+ensure_local_generated_assets_schema() {
+  print_info "校验本地夫妻图/证书库表..."
+  if ! DATABASE_URL="${DATABASE_URL:-postgres://eggturtle:eggturtle@localhost:30001/eggturtle}" \
+    "$PROJECT_DIR/scripts/migrate/ensure_local_generated_assets_schema.sh"; then
+    print_error "本地 generated-assets 库表修复失败。"
+    return 1
+  fi
+}
+
 start_all() {
   print_header "启动 Eggturtle SaaS 开发环境"
   local api_started=0
@@ -431,6 +440,10 @@ start_all() {
 
   if ! command -v curl >/dev/null 2>&1; then
     print_error "未找到 curl，请先安装 curl。"
+    exit 1
+  fi
+
+  if ! ensure_local_generated_assets_schema; then
     exit 1
   fi
 

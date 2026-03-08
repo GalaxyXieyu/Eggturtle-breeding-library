@@ -26,7 +26,7 @@ import {
   type ProductImage,
   type SaleBatch,
 } from '@eggturtle/shared';
-import { apiRequest, getAccessToken } from '@/lib/api-client';
+import { apiRequest, getAccessToken, resolveAuthenticatedAssetUrl } from '@/lib/api-client';
 import { switchTenantBySlug } from '@/lib/tenant-session';
 import {
   buildLocalDateTimeValue,
@@ -313,10 +313,15 @@ export default function BreederDetailPage() {
     () => `${currentBreeder?.name?.trim() || currentBreeder?.code || '当前种龟'}分享`,
     [currentBreeder?.code, currentBreeder?.name],
   );
-  const detailSharePreviewImage = useMemo(
-    () => activeImage?.url ?? currentBreeder?.coverImageUrl ?? null,
-    [activeImage?.url, currentBreeder?.coverImageUrl],
-  );
+  const detailSharePreviewImage = useMemo(() => {
+    const currentImage = activeImage?.url?.trim();
+    if (currentImage) {
+      return resolveAuthenticatedAssetUrl(currentImage);
+    }
+
+    const fallbackImage = currentBreeder?.coverImageUrl?.trim();
+    return fallbackImage ? resolveAuthenticatedAssetUrl(fallbackImage) : null;
+  }, [activeImage?.url, currentBreeder?.coverImageUrl]);
   const seriesLabel = useMemo(() => {
     const seriesId = currentBreeder?.seriesId?.trim();
     if (!seriesId) {
@@ -621,7 +626,7 @@ export default function BreederDetailPage() {
   ]);
 
   return (
-    <main className="space-y-4 pb-10 sm:space-y-6">
+    <main className="tenant-mobile-dock-safe space-y-4 pb-10 sm:space-y-6 lg:pb-10">
       <BreederInfoCard
         breeder={currentBreeder}
         seriesLabel={seriesLabel}

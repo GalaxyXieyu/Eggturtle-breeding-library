@@ -352,8 +352,10 @@ export class ProductsReadService {
   async getProductFamilyTree(tenantId: string, productId: string): Promise<ProductFamilyTree> {
     const product = await this.findProductOrThrow(tenantId, productId);
     const currentMateCode = await this.resolveCurrentMateCode(tenantId, product);
+    const isMale = product.sex?.trim().toLowerCase() === 'male';
+    const mateCodeCandidates = canonicalMateCodeCandidates(isMale ? product.code : currentMateCode);
 
-    const [sire, dam, mate, children] = await Promise.all([
+    const [sire, dam, mate, children, relatedFemales] = await Promise.all([
       this.findProductByCode(tenantId, product.sireCode),
       this.findProductByCode(tenantId, product.damCode),
       this.findProductByCandidates(tenantId, canonicalMateCodeCandidates(currentMateCode)),
@@ -378,10 +380,53 @@ export class ProductsReadService {
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         take: 100,
       }),
+      isMale && mateCodeCandidates.length > 0
+        ? this.prisma.product.findMany({
+            where: {
+              tenantId,
+              inStock: true,
+              sex: {
+                equals: 'female',
+                mode: 'insensitive',
+              },
+              OR: mateCodeCandidates.map((candidate) => ({
+                mateCode: {
+                  equals: candidate,
+                  mode: 'insensitive',
+                },
+              })),
+            },
+            orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+            take: 100,
+          })
+        : Promise.resolve([]),
     ]);
 
+    const needMatingSummaryByProductId = await this.loadNeedMatingSummaryByProductIds(
+      tenantId,
+      relatedFemales.map((item) => item.id),
+    );
+
+    const sortedRelatedFemales = relatedFemales.slice().sort((a, b) => {
+      const aSummary = needMatingSummaryByProductId.get(a.id);
+      const bSummary = needMatingSummaryByProductId.get(b.id);
+      const rank = (status?: 'normal' | 'need_mating' | 'warning') =>
+        status === 'warning' ? 2 : status === 'need_mating' ? 1 : 0;
+      const bySeverity = rank(bSummary?.status) - rank(aSummary?.status);
+      if (bySeverity !== 0) {
+        return bySeverity;
+      }
+
+      const byDays = (bSummary?.daysSinceEgg ?? -1) - (aSummary?.daysSinceEgg ?? -1);
+      if (byDays !== 0) {
+        return byDays;
+      }
+
+      return b.updatedAt.getTime() - a.updatedAt.getTime();
+    });
+
     const coverImageUrlByProductId = await this.loadFamilyTreeCoverImageUrls(
-      [product, sire, dam, mate, ...children]
+      [product, sire, dam, mate, ...children, ...sortedRelatedFemales]
         .filter((item): item is PrismaProduct => Boolean(item))
         .map((item) => item.id),
     );
@@ -391,13 +436,25 @@ export class ProductsReadService {
       sire: this.toFamilyTreeNodeOrNull(sire, coverImageUrlByProductId),
       dam: this.toFamilyTreeNodeOrNull(dam, coverImageUrlByProductId),
       mate: this.toFamilyTreeNodeOrNull(mate, coverImageUrlByProductId),
+      mates: sortedRelatedFemales.map((female) => {
+        const summary = needMatingSummaryByProductId.get(female.id);
+        return {
+          ...this.toFamilyTreeNode(female, coverImageUrlByProductId),
+          needMatingStatus: summary?.status ?? null,
+          lastEggAt: summary?.lastEggAt?.toISOString() ?? null,
+          lastMatingAt: summary?.lastMatingAt?.toISOString() ?? null,
+          daysSinceEgg: summary?.daysSinceEgg ?? null,
+        };
+      }),
       children: children.map((child) => this.toFamilyTreeNode(child, coverImageUrlByProductId)),
       links: {
         sire: this.toFamilyTreeLink(product.sireCode, sire, coverImageUrlByProductId),
         dam: this.toFamilyTreeLink(product.damCode, dam, coverImageUrlByProductId),
         mate: this.toFamilyTreeLink(currentMateCode, mate, coverImageUrlByProductId),
       },
-      limitations: '当前家族谱系仅展示自己、直属父母、当前配偶与直系子代。',
+      limitations: isMale
+        ? '当前家族谱系按竖向展示自己、直属父母、关联母龟与直系子代；关联母龟按待交配优先级与天数排序。'
+        : '当前家族谱系仅展示自己、直属父母、当前配偶与直系子代。',
     };
   }
 

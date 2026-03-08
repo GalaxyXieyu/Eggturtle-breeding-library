@@ -244,11 +244,19 @@ export const productFamilyTreeLinkSchema = z.object({
   product: productFamilyTreeNodeSchema.nullable()
 });
 
+export const productFamilyTreeMateSchema = productFamilyTreeNodeSchema.extend({
+  needMatingStatus: needMatingStatusSchema.nullable().optional(),
+  lastEggAt: z.string().datetime().nullable().optional(),
+  lastMatingAt: z.string().datetime().nullable().optional(),
+  daysSinceEgg: z.number().int().nonnegative().nullable().optional()
+});
+
 export const productFamilyTreeSchema = z.object({
   self: productFamilyTreeNodeSchema,
   sire: productFamilyTreeNodeSchema.nullable(),
   dam: productFamilyTreeNodeSchema.nullable(),
   mate: productFamilyTreeNodeSchema.nullable(),
+  mates: z.array(productFamilyTreeMateSchema),
   children: z.array(productFamilyTreeNodeSchema),
   links: z.object({
     sire: productFamilyTreeLinkSchema.nullable(),
