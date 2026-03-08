@@ -13,7 +13,8 @@ EXPECTED_REDIRECT_CODES="${EXPECTED_REDIRECT_CODES:-${EXPECTED_REDIRECT_CODE}}"
 FAIL_ON_RESERVED_DNS="${FAIL_ON_RESERVED_DNS:-false}"
 HTTPS_REQUEST_RETRIES="${HTTPS_REQUEST_RETRIES:-5}"
 TLS_SAN_CHECK_RETRIES="${TLS_SAN_CHECK_RETRIES:-5}"
-REDIRECT_CHECK_RETRIES="${REDIRECT_CHECK_RETRIES:-5}"
+REDIRECT_CHECK_RETRIES="${REDIRECT_CHECK_RETRIES:-20}"
+REDIRECT_MIN_SUCCESS_RATE="${REDIRECT_MIN_SUCCESS_RATE:-0.50}"
 
 if [ -z "${PUBLIC_CANONICAL_HOST}" ]; then
   echo "::error::PUBLIC_CANONICAL_HOST is required."
@@ -125,7 +126,7 @@ check_redirect() {
   local url="$1"
   local expected_prefix="$2"
   local name="$3"
-  local headers
+  local headers=""
   local status=""
   local location=""
   local matched_code=false
@@ -134,12 +135,15 @@ check_redirect() {
   local expected_codes=()
   local redirect_codes_ifs=','
   local attempt=1
+  local ok=0
+  local fail=0
 
   codes_csv="${EXPECTED_REDIRECT_CODES// /}"
 
   while [ "${attempt}" -le "${REDIRECT_CHECK_RETRIES}" ]; do
     headers="$(curl -I -m "${DOMAIN_CHECK_TIMEOUT_SECONDS}" --retry "${HTTPS_REQUEST_RETRIES}" --retry-all-errors -sS "${url}" 2>&1 || true)"
     if ! printf '%s\n' "${headers}" | grep -q '^HTTP/'; then
+      fail=$((fail + 1))
       attempt=$((attempt + 1))
       continue
     fi
@@ -157,22 +161,27 @@ check_redirect() {
     done
 
     if [ "${matched_code}" = true ] && [ -n "${location}" ] && [[ "${location}" == ${expected_prefix}* ]]; then
-      if [ "${attempt}" -gt 1 ]; then
-        log_warn "${name}: passed after retry ${attempt}/${REDIRECT_CHECK_RETRIES}."
-      fi
-      log_info "${name}: ${url} -> ${location} (${status})"
-      return
+      ok=$((ok + 1))
+    else
+      fail=$((fail + 1))
     fi
 
     attempt=$((attempt + 1))
   done
 
-  if [ "${matched_code}" != true ]; then
-    log_error "${name}: expected status in [${EXPECTED_REDIRECT_CODES}], got ${status:-<none>} for ${url}."
+  local rate
+  rate="$(awk -v o="${ok}" -v t="${REDIRECT_CHECK_RETRIES}" 'BEGIN { if (t==0) { print "0.00" } else { printf "%.2f", o/t } }')"
+  if awk -v r="${rate}" -v m="${REDIRECT_MIN_SUCCESS_RATE}" 'BEGIN { exit !(r >= m) }'; then
+    log_info "${name}: stability for ${url}: ok=${ok} fail=${fail} success_rate=${rate}"
     return
   fi
 
-  log_error "${name}: unexpected Location for ${url}. got='${location}', expected_prefix='${expected_prefix}'."
+  if [ "${matched_code}" != true ]; then
+    log_error "${name}: expected status in [${EXPECTED_REDIRECT_CODES}], got ${status:-<none>} for ${url} (ok=${ok} fail=${fail} rate=${rate})."
+    return
+  fi
+
+  log_error "${name}: unexpected Location for ${url}. got='${location}', expected_prefix='${expected_prefix}' (ok=${ok} fail=${fail} rate=${rate})."
 }
 
 log_info "Starting domain hardening check"
