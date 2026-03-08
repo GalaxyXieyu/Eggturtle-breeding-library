@@ -12,9 +12,11 @@ type BreederInfoCardProps = {
   images: ProductImage[];
   activeImage: ProductImage | null;
   activeImageId: string | null;
+  relationIds?: Partial<Record<keyof typeof relationPillStyles, string | null>>;
   onImageClick: (imageId: string) => void;
   onBack: () => void;
   onEdit: () => void;
+  onOpenRelation?: (id: string) => void;
   onOpenCertificateDrawer: () => void;
   onOpenCouplePhotoDrawer: () => void;
   actionsDisabled?: boolean;
@@ -28,11 +30,33 @@ const relationPillStyles = {
   配偶: 'border-amber-200 bg-amber-50/90 text-amber-700'
 } as const;
 
-function RelationPill({ label, value }: { label: keyof typeof relationPillStyles; value: string }) {
+function RelationPill({
+  label,
+  value,
+  relationId,
+  onOpen,
+}: {
+  label: keyof typeof relationPillStyles;
+  value: string;
+  relationId?: string | null;
+  onOpen?: (id: string) => void;
+}) {
+  const isClickable = Boolean(relationId && onOpen && value !== '未关联');
+  const className = `inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${relationPillStyles[label]} ${
+    isClickable ? 'cursor-pointer hover:-translate-y-0.5 hover:shadow-sm' : ''
+  }`;
+
+  if (isClickable && relationId && onOpen) {
+    return (
+      <button type="button" onClick={() => onOpen(relationId)} className={className}>
+        <span className="shrink-0 tracking-[0.08em]">{label}</span>
+        <span className="min-w-0 truncate text-neutral-800/90">{value}</span>
+      </button>
+    );
+  }
+
   return (
-    <div
-      className={`inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${relationPillStyles[label]}`}
-    >
+    <div className={className}>
       <span className="shrink-0 tracking-[0.08em]">{label}</span>
       <span className="min-w-0 truncate text-neutral-800/90">{value}</span>
     </div>
@@ -64,9 +88,11 @@ export function BreederInfoCard({
   images,
   activeImage,
   activeImageId,
+  relationIds,
   onImageClick,
   onBack,
   onEdit,
+  onOpenRelation,
   onOpenCertificateDrawer,
   onOpenCouplePhotoDrawer,
   actionsDisabled = false,
@@ -176,9 +202,24 @@ export function BreederInfoCard({
             </CardTitle>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <RelationPill label="父本" value={breeder?.sireCode ?? '未关联'} />
-            <RelationPill label="母本" value={breeder?.damCode ?? '未关联'} />
-            <RelationPill label="配偶" value={breeder?.mateCode ?? '未关联'} />
+            <RelationPill
+              label="父本"
+              value={breeder?.sireCode ?? '未关联'}
+              relationId={relationIds?.父本}
+              onOpen={onOpenRelation}
+            />
+            <RelationPill
+              label="母本"
+              value={breeder?.damCode ?? '未关联'}
+              relationId={relationIds?.母本}
+              onOpen={onOpenRelation}
+            />
+            <RelationPill
+              label="配偶"
+              value={breeder?.mateCode ?? '未关联'}
+              relationId={relationIds?.配偶}
+              onOpen={onOpenRelation}
+            />
           </div>
           <div className="rounded-2xl border border-neutral-200 bg-white p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">说明</p>

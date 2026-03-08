@@ -325,6 +325,14 @@ export default function BreederDetailPage() {
 
     return formatSeriesLabelById(seriesId, seriesOptions);
   }, [currentBreeder?.seriesId, seriesOptions]);
+  const relationIds = useMemo(
+    () => ({
+      父本: data.tree?.sire?.id ?? null,
+      母本: data.tree?.dam?.id ?? null,
+      配偶: data.tree?.mate?.id ?? null,
+    }),
+    [data.tree],
+  );
   const listHref = useMemo(() => {
     const query = new URLSearchParams();
     if (isDemoMode) {
@@ -620,9 +628,11 @@ export default function BreederDetailPage() {
         images={data.images}
         activeImage={activeImage}
         activeImageId={activeImageId}
+        relationIds={relationIds}
         onImageClick={setActiveImageId}
         onBack={() => router.push(listHref)}
         onEdit={() => setIsEditDrawerOpen(true)}
+        onOpenRelation={openBreederDetail}
         actionErrorMessage={quickActionError}
         onOpenCertificateDrawer={() => {
           setQuickActionError(null);

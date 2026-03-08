@@ -9,9 +9,13 @@ type FamilyTreeViewProps = {
   openBreederDetail: (id: string) => void;
 };
 
-type FamilyTreeMateNode = ProductFamilyTree['mates'][number];
-type FamilyTreeOptionalMateNode = NonNullable<ProductFamilyTree['mate']>;
-type FamilyTreeRelatedMate = FamilyTreeMateNode | FamilyTreeOptionalMateNode;
+type FamilyTreeMateStatus = 'normal' | 'need_mating' | 'warning';
+type FamilyTreeMateLike = NonNullable<ProductFamilyTree['mate']> & {
+  needMatingStatus?: FamilyTreeMateStatus | null;
+  lastEggAt?: string | null;
+  lastMatingAt?: string | null;
+  daysSinceEgg?: number | null;
+};
 
 function formatDateLabel(value?: string | null) {
   if (!value) {
@@ -29,15 +33,33 @@ function formatDateLabel(value?: string | null) {
   }).format(date);
 }
 
-function isDetailedMate(mate: FamilyTreeRelatedMate): mate is FamilyTreeMateNode {
-  return 'needMatingStatus' in mate || 'daysSinceEgg' in mate || 'lastEggAt' in mate || 'lastMatingAt' in mate;
+function resolveRelatedMates(tree: ProductFamilyTree): { items: FamilyTreeMateLike[]; hasExtendedList: boolean } {
+  const extendedMates = (tree as ProductFamilyTree & { mates?: FamilyTreeMateLike[] | null }).mates;
+  if (Array.isArray(extendedMates) && extendedMates.length > 0) {
+    return {
+      items: extendedMates,
+      hasExtendedList: true,
+    };
+  }
+
+  if (tree.mate) {
+    return {
+      items: [tree.mate as FamilyTreeMateLike],
+      hasExtendedList: false,
+    };
+  }
+
+  return {
+    items: [],
+    hasExtendedList: false,
+  };
 }
 
 export function FamilyTreeView({ tree, openBreederDetail }: FamilyTreeViewProps) {
-  const mates = tree.mates ?? [];
+  const relatedMatesState = resolveRelatedMates(tree);
+  const mates = relatedMatesState.items;
   const primaryChild = tree.children[0] ?? null;
   const extraChildren = tree.children.slice(1);
-  const relatedMates: FamilyTreeRelatedMate[] = mates.length > 0 ? mates : tree.mate ? [tree.mate] : [];
 
   return (
     <Card className="rounded-3xl border-black/5 bg-white p-4 shadow-[0_8px_24px_rgba(0,0,0,0.06)] sm:p-5">
@@ -105,19 +127,18 @@ export function FamilyTreeView({ tree, openBreederDetail }: FamilyTreeViewProps)
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-xs font-semibold text-neutral-600">
                 <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-neutral-200 text-[11px] text-neutral-600">+</span>
-                <span>{mates.length > 0 ? '配偶 / 关联母龟' : '配偶'}</span>
+                <span>{relatedMatesState.hasExtendedList ? '配偶 / 关联母龟' : '配偶'}</span>
               </div>
-              {mates.length > 0 ? <span className="text-xs text-neutral-500">附加列</span> : null}
+              {relatedMatesState.hasExtendedList ? <span className="text-xs text-neutral-500">附加列</span> : null}
             </div>
 
-            {relatedMates.length > 0 ? (
+            {mates.length > 0 ? (
               <div className="space-y-2">
-                {relatedMates.map((mate) => {
-                  const detailedMate = isDetailedMate(mate) ? mate : null;
-                  const daysSinceEgg = detailedMate?.daysSinceEgg ?? null;
-                  const needMatingStatus = detailedMate?.needMatingStatus ?? null;
-                  const lastEggAt = detailedMate?.lastEggAt ?? null;
-                  const lastMatingAt = detailedMate?.lastMatingAt ?? null;
+                {mates.map((mate) => {
+                  const daysSinceEgg = mate.daysSinceEgg ?? null;
+                  const needMatingStatus = mate.needMatingStatus ?? null;
+                  const lastEggAt = mate.lastEggAt ?? null;
+                  const lastMatingAt = mate.lastMatingAt ?? null;
 
                   return (
                     <div
