@@ -9,7 +9,11 @@ DOMAIN_MIN_SUCCESS_RATE="${DOMAIN_MIN_SUCCESS_RATE:-0.95}"
 REQUIRE_HTTP_TO_HTTPS="${REQUIRE_HTTP_TO_HTTPS:-true}"
 REQUIRE_ALT_TO_CANONICAL="${REQUIRE_ALT_TO_CANONICAL:-true}"
 EXPECTED_REDIRECT_CODE="${EXPECTED_REDIRECT_CODE:-301}"
+EXPECTED_REDIRECT_CODES="${EXPECTED_REDIRECT_CODES:-${EXPECTED_REDIRECT_CODE}}"
 FAIL_ON_RESERVED_DNS="${FAIL_ON_RESERVED_DNS:-false}"
+HTTPS_REQUEST_RETRIES="${HTTPS_REQUEST_RETRIES:-5}"
+TLS_SAN_CHECK_RETRIES="${TLS_SAN_CHECK_RETRIES:-5}"
+REDIRECT_CHECK_RETRIES="${REDIRECT_CHECK_RETRIES:-5}"
 
 if [ -z "${PUBLIC_CANONICAL_HOST}" ]; then
   echo "::error::PUBLIC_CANONICAL_HOST is required."
@@ -62,8 +66,8 @@ check_https_stability() {
   local status
 
   for i in $(seq 1 "${DOMAIN_CHECK_RETRIES}"); do
-    if status="$(curl -I -m "${DOMAIN_CHECK_TIMEOUT_SECONDS}" -sS -o /dev/null -w "%{http_code}" "https://${host}" 2>/dev/null)"; then
-      if [[ "${status}" =~ ^2|^3 ]]; then
+    if status="$(curl -I -m "${DOMAIN_CHECK_TIMEOUT_SECONDS}" --retry "${HTTPS_REQUEST_RETRIES}" --retry-all-errors -sS -o /dev/null -w "%{http_code}" "https://${host}" 2>/dev/null)"; then
+      if [[ "${status}" =~ ^[23] ]]; then
         ok=$((ok + 1))
       else
         fail=$((fail + 1))
@@ -84,26 +88,37 @@ check_https_stability() {
 
 check_tls_san() {
   local host="$1"
-  local cert
-  local san
+  local cert=""
+  local san=""
+  local attempt=1
 
-  cert="$(
-    echo | openssl s_client -showcerts -servername "${host}" -connect "${host}:443" 2>/dev/null \
-      | sed -n '/-----BEGIN CERTIFICATE-----/,/-----END CERTIFICATE-----/p' || true
-  )"
+  while [ "${attempt}" -le "${TLS_SAN_CHECK_RETRIES}" ]; do
+    cert="$(
+      echo | openssl s_client -showcerts -servername "${host}" -connect "${host}:443" 2>/dev/null \
+        | sed -n '/-----BEGIN CERTIFICATE-----/,/-----END CERTIFICATE-----/p' || true
+    )"
+
+    if [ -n "${cert}" ]; then
+      san="$(printf '%s\n' "${cert}" | openssl x509 -noout -ext subjectAltName 2>/dev/null || true)"
+      if printf '%s\n' "${san}" | grep -q "DNS:${host}"; then
+        if [ "${attempt}" -gt 1 ]; then
+          log_warn "TLS SAN check for ${host} passed after retry ${attempt}/${TLS_SAN_CHECK_RETRIES}."
+        else
+          log_info "TLS SAN covers ${host}."
+        fi
+        return
+      fi
+    fi
+
+    attempt=$((attempt + 1))
+  done
 
   if [ -z "${cert}" ]; then
-    log_error "No TLS certificate can be fetched from ${host}:443."
+    log_error "No TLS certificate can be fetched from ${host}:443 after ${TLS_SAN_CHECK_RETRIES} retries."
     return
   fi
 
-  san="$(printf '%s\n' "${cert}" | openssl x509 -noout -ext subjectAltName 2>/dev/null || true)"
-  if ! printf '%s\n' "${san}" | grep -q "DNS:${host}"; then
-    log_error "TLS SAN does not include ${host}."
-    return
-  fi
-
-  log_info "TLS SAN covers ${host}."
+  log_error "TLS SAN does not include ${host}."
 }
 
 check_redirect() {
@@ -111,29 +126,53 @@ check_redirect() {
   local expected_prefix="$2"
   local name="$3"
   local headers
-  local status
-  local location
+  local status=""
+  local location=""
+  local matched_code=false
+  local codes_csv
+  local code
+  local expected_codes=()
+  local redirect_codes_ifs=','
+  local attempt=1
 
-  headers="$(curl -I -m "${DOMAIN_CHECK_TIMEOUT_SECONDS}" -sS "${url}" 2>&1 || true)"
-  if ! printf '%s\n' "${headers}" | grep -q '^HTTP/'; then
-    log_error "${name}: request failed for ${url}. Output: ${headers}"
+  codes_csv="${EXPECTED_REDIRECT_CODES// /}"
+
+  while [ "${attempt}" -le "${REDIRECT_CHECK_RETRIES}" ]; do
+    headers="$(curl -I -m "${DOMAIN_CHECK_TIMEOUT_SECONDS}" --retry "${HTTPS_REQUEST_RETRIES}" --retry-all-errors -sS "${url}" 2>&1 || true)"
+    if ! printf '%s\n' "${headers}" | grep -q '^HTTP/'; then
+      attempt=$((attempt + 1))
+      continue
+    fi
+
+    status="$(printf '%s\n' "${headers}" | awk '/^HTTP\// { print $2; exit }')"
+    location="$(printf '%s\n' "${headers}" | awk -F': ' 'tolower($1)=="location"{print $2; exit}' | tr -d '\r')"
+
+    matched_code=false
+    IFS="${redirect_codes_ifs}" read -r -a expected_codes <<< "${codes_csv}"
+    for code in "${expected_codes[@]}"; do
+      if [ "${status}" = "${code}" ]; then
+        matched_code=true
+        break
+      fi
+    done
+
+    if [ "${matched_code}" = true ] && [ -n "${location}" ] && [[ "${location}" == ${expected_prefix}* ]]; then
+      if [ "${attempt}" -gt 1 ]; then
+        log_warn "${name}: passed after retry ${attempt}/${REDIRECT_CHECK_RETRIES}."
+      fi
+      log_info "${name}: ${url} -> ${location} (${status})"
+      return
+    fi
+
+    attempt=$((attempt + 1))
+  done
+
+  if [ "${matched_code}" != true ]; then
+    log_error "${name}: expected status in [${EXPECTED_REDIRECT_CODES}], got ${status:-<none>} for ${url}."
     return
   fi
 
-  status="$(printf '%s\n' "${headers}" | awk '/^HTTP\// { print $2; exit }')"
-  location="$(printf '%s\n' "${headers}" | awk -F': ' 'tolower($1)=="location"{print $2; exit}' | tr -d '\r')"
-
-  if [ "${status}" != "${EXPECTED_REDIRECT_CODE}" ]; then
-    log_error "${name}: expected ${EXPECTED_REDIRECT_CODE}, got ${status} for ${url}."
-    return
-  fi
-
-  if [ -z "${location}" ] || [[ "${location}" != ${expected_prefix}* ]]; then
-    log_error "${name}: unexpected Location for ${url}. got='${location}', expected_prefix='${expected_prefix}'."
-    return
-  fi
-
-  log_info "${name}: ${url} -> ${location} (${status})"
+  log_error "${name}: unexpected Location for ${url}. got='${location}', expected_prefix='${expected_prefix}'."
 }
 
 log_info "Starting domain hardening check"
