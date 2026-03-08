@@ -133,7 +133,6 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
     !pathname?.endsWith('/account') &&
     !pathname?.endsWith('/certificates');
   const setupQueryEnabled = searchParams.get('setup') === '1';
-  const dashboardPath = `/app/${tenantSlug}`;
   const accountPath = `/app/${tenantSlug}/account`;
   const sharePresentationPath = `/app/${tenantSlug}/share-presentation`;
   const seriesPath = `/app/${tenantSlug}/series`;
@@ -150,15 +149,9 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
   const visibleNavItems = setupRequired
     ? navItemsWithoutShare.filter((item) => item.href(tenantSlug) === accountPath)
     : navItemsWithoutShare;
-  const mobileNavItems = (setupRequired
+  const mobileNavItems = setupRequired
     ? NAV_ITEMS.filter((item) => item.href(tenantSlug) === accountPath)
-    : NAV_ITEMS.filter((item) => {
-        const itemHref = item.href(tenantSlug);
-        if (!ENABLE_SHARE_ENTRY && itemHref === sharePresentationPath) {
-          return false;
-        }
-        return itemHref !== dashboardPath;
-      }));
+    : navItemsWithoutShare;
   const shouldBlockOtherPages = setupCheckReady && setupRequired && pathname !== accountPath;
 
   const floatingShareIntent = useMemo<TenantShareIntent>(() => {
