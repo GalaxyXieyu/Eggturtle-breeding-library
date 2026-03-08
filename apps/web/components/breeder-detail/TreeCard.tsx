@@ -18,6 +18,8 @@ export function TreeCard({ node, onOpen, highlight = false, className }: TreeCar
       onOpen={onOpen}
       highlight={highlight}
       className={className}
+      codeClassName="px-0.5 text-[10px] leading-3"
+      imageFit="contain"
       imageResolver={resolveAuthenticatedAssetUrl}
     />
   );

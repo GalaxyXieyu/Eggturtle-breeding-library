@@ -15,7 +15,9 @@ type FamilyNodeCardProps = {
   onOpen?: (id: string) => void;
   highlight?: boolean;
   className?: string;
+  codeClassName?: string;
   emptyLabel?: string;
+  imageFit?: 'cover' | 'contain';
   imageResolver?: (url: string) => string;
 };
 
@@ -34,51 +36,59 @@ export function FamilyNodeCard({
   onOpen,
   highlight = false,
   className,
+  codeClassName,
   emptyLabel = '未知',
+  imageFit = 'cover',
   imageResolver
 }: FamilyNodeCardProps) {
   if (!node) {
     return (
       <div
         className={cn(
-          'flex h-24 w-20 items-center justify-center rounded-lg border-2 border-dashed border-neutral-300 bg-neutral-50 text-xs text-neutral-400',
+          'flex w-24 flex-col items-center gap-2 rounded-xl border border-dashed border-neutral-300 bg-neutral-50/80 p-2 text-center',
           className
         )}
       >
-        {emptyLabel}
+        <div className="flex aspect-square w-full items-center justify-center rounded-lg border border-dashed border-neutral-300 bg-neutral-100 text-[11px] text-neutral-400">
+          {emptyLabel}
+        </div>
+        <div className={cn('w-full truncate text-[11px] font-medium text-neutral-400', codeClassName)}>-</div>
       </div>
     );
   }
 
   const imageUrl = resolveNodeImageUrl(node, imageResolver);
   const cardClassName = cn(
-    'group relative block h-24 w-20 overflow-hidden rounded-lg border-2 bg-white shadow-sm transition',
+    'group flex w-24 flex-col items-center gap-2 rounded-xl border bg-white p-2 text-center shadow-sm transition',
     highlight
-      ? 'border-amber-300 shadow-[0_0_0_1px_rgba(245,158,11,0.35),0_8px_20px_rgba(245,158,11,0.3)]'
+      ? 'border-amber-300 shadow-[0_0_0_1px_rgba(245,158,11,0.35),0_8px_20px_rgba(245,158,11,0.22)]'
       : 'border-neutral-200 hover:border-amber-400 hover:shadow-md',
     className
   );
 
   const content = (
     <>
-      {imageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={imageUrl}
-          alt={node.code}
-          className="h-full w-full object-cover"
-          loading="lazy"
-          decoding="async"
-          fetchPriority="low"
-        />
-      ) : (
-        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-neutral-100 to-neutral-200">
-          <span className="text-xs text-neutral-400">暂无图</span>
-        </div>
-      )}
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-1 py-1">
-        <div className="truncate text-[10px] font-medium text-white">{node.code}</div>
+      <div className="aspect-square w-full overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50">
+        {imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={imageUrl}
+            alt={node.code}
+            className={cn(
+              'h-full w-full',
+              imageFit === 'contain' ? 'object-contain p-1.5' : 'object-cover'
+            )}
+            loading="lazy"
+            decoding="async"
+            fetchPriority="low"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-neutral-100 to-neutral-200">
+            <span className="text-[11px] text-neutral-400">暂无图</span>
+          </div>
+        )}
       </div>
+      <div className={cn('w-full truncate px-1 text-[11px] font-medium leading-4 text-neutral-700', codeClassName)}>{node.code}</div>
     </>
   );
 
