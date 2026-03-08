@@ -37,8 +37,8 @@ type Props = {
   tenantSlug?: string;
 };
 
-const INITIAL_VISIBLE_BREEDERS = 12;
-const VISIBLE_BREEDERS_CHUNK = 12;
+const INITIAL_VISIBLE_BREEDERS = 8;
+const VISIBLE_BREEDERS_CHUNK = 8;
 const LOAD_MORE_ROOT_MARGIN = '640px 0px';
 
 function rankStatus(status: NeedMatingStatus) {

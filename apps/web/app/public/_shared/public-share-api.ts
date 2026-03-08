@@ -39,6 +39,7 @@ type PublicShareFetchResult =
 
 // Server-side fetch needs an absolute URL. Prefer INTERNAL_API_BASE_URL for deployments.
 const DEFAULT_API_BASE_URL = 'http://127.0.0.1:30011';
+const DEFAULT_PUBLIC_SHARE_REVALIDATE_SECONDS = 45;
 
 export async function fetchPublicShareFromSearchParams(
   searchParams: PublicSearchParams,
@@ -149,7 +150,10 @@ async function fetchPublicShare(
   }
 
   const response = await fetch(requestUrl.toString(), {
-    cache: 'no-store'
+    cache: 'force-cache',
+    next: {
+      revalidate: resolvePublicShareRevalidateSeconds()
+    }
   });
 
   const payload = await safeJson(response);
@@ -229,6 +233,17 @@ export function shouldAutoRefreshShareSignature(status?: number, errorCode?: str
   }
 
   return errorCode === 'SHARE_SIGNATURE_EXPIRED' || errorCode === 'SHARE_SIGNATURE_INVALID';
+}
+
+function resolvePublicShareRevalidateSeconds(): number {
+  const rawValue = process.env.PUBLIC_SHARE_WEB_REVALIDATE_SECONDS;
+  const parsed = Number(rawValue);
+
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return DEFAULT_PUBLIC_SHARE_REVALIDATE_SECONDS;
+  }
+
+  return Math.floor(parsed);
 }
 
 export async function refreshPublicShareEntryLocation(shareToken: string): Promise<string | null> {
