@@ -37,6 +37,10 @@ type Props = {
   tenantSlug?: string;
 };
 
+const INITIAL_VISIBLE_BREEDERS = 12;
+const VISIBLE_BREEDERS_CHUNK = 12;
+const LOAD_MORE_ROOT_MARGIN = '640px 0px';
+
 function rankStatus(status: NeedMatingStatus) {
   return status === 'warning' ? 1 : 0;
 }
@@ -56,6 +60,8 @@ export default function PublicFeedPage({
   const [status, setStatus] = useState<'all' | NeedMatingStatus>('all');
   const [showMobileFilterFab, setShowMobileFilterFab] = useState(false);
   const [isMobileFilterModalOpen, setIsMobileFilterModalOpen] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_BREEDERS);
+  const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
 
   const resolvedPresentation = resolvePublicSharePresentation(presentation);
   const heroImages = useMemo(
@@ -150,6 +156,43 @@ export default function PublicFeedPage({
       })
       .map((item) => item.item);
   }, [breeders, seriesId, sex, status]);
+  const visibleList = useMemo(
+    () => list.slice(0, Math.min(visibleCount, list.length)),
+    [list, visibleCount]
+  );
+  const hasMoreList = visibleList.length < list.length;
+
+  useEffect(() => {
+    setVisibleCount(Math.min(INITIAL_VISIBLE_BREEDERS, list.length));
+  }, [list]);
+
+  useEffect(() => {
+    if (!hasMoreList) {
+      return;
+    }
+
+    const target = loadMoreSentinelRef.current;
+    if (!target || typeof window === 'undefined' || !('IntersectionObserver' in window)) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0]?.isIntersecting) {
+          return;
+        }
+
+        setVisibleCount((current) => Math.min(current + VISIBLE_BREEDERS_CHUNK, list.length));
+      },
+      { rootMargin: LOAD_MORE_ROOT_MARGIN }
+    );
+
+    observer.observe(target);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [hasMoreList, list.length]);
 
   const activeSeries = useMemo(
     () => series.find((item) => item.id === seriesId) || null,
@@ -417,17 +460,38 @@ export default function PublicFeedPage({
         {list.length === 0 ? (
           <PublicEmptyState message={demo ? '当前筛选条件下暂无数据' : '当前分享暂无可展示内容'} />
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] sm:gap-4 xl:grid-cols-[repeat(auto-fill,minmax(240px,1fr))]">
-            {list.map((breeder) => (
-              <BreederCard
-                key={breeder.id}
-                breeder={breeder}
-                demo={demo}
-                shareToken={shareToken}
-                shareQuery={shareQuery}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] sm:gap-4 xl:grid-cols-[repeat(auto-fill,minmax(240px,1fr))]">
+              {visibleList.map((breeder) => (
+                <BreederCard
+                  key={breeder.id}
+                  breeder={breeder}
+                  demo={demo}
+                  shareToken={shareToken}
+                  shareQuery={shareQuery}
+                />
+              ))}
+            </div>
+            <div className="mt-4 flex flex-col items-center gap-2">
+              <p className="text-xs text-neutral-500">
+                已加载 {visibleList.length} / {list.length}
+              </p>
+              {hasMoreList ? (
+                <button
+                  type="button"
+                  className="rounded-full border border-neutral-300 bg-white px-4 py-1.5 text-xs font-semibold text-neutral-700 transition hover:border-neutral-400 hover:bg-neutral-50"
+                  onClick={() =>
+                    setVisibleCount((current) =>
+                      Math.min(current + VISIBLE_BREEDERS_CHUNK, list.length)
+                    )
+                  }
+                >
+                  继续加载
+                </button>
+              ) : null}
+              {hasMoreList ? <div ref={loadMoreSentinelRef} className="h-px w-full" aria-hidden /> : null}
+            </div>
+          </>
         )}
 
         <ShareContactCard presentation={resolvedPresentation} className="mt-4" />

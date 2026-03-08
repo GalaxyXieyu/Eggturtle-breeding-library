@@ -160,7 +160,12 @@ export default function PetCard(props: PetCardProps) {
 
   if ('href' in props && props.href) {
     return (
-      <Link href={props.href} className={rootClassName} aria-label={ariaLabel}>
+      <Link
+        href={props.href}
+        className={rootClassName}
+        aria-label={ariaLabel}
+        prefetch={variant === 'public' ? false : undefined}
+      >
         {content}
       </Link>
     );
