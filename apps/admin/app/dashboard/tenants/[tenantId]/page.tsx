@@ -70,6 +70,7 @@ type ActivationCodeState = {
 };
 
 const subscriptionPlanOptions = tenantSubscriptionPlanSchema.options;
+const ACTIVATION_CODE_SECTION_ID = 'activation-code-generator';
 
 export default function TenantDetailPage() {
   const params = useParams<{ tenantId: string }>();
@@ -238,6 +239,38 @@ export default function TenantDetailPage() {
       cancelled = true;
     };
   }, [tenantId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    if (window.location.hash !== `#${ACTIVATION_CODE_SECTION_ID}`) {
+      return;
+    }
+
+    const scrollToActivationCodeForm = () => {
+      const element = document.getElementById(ACTIVATION_CODE_SECTION_ID);
+      if (!element) {
+        return false;
+      }
+
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return true;
+    };
+
+    if (scrollToActivationCodeForm()) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      scrollToActivationCodeForm();
+    }, 120);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [tenantId, subscriptionState.loading]);
 
   function handleMemberSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -517,6 +550,9 @@ export default function TenantDetailPage() {
         actions={
           <div className="inline-actions">
             <AdminActionLink href="/dashboard/tenants">返回用户列表</AdminActionLink>
+            <AdminActionLink href={`/dashboard/tenants/${tenantId}#${ACTIVATION_CODE_SECTION_ID}`}>
+              定位激活码生成
+            </AdminActionLink>
             <AdminActionLink href={`/dashboard/memberships?tenantId=${tenantId}`}>
               打开成员管理
             </AdminActionLink>
@@ -707,7 +743,11 @@ export default function TenantDetailPage() {
           </div>
         </form>
 
-        <form className="stack admin-subscription-form" onSubmit={handleActivationCodeSubmit}>
+        <form
+          id={ACTIVATION_CODE_SECTION_ID}
+          className="stack admin-subscription-form"
+          onSubmit={handleActivationCodeSubmit}
+        >
           <h3>生成升级激活码</h3>
           <p className="muted">
             当前入口已绑定本用户，可直接生成今晚测试用升级激活码给租户 owner 兑换。

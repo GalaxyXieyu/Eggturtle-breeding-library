@@ -1,17 +1,14 @@
 'use client';
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import {
-  listAdminTenantsResponseSchema,
-  type AdminTenant
-} from '@eggturtle/shared';
+import { listAdminTenantsResponseSchema, type AdminTenant } from '@eggturtle/shared';
 
 import {
   AdminActionLink,
   AdminMetricCard,
   AdminPageHeader,
   AdminPanel,
-  AdminTableFrame
+  AdminTableFrame,
 } from '@/components/dashboard/polish-primitives';
 import { useUiPreferences } from '@/components/ui-preferences';
 import { apiRequest } from '@/lib/api-client';
@@ -37,7 +34,7 @@ const COPY = {
     apply: '应用',
     reset: '重置',
     tableTitle: '用户列表',
-    tableDesc: '点击详情可进入订阅、配额与成员信息视图。',
+    tableDesc: '点击详情可进入订阅、配额与成员信息视图，也可直接跳到激活码生成。',
     loading: '加载用户中...',
     empty: '当前筛选下未找到用户。',
     thName: '名称',
@@ -45,7 +42,8 @@ const COPY = {
     thMembers: '成员数',
     thCreatedAt: '创建时间',
     viewDetail: '查看详情',
-    unknownError: '未知错误'
+    openActivationCode: '生成激活码',
+    unknownError: '未知错误',
   },
   en: {
     eyebrow: 'Tenant Directory',
@@ -61,7 +59,8 @@ const COPY = {
     apply: 'Apply',
     reset: 'Reset',
     tableTitle: 'Tenant List',
-    tableDesc: 'Open details to manage subscription, quota and members.',
+    tableDesc:
+      'Open details to manage subscription, quota and members, or jump straight to activation code generation.',
     loading: 'Loading tenants...',
     empty: 'No tenants found under current filter.',
     thName: 'Name',
@@ -69,8 +68,9 @@ const COPY = {
     thMembers: 'Members',
     thCreatedAt: 'Created At',
     viewDetail: 'View Details',
-    unknownError: 'Unknown error'
-  }
+    openActivationCode: 'Generate Code',
+    unknownError: 'Unknown error',
+  },
 } as const;
 
 export default function DashboardTenantsPage() {
@@ -78,7 +78,7 @@ export default function DashboardTenantsPage() {
   const copy = COPY[locale];
   const [status, setStatus] = useState<PageState>({
     loading: true,
-    error: null
+    error: null,
   });
   const [tenants, setTenants] = useState<AdminTenant[]>([]);
   const [searchInput, setSearchInput] = useState('');
@@ -96,9 +96,12 @@ export default function DashboardTenantsPage() {
           query.set('search', appliedSearch.trim());
         }
 
-        const response = await apiRequest(`/admin/tenants${query.size ? `?${query.toString()}` : ''}`, {
-          responseSchema: listAdminTenantsResponseSchema
-        });
+        const response = await apiRequest(
+          `/admin/tenants${query.size ? `?${query.toString()}` : ''}`,
+          {
+            responseSchema: listAdminTenantsResponseSchema,
+          },
+        );
 
         if (cancelled) {
           return;
@@ -110,7 +113,7 @@ export default function DashboardTenantsPage() {
         if (!cancelled) {
           setStatus({
             loading: false,
-            error: formatUnknownError(error, { fallback: copy.unknownError })
+            error: formatUnknownError(error, { fallback: copy.unknownError }),
           });
           setTenants([]);
         }
@@ -126,7 +129,7 @@ export default function DashboardTenantsPage() {
 
   const totalMembers = useMemo(
     () => tenants.reduce((sum, tenant) => sum + tenant.memberCount, 0),
-    [tenants]
+    [tenants],
   );
 
   function handleSearchSubmit(event: FormEvent<HTMLFormElement>) {
@@ -136,11 +139,7 @@ export default function DashboardTenantsPage() {
 
   return (
     <section className="page admin-page">
-      <AdminPageHeader
-        eyebrow={copy.eyebrow}
-        title={copy.title}
-        description={copy.description}
-      />
+      <AdminPageHeader eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
 
       <div className="admin-metrics-grid">
         <AdminMetricCard
@@ -189,9 +188,7 @@ export default function DashboardTenantsPage() {
         </div>
 
         {status.loading ? <p className="muted">{copy.loading}</p> : null}
-        {!status.loading && tenants.length === 0 ? (
-          <p className="muted">{copy.empty}</p>
-        ) : null}
+        {!status.loading && tenants.length === 0 ? <p className="muted">{copy.empty}</p> : null}
 
         {tenants.length > 0 ? (
           <AdminTableFrame>
@@ -212,7 +209,16 @@ export default function DashboardTenantsPage() {
                   <td>{tenant.memberCount}</td>
                   <td>{formatDateTime(tenant.createdAt)}</td>
                   <td>
-                    <AdminActionLink href={`/dashboard/tenants/${tenant.id}`}>{copy.viewDetail}</AdminActionLink>
+                    <div className="inline-actions">
+                      <AdminActionLink href={`/dashboard/tenants/${tenant.id}`}>
+                        {copy.viewDetail}
+                      </AdminActionLink>
+                      <AdminActionLink
+                        href={`/dashboard/tenants/${tenant.id}#activation-code-generator`}
+                      >
+                        {copy.openActivationCode}
+                      </AdminActionLink>
+                    </div>
                   </td>
                 </tr>
               ))}
