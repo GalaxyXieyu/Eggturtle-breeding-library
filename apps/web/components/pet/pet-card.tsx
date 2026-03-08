@@ -56,7 +56,7 @@ export default function PetCard(props: PetCardProps) {
     coverImageUrl,
     coverFallbackImageUrl,
     coverAlt,
-    imageLoading = 'lazy',
+    imageLoading,
     emptyCoverLabel = '暂无封面',
     sex,
     sexEmptyLabel = '未知',
@@ -95,6 +95,8 @@ export default function PetCard(props: PetCardProps) {
     variant === 'tenant' ? 'cursor-pointer' : 'active:scale-[0.995]',
     className
   );
+  const resolvedImageLoading = imageLoading ?? (variant === 'public' ? 'eager' : 'lazy');
+  const imageFetchPriority = resolvedImageLoading === 'eager' ? 'high' : 'low';
 
   const content = (
     <>
@@ -102,16 +104,22 @@ export default function PetCard(props: PetCardProps) {
         {resolvedCover ? (
           <>
             {!imageLoaded ? (
-              <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-neutral-200 via-neutral-100 to-neutral-200" />
+              <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-neutral-200 via-neutral-100 to-neutral-200">
+                <div className="flex h-full w-full items-center justify-center">
+                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-neutral-300 border-t-neutral-500" />
+                </div>
+              </div>
             ) : null}
             <img
               ref={imageRef}
               src={resolvedCover}
               alt={coverAlt || code}
-              className={`h-full w-full object-cover transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
-              loading={imageLoading}
+              className={`h-full w-full object-cover transition-[opacity,transform,filter] duration-500 ${
+                imageLoaded ? 'scale-100 opacity-100 blur-0' : 'scale-[1.03] opacity-0 blur-[2px]'
+              }`}
+              loading={resolvedImageLoading}
               decoding="async"
-              fetchPriority="low"
+              fetchPriority={imageFetchPriority}
               onLoad={() => setImageLoaded(true)}
               onError={() => setImageLoaded(true)}
             />

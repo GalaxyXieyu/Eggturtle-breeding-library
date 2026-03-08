@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PublicSharePresentation } from '@eggturtle/shared';
 import { Search, X } from 'lucide-react';
 
@@ -40,6 +40,53 @@ type Props = {
 const INITIAL_VISIBLE_BREEDERS = 8;
 const VISIBLE_BREEDERS_CHUNK = 8;
 const LOAD_MORE_ROOT_MARGIN = '640px 0px';
+const PUBLIC_FEED_STATE_KEY_PREFIX = 'public-feed-state:v1:';
+const PUBLIC_FEED_STATE_TTL_MS = 30 * 60 * 1000;
+
+type PublicFeedPersistedState = {
+  savedAt: number;
+  seriesId: string;
+  sex: 'all' | 'male' | 'female';
+  status: 'all' | NeedMatingStatus;
+  visibleCount: number;
+  scrollY: number;
+};
+
+function buildPublicFeedStateKey(shareToken: string, shareQuery?: string): string {
+  return `${PUBLIC_FEED_STATE_KEY_PREFIX}${shareToken}:${shareQuery ?? ''}`;
+}
+
+function parsePublicFeedPersistedState(raw: string | null): PublicFeedPersistedState | null {
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<PublicFeedPersistedState>;
+
+    if (
+      typeof parsed.savedAt !== 'number' ||
+      typeof parsed.seriesId !== 'string' ||
+      (parsed.sex !== 'all' && parsed.sex !== 'male' && parsed.sex !== 'female') ||
+      (parsed.status !== 'all' && parsed.status !== 'normal' && parsed.status !== 'need_mating' && parsed.status !== 'warning') ||
+      typeof parsed.visibleCount !== 'number' ||
+      typeof parsed.scrollY !== 'number'
+    ) {
+      return null;
+    }
+
+    return {
+      savedAt: parsed.savedAt,
+      seriesId: parsed.seriesId,
+      sex: parsed.sex,
+      status: parsed.status,
+      visibleCount: parsed.visibleCount,
+      scrollY: parsed.scrollY
+    };
+  } catch {
+    return null;
+  }
+}
 
 function rankStatus(status: NeedMatingStatus) {
   return status === 'warning' ? 1 : 0;
@@ -62,6 +109,12 @@ export default function PublicFeedPage({
   const [isMobileFilterModalOpen, setIsMobileFilterModalOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_BREEDERS);
   const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
+  const preserveVisibleCountOnFirstListSyncRef = useRef(false);
+  const [hasHydratedFeedState, setHasHydratedFeedState] = useState(false);
+  const stateStorageKey = useMemo(
+    () => buildPublicFeedStateKey(shareToken, shareQuery),
+    [shareToken, shareQuery]
+  );
 
   const resolvedPresentation = resolvePublicSharePresentation(presentation);
   const heroImages = useMemo(
@@ -102,6 +155,61 @@ export default function PublicFeedPage({
   useEffect(() => {
     setSeriesId(resolveSeriesId(initialSeriesId, series));
   }, [initialSeriesId, series]);
+
+  const persistFeedState = useCallback(
+    (scrollY: number) => {
+      if (typeof window === 'undefined') {
+        return;
+      }
+
+      const snapshot: PublicFeedPersistedState = {
+        savedAt: Date.now(),
+        seriesId,
+        sex,
+        status,
+        visibleCount,
+        scrollY: Math.max(0, Math.floor(scrollY))
+      };
+
+      try {
+        window.sessionStorage.setItem(stateStorageKey, JSON.stringify(snapshot));
+      } catch {
+        // Ignore storage quota and private mode write errors.
+      }
+    },
+    [seriesId, sex, status, stateStorageKey, visibleCount]
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const parsed = parsePublicFeedPersistedState(window.sessionStorage.getItem(stateStorageKey));
+    if (!parsed || Date.now() - parsed.savedAt > PUBLIC_FEED_STATE_TTL_MS) {
+      setHasHydratedFeedState(true);
+      return;
+    }
+
+    if (!initialSeriesId) {
+      setSeriesId(resolveSeriesId(parsed.seriesId, series));
+      setSex(parsed.sex);
+      setStatus(parsed.status);
+      preserveVisibleCountOnFirstListSyncRef.current = true;
+      setVisibleCount((current) => Math.max(current, Math.floor(parsed.visibleCount)));
+    }
+
+    const restoreScrollY = Math.max(0, Math.floor(parsed.scrollY));
+    if (restoreScrollY > 0) {
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          window.scrollTo({ top: restoreScrollY, behavior: 'auto' });
+        });
+      });
+    }
+
+    setHasHydratedFeedState(true);
+  }, [initialSeriesId, series, stateStorageKey]);
 
   useEffect(() => {
     const OPEN_THRESHOLD = 460;
@@ -163,8 +271,49 @@ export default function PublicFeedPage({
   const hasMoreList = visibleList.length < list.length;
 
   useEffect(() => {
+    if (preserveVisibleCountOnFirstListSyncRef.current) {
+      preserveVisibleCountOnFirstListSyncRef.current = false;
+      setVisibleCount((current) => Math.min(Math.max(current, INITIAL_VISIBLE_BREEDERS), list.length));
+      return;
+    }
+
     setVisibleCount(Math.min(INITIAL_VISIBLE_BREEDERS, list.length));
   }, [list]);
+
+  useEffect(() => {
+    if (!hasHydratedFeedState) {
+      return;
+    }
+
+    persistFeedState(window.scrollY);
+  }, [hasHydratedFeedState, persistFeedState]);
+
+  useEffect(() => {
+    if (!hasHydratedFeedState || typeof window === 'undefined') {
+      return;
+    }
+
+    let rafId = 0;
+    const onScroll = () => {
+      if (rafId) {
+        return;
+      }
+
+      rafId = window.requestAnimationFrame(() => {
+        rafId = 0;
+        persistFeedState(window.scrollY);
+      });
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+
+    return () => {
+      if (rafId) {
+        window.cancelAnimationFrame(rafId);
+      }
+      window.removeEventListener('scroll', onScroll);
+    };
+  }, [hasHydratedFeedState, persistFeedState]);
 
   useEffect(() => {
     if (!hasMoreList) {
@@ -463,13 +612,17 @@ export default function PublicFeedPage({
           <>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] sm:gap-4 xl:grid-cols-[repeat(auto-fill,minmax(240px,1fr))]">
               {visibleList.map((breeder) => (
-                <BreederCard
+                <div
                   key={breeder.id}
-                  breeder={breeder}
-                  demo={demo}
-                  shareToken={shareToken}
-                  shareQuery={shareQuery}
-                />
+                  style={{ contentVisibility: 'auto', containIntrinsicSize: '300px 420px' }}
+                >
+                  <BreederCard
+                    breeder={breeder}
+                    demo={demo}
+                    shareToken={shareToken}
+                    shareQuery={shareQuery}
+                  />
+                </div>
               ))}
             </div>
             <div className="mt-4 flex flex-col items-center gap-2">
