@@ -50,6 +50,25 @@ type PetCardActionProps = BasePetCardProps & {
 
 export type PetCardProps = PetCardLinkProps | PetCardActionProps;
 
+const PUBLIC_ASSET_BASE_URL = (process.env.NEXT_PUBLIC_PUBLIC_ASSET_BASE_URL ?? '').trim().replace(/\/+$/, '');
+
+function stripPublicAssetBase(url: string): string | null {
+  if (!PUBLIC_ASSET_BASE_URL) {
+    return null;
+  }
+
+  if (!url.startsWith(PUBLIC_ASSET_BASE_URL)) {
+    return null;
+  }
+
+  const stripped = url.slice(PUBLIC_ASSET_BASE_URL.length).trim();
+  if (!stripped) {
+    return null;
+  }
+
+  return stripped.startsWith('/') ? stripped : `/${stripped}`;
+}
+
 export default function PetCard(props: PetCardProps) {
   const {
     code,
@@ -75,10 +94,19 @@ export default function PetCard(props: PetCardProps) {
     ariaLabel
   } = props;
   const resolvedCover = coverImageUrl || coverFallbackImageUrl || null;
+  const [imageSrc, setImageSrc] = useState(resolvedCover);
   const [imageLoaded, setImageLoaded] = useState(!resolvedCover);
+  const [imageFailed, setImageFailed] = useState(false);
+  const [hasRetriedWithoutCdn, setHasRetriedWithoutCdn] = useState(false);
+  const [hasRetriedFallback, setHasRetriedFallback] = useState(false);
   const imageRef = useRef<HTMLImageElement | null>(null);
 
   useEffect(() => {
+    setImageSrc(resolvedCover);
+    setImageFailed(false);
+    setHasRetriedWithoutCdn(false);
+    setHasRetriedFallback(false);
+
     if (!resolvedCover) {
       setImageLoaded(true);
       return;
@@ -90,6 +118,18 @@ export default function PetCard(props: PetCardProps) {
     }
   }, [resolvedCover]);
 
+  useEffect(() => {
+    if (!imageSrc) {
+      setImageLoaded(true);
+      return;
+    }
+
+    setImageLoaded(false);
+    if (imageRef.current?.complete) {
+      setImageLoaded(true);
+    }
+  }, [imageSrc]);
+
   const rootClassName = cn(
     'group overflow-hidden rounded-2xl border border-neutral-200/90 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)] transition hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-[0_12px_34px_rgba(0,0,0,0.14)]',
     variant === 'tenant' ? 'cursor-pointer' : 'active:scale-[0.995]',
@@ -97,22 +137,51 @@ export default function PetCard(props: PetCardProps) {
   );
   const resolvedImageLoading = imageLoading ?? (variant === 'public' ? 'eager' : 'lazy');
   const imageFetchPriority = resolvedImageLoading === 'eager' ? 'high' : 'low';
+  const hasRenderableImage = Boolean(imageSrc) && !imageFailed;
+
+  function handleImageError() {
+    if (!imageSrc) {
+      setImageFailed(true);
+      setImageLoaded(true);
+      return;
+    }
+
+    if (!hasRetriedWithoutCdn) {
+      const fallbackFromCdn = stripPublicAssetBase(imageSrc);
+      if (fallbackFromCdn) {
+        setHasRetriedWithoutCdn(true);
+        setImageLoaded(false);
+        setImageSrc(fallbackFromCdn);
+        return;
+      }
+    }
+
+    if (!hasRetriedFallback && coverFallbackImageUrl && imageSrc !== coverFallbackImageUrl) {
+      setHasRetriedFallback(true);
+      setImageLoaded(false);
+      setImageSrc(coverFallbackImageUrl);
+      return;
+    }
+
+    setImageFailed(true);
+    setImageLoaded(true);
+  }
 
   const content = (
     <>
       <div className="relative aspect-square bg-neutral-100">
-        {resolvedCover ? (
+        {hasRenderableImage ? (
           <>
             {!imageLoaded ? (
-              <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-neutral-200 via-neutral-100 to-neutral-200">
+              <div className="absolute inset-0 skeleton-shimmer">
                 <div className="flex h-full w-full items-center justify-center">
-                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-neutral-300 border-t-neutral-500" />
+                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-neutral-300 border-t-neutral-600" />
                 </div>
               </div>
             ) : null}
             <img
               ref={imageRef}
-              src={resolvedCover}
+              src={imageSrc ?? undefined}
               alt={coverAlt || code}
               className={`h-full w-full object-cover transition-[opacity,transform,filter] duration-500 ${
                 imageLoaded ? 'scale-100 opacity-100 blur-0' : 'scale-[1.03] opacity-0 blur-[2px]'
@@ -120,13 +189,16 @@ export default function PetCard(props: PetCardProps) {
               loading={resolvedImageLoading}
               decoding="async"
               fetchPriority={imageFetchPriority}
-              onLoad={() => setImageLoaded(true)}
-              onError={() => setImageLoaded(true)}
+              onLoad={() => {
+                setImageFailed(false);
+                setImageLoaded(true);
+              }}
+              onError={handleImageError}
             />
           </>
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-xs text-neutral-500">
-            {emptyCoverLabel}
+          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-neutral-200 via-neutral-100 to-neutral-200 text-xs text-neutral-600">
+            <span className="rounded-full bg-white/85 px-3 py-1 shadow-sm">{emptyCoverLabel}</span>
           </div>
         )}
         <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/30 to-transparent" />

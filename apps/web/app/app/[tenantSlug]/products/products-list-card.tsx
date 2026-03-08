@@ -261,14 +261,15 @@ export default function ProductsListCard({
 
         {!loading && visibleItems.length > 0 ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] sm:gap-4 xl:grid-cols-[repeat(auto-fill,minmax(240px,1fr))]">
-            {visibleItems.map((item) => (
+            {visibleItems.map((item, index) => (
               <PetCard
                 key={`preview-${item.id}`}
                 variant="tenant"
                 code={item.code}
                 coverImageUrl={item.coverImageUrl ? resolveAuthenticatedAssetUrl(item.coverImageUrl) : null}
-                coverFallbackImageUrl={null}
+                coverFallbackImageUrl="/images/mg_01.jpg"
                 coverAlt={`${item.code} 封面`}
+                imageLoading={index < 6 ? 'eager' : 'lazy'}
                 sex={item.sex}
                 needMatingStatus={item.needMatingStatus}
                 daysSinceEgg={item.daysSinceEgg}
