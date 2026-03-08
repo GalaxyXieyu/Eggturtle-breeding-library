@@ -39,7 +39,7 @@ type PublicShareFetchResult =
 
 // Server-side fetch needs an absolute URL. Prefer INTERNAL_API_BASE_URL for deployments.
 const DEFAULT_API_BASE_URL = 'http://127.0.0.1:30011';
-const DEFAULT_PUBLIC_SHARE_REVALIDATE_SECONDS = 45;
+const DEFAULT_PUBLIC_SHARE_REVALIDATE_SECONDS = 300;
 
 export async function fetchPublicShareFromSearchParams(
   searchParams: PublicSearchParams,

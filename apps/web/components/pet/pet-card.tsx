@@ -135,7 +135,7 @@ export default function PetCard(props: PetCardProps) {
     variant === 'tenant' ? 'cursor-pointer' : 'active:scale-[0.995]',
     className
   );
-  const resolvedImageLoading = imageLoading ?? (variant === 'public' ? 'eager' : 'lazy');
+  const resolvedImageLoading = imageLoading ?? 'lazy';
   const imageFetchPriority = resolvedImageLoading === 'eager' ? 'high' : 'low';
   const hasRenderableImage = Boolean(imageSrc) && !imageFailed;
 

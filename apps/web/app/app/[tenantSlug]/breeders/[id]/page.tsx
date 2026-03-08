@@ -359,6 +359,14 @@ export default function BreederDetailPage() {
       ? `/app/${tenantSlug}/breeders?${queryString}`
       : `/app/${tenantSlug}/breeders`;
   }, [fromProducts, isDemoMode, tenantSlug]);
+  const closeDetail = useCallback(() => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+      return;
+    }
+
+    router.push(listHref);
+  }, [listHref, router]);
 
   const openBreederDetail = useMemo(() => {
     return (nextBreederId: string) => {
@@ -635,7 +643,7 @@ export default function BreederDetailPage() {
         activeImageId={activeImageId}
         relationIds={relationIds}
         onImageClick={setActiveImageId}
-        onBack={() => router.push(listHref)}
+        onBack={closeDetail}
         onEdit={() => setIsEditDrawerOpen(true)}
         onOpenRelation={openBreederDetail}
         actionErrorMessage={quickActionError}

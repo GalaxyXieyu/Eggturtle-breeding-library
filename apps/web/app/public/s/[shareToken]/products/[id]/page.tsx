@@ -1,20 +1,8 @@
-import { redirect } from 'next/navigation';
-
 import PublicProductDetailPage from '@/app/public/_public-product/public-product-detail-page';
-import {
-  mapPublicShareDetail,
-  mapPublicProductToLegacyBreeder,
-  mapTenantFeedToLegacy
-} from '@/app/public/_public-product/public-share-adapter';
 import PublicShareErrorPanel from '@/app/public/_shared/public-share-error-panel';
-import {
-  buildPublicShareRouteQuery,
-  fetchPublicShareFromSearchParams,
-  firstSearchParamValue,
-  refreshPublicShareEntryLocation,
-  shouldAutoRefreshShareSignature,
-  type PublicSearchParams
-} from '@/app/public/_shared/public-share-api';
+import type { PublicSearchParams } from '@/app/public/_shared/public-share-api';
+
+import { loadPublicShareProductDetail } from './public-share-product-detail-loader';
 
 export default async function PublicShareProductDetailPage({
   params,
@@ -23,78 +11,18 @@ export default async function PublicShareProductDetailPage({
   params: { shareToken: string; id: string };
   searchParams: PublicSearchParams;
 }) {
-  const sidValue = firstSearchParamValue(searchParams.sid);
-  const hasSidParam = typeof sidValue === 'string' && sidValue.trim().length > 0;
-  if (!hasSidParam) {
-    const location = await refreshPublicShareEntryLocation(params.shareToken);
-    if (location) {
-      redirect(location);
-    }
-  }
+  const resolved = await loadPublicShareProductDetail(params, searchParams);
 
-  const shareResult = await fetchPublicShareFromSearchParams(searchParams, {
-    productId: params.id
-  });
-
-  if (!shareResult.ok) {
-    if (shouldAutoRefreshShareSignature(shareResult.status, shareResult.errorCode)) {
-      const location = await refreshPublicShareEntryLocation(params.shareToken);
-      if (location) {
-        redirect(location);
-      }
-    }
-
+  if (!resolved.ok) {
     return (
       <PublicShareErrorPanel
-        title="公开详情不可用"
-        message={shareResult.message}
+        title={resolved.title}
+        message={resolved.message}
         shareToken={params.shareToken}
         canAutoRefresh={false}
       />
     );
   }
 
-  if (shareResult.data.resourceType !== 'tenant_feed') {
-    return (
-      <main className="share-shell">
-        <section className="card panel stack">
-          <h1>公开详情不可用</h1>
-          <p className="notice notice-warning">该链接不是用户图鉴分享链接。</p>
-        </section>
-      </main>
-    );
-  }
-
-  const shareRouteQuery = buildPublicShareRouteQuery(shareResult.shareId, shareResult.query);
-  const seriesId = firstSearchParamValue(searchParams.series)?.trim();
-  if (seriesId) {
-    shareRouteQuery.set('series', seriesId);
-  }
-  const shareQuery = shareRouteQuery.toString();
-  const legacyFeedData = mapTenantFeedToLegacy(shareResult.data);
-  const detailData = mapPublicShareDetail(shareResult.data);
-  const detailBreeder = shareResult.data.product
-    ? mapPublicProductToLegacyBreeder(shareResult.data.product)
-    : null;
-
-  const series = detailBreeder
-    ? legacyFeedData.series.find((item) => item.id === detailBreeder.seriesId) || null
-    : null;
-
-  return (
-    <PublicProductDetailPage
-      breeder={detailBreeder}
-      breederId={params.id}
-      series={series}
-      events={detailData.events}
-      familyTree={detailData.familyTree}
-      maleMateLoad={detailData.maleMateLoad}
-      fallbackBreeders={legacyFeedData.breeders.slice(0, 4)}
-      demo={false}
-      shareToken={params.shareToken}
-      shareQuery={shareQuery}
-      homeHref={`/public/s/${params.shareToken}`}
-      presentation={shareResult.data.presentation}
-    />
-  );
+  return <PublicProductDetailPage {...resolved.data} />;
 }

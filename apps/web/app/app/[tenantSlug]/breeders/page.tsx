@@ -425,6 +425,9 @@ function BreederImagePreview({ item }: { item: Product }) {
       src={resolveImageUrl(item.coverImageUrl)}
       alt={`${item.code} cover`}
       className="h-14 w-14 rounded-xl border border-neutral-200 object-cover"
+      loading="lazy"
+      decoding="async"
+      fetchPriority="low"
     />
   );
 }
