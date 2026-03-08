@@ -309,7 +309,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
 
   return (
     <div className="tenant-shell-bg h-[100svh] overflow-hidden">
-      <div className="flex h-full w-full gap-2 p-2 pb-[calc(env(safe-area-inset-bottom)+72px)] sm:gap-3 sm:p-3 lg:gap-4 lg:p-4 lg:pb-4">
+      <div className="flex h-full w-full gap-2 p-2 sm:gap-3 sm:p-3 lg:gap-4 lg:p-4">
         <aside className="hidden w-[272px] flex-col overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-[0_8px_26px_rgba(0,0,0,0.08)] dark:border-neutral-800 dark:bg-neutral-950/96 dark:shadow-[0_20px_40px_rgba(0,0,0,0.45)] lg:flex">
           <div className="border-b border-neutral-200 px-6 py-5 dark:border-neutral-800">
             <p className="text-xs uppercase tracking-[0.28em] text-neutral-500 dark:text-neutral-400">
