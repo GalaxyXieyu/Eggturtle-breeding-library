@@ -809,6 +809,25 @@ function buildEventNote(input: {
   return lines.length > 0 ? lines.join('\n') : null;
 }
 
+function normalizeSeriesNameCodeFromName(name: string): string | null {
+  const normalized = name
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  return normalized || null;
+}
+
+function buildLegacySeriesFallbackCode(
+  input: { code: string | null; name: string | null; legacyId: string },
+  index: number
+) {
+  const fallbackLegacy = normalizeString(input.legacyId)?.replace(/[^a-zA-Z0-9]/g, '').slice(0, 8);
+  return `LEGACY-SERIES-${fallbackLegacy || index + 1}`;
+}
+
 function buildSeriesCode(input: { code: string | null; name: string | null; legacyId: string }, index: number) {
   const byCode = normalizeCode(input.code);
   if (byCode) {
@@ -817,17 +836,21 @@ function buildSeriesCode(input: { code: string | null; name: string | null; lega
 
   const byName = normalizeString(input.name);
   if (byName) {
-    const normalized = byName
-      .toUpperCase()
-      .replace(/[^A-Z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
+    const normalized = normalizeSeriesNameCodeFromName(byName);
     if (normalized) {
       return normalized;
     }
   }
 
-  const fallbackLegacy = normalizeString(input.legacyId)?.replace(/[^a-zA-Z0-9]/g, '').slice(0, 8);
-  return `LEGACY-SERIES-${fallbackLegacy || index + 1}`;
+  const fallbackLegacy = normalizeString(input.legacyId)
+    ?.replace(/[^a-zA-Z0-9]/g, '')
+    .slice(0, 8)
+    .toUpperCase();
+  if (fallbackLegacy) {
+    return `SERIES-${fallbackLegacy}`;
+  }
+
+  return `SERIES-${String(index + 1).padStart(4, '0')}`;
 }
 
 async function main() {
@@ -952,7 +975,14 @@ async function main() {
         }
         usedSeriesCodes.add(code);
 
-        const existing = await prisma.series.findUnique({
+        const seriesPatch = {
+          name: normalizeString(sourceSeries.name) ?? code,
+          description: normalizeString(sourceSeries.description),
+          sortOrder: typeof sourceSeries.sortOrder === 'number' ? sourceSeries.sortOrder : index,
+          isActive: sourceSeries.isActive !== false
+        };
+
+        const existingByTargetCode = await prisma.series.findUnique({
           where: {
             tenantId_code: {
               tenantId: tenant.id,
@@ -962,6 +992,35 @@ async function main() {
           select: { id: true }
         });
 
+        if (!existingByTargetCode) {
+          const legacyFallbackCode = buildLegacySeriesFallbackCode(sourceSeries, index);
+          if (legacyFallbackCode !== code) {
+            const existingLegacy = await prisma.series.findUnique({
+              where: {
+                tenantId_code: {
+                  tenantId: tenant.id,
+                  code: legacyFallbackCode
+                }
+              },
+              select: { id: true }
+            });
+
+            if (existingLegacy) {
+              const migrated = await prisma.series.update({
+                where: { id: existingLegacy.id },
+                data: {
+                  ...seriesPatch,
+                  code
+                }
+              });
+
+              counters.seriesUpdated += 1;
+              seriesLegacyIdToId.set(legacySeriesId, migrated.id);
+              continue;
+            }
+          }
+        }
+
         const upserted = await prisma.series.upsert({
           where: {
             tenantId_code: {
@@ -969,23 +1028,15 @@ async function main() {
               code
             }
           },
-          update: {
-            name: normalizeString(sourceSeries.name) ?? code,
-            description: normalizeString(sourceSeries.description),
-            sortOrder: typeof sourceSeries.sortOrder === 'number' ? sourceSeries.sortOrder : index,
-            isActive: sourceSeries.isActive !== false
-          },
+          update: seriesPatch,
           create: {
             tenantId: tenant.id,
             code,
-            name: normalizeString(sourceSeries.name) ?? code,
-            description: normalizeString(sourceSeries.description),
-            sortOrder: typeof sourceSeries.sortOrder === 'number' ? sourceSeries.sortOrder : index,
-            isActive: sourceSeries.isActive !== false
+            ...seriesPatch
           }
         });
 
-        if (existing) {
+        if (existingByTargetCode) {
           counters.seriesUpdated += 1;
         } else {
           counters.seriesCreated += 1;

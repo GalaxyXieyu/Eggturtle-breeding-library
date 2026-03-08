@@ -673,23 +673,8 @@ export default function TenantProductsPage() {
   }
 
   const quickSeriesOptions = useMemo(() => {
-    const base = seriesOptions.slice(0, 6);
-
-    if (!seriesFilterId) {
-      return base;
-    }
-
-    const selectedOption = seriesOptions.find((item) => item.id === seriesFilterId);
-    if (!selectedOption) {
-      return base;
-    }
-
-    if (base.some((item) => item.id === selectedOption.id)) {
-      return base;
-    }
-
-    return [selectedOption, ...base.slice(0, 5)];
-  }, [seriesFilterId, seriesOptions]);
+    return seriesOptions;
+  }, [seriesOptions]);
   const hasMoreSeriesOptions = seriesOptions.length > quickSeriesOptions.length;
 
   const activeFilterCount =

@@ -26,6 +26,14 @@ function isPlaceholderSeriesCode(code: string) {
   return normalized === 'new-series' || normalized === 'new';
 }
 
+function isGeneratedSeriesCode(code: string) {
+  const normalized = normalizeText(code);
+  if (normalized.startsWith('legacy-series-')) {
+    return true;
+  }
+  return /^series-[a-f0-9]{8,}$/.test(normalized);
+}
+
 export const PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
 
 export const DEFAULT_LIST_QUERY: ProductsListQuery = {
@@ -207,11 +215,21 @@ export function formatSeriesLabelById(seriesId: string, options: SeriesOptionLik
     return seriesId;
   }
 
-  if (isPlaceholderSeriesCode(matched.code)) {
-    return matched.name || matched.code;
+  const displayName = matched.name.trim();
+  const displayCode = matched.code.trim();
+  if (!displayName) {
+    return displayCode || seriesId;
   }
 
-  return `${matched.name}（${matched.code}）`;
+  if (!displayCode || isPlaceholderSeriesCode(displayCode) || isGeneratedSeriesCode(displayCode)) {
+    return displayName;
+  }
+
+  if (normalizeText(displayName) === normalizeText(displayCode)) {
+    return displayName;
+  }
+
+  return `${displayName}（${displayCode}）`;
 }
 
 function parsePositiveInt(value: string | null, fallback: number): number {

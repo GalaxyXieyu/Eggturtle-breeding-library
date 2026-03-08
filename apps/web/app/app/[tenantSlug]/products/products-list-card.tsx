@@ -128,15 +128,17 @@ export default function ProductsListCard({
         </button>
         {quickSeriesOptions.map((item) => {
           const selected = seriesFilterId === item.id;
+          const label = item.name?.trim() || item.code;
+          const title = item.code && item.code !== label ? `${label} · ${item.code}` : label;
           return (
             <button
               key={`${keyPrefix}-${item.id}`}
               type="button"
-              title={`${item.code}${item.name ? ` · ${item.name}` : ''}`}
+              title={title}
               className={buildFilterPillClass(selected, { className })}
               onClick={() => onSeriesFilterChange(item.id)}
             >
-              <span className="max-w-[9.5rem] truncate">{item.code}</span>
+              <span className="max-w-[9.5rem] truncate">{label}</span>
             </button>
           );
         })}

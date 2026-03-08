@@ -99,15 +99,17 @@ export default function ProductsFilterOverlay({
         </button>
         {quickSeriesOptions.map((item) => {
           const selected = seriesFilterId === item.id;
+          const label = item.name?.trim() || item.code;
+          const title = item.code && item.code !== label ? `${label} · ${item.code}` : label;
           return (
             <button
               key={`series-panel-${item.id}`}
               type="button"
-              title={`${item.code}${item.name ? ` · ${item.name}` : ''}`}
+              title={title}
               className={buildFilterPillClass(selected)}
               onClick={() => onSeriesFilterChange(item.id)}
             >
-              <span className="max-w-[9.5rem] truncate">{item.code}</span>
+              <span className="max-w-[9.5rem] truncate">{label}</span>
             </button>
           );
         })}
@@ -148,11 +150,15 @@ export default function ProductsFilterOverlay({
             onChange={(event) => onSeriesFilterChange(event.target.value)}
           >
             <option value="">更多系列（全部）</option>
-            {seriesOptions.map((item) => (
-              <option key={`series-option-${item.id}`} value={item.id}>
-                {item.code} · {item.name}
-              </option>
-            ))}
+            {seriesOptions.map((item) => {
+              const label = item.name?.trim() || item.code;
+              const optionText = item.code && item.code !== label ? `${label} · ${item.code}` : label;
+              return (
+                <option key={`series-option-${item.id}`} value={item.id}>
+                  {optionText}
+                </option>
+              );
+            })}
           </NativeSelect>
         ) : null}
       </div>
