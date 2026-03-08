@@ -56,7 +56,6 @@ export default function TenantShareDialogTrigger({
   const [link, setLink] = useState('');
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [posterDataUrl, setPosterDataUrl] = useState<string | null>(null);
-  const [posterPending, setPosterPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const shareRequestIdRef = useRef(0);
@@ -109,7 +108,6 @@ export default function TenantShareDialogTrigger({
     setLink('');
     setQrDataUrl(null);
     setPosterDataUrl(null);
-    setPosterPending(false);
     setError(null);
   }, [cancelShareRequest]);
 
@@ -264,8 +262,6 @@ export default function TenantShareDialogTrigger({
     posterRequestIdRef.current = requestId;
 
     void (async () => {
-      setPosterPending(true);
-
       try {
         const dataUrl = await generateSharePoster({
           title: cardTitle,
@@ -295,14 +291,6 @@ export default function TenantShareDialogTrigger({
         }
 
         setPosterDataUrl(null);
-      } finally {
-        if (
-          mountedRef.current &&
-          openSessionIdRef.current === sessionId &&
-          posterRequestIdRef.current === requestId
-        ) {
-          setPosterPending(false);
-        }
       }
     })();
   }, [
@@ -403,8 +391,8 @@ export default function TenantShareDialogTrigger({
               </button>
             </div>
 
-            <div className="relative z-10 flex min-h-0 flex-1 flex-col gap-2.5 sm:gap-3">
-              <div className="overflow-hidden rounded-[24px] border border-[#d9c3a1] bg-[linear-gradient(160deg,#1b2436,#0d1628)] p-2 sm:rounded-[26px] sm:p-2.5">
+            <div className="relative z-10 flex min-h-0 flex-1 items-center justify-center py-1 sm:py-2">
+              <div className="flex h-full min-h-[min(62dvh,31rem)] w-full items-center justify-center overflow-hidden rounded-[24px] border border-[#d9c3a1] bg-[linear-gradient(160deg,#1b2436,#0d1628)] p-2 sm:min-h-[min(72vh,42rem)] sm:rounded-[26px] sm:p-2.5">
                 {pending ? (
                   <div className="mx-auto flex aspect-[9/16] w-full max-w-[15.75rem] min-h-[17.5rem] flex-col items-center justify-center gap-3 rounded-[22px] bg-[linear-gradient(180deg,#f8fafc,#eef2ff)] text-sm text-slate-500 sm:max-w-[18.5rem]">
                     <span className="inline-flex h-10 w-10 animate-pulse items-center justify-center rounded-full bg-[#0f172a] text-[#ffd65a]">
@@ -428,37 +416,6 @@ export default function TenantShareDialogTrigger({
                     暂无卡片预览
                   </div>
                 )}
-              </div>
-
-              <div className="rounded-[22px] border border-[#e3d2b4] bg-white/85 p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] sm:p-3">
-                <div className="flex items-center gap-2.5 sm:gap-4">
-                  <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#d8c6a5] bg-white shadow-sm sm:h-[4.5rem] sm:w-[4.5rem]">
-                    {qrDataUrl ? (
-                      <img src={qrDataUrl} alt="分享二维码" className="h-full w-full object-cover" />
-                    ) : (
-                      <QrCode size={20} className="text-slate-400 sm:h-[22px] sm:w-[22px]" />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-[#111827]">
-                      手机海报优先分享
-                      {posterPending ? (
-                        <span className="ml-2 text-[11px] font-medium text-[#9ca3af] sm:text-xs">
-                          海报生成中...
-                        </span>
-                      ) : null}
-                    </p>
-                    <p className="mt-0.5 line-clamp-2 text-[11px] leading-4 text-[#6b7280] sm:mt-1 sm:text-xs">
-                      {cardSubtitle}
-                    </p>
-                  </div>
-                </div>
-                <p className="mt-2 break-all rounded-xl border border-[#deceb1] bg-[#fffaf0] px-3 py-2 text-[11px] leading-4 text-[#374151] sm:text-xs">
-                  {link || '链接生成中...'}
-                </p>
-                <p className="mt-1.5 line-clamp-2 text-[11px] leading-4 text-[#6b7280] sm:text-xs">
-                  {intentCopy.hint}
-                </p>
               </div>
             </div>
 
@@ -770,7 +727,7 @@ async function drawGenericPosterHero(
 ) {
   const imageUrls = Array.from(
     new Set([payload.previewImageUrl, ...(payload.posterImageUrls ?? [])].filter(Boolean)),
-  ).slice(0, 5) as string[];
+  ).slice(0, 9) as string[];
 
   if (imageUrls.length === 0) {
     drawHeroFallback(ctx, x, y, width, height);
@@ -783,7 +740,7 @@ async function drawGenericPosterHero(
     return;
   }
 
-  drawPosterCollage(ctx, images, x, y, width, height);
+  drawPosterCollage(ctx, ensureMasonryImages(images, 6), x, y, width, height);
 }
 
 function drawPosterCollage(
@@ -794,65 +751,81 @@ function drawPosterCollage(
   width: number,
   height: number,
 ) {
-  const layouts = [
-    { x: 0, y: 92, width: 0.44, height: 0.76, rotate: -0.12 },
-    { x: 0.2, y: 18, width: 0.32, height: 0.54, rotate: -0.04 },
-    { x: 0.47, y: 96, width: 0.28, height: 0.62, rotate: 0.06 },
-    { x: 0.68, y: 28, width: 0.28, height: 0.5, rotate: 0.14 },
-    { x: 0.68, y: 306, width: 0.23, height: 0.38, rotate: -0.08 },
-  ];
-
   const heroGradient = ctx.createLinearGradient(x, y, x + width, y + height);
-  heroGradient.addColorStop(0, '#10213a');
-  heroGradient.addColorStop(1, '#22324d');
+  heroGradient.addColorStop(0, '#0f1c34');
+  heroGradient.addColorStop(1, '#1f2f4d');
   ctx.fillStyle = heroGradient;
   roundedRect(ctx, x, y, width, height, 30);
   ctx.fill();
+
+  const innerPaddingX = 26;
+  const innerPaddingY = 26;
+  const columnGap = 18;
+  const rowGap = 14;
+  const innerX = x + innerPaddingX;
+  const innerY = y + innerPaddingY;
+  const innerWidth = width - innerPaddingX * 2;
+  const innerHeight = height - innerPaddingY * 2;
+  const columnWidth = (innerWidth - columnGap) / 2;
+
+  const leftColumnHeights = [0.34, 0.24, 0.3];
+  const rightColumnHeights = [0.24, 0.38, 0.24];
 
   ctx.save();
   roundedRect(ctx, x, y, width, height, 30);
   ctx.clip();
 
-  layouts.slice(0, images.length).forEach((layout, index) => {
-    const cardWidth = width * layout.width;
-    const cardHeight = height * layout.height;
-    const cardX = x + width * layout.x;
-    const cardY = y + layout.y;
-    drawTiltedImageCard(ctx, images[index]!, cardX, cardY, cardWidth, cardHeight, layout.rotate);
+  let leftY = innerY;
+  leftColumnHeights.forEach((ratio, index) => {
+    const tileHeight = Math.round(innerHeight * ratio);
+    drawMasonryTile(ctx, images[index % images.length]!, innerX, leftY, columnWidth, tileHeight);
+    leftY += tileHeight + rowGap;
+  });
+
+  let rightY = innerY;
+  rightColumnHeights.forEach((ratio, index) => {
+    const tileHeight = Math.round(innerHeight * ratio);
+    const imageIndex = index + leftColumnHeights.length;
+    drawMasonryTile(
+      ctx,
+      images[imageIndex % images.length]!,
+      innerX + columnWidth + columnGap,
+      rightY,
+      columnWidth,
+      tileHeight,
+    );
+    rightY += tileHeight + rowGap;
   });
 
   const overlay = ctx.createLinearGradient(0, y + height * 0.4, 0, y + height);
-  overlay.addColorStop(0, 'rgba(15,23,42,0.06)');
-  overlay.addColorStop(0.6, 'rgba(15,23,42,0.38)');
-  overlay.addColorStop(1, 'rgba(15,23,42,0.82)');
+  overlay.addColorStop(0, 'rgba(15,23,42,0.02)');
+  overlay.addColorStop(0.55, 'rgba(15,23,42,0.26)');
+  overlay.addColorStop(1, 'rgba(15,23,42,0.68)');
   ctx.fillStyle = overlay;
   ctx.fillRect(x, y, width, height);
   ctx.restore();
 }
 
-function drawTiltedImageCard(
+function drawMasonryTile(
   ctx: CanvasRenderingContext2D,
   image: HTMLImageElement,
   x: number,
   y: number,
   width: number,
   height: number,
-  rotate: number,
 ) {
-  const radius = 26;
+  const radius = 22;
   ctx.save();
-  ctx.translate(x + width / 2, y + height / 2);
-  ctx.rotate(rotate);
-  ctx.shadowColor = 'rgba(15,23,42,0.28)';
-  ctx.shadowBlur = 26;
-  ctx.shadowOffsetY = 18;
-  ctx.fillStyle = 'rgba(255,255,255,0.18)';
-  roundedRect(ctx, -width / 2, -height / 2, width, height, radius + 4);
+  ctx.shadowColor = 'rgba(15,23,42,0.3)';
+  ctx.shadowBlur = 18;
+  ctx.shadowOffsetY = 12;
+  ctx.fillStyle = 'rgba(255,255,255,0.22)';
+  roundedRect(ctx, x - 3, y - 3, width + 6, height + 6, radius + 3);
   ctx.fill();
-  drawCoverImage(ctx, image, -width / 2, -height / 2, width, height, radius);
-  ctx.lineWidth = 6;
-  ctx.strokeStyle = 'rgba(255,255,255,0.88)';
-  roundedRect(ctx, -width / 2, -height / 2, width, height, radius);
+  drawCoverImage(ctx, image, x, y, width, height, radius);
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+  roundedRect(ctx, x, y, width, height, radius);
   ctx.stroke();
   ctx.restore();
 }
@@ -860,6 +833,19 @@ function drawTiltedImageCard(
 async function loadImages(urls: string[]) {
   const results = await Promise.allSettled(urls.map((url) => loadImage(url)));
   return results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []));
+}
+
+function ensureMasonryImages(images: HTMLImageElement[], minCount: number) {
+  if (images.length >= minCount) {
+    return images;
+  }
+
+  const filled = [...images];
+  while (filled.length < minCount) {
+    filled.push(images[filled.length % images.length]!);
+  }
+
+  return filled;
 }
 
 function drawGlowCircle(
