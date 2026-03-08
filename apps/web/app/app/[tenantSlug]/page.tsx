@@ -473,14 +473,12 @@ export default function TenantAppPage() {
               <CompactKpiCard
                 label="待配对"
                 value={overview.needMating.needMatingCount}
-                hint="优先处理"
                 icon={<HeartHandshake size={14} />}
                 onClick={() => openMetricLink(metricLinks.needMating)}
               />
               <CompactKpiCard
                 label="预警"
                 value={overview.needMating.warningCount}
-                hint="风险项"
                 icon={<AlertTriangle size={14} />}
                 onClick={() => openMetricLink(metricLinks.warnings)}
               />
@@ -674,7 +672,7 @@ export default function TenantAppPage() {
 function KpiCard(props: {
   label: string;
   value: number | string;
-  hint: string;
+  hint?: string;
   icon: ReactNode;
   onClick?: () => void;
 }) {
@@ -688,15 +686,15 @@ function KpiCard(props: {
     >
       <CardHeader className="p-0">
         <div className="flex items-center justify-between">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-neutral-500">{props.hint}</p>
+          <p className="text-sm font-semibold text-neutral-700">{props.label}</p>
           <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#FFD400]/15 text-neutral-800">
             {props.icon}
           </span>
         </div>
       </CardHeader>
-      <CardContent className="mt-4 p-0">
+      <CardContent className="mt-3 p-0">
         <p className="text-3xl font-black leading-none text-neutral-900">{props.value}</p>
-        <p className="mt-1 text-xs text-neutral-600">{props.label}</p>
+        {props.hint ? <p className="mt-1 text-xs text-neutral-500">{props.hint}</p> : null}
         {props.onClick ? (
           <p className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-neutral-500">
             查看列表
@@ -752,7 +750,7 @@ function CompactStat(props: { label: string; value: number | string; onClick?: (
 function CompactKpiCard(props: {
   label: string;
   value: number | string;
-  hint: string;
+  hint?: string;
   icon: ReactNode;
   onClick?: () => void;
 }) {
@@ -766,16 +764,16 @@ function CompactKpiCard(props: {
     >
       <CardHeader className="p-0">
         <div className="flex items-center justify-between">
-          <p className="text-[11px] text-neutral-500">{props.hint}</p>
+          <p className="text-sm font-semibold text-neutral-700">{props.label}</p>
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#FFD400]/18 text-neutral-800">
             {props.icon}
           </span>
         </div>
       </CardHeader>
-      <CardContent className="mt-3 p-0">
+      <CardContent className="mt-2 p-0">
         <p className="text-3xl font-black leading-none text-neutral-900">{props.value}</p>
         <div className="mt-1 flex items-center justify-between">
-          <p className="text-xs font-semibold text-neutral-700">{props.label}</p>
+          {props.hint ? <p className="text-xs text-neutral-500">{props.hint}</p> : <span aria-hidden className="h-4" />}
           {props.onClick ? (
             <ChevronRight size={12} className="text-neutral-400 transition group-hover:text-neutral-600" />
           ) : null}
