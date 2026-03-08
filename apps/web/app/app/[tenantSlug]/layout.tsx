@@ -72,7 +72,7 @@ const NAV_ITEMS: NavItem[] = [
 
 // 分享入口先隐藏，保留原逻辑便于后续恢复。
 const ENABLE_SHARE_ENTRY = false;
-// 系列入口先隐藏，保留原逻辑便于后续恢复。
+// 侧边栏继续隐藏系列入口；移动端底部导航单独保留系列入口。
 const ENABLE_SERIES_ENTRY = false;
 const SHELL_COPY = {
   zh: {
@@ -133,6 +133,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
     !pathname?.endsWith('/account') &&
     !pathname?.endsWith('/certificates');
   const setupQueryEnabled = searchParams.get('setup') === '1';
+  const dashboardPath = `/app/${tenantSlug}`;
   const accountPath = `/app/${tenantSlug}/account`;
   const sharePresentationPath = `/app/${tenantSlug}/share-presentation`;
   const seriesPath = `/app/${tenantSlug}/series`;
@@ -149,6 +150,15 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
   const visibleNavItems = setupRequired
     ? navItemsWithoutShare.filter((item) => item.href(tenantSlug) === accountPath)
     : navItemsWithoutShare;
+  const mobileNavItems = (setupRequired
+    ? NAV_ITEMS.filter((item) => item.href(tenantSlug) === accountPath)
+    : NAV_ITEMS.filter((item) => {
+        const itemHref = item.href(tenantSlug);
+        if (!ENABLE_SHARE_ENTRY && itemHref === sharePresentationPath) {
+          return false;
+        }
+        return itemHref !== dashboardPath;
+      }));
   const shouldBlockOtherPages = setupCheckReady && setupRequired && pathname !== accountPath;
 
   const floatingShareIntent = useMemo<TenantShareIntent>(() => {
@@ -420,7 +430,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
           aria-hidden
         />
         <ul className="tenant-mobile-nav-list list-none">
-          {visibleNavItems.map((item) => {
+          {mobileNavItems.map((item) => {
             const href = item.href(tenantSlug);
             const active = isActive(pathname, href);
             const Icon = item.icon;
