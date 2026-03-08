@@ -1,120 +1,63 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Share2 } from 'lucide-react';
 
-import { copyTextWithFallback, openUrlWithFallback } from '@/lib/browser-share';
-import { formatApiError } from '@/lib/error-utils';
-import { createTenantFeedShareLink } from '@/lib/tenant-share';
-import { cn } from '@/lib/utils';
+import TenantShareDialogTrigger from '@/components/tenant-share-dialog-trigger';
 import { FloatingActionButton, FloatingActionDock } from '@/components/ui/floating-actions';
-
-export type TenantShareIntent = 'feed' | 'series' | { productId: string };
+import { cn } from '@/lib/utils';
+import type { TenantShareIntent, TenantSharePosterVariant } from '@/lib/tenant-share';
 
 type TenantFloatingShareButtonProps = {
   intent: TenantShareIntent;
   className?: string;
-  /** 为 true 时只渲染按钮，不包 fixed 容器，用于与其他 FAB 放在同一容器内堆叠 */
   inline?: boolean;
+  title?: string;
+  subtitle?: string;
+  previewImageUrl?: string | null;
+  posterVariant?: TenantSharePosterVariant;
 };
 
 export default function TenantFloatingShareButton({
   intent,
   className,
   inline,
+  title,
+  subtitle,
+  previewImageUrl,
+  posterVariant,
 }: TenantFloatingShareButtonProps) {
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!notice) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => setNotice(null), 2500);
-    return () => window.clearTimeout(timer);
-  }, [notice]);
-
-  async function handleOpenShare() {
-    if (pending) return;
-    setPending(true);
-    setError(null);
-    setNotice(null);
-
-    try {
-      const share = await createTenantFeedShareLink({
-        intent,
-        missingTenantMessage: '当前用户上下文未就绪，暂时无法生成链接。',
-      });
-      const url = share.permanentUrl;
-      const copied = await copyTextWithFallback(url);
-      const opened = openUrlWithFallback(url);
-
-      if (copied && opened) {
-        setNotice('已复制分享链接，并在新标签页打开。');
-      } else if (copied) {
-        setNotice(`已复制分享链接，请手动打开：${url}`);
-      } else if (opened) {
-        setNotice(`已打开分享页，如需转发请手动复制：${url}`);
-      } else {
-        setError(`链接已生成，请手动复制并打开：${url}`);
-      }
-    } catch (err) {
-      setError(formatApiError(err, '创建分享链接失败'));
-    } finally {
-      setPending(false);
-    }
-  }
-
   return (
-    <>
-      {inline ? (
-        <FloatingActionButton
-          onClick={() => void handleOpenShare()}
-          disabled={pending}
-          aria-label="打开当前页分享链接"
-          title={pending ? '正在打开...' : '打开分享页'}
-          className={cn('disabled:opacity-60', className)}
-        >
-          <Share2 size={20} />
-        </FloatingActionButton>
-      ) : (
-        <FloatingActionDock className={className}>
+    <TenantShareDialogTrigger
+      intent={intent}
+      title={title}
+      subtitle={subtitle}
+      previewImageUrl={previewImageUrl}
+      posterVariant={posterVariant}
+      trigger={({ onClick, pending }) =>
+        inline ? (
           <FloatingActionButton
-            onClick={() => void handleOpenShare()}
+            onClick={onClick}
             disabled={pending}
-            aria-label="打开当前页分享链接"
-            title={pending ? '正在打开...' : '打开分享页'}
-            className="disabled:opacity-60"
+            aria-label="打开当前页分享弹窗"
+            title={pending ? '正在准备...' : '打开分享弹窗'}
+            className={cn('disabled:opacity-60', className)}
           >
             <Share2 size={20} />
           </FloatingActionButton>
-        </FloatingActionDock>
-      )}
-      {error ? (
-        <div
-          className="fixed left-4 right-4 z-50 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/90 dark:text-red-200 sm:left-auto sm:right-6 sm:max-w-xs"
-          role="alert"
-        >
-          {error}
-          <button
-            type="button"
-            onClick={() => setError(null)}
-            className="ml-2 inline-flex items-center rounded bg-transparent px-1.5 py-0.5 text-xs font-semibold text-red-700 underline-offset-2 hover:underline dark:text-red-300"
-          >
-            关闭
-          </button>
-        </div>
-      ) : null}
-      {notice ? (
-        <div
-          className="fixed left-4 right-4 z-50 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/90 dark:text-emerald-200 sm:left-auto sm:right-6 sm:max-w-xs"
-          role="status"
-        >
-          {notice}
-        </div>
-      ) : null}
-    </>
+        ) : (
+          <FloatingActionDock className={className}>
+            <FloatingActionButton
+              onClick={onClick}
+              disabled={pending}
+              aria-label="打开当前页分享弹窗"
+              title={pending ? '正在准备...' : '打开分享弹窗'}
+              className="disabled:opacity-60"
+            >
+              <Share2 size={20} />
+            </FloatingActionButton>
+          </FloatingActionDock>
+        )
+      }
+    />
   );
 }

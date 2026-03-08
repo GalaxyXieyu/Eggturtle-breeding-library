@@ -10,7 +10,7 @@ import {
   updateTenantSharePresentationResponseSchema,
   type TenantSharePresentation,
 } from '@eggturtle/shared';
-import { Copy, Link2 } from 'lucide-react';
+import { Share2 } from 'lucide-react';
 
 import {
   apiRequest,
@@ -18,9 +18,8 @@ import {
 } from '@/lib/api-client';
 import { formatApiError } from '@/lib/error-utils';
 import { ensureTenantRouteSession } from '@/lib/tenant-route-session';
-import { copyTextWithFallback } from '@/lib/browser-share';
-import { createTenantFeedShareLink } from '@/lib/tenant-share';
 import { uploadSingleFileWithAuth } from '@/lib/upload-client';
+import TenantShareDialogTrigger from '@/components/tenant-share-dialog-trigger';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -30,6 +29,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { ImageUploadDropzone } from '@/components/ui/image-upload-dropzone';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -92,8 +92,6 @@ export default function SharePresentationPage() {
   const [uploadingPreviewImage, setUploadingPreviewImage] = useState(false);
   const [uploadingHeroImages, setUploadingHeroImages] = useState(false);
   const [uploadingWechatImage, setUploadingWechatImage] = useState(false);
-  const [generatingShare, setGeneratingShare] = useState(false);
-  const [shareLink, setShareLink] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
@@ -154,41 +152,6 @@ export default function SharePresentationPage() {
     };
   }, [loadPresentation, router, tenantSlug]);
 
-  async function handleGenerateShareLink() {
-    setGeneratingShare(true);
-    setError(null);
-    setMessage(null);
-
-    try {
-      const share = await createTenantFeedShareLink({
-        missingTenantMessage: '当前会话没有 tenantId，无法生成分享链接。',
-      });
-
-      setShareLink(share.permanentUrl);
-      setMessage('分享链接已生成，可直接复制。');
-    } catch (requestError) {
-      setError(formatApiError(requestError));
-    } finally {
-      setGeneratingShare(false);
-    }
-  }
-
-  async function handleCopyShareLink() {
-    if (!shareLink) {
-      return;
-    }
-
-    const copied = await copyTextWithFallback(shareLink);
-
-    if (copied) {
-      setMessage('分享链接已复制。');
-      setError(null);
-      return;
-    }
-
-    setMessage(`自动复制失败，请手动复制：${shareLink}`);
-    setError(null);
-  }
 
   const preview = useMemo(() => {
     const heroImages = buildHeroImages(form.previewImageUrl, form.heroImagesText);
@@ -365,32 +328,26 @@ export default function SharePresentationPage() {
           >
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-2xl">
-                <Link2 size={18} />
-                创建分享链接
+                <Share2 size={18} />
+                打开分享弹窗
               </CardTitle>
-              <CardDescription>一键生成用户公开图鉴入口。</CardDescription>
+              <CardDescription>公开图鉴分享统一走弹窗：先预览，再复制链接或扫码分享。</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <p className="break-all rounded-2xl border border-neutral-200 bg-neutral-50 p-3 text-xs text-neutral-700">
-                {shareLink ?? '还未生成分享链接，点击下面按钮即可创建。'}
+              <p className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3 text-sm text-neutral-700">
+                非详情入口默认打开公开瀑布流；需要分享具体种龟时，仍从详情页进入详情分享弹窗。
               </p>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="primary"
-                  disabled={generatingShare}
-                  onClick={() => void handleGenerateShareLink()}
-                >
-                  {generatingShare ? '生成中...' : '生成分享链接'}
-                </Button>
-                <Button
-                  variant="secondary"
-                  disabled={!shareLink}
-                  onClick={() => void handleCopyShareLink()}
-                >
-                  <Copy size={14} />
-                  复制链接
-                </Button>
-              </div>
+              <TenantShareDialogTrigger
+                intent="feed"
+                title="公开图鉴分享"
+                subtitle="扫码查看公开瀑布流，或复制链接直接转发。"
+                previewImageUrl={normalizeNullableString(form.previewImageUrl)}
+                trigger={({ onClick, pending }) => (
+                  <Button variant="primary" disabled={pending} onClick={onClick}>
+                    {pending ? '正在准备分享弹窗...' : '打开分享弹窗'}
+                  </Button>
+                )}
+              />
             </CardContent>
           </Card>
 
@@ -451,49 +408,38 @@ export default function SharePresentationPage() {
                   <div className="space-y-2">
                     <Label htmlFor="preview-image-upload">预览封面图（将作为轮播第一张）</Label>
                     <div className="space-y-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
-                      <input
-                        id="preview-image-upload"
-                        type="file"
-                        accept="image/*"
+                      <ImageUploadDropzone
+                        inputId="preview-image-upload"
                         disabled={saving || isUploadingAsset}
                         onChange={handleUploadPreviewImage}
-                        className="block w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700"
+                        actionText={
+                          uploadingPreviewImage
+                            ? '上传中...'
+                            : form.previewImageUrl
+                              ? '重新上传封面图'
+                              : '上传封面图'
+                        }
+                        title={form.previewImageUrl ? '点击替换当前封面图' : '点击上传封面图'}
+                        description="建议上传横图，系统会自动作为轮播第一张。"
                       />
-                      <p className="text-xs text-neutral-600">
-                        建议上传横图，系统会自动作为轮播第一张。
-                      </p>
 
                       {form.previewImageUrl ? (
-                        <div className="flex items-start gap-3 rounded-xl border border-neutral-200 bg-white p-2.5">
-                          <img
-                            src={resolveAuthenticatedAssetUrl(form.previewImageUrl)}
-                            alt="封面图预览"
-                            className="h-16 w-16 rounded-lg border border-neutral-200 object-cover"
-                          />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-medium text-neutral-800">当前封面图</p>
-                            <p className="truncate font-mono text-[11px] text-neutral-500">
-                              {form.previewImageUrl}
-                            </p>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            disabled={saving || isUploadingAsset}
-                            onClick={() =>
-                              setForm((prev) => ({
-                                ...prev,
-                                previewImageUrl: '',
-                                heroImagesText: normalizeHeroImageList(
-                                  prev.heroImagesText,
-                                  '',
-                                ).join('\n'),
-                              }))
-                            }
-                          >
-                            移除
-                          </Button>
-                        </div>
+                        <UploadedAssetPreview
+                          imageUrl={form.previewImageUrl}
+                          alt="封面图预览"
+                          label="当前封面图"
+                          removeDisabled={saving || isUploadingAsset}
+                          onRemove={() =>
+                            setForm((prev) => ({
+                              ...prev,
+                              previewImageUrl: '',
+                              heroImagesText: normalizeHeroImageList(
+                                prev.heroImagesText,
+                                '',
+                              ).join('\n'),
+                            }))
+                          }
+                        />
                       ) : (
                         <p className="text-xs text-neutral-500">
                           未设置封面图时，将使用轮播图第一张作为封面。
@@ -511,16 +457,26 @@ export default function SharePresentationPage() {
                           已上传 {heroImageUrls.length}/{maxHeroImages}
                         </span>
                       </div>
-                      <input
-                        id="hero-images-upload"
-                        type="file"
-                        accept="image/*"
+                      <ImageUploadDropzone
+                        inputId="hero-images-upload"
                         multiple
                         disabled={
                           saving || isUploadingAsset || heroImageUrls.length >= maxHeroImages
                         }
                         onChange={handleUploadHeroImages}
-                        className="block w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700"
+                        actionText={
+                          uploadingHeroImages
+                            ? '上传中...'
+                            : heroImageUrls.length > 0
+                              ? '继续上传轮播图'
+                              : '上传轮播图'
+                        }
+                        title={
+                          heroImageUrls.length > 0
+                            ? `已上传 ${heroImageUrls.length} 张，可继续添加`
+                            : '点击选择轮播图（支持多选）'
+                        }
+                        description="支持多图上传，按上传顺序展示。"
                       />
 
                       {heroImageUrls.length > 0 ? (
@@ -594,37 +550,29 @@ export default function SharePresentationPage() {
                   <div className="space-y-2">
                     <Label htmlFor="wechat-qr-upload">微信二维码图片</Label>
                     <div className="space-y-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
-                      <input
-                        id="wechat-qr-upload"
-                        type="file"
-                        accept="image/*"
+                      <ImageUploadDropzone
+                        inputId="wechat-qr-upload"
                         disabled={saving || isUploadingAsset}
                         onChange={handleUploadWechatImage}
-                        className="block w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700"
+                        actionText={
+                          uploadingWechatImage
+                            ? '上传中...'
+                            : form.wechatQrImageUrl
+                              ? '重新上传二维码'
+                              : '上传二维码'
+                        }
+                        title={form.wechatQrImageUrl ? '点击替换当前二维码' : '点击上传微信二维码'}
+                        description="建议上传清晰、对比度高的二维码图片。"
                       />
 
                       {form.wechatQrImageUrl ? (
-                        <div className="flex items-start gap-3 rounded-xl border border-neutral-200 bg-white p-2.5">
-                          <img
-                            src={resolveAuthenticatedAssetUrl(form.wechatQrImageUrl)}
-                            alt="微信二维码预览"
-                            className="h-16 w-16 rounded-lg border border-neutral-200 object-cover"
-                          />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-medium text-neutral-800">当前二维码</p>
-                            <p className="truncate font-mono text-[11px] text-neutral-500">
-                              {form.wechatQrImageUrl}
-                            </p>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            disabled={saving || isUploadingAsset}
-                            onClick={() => setForm((prev) => ({ ...prev, wechatQrImageUrl: '' }))}
-                          >
-                            移除
-                          </Button>
-                        </div>
+                        <UploadedAssetPreview
+                          imageUrl={form.wechatQrImageUrl}
+                          alt="微信二维码预览"
+                          label="当前二维码"
+                          removeDisabled={saving || isUploadingAsset}
+                          onRemove={() => setForm((prev) => ({ ...prev, wechatQrImageUrl: '' }))}
+                        />
                       ) : (
                         <p className="text-xs text-neutral-500">
                           未上传时公开页不会展示二维码图片。
@@ -836,6 +784,39 @@ function ThemeColorPicker({
         />
         当前已选
       </div>
+    </div>
+  );
+}
+
+type UploadedAssetPreviewProps = {
+  imageUrl: string;
+  alt: string;
+  label: string;
+  removeDisabled: boolean;
+  onRemove: () => void;
+};
+
+function UploadedAssetPreview({
+  imageUrl,
+  alt,
+  label,
+  removeDisabled,
+  onRemove,
+}: UploadedAssetPreviewProps) {
+  return (
+    <div className="flex items-start gap-3 rounded-xl border border-neutral-200 bg-white p-2.5">
+      <img
+        src={resolveAuthenticatedAssetUrl(imageUrl)}
+        alt={alt}
+        className="h-16 w-16 rounded-lg border border-neutral-200 object-cover"
+      />
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-medium text-neutral-800">{label}</p>
+        <p className="truncate font-mono text-[11px] text-neutral-500">{imageUrl}</p>
+      </div>
+      <Button type="button" variant="secondary" disabled={removeDisabled} onClick={onRemove}>
+        移除
+      </Button>
     </div>
   );
 }

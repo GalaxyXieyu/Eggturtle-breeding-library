@@ -25,6 +25,7 @@ import { ensureTenantRouteSession } from '@/lib/tenant-route-session';
 import ProductDrawer, {
   type ProductSeriesOption,
 } from '@/components/product-drawer';
+import TenantFloatingShareButton from '@/components/tenant-floating-share-button';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
@@ -63,6 +64,22 @@ import {
   hexToRgba,
 } from '@/app/app/[tenantSlug]/products/products-share-preview-utils';
 import { useProductsPageUiEffects } from '@/app/app/[tenantSlug]/products/products-page-ui-hooks';
+
+const DASHBOARD_WINDOW_LABELS: Partial<Record<string, string>> = {
+  today: '今日',
+  '7d': '近 7 天',
+  '30d': '近 30 天',
+};
+
+const DASHBOARD_METRIC_LABELS: Partial<Record<string, string>> = {
+  eggs_total: '产蛋总数',
+  eggs_events: '产蛋事件',
+  mating_events: '配对事件',
+  need_mating: '需配对',
+  warnings: '预警',
+  share_uv: '分享 UV',
+  share_pv: '页面访问',
+};
 
 export default function TenantProductsPage() {
   const router = useRouter();
@@ -189,9 +206,22 @@ export default function TenantProductsPage() {
   const replaceListQuery = useCallback(
     (nextQuery: ProductsListQuery) => {
       const nextParams = new URLSearchParams();
+      const source = searchParams.get('from');
+      const sourceWindow = searchParams.get('window');
+      const sourceMetric = searchParams.get('metric');
 
       if (isDemoMode) {
         nextParams.set('demo', '1');
+      }
+
+      if (source === 'dashboard') {
+        nextParams.set('from', source);
+        if (sourceWindow) {
+          nextParams.set('window', sourceWindow);
+        }
+        if (sourceMetric) {
+          nextParams.set('metric', sourceMetric);
+        }
       }
 
       if (nextQuery.search) {
@@ -223,7 +253,7 @@ export default function TenantProductsPage() {
         queryString ? `/app/${tenantSlug}/products?${queryString}` : `/app/${tenantSlug}/products`,
       );
     },
-    [isDemoMode, router, tenantSlug],
+    [isDemoMode, router, searchParams, tenantSlug],
   );
 
   const loadProductsPage = useCallback(
@@ -689,6 +719,56 @@ export default function TenantProductsPage() {
 
     return STATUS_FILTER_OPTIONS.find((item) => item.value === statusFilter)?.label ?? statusFilter;
   }, [statusFilter]);
+  const dashboardDrilldownTags = useMemo(() => {
+    if (searchParams.get('from') !== 'dashboard') {
+      return [];
+    }
+
+    const tags: string[] = [];
+    const windowLabel = DASHBOARD_WINDOW_LABELS[searchParams.get('window') ?? ''];
+    const metricLabel = DASHBOARD_METRIC_LABELS[searchParams.get('metric') ?? ''];
+
+    if (windowLabel) {
+      tags.push(windowLabel);
+    }
+    if (metricLabel) {
+      tags.push(metricLabel);
+    }
+
+    if (sexFilter) {
+      if (sexFilter === 'female') {
+        tags.push('母龟');
+      } else if (sexFilter === 'male') {
+        tags.push('公龟');
+      } else if (sexFilter === 'unknown') {
+        tags.push('性别未知');
+      } else {
+        tags.push(`性别 ${sexFilter}`);
+      }
+    }
+
+    if (selectedStatusLabel) {
+      tags.push(selectedStatusLabel);
+    }
+    if (selectedSeriesLabel) {
+      tags.push(`系列 ${selectedSeriesLabel}`);
+    }
+    if (searchInput.trim()) {
+      tags.push(`关键词“${searchInput.trim()}”`);
+    }
+
+    return tags;
+  }, [searchInput, searchParams, selectedSeriesLabel, selectedStatusLabel, sexFilter]);
+  const dashboardDrilldownHint = useMemo(() => {
+    if (searchParams.get('from') !== 'dashboard') {
+      return null;
+    }
+    if (dashboardDrilldownTags.length === 0) {
+      return '来源看板：已同步筛选条件';
+    }
+
+    return `来源看板：已套用 ${dashboardDrilldownTags.join(' + ')}`;
+  }, [dashboardDrilldownTags, searchParams]);
   const visibleItems = useMemo(() => {
     if (!statusFilter) {
       return items;
@@ -766,6 +846,25 @@ export default function TenantProductsPage() {
           onOpenShareConfig={() => router.push(`/app/${tenantSlug}/share-presentation`)}
         />
 
+        {dashboardDrilldownHint ? (
+          <Card className="rounded-2xl border-[#FFD400]/45 bg-[#FFFBEA] p-3 sm:p-4">
+            <p className="text-sm font-semibold text-neutral-900">{dashboardDrilldownHint}</p>
+            {dashboardDrilldownTags.length > 0 ? (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {dashboardDrilldownTags.map((tag, index) => (
+                  <span
+                    key={`dashboard-drilldown-tag-${index}-${tag}`}
+                    className="inline-flex items-center rounded-full border border-[#FFD400]/45 bg-white px-2.5 py-1 text-xs font-medium text-neutral-700"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            <p className="mt-2 text-xs text-neutral-600">可继续使用下方筛选 tag 做微调。</p>
+          </Card>
+        ) : null}
+
         <ProductsListCard
           listStatsLabel={listStatsLabel}
           showMobileFilterFab={showMobileFilterFab}
@@ -828,6 +927,7 @@ export default function TenantProductsPage() {
             >
               <Plus size={18} />
             </FloatingActionButton>
+            <TenantFloatingShareButton intent="feed" inline className="h-11 w-11" />
             {showMobileFilterFab ? (
               <div className="relative" data-products-filter-root="true">
                 <Button

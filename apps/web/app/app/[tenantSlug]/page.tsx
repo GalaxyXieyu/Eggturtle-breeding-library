@@ -11,9 +11,8 @@ import {
 import {
   AlertTriangle,
   CalendarDays,
-  Copy,
+  ChevronRight,
   HeartHandshake,
-  Link2,
   Plus,
   QrCode,
   Share2,
@@ -24,10 +23,8 @@ import {
 import { apiRequest } from '@/lib/api-client';
 import { formatApiError } from '@/lib/error-utils';
 import { ensureTenantRouteSession } from '@/lib/tenant-route-session';
-import { copyTextWithFallback } from '@/lib/browser-share';
-import { createTenantFeedShareLink } from '@/lib/tenant-share';
+import TenantShareDialogTrigger from '@/components/tenant-share-dialog-trigger';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -41,17 +38,39 @@ import {
 } from '@/components/ui/floating-actions';
 import TenantFloatingShareButton from '@/components/tenant-floating-share-button';
 
-type ShareLinks = {
-  shareToken: string;
-  entryUrl: string;
-  permanentUrl: string;
-};
-
 const WINDOW_OPTIONS: Array<{ key: DashboardOverviewWindow; label: string; shortLabel: string }> = [
   { key: 'today', label: '今日', shortLabel: '今日' },
   { key: '7d', label: '近 7 天', shortLabel: '近 7 天' },
   { key: '30d', label: '近 30 天', shortLabel: '近 30 天' },
 ];
+
+type DrilldownQueryValue = string | number | null | undefined;
+
+function buildRoute(
+  pathname: string,
+  query?: Record<string, DrilldownQueryValue>,
+  hash?: string,
+) {
+  const params = new URLSearchParams();
+
+  if (query) {
+    for (const [key, value] of Object.entries(query)) {
+      if (value === null || value === undefined) {
+        continue;
+      }
+
+      const normalized = String(value).trim();
+      if (!normalized) {
+        continue;
+      }
+
+      params.set(key, normalized);
+    }
+  }
+
+  const queryString = params.toString();
+  return `${pathname}${queryString ? `?${queryString}` : ''}${hash ? `#${hash}` : ''}`;
+}
 
 function DashboardLoadingState() {
   return (
@@ -186,7 +205,6 @@ export default function TenantAppPage() {
   const tenantSlug = useMemo(() => params.tenantSlug ?? '', [params.tenantSlug]);
 
   const [tenantReady, setTenantReady] = useState(false);
-  const [tenantId, setTenantId] = useState<string | null>(null);
   const [activeWindow, setActiveWindow] = useState<DashboardOverviewWindow>('30d');
   const [overviewByWindow, setOverviewByWindow] = useState<
     Partial<Record<DashboardOverviewWindow, DashboardOverviewResponse>>
@@ -194,18 +212,11 @@ export default function TenantAppPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [shareLinks, setShareLinks] = useState<ShareLinks | null>(null);
-  const [shareLoading, setShareLoading] = useState(false);
-  const [shareError, setShareError] = useState<string | null>(null);
-  const [shareMessage, setShareMessage] = useState<string | null>(null);
-
   const [isActionSheetOpen, setIsActionSheetOpen] = useState(false);
-  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     setTenantReady(false);
-    setTenantId(null);
     setOverviewByWindow({});
     setActiveWindow('30d');
     setLoading(true);
@@ -226,13 +237,12 @@ export default function TenantAppPage() {
           return;
         }
 
-        const me = await apiRequest('/me', { responseSchema: meResponseSchema });
+        await apiRequest('/me', { responseSchema: meResponseSchema });
 
         if (cancelled) {
           return;
         }
 
-        setTenantId(me.tenantId ?? null);
         setTenantReady(true);
       } catch (nextError) {
         if (!cancelled) {
@@ -290,69 +300,71 @@ export default function TenantAppPage() {
   }, [activeWindow, overviewByWindow, tenantReady]);
 
   const overview = overviewByWindow[activeWindow] ?? null;
-  async function ensureShareLinks() {
-    if (shareLinks) {
-      return shareLinks;
-    }
+  const metricLinks = useMemo(() => {
+    const baseQuery = {
+      from: 'dashboard',
+      window: activeWindow,
+    };
 
-    if (!tenantId) {
-      setShareError('当前会话没有 tenantId，无法生成分享链接。');
-      return null;
-    }
-
-    setShareLoading(true);
-    setShareError(null);
-    setShareMessage(null);
-
-    try {
-      const share = await createTenantFeedShareLink({
-        tenantId,
+    const buildProductsDrilldown = (
+      metric: string,
+      query?: Record<string, DrilldownQueryValue>,
+    ) => {
+      return buildRoute(`/app/${tenantSlug}/products`, {
+        ...baseQuery,
+        metric,
+        ...query,
       });
+    };
 
-      const nextLinks: ShareLinks = {
-        shareToken: share.shareToken,
-        entryUrl: share.entryUrl,
-        permanentUrl: share.permanentUrl,
-      };
+    return {
+      eggsTotal: buildProductsDrilldown('eggs_total', {
+        sex: 'female',
+        sortBy: 'updatedAt',
+        sortDir: 'desc',
+      }),
+      eggsEvents: buildProductsDrilldown('eggs_events', {
+        sex: 'female',
+        sortBy: 'updatedAt',
+        sortDir: 'desc',
+      }),
+      matingEvents: buildProductsDrilldown('mating_events', {
+        sortBy: 'updatedAt',
+        sortDir: 'desc',
+      }),
+      needMating: buildProductsDrilldown('need_mating', {
+        sex: 'female',
+        status: 'need_mating',
+      }),
+      warnings: buildProductsDrilldown('warnings', {
+        sex: 'female',
+        status: 'warning',
+      }),
+      shareUv: buildRoute(`/app/${tenantSlug}`, {
+        ...baseQuery,
+        metric: 'share_uv',
+      }, 'share-clicks-list'),
+      sharePv: buildRoute(`/app/${tenantSlug}`, {
+        ...baseQuery,
+        metric: 'share_pv',
+      }, 'share-clicks-list'),
+    };
+  }, [activeWindow, tenantSlug]);
 
-      setShareLinks(nextLinks);
-      return nextLinks;
-    } catch (nextError) {
-      setShareError(formatApiError(nextError));
-      return null;
-    } finally {
-      setShareLoading(false);
-    }
+  function openMetricLink(href: string) {
+    router.push(href);
   }
 
-  async function handleGenerateShareLink() {
-    const links = await ensureShareLinks();
-    if (!links) {
-      return;
+  function jumpToShareClicks(fallbackHref: string) {
+    if (typeof document !== 'undefined') {
+      const target = document.getElementById('share-clicks-list');
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
     }
 
-    setShareMessage('分享入口已准备好，可复制给访客。');
-    setShareError(null);
-  }
-
-  async function handleCopyPermanentShareLink() {
-    const links = await ensureShareLinks();
-    if (!links) {
-      return;
-    }
-
-    const fallback = links.permanentUrl || links.entryUrl;
-
-    const copied = await copyTextWithFallback(fallback);
-
-    if (copied) {
-      setShareMessage(`已复制：${fallback}`);
-      setShareError(null);
-      return;
-    }
-
-    setShareMessage(`自动复制失败，请手动复制：${fallback}`);
-    setShareError(null);
+    openMetricLink(fallbackHref);
   }
 
   if (loading) {
@@ -371,23 +383,6 @@ export default function TenantAppPage() {
         </Card>
       ) : null}
 
-      {shareLoading ? (
-        <Card className="rounded-3xl border-neutral-200 bg-neutral-50 p-4">
-          <p className="text-sm text-neutral-700">正在准备分享链接...</p>
-        </Card>
-      ) : null}
-
-      {shareMessage ? (
-        <Card className="rounded-3xl border-emerald-200 bg-emerald-50 p-4">
-          <p className="text-sm font-semibold text-emerald-700">{shareMessage}</p>
-        </Card>
-      ) : null}
-
-      {shareError ? (
-        <Card className="rounded-3xl border-red-200 bg-red-50 p-4">
-          <p className="text-sm font-semibold text-red-700">{shareError}</p>
-        </Card>
-      ) : null}
 
       {!loading && !error && overview ? (
         <>
@@ -457,9 +452,21 @@ export default function TenantAppPage() {
                 <CardDescription className="text-xs">先看产蛋与配对主线指标。</CardDescription>
               </CardHeader>
               <CardContent className="mt-3 grid grid-cols-3 gap-2 p-0">
-                <CompactStat label="产蛋总数" value={overview.eggs.totalEggCount} />
-                <CompactStat label="产蛋事件" value={overview.eggs.eventCount} />
-                <CompactStat label="配对事件" value={overview.matings.eventCount} />
+                <CompactStat
+                  label="产蛋总数"
+                  value={overview.eggs.totalEggCount}
+                  onClick={() => openMetricLink(metricLinks.eggsTotal)}
+                />
+                <CompactStat
+                  label="产蛋事件"
+                  value={overview.eggs.eventCount}
+                  onClick={() => openMetricLink(metricLinks.eggsEvents)}
+                />
+                <CompactStat
+                  label="配对事件"
+                  value={overview.matings.eventCount}
+                  onClick={() => openMetricLink(metricLinks.matingEvents)}
+                />
               </CardContent>
             </Card>
             <div className="grid grid-cols-2 gap-3">
@@ -468,24 +475,28 @@ export default function TenantAppPage() {
                 value={overview.needMating.needMatingCount}
                 hint="优先处理"
                 icon={<HeartHandshake size={14} />}
+                onClick={() => openMetricLink(metricLinks.needMating)}
               />
               <CompactKpiCard
                 label="预警"
                 value={overview.needMating.warningCount}
                 hint="风险项"
                 icon={<AlertTriangle size={14} />}
+                onClick={() => openMetricLink(metricLinks.warnings)}
               />
               <CompactKpiCard
                 label="分享 UV"
                 value={overview.share.uv}
                 hint="访问人数"
                 icon={<Share2 size={14} />}
+                onClick={() => jumpToShareClicks(metricLinks.shareUv)}
               />
               <CompactKpiCard
                 label="页面访问"
                 value={overview.share.pv}
                 hint="总访问量"
                 icon={<QrCode size={14} />}
+                onClick={() => jumpToShareClicks(metricLinks.sharePv)}
               />
             </div>
           </section>
@@ -496,36 +507,42 @@ export default function TenantAppPage() {
               value={overview.eggs.totalEggCount}
               hint="产蛋总量"
               icon={<Shell size={16} />}
+              onClick={() => openMetricLink(metricLinks.eggsTotal)}
             />
             <KpiCard
               label="产蛋事件"
               value={overview.eggs.eventCount}
               hint="产蛋次数"
               icon={<CalendarDays size={16} />}
+              onClick={() => openMetricLink(metricLinks.eggsEvents)}
             />
             <KpiCard
               label="配对事件"
               value={overview.matings.eventCount}
               hint="配对次数"
               icon={<Workflow size={16} />}
+              onClick={() => openMetricLink(metricLinks.matingEvents)}
             />
             <KpiCard
               label="需配对"
               value={overview.needMating.needMatingCount}
               hint="待配对数量"
               icon={<HeartHandshake size={16} />}
+              onClick={() => openMetricLink(metricLinks.needMating)}
             />
             <KpiCard
               label="预警"
               value={overview.needMating.warningCount}
               hint="预警数量"
               icon={<AlertTriangle size={16} />}
+              onClick={() => openMetricLink(metricLinks.warnings)}
             />
             <KpiCard
               label="分享 UV"
               value={overview.share.uv}
               hint={`页面访问 ${overview.share.pv}`}
               icon={<Share2 size={16} />}
+              onClick={() => jumpToShareClicks(metricLinks.shareUv)}
             />
           </section>
 
@@ -542,7 +559,10 @@ export default function TenantAppPage() {
           </section>
 
           <section className="grid grid-cols-1 gap-4">
-            <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
+            <Card
+              id="share-clicks-list"
+              className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all"
+            >
               <CardHeader>
                 <CardTitle className="text-2xl">热门点击榜</CardTitle>
                 <CardDescription>取分享访问日志中的产品点击统计（窗口内）。</CardDescription>
@@ -552,18 +572,33 @@ export default function TenantAppPage() {
                   <p className="text-sm text-neutral-500">当前窗口暂无点击数据。</p>
                 ) : null}
                 {overview.share.productClicksTop.map((item, index) => (
-                  <div
+                  <button
                     key={item.productId}
-                    className="flex items-center justify-between rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2"
+                    type="button"
+                    className="flex w-full items-center justify-between rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-left transition hover:border-neutral-300 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD400]/80 focus-visible:ring-offset-1"
+                    onClick={() =>
+                      router.push(
+                        buildRoute(`/app/${tenantSlug}/breeders/${item.productId}`, {
+                          from: 'dashboard',
+                          window: activeWindow,
+                          source: 'share_clicks_top',
+                        }),
+                      )
+                    }
                   >
                     <div>
                       <p className="text-sm font-semibold text-neutral-900">
                         #{index + 1} · {item.code}
                       </p>
-                      <p className="text-xs text-neutral-500">产品 ID：{item.productId}</p>
+                      <p className="text-xs text-neutral-500">点击查看该个体详情</p>
                     </div>
-                    <p className="text-lg font-bold text-neutral-900">{item.clicks}</p>
-                  </div>
+                    <p className="text-lg font-bold text-neutral-900">
+                      {item.clicks}
+                      <span className="ml-1 inline-block align-middle text-neutral-400">
+                        <ChevronRight size={14} />
+                      </span>
+                    </p>
+                  </button>
                 ))}
               </CardContent>
             </Card>
@@ -598,29 +633,18 @@ export default function TenantAppPage() {
               <CardDescription>面向移动端：分享、二维码、快速记录。</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
-              <ActionButton
-                icon={<Link2 size={16} />}
-                label="生成分享链接"
-                onClick={() => {
-                  void handleGenerateShareLink();
-                  setIsActionSheetOpen(false);
-                }}
-              />
-              <ActionButton
-                icon={<Copy size={16} />}
-                label="复制永久分享链接"
-                onClick={() => {
-                  void handleCopyPermanentShareLink();
-                  setIsActionSheetOpen(false);
-                }}
-              />
-              <ActionButton
-                icon={<QrCode size={16} />}
-                label="生成二维码卡片（M1 占位）"
-                onClick={() => {
-                  setIsQrModalOpen(true);
-                  setIsActionSheetOpen(false);
-                }}
+              <TenantShareDialogTrigger
+                intent="feed"
+                trigger={({ onClick, pending }) => (
+                  <ActionButton
+                    icon={<Share2 size={16} />}
+                    label={pending ? '正在准备分享弹窗' : '打开分享弹窗'}
+                    onClick={() => {
+                      setIsActionSheetOpen(false);
+                      onClick();
+                    }}
+                  />
+                )}
               />
               <ActionButton
                 icon={<Shell size={16} />}
@@ -643,49 +667,25 @@ export default function TenantAppPage() {
         </div>
       ) : null}
 
-      {isQrModalOpen ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label="二维码卡片"
-          onClick={() => setIsQrModalOpen(false)}
-        >
-          <Card
-            className="w-full max-w-sm rounded-2xl border-neutral-200 bg-white shadow-2xl"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <CardHeader>
-              <CardTitle className="text-xl">二维码卡片</CardTitle>
-              <CardDescription>M1 先提供占位与可复制链接，M2 接入本地二维码渲染。</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex h-44 items-center justify-center rounded-2xl border border-dashed border-neutral-300 bg-neutral-50">
-                <div className="text-center text-sm text-neutral-500">
-                  <QrCode size={24} className="mx-auto mb-2" />
-                  QR 卡片占位（M1）
-                </div>
-              </div>
-              <p className="break-all rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs text-neutral-700">
-                {shareLinks?.permanentUrl ?? '先点击「生成分享链接」获得永久链接。'}
-              </p>
-              <div className="flex justify-end gap-2">
-                <Button variant="secondary" onClick={() => setIsQrModalOpen(false)}>
-                  关闭
-                </Button>
-                <Button onClick={() => void handleCopyPermanentShareLink()}>复制链接</Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      ) : null}
     </main>
   );
 }
 
-function KpiCard(props: { label: string; value: number | string; hint: string; icon: ReactNode }) {
-  return (
-    <Card className="tenant-card-lift rounded-2xl border-neutral-200/90 bg-white p-4 transition-all">
+function KpiCard(props: {
+  label: string;
+  value: number | string;
+  hint: string;
+  icon: ReactNode;
+  onClick?: () => void;
+}) {
+  const card = (
+    <Card
+      className={`tenant-card-lift rounded-2xl border-neutral-200/90 bg-white p-4 transition-all ${
+        props.onClick
+          ? 'cursor-pointer group-hover:-translate-y-0.5 group-hover:border-neutral-300 group-hover:shadow-[0_14px_28px_rgba(15,23,42,0.10)]'
+          : ''
+      }`}
+    >
       <CardHeader className="p-0">
         <div className="flex items-center justify-between">
           <p className="text-[11px] uppercase tracking-[0.18em] text-neutral-500">{props.hint}</p>
@@ -697,17 +697,55 @@ function KpiCard(props: { label: string; value: number | string; hint: string; i
       <CardContent className="mt-4 p-0">
         <p className="text-3xl font-black leading-none text-neutral-900">{props.value}</p>
         <p className="mt-1 text-xs text-neutral-600">{props.label}</p>
+        {props.onClick ? (
+          <p className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-neutral-500">
+            查看列表
+            <ChevronRight size={12} />
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   );
+
+  if (!props.onClick) {
+    return card;
+  }
+
+  return (
+    <button
+      type="button"
+      className="group w-full rounded-2xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD400]/80 focus-visible:ring-offset-1"
+      onClick={props.onClick}
+      aria-label={`${props.label}，查看详情列表`}
+    >
+      {card}
+    </button>
+  );
 }
 
-function CompactStat(props: { label: string; value: number | string }) {
+function CompactStat(props: { label: string; value: number | string; onClick?: () => void }) {
+  if (!props.onClick) {
+    return (
+      <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-2 py-2">
+        <p className="text-[11px] text-neutral-500">{props.label}</p>
+        <p className="mt-1 text-lg font-black leading-none text-neutral-900">{props.value}</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-2 py-2">
+    <button
+      type="button"
+      className="group rounded-xl border border-neutral-200 bg-neutral-50 px-2 py-2 text-left transition hover:border-neutral-300 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD400]/80 focus-visible:ring-offset-1"
+      onClick={props.onClick}
+      aria-label={`${props.label}，查看详情列表`}
+    >
       <p className="text-[11px] text-neutral-500">{props.label}</p>
-      <p className="mt-1 text-lg font-black leading-none text-neutral-900">{props.value}</p>
-    </div>
+      <div className="mt-1 flex items-center justify-between">
+        <p className="text-lg font-black leading-none text-neutral-900">{props.value}</p>
+        <ChevronRight size={12} className="text-neutral-400 transition group-hover:text-neutral-600" />
+      </div>
+    </button>
   );
 }
 
@@ -716,9 +754,16 @@ function CompactKpiCard(props: {
   value: number | string;
   hint: string;
   icon: ReactNode;
+  onClick?: () => void;
 }) {
-  return (
-    <Card className="rounded-2xl border-neutral-200/90 bg-white p-3">
+  const card = (
+    <Card
+      className={`rounded-2xl border-neutral-200/90 bg-white p-3 transition ${
+        props.onClick
+          ? 'cursor-pointer group-hover:-translate-y-0.5 group-hover:border-neutral-300 group-hover:shadow-[0_12px_22px_rgba(15,23,42,0.08)]'
+          : ''
+      }`}
+    >
       <CardHeader className="p-0">
         <div className="flex items-center justify-between">
           <p className="text-[11px] text-neutral-500">{props.hint}</p>
@@ -729,9 +774,29 @@ function CompactKpiCard(props: {
       </CardHeader>
       <CardContent className="mt-3 p-0">
         <p className="text-3xl font-black leading-none text-neutral-900">{props.value}</p>
-        <p className="mt-1 text-xs font-semibold text-neutral-700">{props.label}</p>
+        <div className="mt-1 flex items-center justify-between">
+          <p className="text-xs font-semibold text-neutral-700">{props.label}</p>
+          {props.onClick ? (
+            <ChevronRight size={12} className="text-neutral-400 transition group-hover:text-neutral-600" />
+          ) : null}
+        </div>
       </CardContent>
     </Card>
+  );
+
+  if (!props.onClick) {
+    return card;
+  }
+
+  return (
+    <button
+      type="button"
+      className="group w-full rounded-2xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD400]/80 focus-visible:ring-offset-1"
+      onClick={props.onClick}
+      aria-label={`${props.label}，查看详情列表`}
+    >
+      {card}
+    </button>
   );
 }
 

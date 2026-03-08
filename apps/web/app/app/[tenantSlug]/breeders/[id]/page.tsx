@@ -24,7 +24,7 @@ import {
   type ProductEvent,
   type ProductFamilyTree,
   type ProductImage,
-  type SaleBatch
+  type SaleBatch,
 } from '@eggturtle/shared';
 import { apiRequest, getAccessToken } from '@/lib/api-client';
 import { switchTenantBySlug } from '@/lib/tenant-session';
@@ -34,12 +34,17 @@ import {
   formatError,
   formatEventYear,
   buildEventCollisionMeta,
-  buildEventDetailLabel
+  buildEventDetailLabel,
 } from '@/lib/breeder-utils';
 import ProductDrawer, { type ProductSeriesOption } from '@/components/product-drawer';
 import { Card } from '@/components/ui/card';
+import TenantFloatingShareButton from '@/components/tenant-floating-share-button';
 import { useCertificateData, useCertificateStudio } from '@/components/certificate-studio';
-import { BreederAssetWorkflowDrawer, type DrawerMode, type DrawerSection } from '@/components/breeder-detail/BreederAssetWorkflowDrawer';
+import {
+  BreederAssetWorkflowDrawer,
+  type DrawerMode,
+  type DrawerSection,
+} from '@/components/breeder-detail/BreederAssetWorkflowDrawer';
 import { BreederInfoCard } from '@/components/breeder-detail/BreederInfoCard';
 import { FamilyTreeView } from '@/components/breeder-detail/FamilyTreeView';
 import { BreederEventTimeline } from '@/components/breeder-detail/BreederEventTimeline';
@@ -90,7 +95,7 @@ const EMPTY_GENERATED_ASSETS: GeneratedAssetsState = {
   currentCouplePhoto: null,
   couplePhotoHistory: [],
   certificatePreview: null,
-  saleBatches: []
+  saleBatches: [],
 };
 
 const EMPTY_CERTIFICATE_STUDIO: CertificateStudioState = {
@@ -113,7 +118,7 @@ const EMPTY_CERTIFICATE_STUDIO: CertificateStudioState = {
   soldAt: '',
   subjectLabel: '成交主体图',
   subjectIsPrimary: true,
-  subjectFile: null
+  subjectFile: null,
 };
 
 export default function BreederDetailPage() {
@@ -141,12 +146,13 @@ export default function BreederDetailPage() {
     breeder: null,
     events: [],
     tree: null,
-    images: []
+    images: [],
   });
-  const [generatedAssets, setGeneratedAssets] = useState<GeneratedAssetsState>(EMPTY_GENERATED_ASSETS);
+  const [generatedAssets, setGeneratedAssets] =
+    useState<GeneratedAssetsState>(EMPTY_GENERATED_ASSETS);
   const [studio, setStudio] = useState<CertificateStudioState>(() => ({
     ...EMPTY_CERTIFICATE_STUDIO,
-    soldAt: buildLocalDateTimeValue(new Date())
+    soldAt: buildLocalDateTimeValue(new Date()),
   }));
   const currentBreeder = data.breeder;
 
@@ -156,23 +162,23 @@ export default function BreederDetailPage() {
       certificatesResponse,
       currentCoupleResponse,
       coupleHistoryResponse,
-      saleBatchesResponse
+      saleBatchesResponse,
     ] = await Promise.all([
       apiRequest(`/products/${targetProductId}/certificates/eligibility`, {
-        responseSchema: getProductCertificateEligibilityResponseSchema
+        responseSchema: getProductCertificateEligibilityResponseSchema,
       }),
       apiRequest(`/products/${targetProductId}/certificates`, {
-        responseSchema: listProductCertificatesResponseSchema
+        responseSchema: listProductCertificatesResponseSchema,
       }),
       apiRequest(`/products/${targetProductId}/couple-photos/current`, {
-        responseSchema: getCurrentProductCouplePhotoResponseSchema
+        responseSchema: getCurrentProductCouplePhotoResponseSchema,
       }),
       apiRequest(`/products/${targetProductId}/couple-photos/history`, {
-        responseSchema: listProductCouplePhotosResponseSchema
+        responseSchema: listProductCouplePhotosResponseSchema,
       }),
       apiRequest(`/products/${targetProductId}/sale-batches`, {
-        responseSchema: listSaleBatchesResponseSchema
-      })
+        responseSchema: listSaleBatchesResponseSchema,
+      }),
     ]);
 
     setGeneratedAssets((current) => ({
@@ -181,7 +187,7 @@ export default function BreederDetailPage() {
       certificates: certificatesResponse.items,
       currentCouplePhoto: currentCoupleResponse.photo,
       couplePhotoHistory: coupleHistoryResponse.items,
-      saleBatches: saleBatchesResponse.items
+      saleBatches: saleBatchesResponse.items,
     }));
   }, []);
 
@@ -209,17 +215,17 @@ export default function BreederDetailPage() {
       new Map(
         data.events.map((event) => [
           event.id,
-          buildEventDetailLabel(event, eventCollisionMeta.get(event.id))
-        ])
+          buildEventDetailLabel(event, eventCollisionMeta.get(event.id)),
+        ]),
       ),
-    [data.events, eventCollisionMeta]
+    [data.events, eventCollisionMeta],
   );
 
   useEffect(() => {
     setGeneratedAssets(EMPTY_GENERATED_ASSETS);
     setStudio({
       ...EMPTY_CERTIFICATE_STUDIO,
-      soldAt: buildLocalDateTimeValue(new Date())
+      soldAt: buildLocalDateTimeValue(new Date()),
     });
     setError(null);
     setLoading(true);
@@ -243,21 +249,21 @@ export default function BreederDetailPage() {
 
         const [productResponse, eventsResponse, treeResponse, seriesResponse] = await Promise.all([
           apiRequest(`/products/${breederId}`, {
-            responseSchema: getProductResponseSchema
+            responseSchema: getProductResponseSchema,
           }),
           apiRequest(`/products/${breederId}/events`, {
-            responseSchema: listProductEventsResponseSchema
+            responseSchema: listProductEventsResponseSchema,
           }),
           apiRequest(`/products/${breederId}/family-tree`, {
-            responseSchema: getProductFamilyTreeResponseSchema
+            responseSchema: getProductFamilyTreeResponseSchema,
           }),
           apiRequest('/series?page=1&pageSize=100', {
-            responseSchema: listSeriesResponseSchema
-          })
+            responseSchema: listSeriesResponseSchema,
+          }),
         ]);
 
         const imageResponse = await apiRequest(`/products/${productResponse.product.id}/images`, {
-          responseSchema: listProductImagesResponseSchema
+          responseSchema: listProductImagesResponseSchema,
         });
         const images = imageResponse.images;
 
@@ -274,14 +280,14 @@ export default function BreederDetailPage() {
             breeder: productResponse.product,
             events: eventsResponse.events,
             tree: treeResponse.tree,
-            images
+            images,
           });
           setSeriesOptions(
             seriesResponse.items.map((item) => ({
               id: item.id,
               code: item.code,
-              name: item.name
-            }))
+              name: item.name,
+            })),
           );
           setActiveImageId(images[0]?.id ?? null);
           setError(null);
@@ -301,7 +307,16 @@ export default function BreederDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [breederId, loadGeneratedAssets, router, tenantSlug]);
 
-  const activeImage = data.images.find((image) => image.id === activeImageId) ?? data.images[0] ?? null;
+  const activeImage =
+    data.images.find((image) => image.id === activeImageId) ?? data.images[0] ?? null;
+  const detailShareTitle = useMemo(
+    () => `${currentBreeder?.name?.trim() || currentBreeder?.code || '当前种龟'}分享`,
+    [currentBreeder?.code, currentBreeder?.name],
+  );
+  const detailSharePreviewImage = useMemo(
+    () => activeImage?.url ?? currentBreeder?.coverImageUrl ?? null,
+    [activeImage?.url, currentBreeder?.coverImageUrl],
+  );
   const seriesLabel = useMemo(() => {
     const seriesId = currentBreeder?.seriesId?.trim();
     if (!seriesId) {
@@ -322,10 +337,14 @@ export default function BreederDetailPage() {
 
     const queryString = query.toString();
     if (fromProducts) {
-      return queryString ? `/app/${tenantSlug}/products?${queryString}` : `/app/${tenantSlug}/products`;
+      return queryString
+        ? `/app/${tenantSlug}/products?${queryString}`
+        : `/app/${tenantSlug}/products`;
     }
 
-    return queryString ? `/app/${tenantSlug}/breeders?${queryString}` : `/app/${tenantSlug}/breeders`;
+    return queryString
+      ? `/app/${tenantSlug}/breeders?${queryString}`
+      : `/app/${tenantSlug}/breeders`;
   }, [fromProducts, isDemoMode, tenantSlug]);
 
   const openBreederDetail = useMemo(() => {
@@ -339,7 +358,11 @@ export default function BreederDetailPage() {
       }
 
       const queryString = query.toString();
-      router.push(queryString ? `/app/${tenantSlug}/breeders/${nextBreederId}?${queryString}` : `/app/${tenantSlug}/breeders/${nextBreederId}`);
+      router.push(
+        queryString
+          ? `/app/${tenantSlug}/breeders/${nextBreederId}?${queryString}`
+          : `/app/${tenantSlug}/breeders/${nextBreederId}`,
+      );
     };
   }, [fromProducts, isDemoMode, router, tenantSlug]);
 
@@ -348,25 +371,30 @@ export default function BreederDetailPage() {
       [...data.events]
         .filter((event) => event.eventType === 'egg')
         .sort((left, right) => Date.parse(right.eventDate) - Date.parse(left.eventDate)),
-    [data.events]
+    [data.events],
   );
   const certificateEligibility = generatedAssets.certificateEligibility;
   const certificateRequirements = certificateEligibility?.requirements;
   const saleBatches = generatedAssets.saleBatches;
   const selectedBatch = useMemo(
     () => saleBatches.find((batch) => batch.id === studio.selectedBatchId) ?? null,
-    [saleBatches, studio.selectedBatchId]
+    [saleBatches, studio.selectedBatchId],
   );
   const selectedAllocation = useMemo(
-    () => selectedBatch?.allocations.find((allocation) => allocation.id === studio.selectedAllocationId) ?? null,
-    [selectedBatch, studio.selectedAllocationId]
+    () =>
+      selectedBatch?.allocations.find(
+        (allocation) => allocation.id === studio.selectedAllocationId,
+      ) ?? null,
+    [selectedBatch, studio.selectedAllocationId],
   );
   const selectedSubjectMedia = useMemo(() => {
     if (!selectedBatch) {
       return null;
     }
 
-    return selectedBatch.subjectMedia.find((media) => media.id === studio.selectedSubjectMediaId) ?? null;
+    return (
+      selectedBatch.subjectMedia.find((media) => media.id === studio.selectedSubjectMediaId) ?? null
+    );
   }, [selectedBatch, studio.selectedSubjectMediaId]);
   const certificateRequest = useMemo<ProductCertificateGenerateRequest | null>(() => {
     if (!studio.selectedEggEventId || !selectedSubjectMedia) {
@@ -388,14 +416,15 @@ export default function BreederDetailPage() {
       saleAllocationId: selectedAllocation?.id || undefined,
       subjectMediaId: selectedSubjectMedia.id,
       buyerName,
-      buyerAccountId: studio.buyerAccountId.trim() || selectedAllocation?.buyerAccountId || undefined,
+      buyerAccountId:
+        studio.buyerAccountId.trim() || selectedAllocation?.buyerAccountId || undefined,
       buyerContact: studio.buyerContact.trim() || undefined,
       quantity: Number(studio.allocationQuantity) || 1,
       unitPrice: studio.unitPrice.trim() ? Number(studio.unitPrice) : undefined,
       channel: studio.channel.trim() || undefined,
       campaignId: studio.campaignId.trim() || undefined,
       soldAt,
-      note: studio.allocationNote.trim() || undefined
+      note: studio.allocationNote.trim() || undefined,
     };
   }, [
     selectedAllocation,
@@ -410,13 +439,13 @@ export default function BreederDetailPage() {
     studio.channel,
     studio.selectedEggEventId,
     studio.soldAt,
-    studio.unitPrice
+    studio.unitPrice,
   ]);
   const canPreviewCertificate = Boolean(
     certificateRequest &&
-      certificateRequirements?.hasSireCode &&
-      certificateRequirements?.hasDamCode &&
-      certificateRequirements?.hasParentGrandparentTrace
+    certificateRequirements?.hasSireCode &&
+    certificateRequirements?.hasDamCode &&
+    certificateRequirements?.hasParentGrandparentTrace,
   );
   const canConfirmCertificate = Boolean(certificateRequest && certificateEligibility?.eligible);
   const isFemaleBreeder = (currentBreeder?.sex ?? '').toLowerCase() === 'female';
@@ -433,7 +462,7 @@ export default function BreederDetailPage() {
 
       return {
         ...current,
-        selectedEggEventId: eggEvents[0].id
+        selectedEggEventId: eggEvents[0].id,
       };
     });
   }, [eggEvents]);
@@ -441,16 +470,27 @@ export default function BreederDetailPage() {
   useEffect(() => {
     setStudio((current) => {
       const fallbackEggEventId = current.selectedEggEventId || eggEvents[0]?.id || '';
-      const matchedBatch = saleBatches.find((batch) => batch.id === current.selectedBatchId) ?? null;
-      const fallbackBatch = matchedBatch ?? saleBatches.find((batch) => batch.eggEventId === fallbackEggEventId) ?? null;
+      const matchedBatch =
+        saleBatches.find((batch) => batch.id === current.selectedBatchId) ?? null;
+      const fallbackBatch =
+        matchedBatch ??
+        saleBatches.find((batch) => batch.eggEventId === fallbackEggEventId) ??
+        null;
       const nextBatchId = fallbackBatch?.id ?? '';
-      const nextAllocationId = fallbackBatch?.allocations.some((item) => item.id === current.selectedAllocationId)
+      const nextAllocationId = fallbackBatch?.allocations.some(
+        (item) => item.id === current.selectedAllocationId,
+      )
         ? current.selectedAllocationId
         : '';
-      const defaultSubjectMedia = fallbackBatch?.subjectMedia.find((item) => item.isPrimary) ?? fallbackBatch?.subjectMedia[0] ?? null;
-      const nextSubjectMediaId = fallbackBatch?.subjectMedia.some((item) => item.id === current.selectedSubjectMediaId)
+      const defaultSubjectMedia =
+        fallbackBatch?.subjectMedia.find((item) => item.isPrimary) ??
+        fallbackBatch?.subjectMedia[0] ??
+        null;
+      const nextSubjectMediaId = fallbackBatch?.subjectMedia.some(
+        (item) => item.id === current.selectedSubjectMediaId,
+      )
         ? current.selectedSubjectMediaId
-        : defaultSubjectMedia?.id ?? '';
+        : (defaultSubjectMedia?.id ?? '');
 
       if (
         current.selectedEggEventId === fallbackEggEventId &&
@@ -466,7 +506,7 @@ export default function BreederDetailPage() {
         selectedEggEventId: fallbackEggEventId,
         selectedBatchId: nextBatchId,
         selectedAllocationId: nextAllocationId,
-        selectedSubjectMediaId: nextSubjectMediaId
+        selectedSubjectMediaId: nextSubjectMediaId,
       };
     });
   }, [eggEvents, saleBatches]);
@@ -479,7 +519,7 @@ export default function BreederDetailPage() {
     certificateEligibility,
     saleBatches,
     certificates: generatedAssets.certificates,
-    certificatePreview: generatedAssets.certificatePreview
+    certificatePreview: generatedAssets.certificatePreview,
   });
 
   const certificateStudioHandlers = useCertificateStudio({
@@ -495,15 +535,15 @@ export default function BreederDetailPage() {
     onPreviewGenerated: (preview) => {
       setGeneratedAssets((current) => ({
         ...current,
-        certificatePreview: preview
+        certificatePreview: preview,
       }));
     },
     onPreviewCleared: () => {
       setGeneratedAssets((current) => ({
         ...current,
-        certificatePreview: null
+        certificatePreview: null,
       }));
-    }
+    },
   });
 
   const handleAssetDrawerOpenChange = useCallback((open: boolean) => {
@@ -521,33 +561,36 @@ export default function BreederDetailPage() {
     }
   }, []);
 
-  const handleGenerateCouplePhoto = useCallback(async (openPreview = false) => {
-    if (!breederId) {
-      return;
-    }
-
-    setGeneratingCouplePhoto(true);
-    setQuickActionError(null);
-
-    try {
-      const response = await apiRequest(`/products/${breederId}/couple-photos/generate`, {
-        method: 'POST',
-        body: {},
-        requestSchema: generateProductCouplePhotoRequestSchema,
-        responseSchema: generateProductCouplePhotoResponseSchema
-      });
-      if (openPreview) {
-        openCouplePhotoPreview(response.photo.contentPath);
+  const handleGenerateCouplePhoto = useCallback(
+    async (openPreview = false) => {
+      if (!breederId) {
+        return;
       }
-      await loadGeneratedAssets(breederId);
-    } catch (requestError) {
-      const message = formatError(requestError);
-      certificateStudioHandlers.setAssetError(message);
-      setQuickActionError(message);
-    } finally {
-      setGeneratingCouplePhoto(false);
-    }
-  }, [breederId, loadGeneratedAssets, certificateStudioHandlers, openCouplePhotoPreview]);
+
+      setGeneratingCouplePhoto(true);
+      setQuickActionError(null);
+
+      try {
+        const response = await apiRequest(`/products/${breederId}/couple-photos/generate`, {
+          method: 'POST',
+          body: {},
+          requestSchema: generateProductCouplePhotoRequestSchema,
+          responseSchema: generateProductCouplePhotoResponseSchema,
+        });
+        if (openPreview) {
+          openCouplePhotoPreview(response.photo.contentPath);
+        }
+        await loadGeneratedAssets(breederId);
+      } catch (requestError) {
+        const message = formatError(requestError);
+        certificateStudioHandlers.setAssetError(message);
+        setQuickActionError(message);
+      } finally {
+        setGeneratingCouplePhoto(false);
+      }
+    },
+    [breederId, loadGeneratedAssets, certificateStudioHandlers, openCouplePhotoPreview],
+  );
 
   const handleCouplePhotoAction = useCallback(() => {
     if (!isFemaleBreeder) {
@@ -562,7 +605,12 @@ export default function BreederDetailPage() {
     }
 
     void handleGenerateCouplePhoto(true);
-  }, [generatedAssets.currentCouplePhoto, handleGenerateCouplePhoto, isFemaleBreeder, openCouplePhotoPreview]);
+  }, [
+    generatedAssets.currentCouplePhoto,
+    handleGenerateCouplePhoto,
+    isFemaleBreeder,
+    openCouplePhotoPreview,
+  ]);
 
   return (
     <main className="space-y-4 pb-10 sm:space-y-6">
@@ -650,6 +698,17 @@ export default function BreederDetailPage() {
         </Card>
       ) : null}
 
+      {!loading && currentBreeder ? (
+        <TenantFloatingShareButton
+          intent={{ productId: currentBreeder.id }}
+          title={detailShareTitle}
+          subtitle="扫码查看该种龟公开详情页，或复制链接直接转发。"
+          previewImageUrl={detailSharePreviewImage}
+          posterVariant="detail"
+          className="lg:hidden"
+        />
+      ) : null}
+
       <ProductDrawer
         mode="edit"
         open={isEditDrawerOpen}
@@ -660,7 +719,7 @@ export default function BreederDetailPage() {
         onSaved={(nextProduct) => {
           setData((current) => ({
             ...current,
-            breeder: nextProduct
+            breeder: nextProduct,
           }));
           setIsEditDrawerOpen(false);
         }}

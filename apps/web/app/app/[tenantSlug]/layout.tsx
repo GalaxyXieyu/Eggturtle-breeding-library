@@ -15,14 +15,10 @@ import { LayoutDashboard, Package, Layers, Share2, LogOut, UserRound } from 'luc
 
 import { UiPreferenceControls, useUiPreferences } from '@/components/ui-preferences';
 import { Button } from '@/components/ui/button';
-import TenantFloatingShareButton, {
-  type TenantShareIntent,
-} from '@/components/tenant-floating-share-button';
+import TenantFloatingShareButton from '@/components/tenant-floating-share-button';
+import type { TenantShareIntent } from '@/lib/tenant-share';
 import { apiRequest, clearAccessToken } from '@/lib/api-client';
-import { formatApiError } from '@/lib/error-utils';
 import { ensureTenantRouteSession } from '@/lib/tenant-route-session';
-import { openUrlWithFallback } from '@/lib/browser-share';
-import { createTenantFeedShareLink } from '@/lib/tenant-share';
 import { formatTenantDisplayName } from '@/lib/tenant-display';
 import { cn } from '@/lib/utils';
 
@@ -70,8 +66,8 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
-// 分享入口先隐藏，保留原逻辑便于后续恢复。
-const ENABLE_SHARE_ENTRY = false;
+const ENABLE_SHARE_NAV_ENTRY = false;
+const ENABLE_FLOATING_SHARE_BUTTON = true;
 // 侧边栏继续隐藏系列入口；移动端底部导航单独保留系列入口。
 const ENABLE_SERIES_ENTRY = false;
 const SHELL_COPY = {
@@ -79,12 +75,12 @@ const SHELL_COPY = {
     workspace: '用户工作台',
     controlCenter: '控制中心',
     upgradePlan: '升级套餐',
-    createShare: '创建并复制分享链接',
-    openSharePage: '打开分享页',
+    createShare: '打开统一分享弹窗',
+    openSharePage: '打开分享弹窗',
     logout: '退出登录',
     defaultTenant: '蛋龟选育库',
-    quickSharePending: '正在打开分享页...',
-    quickShareSuccess: '已打开分享页',
+    quickSharePending: '正在准备分享弹窗...',
+    quickShareSuccess: '分享弹窗已打开',
     quickShareMissingTenant: '当前用户上下文未就绪，暂时无法生成链接。',
     quickShareErrorFallback: '创建分享链接失败。',
     planLoading: '加载套餐中...',
@@ -93,12 +89,12 @@ const SHELL_COPY = {
     workspace: 'Tenant Workspace',
     controlCenter: 'Control Center',
     upgradePlan: 'Upgrade Plan',
-    createShare: 'Create & Copy Share Link',
-    openSharePage: 'Open share page',
+    createShare: 'Open unified share dialog',
+    openSharePage: 'Open share dialog',
     logout: 'Sign out',
     defaultTenant: 'Eggturtle Workspace',
-    quickSharePending: 'Opening share page...',
-    quickShareSuccess: 'Share page opened',
+    quickSharePending: 'Preparing share dialog...',
+    quickShareSuccess: 'Share dialog opened',
     quickShareMissingTenant: 'Tenant context is not ready yet.',
     quickShareErrorFallback: 'Failed to create share link.',
     planLoading: 'Loading plan...',
@@ -111,9 +107,6 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [quickSharePending, setQuickSharePending] = useState(false);
-  const [quickShareNotice, setQuickShareNotice] = useState<string | null>(null);
-  const [quickShareError, setQuickShareError] = useState<string | null>(null);
   const [currentPlan, setCurrentPlan] = useState<PlanTier>('FREE');
   const [planLoading, setPlanLoading] = useState(true);
   const [setupRequired, setSetupRequired] = useState(false);
@@ -126,19 +119,19 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
   );
 
   const shouldRenderLayoutFloatingShare =
-    ENABLE_SHARE_ENTRY &&
+    ENABLE_FLOATING_SHARE_BUTTON &&
     pathname !== `/app/${tenantSlug}` &&
-    !pathname?.endsWith('/products') &&
-    !pathname?.endsWith('/series') &&
+    pathname !== `/app/${tenantSlug}/products` &&
     !pathname?.endsWith('/account') &&
-    !pathname?.endsWith('/certificates');
+    !pathname?.endsWith('/certificates') &&
+    !/^\/app\/[^/]+\/(?:products|breeders)\/[^/]+$/.test(pathname);
   const setupQueryEnabled = searchParams.get('setup') === '1';
   const accountPath = `/app/${tenantSlug}/account`;
   const sharePresentationPath = `/app/${tenantSlug}/share-presentation`;
   const seriesPath = `/app/${tenantSlug}/series`;
   const navItemsWithoutShare = NAV_ITEMS.filter((item) => {
     const itemHref = item.href(tenantSlug);
-    if (!ENABLE_SHARE_ENTRY && itemHref === sharePresentationPath) {
+    if (!ENABLE_SHARE_NAV_ENTRY && itemHref === sharePresentationPath) {
       return false;
     }
     if (!ENABLE_SERIES_ENTRY && itemHref === seriesPath) {
@@ -279,29 +272,6 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
     tenantSlug,
   ]);
 
-  async function handleQuickShareOpen() {
-    if (quickSharePending) {
-      return;
-    }
-
-    setQuickSharePending(true);
-    setQuickShareNotice(null);
-    setQuickShareError(null);
-
-    try {
-      const share = await createTenantFeedShareLink({
-        missingTenantMessage: copy.quickShareMissingTenant,
-      });
-      const permanentLink = share.permanentUrl;
-      const opened = openUrlWithFallback(permanentLink);
-      setQuickShareNotice(opened ? copy.quickShareSuccess : `${copy.quickShareSuccess} ${permanentLink}`);
-    } catch (error) {
-      setQuickShareError(formatApiError(error, copy.quickShareErrorFallback));
-    } finally {
-      setQuickSharePending(false);
-    }
-  }
-
   function handleLogout() {
     clearAccessToken();
     router.replace('/login');
@@ -359,30 +329,6 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
           </nav>
 
           <div className="shrink-0 border-t border-neutral-200 px-3 pb-2 pt-3 dark:border-neutral-800">
-            {ENABLE_SHARE_ENTRY && !setupRequired ? (
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full justify-start rounded-xl border-neutral-200 !bg-neutral-50 !text-neutral-800 shadow-none hover:!bg-neutral-100 hover:!text-neutral-900 [&_svg]:text-neutral-500 hover:[&_svg]:text-neutral-700 dark:border-neutral-700 dark:!bg-neutral-900 dark:!text-neutral-100 dark:hover:!bg-neutral-800 dark:[&_svg]:text-neutral-300 dark:hover:[&_svg]:text-neutral-100"
-                onClick={() => void handleQuickShareOpen()}
-                disabled={quickSharePending}
-              >
-                <Share2 size={16} />
-                <span>{quickSharePending ? copy.quickSharePending : copy.createShare}</span>
-              </Button>
-            ) : null}
-
-            {quickShareError ? (
-              <p className="mt-2 break-all rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-                {quickShareError}
-              </p>
-            ) : null}
-            {quickShareNotice ? (
-              <p className="mt-2 break-all rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
-                {quickShareNotice}
-              </p>
-            ) : null}
-
             <Button
               type="button"
               variant="ghost"
@@ -418,10 +364,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
         className="tenant-mobile-nav fixed inset-x-0 bottom-0 z-40 lg:hidden"
         aria-label="用户移动端主导航"
       >
-        <div
-          className="tenant-mobile-nav-shell"
-          aria-hidden
-        />
+        <div className="tenant-mobile-nav-shell" aria-hidden />
         <ul className="tenant-mobile-nav-list list-none">
           {mobileNavItems.map((item) => {
             const href = item.href(tenantSlug);
