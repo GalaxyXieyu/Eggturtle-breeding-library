@@ -22,6 +22,9 @@ type ApiRequestOptions<RequestPayload, ResponsePayload> = {
   body?: RequestPayload | FormData;
   headers?: HeadersInit;
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  signal?: AbortSignal;
+  timeoutMs?: number;
+  timeoutMessage?: string;
   requestSchema?: SchemaParser<RequestPayload>;
   responseSchema: SchemaParser<ResponsePayload>;
 };
@@ -249,12 +252,60 @@ export async function apiRequest<RequestPayload = never, ResponsePayload = unkno
     }
   }
 
-  const response = await fetch(resolveRequestPath(path), {
-    method: options.method ?? 'GET',
-    headers,
-    body: requestBody,
-    cache: 'no-store'
-  });
+  const timeoutMs = options.timeoutMs ?? 0;
+  const combinedController = timeoutMs > 0 || options.signal ? new AbortController() : null;
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  let externalAbortHandler: (() => void) | null = null;
+
+  if (combinedController && options.signal) {
+    if (options.signal.aborted) {
+      combinedController.abort(options.signal.reason);
+    } else {
+      externalAbortHandler = () => combinedController.abort(options.signal?.reason);
+      options.signal.addEventListener('abort', externalAbortHandler, { once: true });
+    }
+  }
+
+  if (combinedController && timeoutMs > 0) {
+    timeoutId = setTimeout(() => {
+      combinedController.abort(new Error(`Request timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(resolveRequestPath(path), {
+      method: options.method ?? 'GET',
+      headers,
+      body: requestBody,
+      cache: 'no-store',
+      signal: combinedController?.signal ?? options.signal,
+    });
+  } catch (error) {
+    const message = (error as Error | undefined)?.message ?? '';
+    const isExternalAbort = Boolean(options.signal?.aborted);
+    const isTimeoutAbort =
+      Boolean(timeoutMs > 0 && combinedController?.signal.aborted && !isExternalAbort) ||
+      /timed out/i.test(message);
+
+    if (isTimeoutAbort) {
+      throw new ApiError(options.timeoutMessage ?? `Request timed out after ${timeoutMs}ms`, 408);
+    }
+
+    if (isExternalAbort) {
+      throw error;
+    }
+
+    throw new ApiError(message || 'Network request failed.', 0);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+
+    if (options.signal && externalAbortHandler) {
+      options.signal.removeEventListener('abort', externalAbortHandler);
+    }
+  }
 
   const payload = await parseJsonBody(response);
 

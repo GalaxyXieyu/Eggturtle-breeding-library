@@ -21,7 +21,11 @@ type CreateTenantFeedShareLinkOptions = {
   tenantId?: string | null;
   intent?: TenantShareIntent;
   missingTenantMessage?: string;
+  signal?: AbortSignal;
+  requestTimeoutMs?: number;
 };
+
+const DEFAULT_SHARE_LINK_TIMEOUT_MS = 15_000;
 
 export type TenantFeedShareLink = {
   tenantId: string;
@@ -34,7 +38,13 @@ export async function createTenantFeedShareLink(
   options: CreateTenantFeedShareLinkOptions = {},
 ): Promise<TenantFeedShareLink> {
   const intent = normalizeTenantShareIntent(options.intent);
-  const tenantId = await resolveTenantId(options.tenantId, options.missingTenantMessage);
+  const tenantId = await resolveTenantId(
+    options.tenantId,
+    options.missingTenantMessage,
+    options.signal,
+    options.requestTimeoutMs,
+  );
+  const requestTimeoutMs = resolveRequestTimeoutMs(options.requestTimeoutMs);
 
   const payload = createShareRequestSchema.parse({
     resourceType: 'tenant_feed',
@@ -44,6 +54,9 @@ export async function createTenantFeedShareLink(
   const response = await apiRequest('/shares', {
     method: 'POST',
     body: payload,
+    signal: options.signal,
+    timeoutMs: requestTimeoutMs,
+    timeoutMessage: 'Share link request timed out.',
     requestSchema: createShareRequestSchema,
     responseSchema: createShareResponseSchema,
   });
@@ -137,13 +150,20 @@ function resolvePublicShareOrigin() {
 async function resolveTenantId(
   rawTenantId: string | null | undefined,
   missingTenantMessage?: string,
+  signal?: AbortSignal,
+  requestTimeoutMs?: number,
 ) {
   const providedTenantId = rawTenantId?.trim();
   if (providedTenantId) {
     return providedTenantId;
   }
 
+  const timeoutMs = resolveRequestTimeoutMs(requestTimeoutMs);
+
   const meResponse = await apiRequest('/me', {
+    signal,
+    timeoutMs,
+    timeoutMessage: 'Tenant context request timed out.',
     responseSchema: meResponseSchema,
   });
 
@@ -167,4 +187,12 @@ function buildSharePath(intent: TenantShareIntent): string {
   }
 
   return `/products/${encodeURIComponent(normalizedIntent.productId)}`;
+}
+
+function resolveRequestTimeoutMs(timeoutMs: number | undefined) {
+  if (typeof timeoutMs === 'number' && timeoutMs > 0) {
+    return timeoutMs;
+  }
+
+  return DEFAULT_SHARE_LINK_TIMEOUT_MS;
 }

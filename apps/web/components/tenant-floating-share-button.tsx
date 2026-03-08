@@ -14,6 +14,7 @@ type TenantFloatingShareButtonProps = {
   title?: string;
   subtitle?: string;
   previewImageUrl?: string | null;
+  posterImageUrls?: string[];
   posterVariant?: TenantSharePosterVariant;
 };
 
@@ -24,6 +25,7 @@ export default function TenantFloatingShareButton({
   title,
   subtitle,
   previewImageUrl,
+  posterImageUrls,
   posterVariant,
 }: TenantFloatingShareButtonProps) {
   return (
@@ -32,6 +34,7 @@ export default function TenantFloatingShareButton({
       title={title}
       subtitle={subtitle}
       previewImageUrl={previewImageUrl}
+      posterImageUrls={posterImageUrls}
       posterVariant={posterVariant}
       trigger={({ onClick, pending }) =>
         inline ? (

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const DEFAULT_API_BASE_URL = 'http://127.0.0.1:30011';
+const DEFAULT_PROXY_TIMEOUT_MS = 15_000;
 
 type RouteContext = {
   params: {
@@ -10,6 +11,15 @@ type RouteContext = {
 
 function resolveInternalApiBaseUrl() {
   return process.env.INTERNAL_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE_URL;
+}
+
+function resolveProxyTimeoutMs() {
+  const raw = Number(process.env.API_PROXY_TIMEOUT_MS ?? '');
+  if (Number.isFinite(raw) && raw > 0) {
+    return Math.floor(raw);
+  }
+
+  return DEFAULT_PROXY_TIMEOUT_MS;
 }
 
 function hasRequestBody(method: string) {
@@ -36,18 +46,22 @@ async function handleProxyRequest(request: NextRequest, context: RouteContext) {
   }
 
   const body = hasRequestBody(request.method) ? Buffer.from(await request.arrayBuffer()) : undefined;
+  const controller = new AbortController();
+  const timeoutMs = resolveProxyTimeoutMs();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const upstreamResponse = await fetch(upstreamUrl, {
       method: request.method,
       headers,
       body: hasRequestBody(request.method) ? body : undefined,
-      cache: 'no-store'
+      cache: 'no-store',
+      signal: controller.signal,
     });
 
     const responseBody = await upstreamResponse.arrayBuffer();
     const response = new NextResponse(responseBody, {
-      status: upstreamResponse.status
+      status: upstreamResponse.status,
     });
 
     const responseContentType = upstreamResponse.headers.get('content-type');
@@ -56,8 +70,20 @@ async function handleProxyRequest(request: NextRequest, context: RouteContext) {
     }
 
     return response;
-  } catch {
+  } catch (error) {
+    const isAbortError =
+      (error instanceof DOMException && error.name === 'AbortError') ||
+      (error instanceof Error && error.name === 'AbortError');
+    if (isAbortError) {
+      return NextResponse.json(
+        { message: `API proxy request timed out after ${timeoutMs}ms.` },
+        { status: 504 },
+      );
+    }
+
     return NextResponse.json({ message: 'API proxy request failed.' }, { status: 502 });
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 

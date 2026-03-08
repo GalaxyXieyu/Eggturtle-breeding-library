@@ -130,6 +130,14 @@ export default function TenantProductsPage() {
       sharePreview.heroImages[0] ??
       DEFAULT_SHARE_PREVIEW_HERO,
   );
+  const sharePosterImageUrls = useMemo(
+    () =>
+      sharePreview.heroImages
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .map((item) => resolveAuthenticatedAssetUrl(item)),
+    [sharePreview.heroImages],
+  );
   const shareOverlayColor = hexToRgba(sharePreview.brandSecondary, 0.4);
 
   useEffect(() => {
@@ -810,7 +818,7 @@ export default function TenantProductsPage() {
 
   return (
     <>
-      <main className="space-y-4 pb-10 sm:space-y-6">
+      <main className="tenant-mobile-dock-safe-stack space-y-4 pb-10 sm:space-y-6 lg:pb-10">
         <ProductsSharePreviewCard
           sharePreview={sharePreview}
           shareHeroImageUrl={shareHeroImageUrl}
@@ -912,7 +920,13 @@ export default function TenantProductsPage() {
             >
               <Plus size={18} />
             </FloatingActionButton>
-            <TenantFloatingShareButton intent="feed" inline className="h-11 w-11" />
+            <TenantFloatingShareButton
+              intent="feed"
+              inline
+              className="h-11 w-11"
+              previewImageUrl={shareHeroImageUrl}
+              posterImageUrls={sharePosterImageUrls}
+            />
             {showMobileFilterFab ? (
               <div className="relative" data-products-filter-root="true">
                 <Button
