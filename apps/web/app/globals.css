@@ -1804,13 +1804,16 @@ button.auth-action {
   font-family: var(--font-display), Georgia, 'Times New Roman', serif;
 }
 
-.tenant-shell-bg {
-  min-height: 100vh;
-  min-height: 100svh;
+:root {
   --tenant-mobile-nav-height: 56px;
   --tenant-mobile-nav-float-gap: 14px;
   --tenant-mobile-nav-safe-inset: max(0px, env(safe-area-inset-bottom));
   --tenant-mobile-nav-bottom-offset: calc(var(--tenant-mobile-nav-safe-inset) + var(--tenant-mobile-nav-float-gap));
+}
+
+.tenant-shell-bg {
+  min-height: 100vh;
+  min-height: 100svh;
   background: linear-gradient(
     135deg,
     var(--ui-bg-start) 0%,
