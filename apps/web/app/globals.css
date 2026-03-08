@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+button,
+[type='button'],
+[type='submit'],
+[type='reset'] {
+  appearance: none;
+  -webkit-appearance: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
 .auth-shell {
   min-height: 100vh;
   min-height: 100svh;

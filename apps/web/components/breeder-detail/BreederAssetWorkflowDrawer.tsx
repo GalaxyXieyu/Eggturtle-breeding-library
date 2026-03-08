@@ -199,13 +199,13 @@ export function BreederAssetWorkflowDrawer({
       return;
     }
 
-    if (studio.selectedEggEventId && selectedSubjectMedia) {
+    if (studio.selectedEggEventId && studio.selectedSubjectMediaId) {
       setActiveCertificateStep('allocation');
       return;
     }
 
     setActiveCertificateStep('batch');
-  }, [activeSection, certificatePreview, selectedSubjectMedia, studio.selectedEggEventId]);
+  }, [activeSection, certificatePreview, studio.selectedEggEventId, studio.selectedSubjectMediaId]);
 
   const isDirectMode = mode === 'direct';
 
@@ -217,7 +217,7 @@ export function BreederAssetWorkflowDrawer({
   const drawerDescription = '证书、夫妻图、分享入口与额度状态统一收进抽屉，详情主体只保留核心信息。';
 
   const certificateSteps: Array<{ id: CertificateStudioStep; label: string; ready: boolean }> = [
-    { id: 'batch', label: '批次', ready: Boolean(studio.selectedEggEventId && selectedSubjectMedia) },
+    { id: 'batch', label: '批次', ready: Boolean(studio.selectedEggEventId && studio.selectedSubjectMediaId) },
     { id: 'allocation', label: '客户', ready: Boolean(studio.buyerName.trim() || selectedAllocation?.buyerName) },
     { id: 'preview', label: '预览', ready: Boolean(certificatePreview || canConfirmCertificate) }
   ];
@@ -297,7 +297,7 @@ export function BreederAssetWorkflowDrawer({
           onClick={() => onOpenChange(false)}
         >
           <section
-            className="absolute inset-x-0 bottom-0 flex h-[86svh] flex-col overflow-hidden rounded-t-[32px] border border-neutral-200 bg-[#fcfcfa] shadow-2xl sm:inset-y-0 sm:right-0 sm:left-auto sm:h-full sm:w-[min(92vw,44rem)] sm:rounded-none sm:rounded-l-[32px]"
+            className="absolute inset-x-0 bottom-0 flex h-[90svh] max-h-[100svh] flex-col overflow-hidden rounded-t-[28px] border border-neutral-200 bg-[#fcfcfa] shadow-2xl sm:inset-y-0 sm:right-0 sm:left-auto sm:h-full sm:w-[min(92vw,44rem)] sm:rounded-none sm:rounded-l-[32px]"
             onClick={(event) => event.stopPropagation()}
           >
             <header className="sticky top-0 z-20 border-b border-neutral-200 bg-[#fcfcfa]/95 px-4 py-3 backdrop-blur sm:px-6">
@@ -389,7 +389,7 @@ export function BreederAssetWorkflowDrawer({
                           第 {activeCertificateIndex + 1} / {certificateSteps.length} 步
                         </p>
                       </div>
-                      <div className="mt-3 flex items-start">
+                      <div className="mt-3 flex items-start gap-2 overflow-x-auto pb-1 sm:overflow-visible">
                         {certificateSteps.map((step, index) => {
                           const isActive = step.id === activeCertificateStep;
                           const isUnlocked = index === 0 || isActive || step.ready;
@@ -413,7 +413,7 @@ export function BreederAssetWorkflowDrawer({
                           );
                           return (
                             <Fragment key={step.id}>
-                              <div className="flex min-w-0 flex-1 justify-center">
+                              <div className="flex min-w-[72px] flex-1 justify-center">
                                 {isUnlocked ? (
                                   <button
                                     type="button"

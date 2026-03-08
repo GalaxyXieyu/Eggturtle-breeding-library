@@ -94,6 +94,15 @@ button {
   font: inherit;
 }
 
+button,
+[type='button'],
+[type='submit'],
+[type='reset'] {
+  appearance: none;
+  -webkit-appearance: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
 input,
 select,
 textarea {
