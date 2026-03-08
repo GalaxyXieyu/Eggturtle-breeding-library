@@ -479,7 +479,7 @@ export default function TenantShareDialogTrigger({
                     正在渲染分享海报...
                   </div>
                 ) : posterDataUrl ? (
-                  <div className="mx-auto flex aspect-[9/16] w-full max-w-[min(84vw,19rem)] items-center justify-center rounded-[22px] bg-[#090f1d] p-1.5 shadow-[0_18px_34px_rgba(0,0,0,0.36)] sm:max-w-[18.75rem] sm:p-2">
+                  <div className="mx-auto flex aspect-[9/16] w-full max-w-[min(84vw,19rem)] items-center justify-center rounded-[22px] bg-[#0b1323] p-0.5 shadow-[0_16px_30px_rgba(0,0,0,0.32)] sm:max-w-[18.75rem] sm:p-1">
                     <img
                       src={posterDataUrl}
                       alt="分享卡片预览"
@@ -584,33 +584,33 @@ async function generateGenericSharePoster(payload: SharePosterPayload): Promise<
   }
 
   const background = ctx.createLinearGradient(0, 0, width, height);
-  background.addColorStop(0, '#0f172a');
-  background.addColorStop(0.55, '#111827');
-  background.addColorStop(1, '#1f2937');
+  background.addColorStop(0, '#0c182f');
+  background.addColorStop(0.55, '#111d34');
+  background.addColorStop(1, '#172542');
   ctx.fillStyle = background;
   ctx.fillRect(0, 0, width, height);
 
-  drawGlowCircle(ctx, width * 0.84, 150, 360, 'rgba(245,158,11,0.28)');
-  drawGlowCircle(ctx, 120, height - 180, 320, 'rgba(250,204,21,0.18)');
+  drawGlowCircle(ctx, width * 0.84, 160, 340, 'rgba(245,158,11,0.22)');
+  drawGlowCircle(ctx, 150, height - 180, 320, 'rgba(56,189,248,0.16)');
 
-  const cardX = 60;
-  const cardY = 60;
-  const cardWidth = width - 120;
-  const cardHeight = height - 120;
+  const cardX = 40;
+  const cardY = 40;
+  const cardWidth = width - 80;
+  const cardHeight = height - 80;
 
   ctx.save();
   ctx.shadowColor = 'rgba(0,0,0,0.42)';
   ctx.shadowBlur = 42;
   ctx.shadowOffsetY = 24;
-  roundedRect(ctx, cardX, cardY, cardWidth, cardHeight, 44);
+  roundedRect(ctx, cardX, cardY, cardWidth, cardHeight, 42);
   ctx.fillStyle = 'rgba(255,251,242,0.98)';
   ctx.fill();
   ctx.restore();
 
-  const heroX = cardX + 42;
-  const heroY = cardY + 42;
-  const heroWidth = cardWidth - 84;
-  const heroHeight = 890;
+  const heroX = cardX + 30;
+  const heroY = cardY + 34;
+  const heroWidth = cardWidth - 60;
+  const heroHeight = 930;
   await drawGenericPosterHero(ctx, payload, heroX, heroY, heroWidth, heroHeight);
 
   ctx.fillStyle = 'rgba(255,255,255,0.93)';
@@ -619,28 +619,54 @@ async function generateGenericSharePoster(payload: SharePosterPayload): Promise<
 
   drawMultilineText(ctx, payload.title, {
     x: heroX,
-    y: heroY + heroHeight + 72,
+    y: heroY + heroHeight + 52,
     maxWidth: heroWidth,
-    lineHeight: 66,
+    lineHeight: 62,
     maxLines: 2,
-    font: '700 56px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif',
+    font: '700 54px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif',
     color: '#111827',
   });
 
   drawMultilineText(ctx, payload.subtitle, {
     x: heroX,
-    y: heroY + heroHeight + 214,
+    y: heroY + heroHeight + 178,
     maxWidth: heroWidth,
-    lineHeight: 42,
-    maxLines: 3,
-    font: '500 30px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif',
+    lineHeight: 38,
+    maxLines: 2,
+    font: '500 27px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif',
     color: '#475569',
   });
 
+  const sloganX = heroX;
+  const sloganY = heroY + heroHeight + 264;
+  const sloganWidth = heroWidth;
+  const sloganHeight = 108;
+  const sloganGradient = ctx.createLinearGradient(
+    sloganX,
+    sloganY,
+    sloganX + sloganWidth,
+    sloganY + sloganHeight,
+  );
+  sloganGradient.addColorStop(0, 'rgba(253,230,138,0.72)');
+  sloganGradient.addColorStop(1, 'rgba(250,204,21,0.30)');
+  ctx.fillStyle = sloganGradient;
+  roundedRect(ctx, sloganX, sloganY, sloganWidth, sloganHeight, 24);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(146,64,14,0.24)';
+  ctx.lineWidth = 2;
+  roundedRect(ctx, sloganX, sloganY, sloganWidth, sloganHeight, 24);
+  ctx.stroke();
+  ctx.fillStyle = '#7c2d12';
+  ctx.font = '700 32px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
+  ctx.fillText('10秒看懂选育实力，分享更有说服力', sloganX + 26, sloganY + 46);
+  ctx.fillStyle = '#92400e';
+  ctx.font = '500 21px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
+  ctx.fillText('SLOGAN · Better visuals, faster trust.', sloganX + 26, sloganY + 80);
+
   const qrPanelX = heroX;
-  const qrPanelY = cardY + cardHeight - 338;
+  const qrPanelY = cardY + cardHeight - 304;
   const qrPanelWidth = heroWidth;
-  const qrPanelHeight = 252;
+  const qrPanelHeight = 228;
 
   ctx.fillStyle = '#fff8e8';
   roundedRect(ctx, qrPanelX, qrPanelY, qrPanelWidth, qrPanelHeight, 30);
@@ -651,8 +677,8 @@ async function generateGenericSharePoster(payload: SharePosterPayload): Promise<
   ctx.stroke();
 
   const qrX = qrPanelX + 34;
-  const qrY = qrPanelY + 30;
-  const qrSize = 192;
+  const qrY = qrPanelY + 20;
+  const qrSize = 176;
 
   ctx.fillStyle = '#ffffff';
   roundedRect(ctx, qrX - 10, qrY - 10, qrSize + 20, qrSize + 20, 20);
@@ -662,12 +688,12 @@ async function generateGenericSharePoster(payload: SharePosterPayload): Promise<
   ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
 
   ctx.fillStyle = '#111827';
-  ctx.font = '700 36px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
-  ctx.fillText('扫码查看公开页', qrX + qrSize + 34, qrY + 54);
-  ctx.font = '500 25px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
+  ctx.font = '700 34px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
+  ctx.fillText('扫码查看公开页', qrX + qrSize + 34, qrY + 50);
+  ctx.font = '500 23px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
   ctx.fillStyle = '#475569';
-  ctx.fillText('二维码、海报与链接共用同一分享链路', qrX + qrSize + 34, qrY + 104);
-  ctx.fillText('支持直接转发，也支持复制链接', qrX + qrSize + 34, qrY + 144);
+  ctx.fillText('海报、二维码与链接共用同一分享链路', qrX + qrSize + 34, qrY + 94);
+  ctx.fillText('可直接转发客户，也可复制链接分发', qrX + qrSize + 34, qrY + 132);
 
   ctx.fillStyle = '#0f172a';
   ctx.font = '500 20px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
@@ -702,9 +728,9 @@ async function generateDetailSharePoster(payload: SharePosterPayload): Promise<s
   drawGlowCircle(ctx, width - 120, 160, 280, 'rgba(255,212,0,0.20)');
   drawGlowCircle(ctx, 180, height - 120, 240, 'rgba(255,255,255,0.08)');
 
-  const imageX = 56;
-  const imageY = 56;
-  const imageWidth = width - 112;
+  const imageX = 34;
+  const imageY = 34;
+  const imageWidth = width - 68;
   const imageHeight = 1160;
 
   if (payload.previewImageUrl) {
@@ -758,10 +784,10 @@ async function generateDetailSharePoster(payload: SharePosterPayload): Promise<s
     color: 'rgba(255,255,255,0.86)',
   });
 
-  const panelX = 56;
+  const panelX = 34;
   const panelY = imageY + imageHeight + 28;
-  const panelWidth = width - 112;
-  const panelHeight = height - panelY - 56;
+  const panelWidth = width - 68;
+  const panelHeight = height - panelY - 34;
   ctx.fillStyle = '#fff8eb';
   roundedRect(ctx, panelX, panelY, panelWidth, panelHeight, 36);
   ctx.fill();
@@ -900,7 +926,7 @@ async function drawGenericPosterHero(
 ) {
   const imageUrls = Array.from(
     new Set([payload.previewImageUrl, ...(payload.posterImageUrls ?? [])].filter(Boolean)),
-  ).slice(0, 8) as string[];
+  ).slice(0, 5) as string[];
 
   if (imageUrls.length === 0) {
     drawHeroFallback(ctx, x, y, width, height);
@@ -913,7 +939,7 @@ async function drawGenericPosterHero(
     return;
   }
 
-  drawPosterCollage(ctx, ensureMasonryImages(images, 8), x, y, width, height);
+  drawPosterCollage(ctx, ensureMasonryImages(images, 5), x, y, width, height);
 }
 
 function drawPosterCollage(
@@ -925,77 +951,115 @@ function drawPosterCollage(
   height: number,
 ) {
   const heroGradient = ctx.createLinearGradient(x, y, x + width, y + height);
-  heroGradient.addColorStop(0, '#0d1a33');
-  heroGradient.addColorStop(1, '#1b2f55');
+  heroGradient.addColorStop(0, '#0d1b34');
+  heroGradient.addColorStop(1, '#1a3258');
   ctx.fillStyle = heroGradient;
   roundedRect(ctx, x, y, width, height, 30);
   ctx.fill();
 
   const headPillX = x + 20;
   const headPillY = y + 16;
-  const headPillWidth = 184;
+  const headPillWidth = 208;
   const headPillHeight = 34;
   ctx.fillStyle = 'rgba(255,255,255,0.16)';
   roundedRect(ctx, headPillX, headPillY, headPillWidth, headPillHeight, 17);
   ctx.fill();
   ctx.fillStyle = 'rgba(255,255,255,0.92)';
   ctx.font = '700 18px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
-  ctx.fillText('TOP 8 在售精选', headPillX + 14, headPillY + 23);
+  ctx.fillText('精选在售展示', headPillX + 14, headPillY + 23);
 
-  const innerPaddingX = 24;
+  const innerPaddingX = 22;
   const innerPaddingY = 62;
-  const columnGap = 14;
-  const rowGap = 10;
   const innerX = x + innerPaddingX;
   const innerY = y + innerPaddingY;
   const innerWidth = width - innerPaddingX * 2;
-  const innerHeight = height - innerPaddingY * 2;
-  const columnWidth = (innerWidth - columnGap) / 2;
-  const leftColumnRatios = [0.24, 0.27, 0.2, 0.29];
-  const rightColumnRatios = [0.31, 0.19, 0.28, 0.22];
-  const columnContentHeight = innerHeight - rowGap * 3;
-  const leftHeights = resolveColumnHeights(columnContentHeight, leftColumnRatios);
-  const rightHeights = resolveColumnHeights(columnContentHeight, rightColumnRatios);
+  const innerHeight = height - innerPaddingY - 20;
+  const columnGap = 12;
+  const sideWidth = Math.max(186, innerWidth * 0.34);
+  const mainWidth = innerWidth - sideWidth - columnGap;
+  const sideHeights = resolveColumnHeights(innerHeight - 12, [0.51, 0.49]);
 
   ctx.save();
   roundedRect(ctx, x, y, width, height, 30);
   ctx.clip();
 
-  let leftY = innerY;
-  leftHeights.forEach((tileHeight, index) => {
-    drawMasonryTile(
-      ctx,
-      images[index % images.length]!,
-      innerX,
-      leftY,
-      columnWidth,
-      tileHeight,
-      index + 1,
-    );
-    leftY += tileHeight + rowGap;
-  });
+  const mainX = innerX;
+  const mainY = innerY;
+  const mainHeight = innerHeight;
+  drawCoverImage(ctx, images[0]!, mainX, mainY, mainWidth, mainHeight, 24);
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = 'rgba(255,255,255,0.82)';
+  roundedRect(ctx, mainX, mainY, mainWidth, mainHeight, 24);
+  ctx.stroke();
 
-  let rightY = innerY;
-  rightHeights.forEach((tileHeight, index) => {
-    const imageIndex = index + leftHeights.length;
-    drawMasonryTile(
-      ctx,
-      images[imageIndex % images.length]!,
-      innerX + columnWidth + columnGap,
-      rightY,
-      columnWidth,
-      tileHeight,
-      imageIndex + 1,
-    );
-    rightY += tileHeight + rowGap;
-  });
+  const mainOverlay = ctx.createLinearGradient(0, mainY + mainHeight * 0.5, 0, mainY + mainHeight);
+  mainOverlay.addColorStop(0, 'rgba(15,23,42,0)');
+  mainOverlay.addColorStop(1, 'rgba(15,23,42,0.72)');
+  ctx.fillStyle = mainOverlay;
+  roundedRect(ctx, mainX, mainY, mainWidth, mainHeight, 24);
+  ctx.fill();
 
-  const overlay = ctx.createLinearGradient(0, y + height * 0.4, 0, y + height);
+  const sideX = mainX + mainWidth + columnGap;
+  drawMasonryTile(ctx, images[1]!, sideX, innerY, sideWidth, sideHeights[0]!, 2);
+  drawMasonryTile(
+    ctx,
+    images[2]!,
+    sideX,
+    innerY + sideHeights[0]! + 12,
+    sideWidth,
+    sideHeights[1]!,
+    3,
+  );
+
+  const stripY = mainY + mainHeight - 148;
+  const stripX = mainX + 16;
+  const stripGap = 8;
+  const stripWidth = mainWidth - 32;
+  const thumbWidth = (stripWidth - stripGap * 2) / 3;
+  const stripSources = [images[3]!, images[4]!, images[0]!];
+  for (let index = 0; index < 3; index += 1) {
+    drawMiniPosterThumb(
+      ctx,
+      stripSources[index]!,
+      stripX + (thumbWidth + stripGap) * index,
+      stripY,
+      thumbWidth,
+      132,
+    );
+  }
+
+  ctx.fillStyle = 'rgba(255,255,255,0.95)';
+  ctx.font = '700 29px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
+  ctx.fillText('公开图鉴入口', mainX + 22, mainY + 46);
+  ctx.fillStyle = 'rgba(255,255,255,0.86)';
+  ctx.font = '500 21px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
+  ctx.fillText('分享后客户可直接浏览在售个体', mainX + 22, mainY + 78);
+
+  const overlay = ctx.createLinearGradient(0, y + height * 0.55, 0, y + height);
   overlay.addColorStop(0, 'rgba(15,23,42,0)');
-  overlay.addColorStop(0.55, 'rgba(15,23,42,0.22)');
-  overlay.addColorStop(1, 'rgba(15,23,42,0.68)');
+  overlay.addColorStop(1, 'rgba(15,23,42,0.4)');
   ctx.fillStyle = overlay;
   ctx.fillRect(x, y, width, height);
+  ctx.restore();
+}
+
+function drawMiniPosterThumb(
+  ctx: CanvasRenderingContext2D,
+  image: HTMLImageElement,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+) {
+  ctx.save();
+  ctx.fillStyle = 'rgba(255,255,255,0.2)';
+  roundedRect(ctx, x - 2, y - 2, width + 4, height + 4, 14);
+  ctx.fill();
+  drawCoverImage(ctx, image, x, y, width, height, 12);
+  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = 'rgba(255,255,255,0.82)';
+  roundedRect(ctx, x, y, width, height, 12);
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -1035,7 +1099,7 @@ function drawMasonryTile(
 
   ctx.fillStyle = 'rgba(255,255,255,0.96)';
   ctx.font = '700 13px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
-  ctx.fillText(`TOP ${String(index).padStart(2, '0')}`, x + 12, y + height - 14);
+  ctx.fillText(`精选 ${String(index).padStart(2, '0')}`, x + 12, y + height - 14);
 
   const rankSize = 28;
   const rankX = x + 10;
