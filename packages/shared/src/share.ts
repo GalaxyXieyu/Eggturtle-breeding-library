@@ -121,7 +121,9 @@ export const publicShareQuerySchema = z.object({
     .coerce
     .number()
     .int()
-    .refine((value) => value === 480 || value === 960, { message: 'maxEdge must be 480 or 960.' })
+    .refine((value) => value === 320 || value === 480 || value === 960, {
+      message: 'maxEdge must be 320, 480 or 960.'
+    })
     .optional()
 });
 

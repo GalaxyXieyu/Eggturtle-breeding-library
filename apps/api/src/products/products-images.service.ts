@@ -15,7 +15,7 @@ import type {
 import { randomUUID } from 'node:crypto';
 import * as path from 'node:path';
 
-import { resolveAllowedMaxEdge, resizeToWebpMaxEdge } from '../images/image-variants';
+import { buildWebpVariantKey, resolveAllowedMaxEdge, resizeToWebpMaxEdge } from '../images/image-variants';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { PrismaService } from '../prisma.service';
 import { STORAGE_PROVIDER_TOKEN } from '../storage/storage.constants';
@@ -370,8 +370,40 @@ export class ProductsImagesService {
     const maxEdge = resolveAllowedMaxEdge(options?.maxEdge);
 
     try {
+      if (maxEdge) {
+        const variantKey = buildWebpVariantKey(image.key, maxEdge);
+        try {
+          const variantObject = await this.storageProvider.getObject(variantKey);
+          return {
+            content: variantObject.body,
+            contentType: variantObject.contentType ?? image.contentType,
+          };
+        } catch (error) {
+          if (!(error instanceof NotFoundException)) {
+            throw error;
+          }
+        }
+      }
+
       const storedObject = await this.storageProvider.getObject(image.key);
       const resized = maxEdge ? await resizeToWebpMaxEdge({ body: storedObject.body, maxEdge }) : null;
+
+      if (maxEdge && resized) {
+        const variantKey = buildWebpVariantKey(image.key, maxEdge);
+        void this.storageProvider
+          .putObject({
+            key: variantKey,
+            body: resized.body,
+            contentType: resized.contentType,
+            metadata: {
+              source: 'product-image-variant',
+              originalKey: image.key,
+              maxEdge: String(maxEdge)
+            }
+          })
+          .catch(() => undefined);
+      }
+
       return {
         content: resized?.body ?? storedObject.body,
         contentType: resized?.contentType ?? image.contentType ?? storedObject.contentType,

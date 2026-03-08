@@ -120,6 +120,11 @@ export function SeriesIntroCard({
 }) {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const firstImage = withPublicImageMaxEdge(breeders[0]?.images[0]?.url, 960);
+  const [coverLoaded, setCoverLoaded] = useState(false);
+
+  useEffect(() => {
+    setCoverLoaded(false);
+  }, [firstImage]);
 
   if (!series) return null;
 
@@ -139,7 +144,19 @@ export function SeriesIntroCard({
       <div className="relative overflow-hidden">
         {firstImage ? (
           <>
-            <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${firstImage})` }} />
+            {!coverLoaded ? (
+              <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-neutral-600 via-neutral-500 to-neutral-600" />
+            ) : null}
+            <img
+              src={firstImage}
+              alt={`${series.name} 系列封面`}
+              className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${coverLoaded ? 'opacity-100' : 'opacity-0'}`}
+              loading="lazy"
+              decoding="async"
+              fetchPriority="low"
+              onLoad={() => setCoverLoaded(true)}
+              onError={() => setCoverLoaded(true)}
+            />
             <div className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/60 to-black/50" />
           </>
         ) : (
@@ -205,7 +222,7 @@ export function BreederCard({
       href={withDemo(publicPath(shareToken, `/products/${breeder.id}`, shareQuery), demo)}
       variant="public"
       code={breeder.code}
-      coverImageUrl={withPublicImageMaxEdge(mainImage?.url, 480) ?? undefined}
+      coverImageUrl={withPublicImageMaxEdge(mainImage?.url, 320) ?? undefined}
       coverFallbackImageUrl="/images/mg_01.jpg"
       coverAlt={breeder.code}
       sex={breeder.sex}
@@ -353,7 +370,7 @@ export function BreederCarousel({
                 onClick={() => setCurrentImageIndex(index)}
               >
                 <img
-                  src={withPublicImageMaxEdge(img.url, 480) ?? img.url}
+                  src={withPublicImageMaxEdge(img.url, 320) ?? img.url}
                   alt={img.alt || `${breeder.code}-${index + 1}`}
                   className="h-full w-full object-cover"
                   loading="lazy"

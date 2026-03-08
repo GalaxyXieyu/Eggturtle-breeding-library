@@ -125,7 +125,7 @@ export default async function PublicShareSeriesPage({
                   <div className="relative h-40 w-full">
                     {coverUrl ? (
                       <img
-                        src={withPublicImageMaxEdge(coverUrl, 480) ?? coverUrl}
+                        src={withPublicImageMaxEdge(coverUrl, 320) ?? coverUrl}
                         alt={`${series.name} 系列封面`}
                         className="h-full w-full object-cover"
                         loading="lazy"

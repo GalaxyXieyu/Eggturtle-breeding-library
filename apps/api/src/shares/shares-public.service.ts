@@ -2,7 +2,7 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { ErrorCode } from '@eggturtle/shared';
 import { Prisma } from '@prisma/client';
 
-import { resolveAllowedMaxEdge, resizeToWebpMaxEdge } from '../images/image-variants';
+import { buildWebpVariantKey, resolveAllowedMaxEdge, resizeToWebpMaxEdge } from '../images/image-variants';
 
 import { canonicalMateCodeCandidates, parseCurrentMateCode } from '../products/breeding-rules';
 import {
@@ -147,9 +147,46 @@ export class SharesPublicService {
       });
     }
 
-    const object = await this.storageProvider.getObject(query.key);
+    const variantKey = maxEdge ? buildWebpVariantKey(query.key, maxEdge) : null;
+    let content: Buffer;
+    let contentType: string | null;
+    let resolvedFromVariant = false;
 
-    const resized = maxEdge ? await resizeToWebpMaxEdge({ body: object.body, maxEdge }) : null;
+    if (variantKey) {
+      try {
+        const variantObject = await this.storageProvider.getObject(variantKey);
+        content = variantObject.body;
+        contentType = variantObject.contentType;
+        resolvedFromVariant = true;
+      } catch (error) {
+        if (!(error instanceof NotFoundException)) {
+          throw error;
+        }
+        const object = await this.storageProvider.getObject(query.key);
+        const resized = await resizeToWebpMaxEdge({ body: object.body, maxEdge: maxEdge as 320 | 480 | 960 });
+        content = resized.body;
+        contentType = resized.contentType;
+      }
+    } else {
+      const object = await this.storageProvider.getObject(query.key);
+      content = object.body;
+      contentType = object.contentType;
+    }
+
+    if (variantKey && !resolvedFromVariant) {
+      void this.storageProvider
+        .putObject({
+          key: variantKey,
+          body: content,
+          contentType: contentType ?? undefined,
+          metadata: {
+            source: 'share-asset-variant',
+            originalKey: query.key,
+            maxEdge: String(maxEdge)
+          }
+        })
+        .catch(() => undefined);
+    }
 
     await this.sharesCoreService.writeShareAccessAuditLog(
       {
@@ -166,8 +203,8 @@ export class SharesPublicService {
     );
 
     return {
-      content: resized?.body ?? object.body,
-      contentType: resized?.contentType ?? object.contentType,
+      content,
+      contentType,
       expiresAt
     };
   }
@@ -214,7 +251,7 @@ export class SharesPublicService {
               key: coverImage.key,
               fallbackUrl: coverImage.url,
               expiresAt,
-              maxEdge: 480
+              maxEdge: 320
             })
           : null;
 
@@ -727,7 +764,7 @@ export class SharesPublicService {
               key: mainImage.key,
               fallbackUrl: mainImage.url,
               expiresAt,
-              maxEdge: 480
+              maxEdge: 320
             })
           : null;
 

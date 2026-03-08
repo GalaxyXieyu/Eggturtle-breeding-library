@@ -18,7 +18,7 @@ import type { ShareAccessMeta, ShareAuditScope } from './shares.types';
 
 const DEFAULT_WEB_PUBLIC_BASE_URL = 'http://localhost:30010';
 const DEFAULT_API_PUBLIC_BASE_URL = 'http://localhost:30011';
-const DEFAULT_SIGNED_URL_TTL_SECONDS = 300;
+const DEFAULT_SIGNED_URL_TTL_SECONDS = 3600;
 const DEFAULT_RATE_LIMIT_WINDOW_MS = 60_000;
 const DEFAULT_RATE_LIMIT_MAX_REQUESTS = 20;
 
@@ -50,8 +50,11 @@ export class SharesCoreService {
     requestOrigin?: string | null
   ): { redirectUrl: string; expiresAt: Date } {
     const ttlSeconds = this.getSignedUrlTtlSeconds();
-    const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
-    const exp = Math.floor(expiresAt.getTime() / 1000).toString();
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    // Align expiry to a fixed TTL boundary so entry URLs stay stable within the same window.
+    const expiresAtSeconds = Math.ceil((nowSeconds + 1) / ttlSeconds) * ttlSeconds;
+    const expiresAt = new Date(expiresAtSeconds * 1000);
+    const exp = expiresAtSeconds.toString();
 
     const signature = this.signPayload({
       shareId: payload.id,

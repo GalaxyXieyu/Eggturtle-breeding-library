@@ -120,7 +120,7 @@ export default function PublicProductDetailPage({
                       >
                         <div className="relative aspect-[4/5] bg-neutral-100">
                           <img
-                            src={withPublicImageMaxEdge(item.images[0]?.url, 480) ?? '/images/mg_01.jpg'}
+                            src={withPublicImageMaxEdge(item.images[0]?.url, 320) ?? '/images/mg_01.jpg'}
                             alt={item.code}
                             className="h-full w-full object-cover"
                             loading="lazy"

@@ -1,7 +1,7 @@
 import { BadRequestException, Controller, Get, Header, Inject, StreamableFile, Query } from '@nestjs/common';
 import path from 'node:path';
 
-import { resolveAllowedMaxEdge, resizeToWebpMaxEdge } from '../images/image-variants';
+import { buildWebpVariantKey, resolveAllowedMaxEdge, resizeToWebpMaxEdge } from '../images/image-variants';
 import { STORAGE_PROVIDER_TOKEN } from '../storage/storage.constants';
 import type { StorageProvider } from '../storage/storage.provider';
 
@@ -68,10 +68,31 @@ export class TenantSharePresentationPublicController {
     const maxEdge = resolveAllowedMaxEdge(maxEdgeRaw ? Number(maxEdgeRaw) : undefined);
 
     if (maxEdge && contentType.startsWith('image/')) {
-      const resized = await resizeToWebpMaxEdge({ body: result.body, maxEdge });
-      return new StreamableFile(resized.body, {
-        type: resized.contentType
-      });
+      const variantKey = buildWebpVariantKey(normalizedKey, maxEdge);
+      try {
+        const variantObject = await this.storageProvider.getObject(variantKey);
+        return new StreamableFile(variantObject.body, {
+          type: variantObject.contentType ?? 'image/webp'
+        });
+      } catch {
+        const resized = await resizeToWebpMaxEdge({ body: result.body, maxEdge });
+        void this.storageProvider
+          .putObject({
+            key: variantKey,
+            body: resized.body,
+            contentType: resized.contentType,
+            metadata: {
+              source: 'tenant-share-presentation-variant',
+              originalKey: normalizedKey,
+              maxEdge: String(maxEdge)
+            }
+          })
+          .catch(() => undefined);
+
+        return new StreamableFile(resized.body, {
+          type: resized.contentType
+        });
+      }
     }
 
     return new StreamableFile(result.body, {

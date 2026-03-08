@@ -65,10 +65,15 @@ export default function PublicFeedPage({
   );
   const heroSignature = useMemo(() => heroImages.join('|'), [heroImages]);
   const [heroIndex, setHeroIndex] = useState(0);
+  const [heroImageLoaded, setHeroImageLoaded] = useState(false);
 
   useEffect(() => {
     setHeroIndex(0);
   }, [heroSignature]);
+
+  useEffect(() => {
+    setHeroImageLoaded(false);
+  }, [heroIndex, heroSignature]);
 
   useEffect(() => {
     if (heroImages.length <= 1) {
@@ -266,11 +271,18 @@ export default function PublicFeedPage({
       <div className="w-full px-1 pb-[calc(env(safe-area-inset-bottom)+94px)] pt-[calc(env(safe-area-inset-top)+8px)] sm:px-3 lg:px-5 2xl:px-6">
         <header className="mb-3 overflow-hidden bg-neutral-900 shadow-[0_18px_50px_rgba(0,0,0,0.22)] sm:rounded-2xl">
           <div className="relative h-[240px] lg:h-[320px]">
-            <div
-              className="absolute inset-0 bg-cover bg-center transition-all duration-500"
-              style={{
-                backgroundImage: `url(${heroImages[heroIndex] || '/images/mg_04.jpg'})`,
-              }}
+            {!heroImageLoaded ? (
+              <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-neutral-500 via-neutral-400 to-neutral-500" />
+            ) : null}
+            <img
+              src={heroImages[heroIndex] || '/images/mg_04.jpg'}
+              alt={resolvedPresentation.feedTitle}
+              className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${heroImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
+              onLoad={() => setHeroImageLoaded(true)}
+              onError={() => setHeroImageLoaded(true)}
             />
             <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-black/25 to-black/40" />
             <div

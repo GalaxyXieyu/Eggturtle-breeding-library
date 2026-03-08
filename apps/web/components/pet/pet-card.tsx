@@ -2,6 +2,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import type { KeyboardEventHandler, MouseEventHandler, ReactNode } from 'react';
 
 import { cn } from '@/lib/utils';
@@ -74,6 +75,12 @@ export default function PetCard(props: PetCardProps) {
     ariaLabel
   } = props;
   const resolvedCover = coverImageUrl || coverFallbackImageUrl || null;
+  const [imageLoaded, setImageLoaded] = useState(!resolvedCover);
+
+  useEffect(() => {
+    setImageLoaded(!resolvedCover);
+  }, [resolvedCover]);
+
   const rootClassName = cn(
     'group overflow-hidden rounded-2xl border border-neutral-200/90 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)] transition hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-[0_12px_34px_rgba(0,0,0,0.14)]',
     variant === 'tenant' ? 'cursor-pointer' : 'active:scale-[0.995]',
@@ -84,14 +91,21 @@ export default function PetCard(props: PetCardProps) {
     <>
       <div className="relative aspect-square bg-neutral-100">
         {resolvedCover ? (
-          <img
-            src={resolvedCover}
-            alt={coverAlt || code}
-            className="h-full w-full object-cover"
-            loading={imageLoading}
-            decoding="async"
-            fetchPriority="low"
-          />
+          <>
+            {!imageLoaded ? (
+              <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-neutral-200 via-neutral-100 to-neutral-200" />
+            ) : null}
+            <img
+              src={resolvedCover}
+              alt={coverAlt || code}
+              className={`h-full w-full object-cover transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              loading={imageLoading}
+              decoding="async"
+              fetchPriority="low"
+              onLoad={() => setImageLoaded(true)}
+              onError={() => setImageLoaded(true)}
+            />
+          </>
         ) : (
           <div className="flex h-full w-full items-center justify-center text-xs text-neutral-500">
             {emptyCoverLabel}

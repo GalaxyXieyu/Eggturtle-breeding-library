@@ -1,6 +1,6 @@
 const ABSOLUTE_URL_PATTERN = /^[a-zA-Z][a-zA-Z\d+.-]*:\/\//;
 
-export type PublicImageMaxEdge = 480 | 960;
+export type PublicImageMaxEdge = 320 | 480 | 960;
 
 function isResizablePublicAssetPath(pathname: string): boolean {
   if (pathname === '/tenant-share-presentation/assets') {
