@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PublicSharePresentation } from '@eggturtle/shared';
 
 import { PetCard } from '@/components/pet';
@@ -121,9 +121,13 @@ export function SeriesIntroCard({
   const [isCollapsed, setIsCollapsed] = useState(true);
   const firstImage = withPublicImageMaxEdge(breeders[0]?.images[0]?.url, 960);
   const [coverLoaded, setCoverLoaded] = useState(false);
+  const coverImageRef = useRef<HTMLImageElement | null>(null);
 
   useEffect(() => {
     setCoverLoaded(false);
+    if (coverImageRef.current?.complete) {
+      setCoverLoaded(true);
+    }
   }, [firstImage]);
 
   if (!series) return null;
@@ -148,6 +152,7 @@ export function SeriesIntroCard({
               <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-neutral-600 via-neutral-500 to-neutral-600" />
             ) : null}
             <img
+              ref={coverImageRef}
               src={firstImage}
               alt={`${series.name} 系列封面`}
               className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${coverLoaded ? 'opacity-100' : 'opacity-0'}`}
@@ -262,10 +267,14 @@ export function BreederCarousel({
   const activeImageUrl =
     (withPublicImageMaxEdge(activeImage?.url || '/images/mg_01.jpg', 960) as string) ?? '/images/mg_01.jpg';
   const [activeImageLoaded, setActiveImageLoaded] = useState(false);
+  const activeImageRef = useRef<HTMLImageElement | null>(null);
   const resolvedHomeHref = homeHref ?? withDemo(publicPath(shareToken, '', shareQuery), demo);
 
   useEffect(() => {
     setActiveImageLoaded(false);
+    if (activeImageRef.current?.complete) {
+      setActiveImageLoaded(true);
+    }
   }, [activeImageUrl]);
 
   return (
@@ -306,6 +315,7 @@ export function BreederCarousel({
               <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-neutral-200 via-neutral-100 to-neutral-200" />
             ) : null}
             <img
+              ref={activeImageRef}
               src={activeImageUrl}
               alt={activeImage?.alt || breeder.code}
               className={`h-full w-full object-cover transition-opacity duration-300 ${activeImageLoaded ? 'opacity-100' : 'opacity-0'}`}

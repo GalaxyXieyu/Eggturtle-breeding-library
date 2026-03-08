@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PublicSharePresentation } from '@eggturtle/shared';
 import { Search, X } from 'lucide-react';
 
@@ -66,6 +66,7 @@ export default function PublicFeedPage({
   const heroSignature = useMemo(() => heroImages.join('|'), [heroImages]);
   const [heroIndex, setHeroIndex] = useState(0);
   const [heroImageLoaded, setHeroImageLoaded] = useState(false);
+  const heroImageRef = useRef<HTMLImageElement | null>(null);
 
   useEffect(() => {
     setHeroIndex(0);
@@ -73,6 +74,9 @@ export default function PublicFeedPage({
 
   useEffect(() => {
     setHeroImageLoaded(false);
+    if (heroImageRef.current?.complete) {
+      setHeroImageLoaded(true);
+    }
   }, [heroIndex, heroSignature]);
 
   useEffect(() => {
@@ -275,6 +279,7 @@ export default function PublicFeedPage({
               <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-neutral-500 via-neutral-400 to-neutral-500" />
             ) : null}
             <img
+              ref={heroImageRef}
               src={heroImages[heroIndex] || '/images/mg_04.jpg'}
               alt={resolvedPresentation.feedTitle}
               className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${heroImageLoaded ? 'opacity-100' : 'opacity-0'}`}

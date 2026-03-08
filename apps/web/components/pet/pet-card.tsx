@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEventHandler, MouseEventHandler, ReactNode } from 'react';
 
 import { cn } from '@/lib/utils';
@@ -76,9 +76,18 @@ export default function PetCard(props: PetCardProps) {
   } = props;
   const resolvedCover = coverImageUrl || coverFallbackImageUrl || null;
   const [imageLoaded, setImageLoaded] = useState(!resolvedCover);
+  const imageRef = useRef<HTMLImageElement | null>(null);
 
   useEffect(() => {
-    setImageLoaded(!resolvedCover);
+    if (!resolvedCover) {
+      setImageLoaded(true);
+      return;
+    }
+
+    setImageLoaded(false);
+    if (imageRef.current?.complete) {
+      setImageLoaded(true);
+    }
   }, [resolvedCover]);
 
   const rootClassName = cn(
@@ -96,6 +105,7 @@ export default function PetCard(props: PetCardProps) {
               <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-neutral-200 via-neutral-100 to-neutral-200" />
             ) : null}
             <img
+              ref={imageRef}
               src={resolvedCover}
               alt={coverAlt || code}
               className={`h-full w-full object-cover transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}

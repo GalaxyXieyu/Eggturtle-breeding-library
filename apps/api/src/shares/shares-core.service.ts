@@ -18,7 +18,7 @@ import type { ShareAccessMeta, ShareAuditScope } from './shares.types';
 
 const DEFAULT_WEB_PUBLIC_BASE_URL = 'http://localhost:30010';
 const DEFAULT_API_PUBLIC_BASE_URL = 'http://localhost:30011';
-const DEFAULT_SIGNED_URL_TTL_SECONDS = 3600;
+const DEFAULT_SIGNED_URL_TTL_SECONDS = 86_400;
 const DEFAULT_RATE_LIMIT_WINDOW_MS = 60_000;
 const DEFAULT_RATE_LIMIT_MAX_REQUESTS = 20;
 

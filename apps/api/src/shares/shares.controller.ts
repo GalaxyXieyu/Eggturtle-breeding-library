@@ -127,9 +127,10 @@ export class SharesController {
       }
     );
 
-    // Cache only until the share signature expires.
-    const maxAge = Math.max(0, Math.min(3600, Math.floor((asset.expiresAt.getTime() - Date.now()) / 1000)));
-    response.setHeader('Cache-Control', `public, max-age=${maxAge}, s-maxage=${maxAge}`);
+    // Cache until the share signature expires. Asset URLs are content-addressed by key+exp+sig.
+    const maxAge = Math.max(0, Math.floor((asset.expiresAt.getTime() - Date.now()) / 1000));
+    const immutable = maxAge > 0 ? ', immutable' : '';
+    response.setHeader('Cache-Control', `public, max-age=${maxAge}, s-maxage=${maxAge}${immutable}`);
 
     if (asset.contentType) {
       response.setHeader('Content-Type', asset.contentType);

@@ -24,8 +24,28 @@ import type {
   ShareScope
 } from './shares.types';
 
+type PublicAssetShareRecord = {
+  id: string;
+  tenantId: string;
+  resourceType: string;
+  resourceId: string;
+  productId: string | null;
+  createdByUserId: string;
+};
+
+const PUBLIC_ASSET_SHARE_CACHE_TTL_MS = 30_000;
+const PUBLIC_ASSET_SHARE_CACHE_MAX_ENTRIES = 1024;
+
 @Injectable()
 export class SharesPublicService {
+  private readonly publicAssetShareCache = new Map<
+    string,
+    {
+      share: PublicAssetShareRecord;
+      expiresAtMs: number;
+    }
+  >();
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly tenantSharePresentationService: TenantSharePresentationService,
@@ -115,30 +135,7 @@ export class SharesPublicService {
     });
 
     const maxEdge = resolveAllowedMaxEdge(query.maxEdge);
-
-    const share = await this.prisma.publicShare.findFirst({
-      where: {
-        id: shareId,
-        tenantId: query.tenantId,
-        resourceType: query.resourceType,
-        resourceId: query.resourceId
-      },
-      select: {
-        id: true,
-        tenantId: true,
-        resourceType: true,
-        resourceId: true,
-        productId: true,
-        createdByUserId: true
-      }
-    });
-
-    if (!share) {
-      throw new NotFoundException({
-        message: 'Share content not found.',
-        errorCode: ErrorCode.ShareNotFound
-      });
-    }
+    const share = await this.resolvePublicAssetShare(shareId, query);
 
     if (!this.sharesCoreService.isManagedStorageKey(share.tenantId, query.key)) {
       throw new NotFoundException({
@@ -188,19 +185,21 @@ export class SharesPublicService {
         .catch(() => undefined);
     }
 
-    await this.sharesCoreService.writeShareAccessAuditLog(
-      {
-        id: share.id,
-        tenantId: share.tenantId,
-        resourceType: this.sharesCoreService.parseShareResourceType(share.resourceType),
-        resourceId: share.resourceId,
-        productId: share.productId,
-        createdByUserId: share.createdByUserId
-      },
-      expiresAt,
-      'asset',
-      meta
-    );
+    void this.sharesCoreService
+      .writeShareAccessAuditLog(
+        {
+          id: share.id,
+          tenantId: share.tenantId,
+          resourceType: this.sharesCoreService.parseShareResourceType(share.resourceType),
+          resourceId: share.resourceId,
+          productId: share.productId,
+          createdByUserId: share.createdByUserId
+        },
+        expiresAt,
+        'asset',
+        meta
+      )
+      .catch(() => undefined);
 
     return {
       content,
@@ -818,5 +817,77 @@ export class SharesPublicService {
       key: input.key,
       maxEdge: input.maxEdge
     });
+  }
+
+  private async resolvePublicAssetShare(
+    shareId: string,
+    query: Pick<PublicShareAssetQueryInput, 'tenantId' | 'resourceType' | 'resourceId'>
+  ): Promise<PublicAssetShareRecord> {
+    const now = Date.now();
+    const cacheKey = this.buildPublicAssetShareCacheKey(shareId, query);
+    const cached = this.publicAssetShareCache.get(cacheKey);
+
+    if (cached && cached.expiresAtMs > now) {
+      return cached.share;
+    }
+
+    const share = await this.prisma.publicShare.findFirst({
+      where: {
+        id: shareId,
+        tenantId: query.tenantId,
+        resourceType: query.resourceType,
+        resourceId: query.resourceId
+      },
+      select: {
+        id: true,
+        tenantId: true,
+        resourceType: true,
+        resourceId: true,
+        productId: true,
+        createdByUserId: true
+      }
+    });
+
+    if (!share) {
+      throw new NotFoundException({
+        message: 'Share content not found.',
+        errorCode: ErrorCode.ShareNotFound
+      });
+    }
+
+    this.publicAssetShareCache.set(cacheKey, {
+      share,
+      expiresAtMs: now + PUBLIC_ASSET_SHARE_CACHE_TTL_MS
+    });
+    this.prunePublicAssetShareCache(now);
+
+    return share;
+  }
+
+  private buildPublicAssetShareCacheKey(
+    shareId: string,
+    query: Pick<PublicShareAssetQueryInput, 'tenantId' | 'resourceType' | 'resourceId'>
+  ) {
+    return `${shareId}:${query.tenantId}:${query.resourceType}:${query.resourceId}`;
+  }
+
+  private prunePublicAssetShareCache(nowMs: number) {
+    if (this.publicAssetShareCache.size === 0) {
+      return;
+    }
+
+    for (const [key, value] of this.publicAssetShareCache.entries()) {
+      if (value.expiresAtMs <= nowMs) {
+        this.publicAssetShareCache.delete(key);
+      }
+    }
+
+    while (this.publicAssetShareCache.size > PUBLIC_ASSET_SHARE_CACHE_MAX_ENTRIES) {
+      const oldestKey = this.publicAssetShareCache.keys().next().value;
+      if (!oldestKey) {
+        break;
+      }
+      this.publicAssetShareCache.delete(oldestKey);
+    }
   }
 }
