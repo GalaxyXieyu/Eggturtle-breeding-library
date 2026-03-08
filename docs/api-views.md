@@ -36,7 +36,7 @@
 | `/dashboard/memberships` | 成员治理 | `GET /admin/tenants/:tenantId/members`、`POST /admin/tenants/:tenantId/members` |
 | `/dashboard/analytics` | 活跃度分析 | `GET /admin/analytics/activity/overview` |
 | `/dashboard/usage` | 用量分析 | `GET /admin/analytics/usage/overview` |
-| `/dashboard/billing` | 付费分析 | `GET /admin/analytics/revenue/overview` |
+| `/dashboard/analytics/revenue` | 付费分析 | `GET /admin/analytics/revenue/overview` |
 
 ## 2. 产品抽屉化后的 API 行为
 

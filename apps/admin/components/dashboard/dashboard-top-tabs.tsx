@@ -47,7 +47,7 @@ const DATA_TAB_ITEMS: TopTabItem[] = [
     label: { zh: '用量', en: 'Usage' }
   },
   {
-    href: '/dashboard/billing',
+    href: '/dashboard/analytics/revenue',
     match: 'prefix',
     label: { zh: '营收', en: 'Revenue' }
   }

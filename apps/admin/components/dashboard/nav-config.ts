@@ -66,7 +66,7 @@ export const dashboardNavGroups: DashboardNavGroup[] = [
         }
       },
       {
-        href: '/dashboard/billing',
+        href: '/dashboard/analytics/revenue',
         icon: 'revenue',
         label: { zh: '营收', en: 'Revenue' },
         description: {
