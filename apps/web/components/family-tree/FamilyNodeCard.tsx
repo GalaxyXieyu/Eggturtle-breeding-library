@@ -19,6 +19,7 @@ type FamilyNodeCardProps = {
   emptyLabel?: string;
   imageFit?: 'cover' | 'contain';
   imageResolver?: (url: string) => string;
+  size?: 'default' | 'large';
 };
 
 function resolveNodeImageUrl(node: FamilyNodeLike, imageResolver?: (url: string) => string) {
@@ -39,27 +40,42 @@ export function FamilyNodeCard({
   codeClassName,
   emptyLabel = '未知',
   imageFit = 'cover',
-  imageResolver
+  imageResolver,
+  size = 'default'
 }: FamilyNodeCardProps) {
+  const isLarge = size === 'large';
+  const shellClassName = isLarge ? 'w-28 gap-2.5 rounded-2xl p-2.5 sm:w-32' : 'w-24 gap-2 rounded-xl p-2';
+  const imageFrameClassName = isLarge ? 'rounded-xl' : 'rounded-lg';
+  const emptyTextClassName = isLarge ? 'text-xs' : 'text-[11px]';
+  const codeTextClassName = isLarge ? 'px-1 text-xs leading-4' : 'px-1 text-[11px] leading-4';
+
   if (!node) {
     return (
       <div
         className={cn(
-          'flex w-24 flex-col items-center gap-2 rounded-xl border border-dashed border-neutral-300 bg-neutral-50/80 p-2 text-center',
+          'flex flex-col items-center border border-dashed border-neutral-300 bg-neutral-50/80 text-center',
+          shellClassName,
           className
         )}
       >
-        <div className="flex aspect-square w-full items-center justify-center rounded-lg border border-dashed border-neutral-300 bg-neutral-100 text-[11px] text-neutral-400">
+        <div
+          className={cn(
+            'flex aspect-square w-full items-center justify-center border border-dashed border-neutral-300 bg-neutral-100 text-neutral-400',
+            imageFrameClassName,
+            emptyTextClassName
+          )}
+        >
           {emptyLabel}
         </div>
-        <div className={cn('w-full truncate text-[11px] font-medium text-neutral-400', codeClassName)}>-</div>
+        <div className={cn('w-full truncate font-medium text-neutral-400', codeTextClassName, codeClassName)}>-</div>
       </div>
     );
   }
 
   const imageUrl = resolveNodeImageUrl(node, imageResolver);
   const cardClassName = cn(
-    'group flex w-24 flex-col items-center gap-2 rounded-xl border bg-white p-2 text-center shadow-sm transition',
+    'group flex flex-col items-center border bg-white text-center shadow-sm transition',
+    shellClassName,
     highlight
       ? 'border-amber-300 shadow-[0_0_0_1px_rgba(245,158,11,0.35),0_8px_20px_rgba(245,158,11,0.22)]'
       : 'border-neutral-200 hover:border-amber-400 hover:shadow-md',
@@ -68,7 +84,7 @@ export function FamilyNodeCard({
 
   const content = (
     <>
-      <div className="aspect-square w-full overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50">
+      <div className={cn('aspect-square w-full overflow-hidden border border-neutral-200 bg-neutral-50', imageFrameClassName)}>
         {imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -76,7 +92,7 @@ export function FamilyNodeCard({
             alt={node.code}
             className={cn(
               'h-full w-full',
-              imageFit === 'contain' ? 'object-contain p-1.5' : 'object-cover'
+              imageFit === 'contain' ? (isLarge ? 'object-contain p-2' : 'object-contain p-1.5') : 'object-cover'
             )}
             loading="lazy"
             decoding="async"
@@ -84,11 +100,11 @@ export function FamilyNodeCard({
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-neutral-100 to-neutral-200">
-            <span className="text-[11px] text-neutral-400">暂无图</span>
+            <span className={cn('text-neutral-400', emptyTextClassName)}>暂无图</span>
           </div>
         )}
       </div>
-      <div className={cn('w-full truncate px-1 text-[11px] font-medium leading-4 text-neutral-700', codeClassName)}>{node.code}</div>
+      <div className={cn('w-full truncate font-medium text-neutral-700', codeTextClassName, codeClassName)}>{node.code}</div>
     </>
   );
 

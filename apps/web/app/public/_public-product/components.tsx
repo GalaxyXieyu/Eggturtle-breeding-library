@@ -627,6 +627,7 @@ export function FamilyTreeSection({
   shareQuery?: string;
 }) {
   const [showSiblings, setShowSiblings] = useState(false);
+  const treeImageResolver = (url: string) => withPublicImageMaxEdge(url, 480) ?? url;
 
   return (
     <div className="mt-8 px-1 sm:px-3 lg:px-5 2xl:px-6">
@@ -637,67 +638,68 @@ export function FamilyTreeSection({
       {!familyTree ? (
         <div className="rounded-2xl border border-neutral-200 bg-white/80 p-6 text-center text-sm text-neutral-600">暂无家族树数据（预留布局）。</div>
       ) : (
-        <div className="relative overflow-hidden rounded-2xl border border-black/5 bg-white shadow-[0_8px_24px_rgba(0,0,0,0.06)]">
-          <div className="overflow-x-auto overflow-y-hidden pb-4">
-            <div className="inline-flex gap-8 px-4 py-6">
-              <div className="flex flex-col gap-4">
+        <div className="relative overflow-hidden rounded-2xl border border-black/5 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(250,250,249,0.98))] shadow-[0_8px_24px_rgba(0,0,0,0.06)]">
+          <div className="overflow-x-auto overflow-y-hidden pb-6">
+            <div className="inline-flex gap-5 px-3 py-5 sm:gap-6 sm:px-4 sm:py-6 lg:gap-7 lg:px-5">
+              <div className="flex flex-col gap-3.5">
                 <div className="text-center text-xs font-medium text-neutral-500">祖辈</div>
-                <TreeNode node={familyTree.ancestors.paternalGrandfather} demo={demo} shareToken={shareToken} shareQuery={shareQuery} />
-                <TreeNode node={familyTree.ancestors.paternalGrandmother} demo={demo} shareToken={shareToken} shareQuery={shareQuery} />
-                <TreeNode node={familyTree.ancestors.maternalGrandfather} demo={demo} shareToken={shareToken} shareQuery={shareQuery} />
-                <TreeNode node={familyTree.ancestors.maternalGrandmother} demo={demo} shareToken={shareToken} shareQuery={shareQuery} />
+                <TreeNode node={familyTree.ancestors.paternalGrandfather} demo={demo} shareToken={shareToken} shareQuery={shareQuery} imageResolver={treeImageResolver} />
+                <TreeNode node={familyTree.ancestors.paternalGrandmother} demo={demo} shareToken={shareToken} shareQuery={shareQuery} imageResolver={treeImageResolver} />
+                <TreeNode node={familyTree.ancestors.maternalGrandfather} demo={demo} shareToken={shareToken} shareQuery={shareQuery} imageResolver={treeImageResolver} />
+                <TreeNode node={familyTree.ancestors.maternalGrandmother} demo={demo} shareToken={shareToken} shareQuery={shareQuery} imageResolver={treeImageResolver} />
               </div>
 
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-3.5">
                 <div className="text-center text-xs font-medium text-neutral-500">父母辈</div>
-                <TreeNode node={familyTree.ancestors.father} demo={demo} shareToken={shareToken} shareQuery={shareQuery} />
-                <TreeNode node={familyTree.ancestors.mother} demo={demo} shareToken={shareToken} shareQuery={shareQuery} />
+                <TreeNode node={familyTree.ancestors.father} demo={demo} shareToken={shareToken} shareQuery={shareQuery} imageResolver={treeImageResolver} />
+                <TreeNode node={familyTree.ancestors.mother} demo={demo} shareToken={shareToken} shareQuery={shareQuery} imageResolver={treeImageResolver} />
               </div>
 
               <div className="flex flex-col gap-4">
                 <div className="text-center text-xs font-medium text-amber-600">当前</div>
                 <div className="flex flex-col items-center gap-3">
                   <div className="relative">
-                    <div className="absolute -inset-1 rounded-lg bg-gradient-to-r from-amber-400 to-orange-400 opacity-75 blur" />
+                    <div className="absolute -inset-1.5 rounded-2xl bg-gradient-to-r from-amber-300/85 to-orange-300/85 blur-md" />
                     <div className="relative">
-                      <TreeNode node={familyTree.current} demo={demo} shareToken={shareToken} shareQuery={shareQuery} />
+                      <TreeNode node={familyTree.current} demo={demo} shareToken={shareToken} shareQuery={shareQuery} imageResolver={treeImageResolver} />
                     </div>
                   </div>
                   {familyTree.currentMate?.id ? (
                     <div className="flex flex-col items-center gap-2">
-                      <div className="h-4 w-px rounded-full bg-amber-200" />
+                      <div className="h-5 w-px rounded-full bg-amber-200" />
                       <FamilyNodeCard
                         node={familyTree.currentMate}
                         href={withDemo(publicPath(shareToken, `/products/${familyTree.currentMate.id}`, shareQuery), demo)}
                         className="border-amber-200 bg-amber-50/70 hover:border-amber-300"
                         codeClassName="text-amber-900"
+                        size="large"
                       />
                     </div>
                   ) : null}
                 </div>
               </div>
 
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-3.5">
                 <div className="text-center text-xs font-medium text-neutral-500">子代</div>
-                {familyTree.offspring.length === 0 ? <TreeNode node={null} demo={demo} shareToken={shareToken} shareQuery={shareQuery} /> : familyTree.offspring.map((node) => <TreeNode key={node.id} node={node} demo={demo} shareToken={shareToken} shareQuery={shareQuery} />)}
+                {familyTree.offspring.length === 0 ? <TreeNode node={null} demo={demo} shareToken={shareToken} shareQuery={shareQuery} imageResolver={treeImageResolver} /> : familyTree.offspring.map((node) => <TreeNode key={node.id} node={node} demo={demo} shareToken={shareToken} shareQuery={shareQuery} imageResolver={treeImageResolver} />)}
 
                 {familyTree.siblings.length > 0 ? (
                   <button
                     type="button"
                     onClick={() => setShowSiblings((current) => !current)}
-                    className="rounded-full bg-neutral-200 px-2.5 py-0.5 text-[10px] font-medium text-neutral-700 shadow-sm transition hover:bg-neutral-300"
+                    className="rounded-full bg-neutral-200 px-3 py-1 text-[11px] font-medium text-neutral-700 shadow-sm transition hover:bg-neutral-300"
                   >
                     {showSiblings ? '隐藏同辈' : `+${familyTree.siblings.length} 同辈`}
                   </button>
                 ) : null}
 
-                {showSiblings ? familyTree.siblings.map((node) => <TreeNode key={node.id} node={node} demo={demo} shareToken={shareToken} shareQuery={shareQuery} />) : null}
+                {showSiblings ? familyTree.siblings.map((node) => <TreeNode key={node.id} node={node} demo={demo} shareToken={shareToken} shareQuery={shareQuery} imageResolver={treeImageResolver} />) : null}
               </div>
             </div>
           </div>
 
-          <div className="absolute bottom-0 left-0 right-0 flex justify-center">
-            <div className="rounded-t-lg bg-black/60 px-4 py-2 text-xs text-white backdrop-blur-sm">← 左滑查看祖辈 | 右滑查看后代 →</div>
+          <div className="absolute bottom-0 left-0 right-0 flex justify-center px-3">
+            <div className="rounded-t-xl bg-black/60 px-4 py-2 text-xs text-white backdrop-blur-sm">← 左滑查看祖辈 | 右滑查看后代 →</div>
           </div>
         </div>
       )}
@@ -710,11 +712,13 @@ function TreeNode({
   demo,
   shareToken,
   shareQuery,
+  imageResolver,
 }: {
   node: FamilyTree['current'] | null | undefined;
   demo: boolean;
   shareToken: string;
   shareQuery?: string;
+  imageResolver?: (url: string) => string;
 }) {
   const href = node?.id ? withDemo(publicPath(shareToken, `/products/${node.id}`, shareQuery), demo) : undefined;
 
@@ -722,6 +726,8 @@ function TreeNode({
     <FamilyNodeCard
       node={node}
       href={href}
+      imageResolver={imageResolver}
+      size="large"
     />
   );
 }
