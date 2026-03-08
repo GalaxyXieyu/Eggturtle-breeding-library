@@ -1,6 +1,34 @@
 const ABSOLUTE_URL_PATTERN = /^[a-zA-Z][a-zA-Z\d+.-]*:\/\//;
+const PUBLIC_ASSET_BASE_URL = normalizePublicAssetBaseUrl(process.env.NEXT_PUBLIC_PUBLIC_ASSET_BASE_URL);
 
 export type PublicImageMaxEdge = 320 | 480 | 960;
+
+function normalizePublicAssetBaseUrl(value: string | undefined): string | null {
+  const normalized = value?.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(normalized);
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+      return null;
+    }
+
+    return parsed.toString().replace(/\/+$/, '');
+  } catch {
+    return null;
+  }
+}
+
+function withPublicAssetBase(url: string): string {
+  if (!PUBLIC_ASSET_BASE_URL) {
+    return url;
+  }
+
+  const normalized = url.startsWith('/') ? url : `/${url}`;
+  return `${PUBLIC_ASSET_BASE_URL}${normalized}`;
+}
 
 function isResizablePublicAssetPath(pathname: string): boolean {
   if (pathname === '/tenant-share-presentation/assets') {
@@ -40,17 +68,18 @@ export function withPublicImageMaxEdge(
     }
 
     parsed.searchParams.set('maxEdge', String(maxEdge));
-    if (isAbsolute) {
-      return parsed.toString();
-    }
+    const rewritten = isAbsolute
+      ? parsed.toString()
+      : `${parsed.pathname}${parsed.search}${parsed.hash}`;
 
-    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    return isAbsolute ? rewritten : withPublicAssetBase(rewritten);
   } catch {
     if (!isLikelyResizablePublicAssetUrl(normalized)) {
       return normalized;
     }
 
     const joiner = normalized.includes('?') ? '&' : '?';
-    return `${normalized}${joiner}maxEdge=${maxEdge}`;
+    const rewritten = `${normalized}${joiner}maxEdge=${maxEdge}`;
+    return ABSOLUTE_URL_PATTERN.test(rewritten) ? rewritten : withPublicAssetBase(rewritten);
   }
 }
