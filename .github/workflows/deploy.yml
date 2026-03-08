@@ -20,6 +20,18 @@ env:
   DB_MIGRATION_COMMAND: ${{ vars.DB_MIGRATION_COMMAND || 'pnpm --filter @eggturtle/api prisma:deploy' }}
   ROLLOUT_TIMEOUT_SECONDS: ${{ vars.ROLLOUT_TIMEOUT_SECONDS || '600' }}
 
+  # Optional post-deploy public-domain gate (HTTPS stability + redirect policy + TLS SAN + DNS risk hints)
+  DOMAIN_CHECK_ENABLED: ${{ vars.DOMAIN_CHECK_ENABLED || 'true' }}
+  PUBLIC_CANONICAL_HOST: ${{ vars.PUBLIC_CANONICAL_HOST || 'xuanyuku.cn' }}
+  PUBLIC_ALT_HOST: ${{ vars.PUBLIC_ALT_HOST || 'www.xuanyuku.cn' }}
+  DOMAIN_CHECK_RETRIES: ${{ vars.DOMAIN_CHECK_RETRIES || '20' }}
+  DOMAIN_CHECK_TIMEOUT_SECONDS: ${{ vars.DOMAIN_CHECK_TIMEOUT_SECONDS || '8' }}
+  DOMAIN_MIN_SUCCESS_RATE: ${{ vars.DOMAIN_MIN_SUCCESS_RATE || '0.95' }}
+  REQUIRE_HTTP_TO_HTTPS: ${{ vars.REQUIRE_HTTP_TO_HTTPS || 'true' }}
+  REQUIRE_ALT_TO_CANONICAL: ${{ vars.REQUIRE_ALT_TO_CANONICAL || 'true' }}
+  EXPECTED_REDIRECT_CODE: ${{ vars.EXPECTED_REDIRECT_CODE || '301' }}
+  FAIL_ON_RESERVED_DNS: ${{ vars.FAIL_ON_RESERVED_DNS || 'false' }}
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -287,3 +299,7 @@ jobs:
               exit 1
             fi
           fi
+
+      - name: Domain hardening gate
+        if: ${{ env.DOMAIN_CHECK_ENABLED == 'true' }}
+        run: bash scripts/deploy/domain_hardening_check.sh
