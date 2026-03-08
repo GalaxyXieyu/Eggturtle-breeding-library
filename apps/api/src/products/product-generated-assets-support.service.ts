@@ -112,7 +112,7 @@ export class ProductGeneratedAssetsSupportService {
 
     if (!product) {
       throw new NotFoundException({
-        message: 'Product not found.',
+        message: '未找到产品。',
         errorCode: ErrorCode.ProductNotFound
       })
     }
@@ -153,7 +153,7 @@ export class ProductGeneratedAssetsSupportService {
 
     if (!batch) {
       throw new NotFoundException({
-        message: 'Sale batch not found.',
+        message: '未找到销售批次。',
         errorCode: ErrorCode.SaleBatchNotFound
       })
     }
@@ -174,7 +174,7 @@ export class ProductGeneratedAssetsSupportService {
 
     if (!allocation) {
       throw new NotFoundException({
-        message: 'Sale allocation not found.',
+        message: '未找到成交记录。',
         errorCode: ErrorCode.SaleAllocationNotFound
       })
     }
@@ -195,7 +195,7 @@ export class ProductGeneratedAssetsSupportService {
 
     if (!media) {
       throw new NotFoundException({
-        message: 'Sale subject media not found.',
+        message: '未找到成交主题图。',
         errorCode: ErrorCode.SaleSubjectMediaNotFound
       })
     }

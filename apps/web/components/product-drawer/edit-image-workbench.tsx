@@ -8,13 +8,13 @@ import {
   ArrowUp,
   ChevronLeft,
   ChevronRight,
-  ImagePlus,
   Star,
   Trash2,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { resolveDrawerImageUrl } from '@/components/product-drawer/image-utils';
+import { ImageUploadDropzone } from '@/components/ui/image-upload-dropzone';
 
 type ProductEditImageWorkbenchProps = {
   productId: string;
@@ -66,35 +66,14 @@ export default function ProductEditImageWorkbench({
         </div>
       ) : null}
 
-      <label
-        htmlFor={`edit-drawer-image-upload-${productId}`}
-        className={`group block rounded-xl border border-dashed p-3 transition ${
-          submittingImages
-            ? 'cursor-not-allowed border-neutral-200 bg-white/80 opacity-70'
-            : 'cursor-pointer border-neutral-300 bg-white hover:border-amber-300 hover:shadow-[0_8px_22px_rgba(245,158,11,0.14)]'
-        }`}
-      >
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-700 shadow-sm transition group-hover:border-amber-300 group-hover:text-amber-600">
-            <ImagePlus size={16} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-neutral-900">点击选择图片，可多选上传</p>
-            <p className="text-xs text-neutral-500">JPG / PNG / WEBP / GIF，单图最大 10MB</p>
-          </div>
-          <span className="rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-xs font-semibold text-neutral-600">
-            选择文件
-          </span>
-        </div>
-      </label>
-      <input
-        id={`edit-drawer-image-upload-${productId}`}
-        type="file"
-        accept="image/*"
+      <ImageUploadDropzone
+        inputId={`edit-drawer-image-upload-${productId}`}
         multiple
         disabled={submittingImages}
         onChange={onUploadImages}
-        className="sr-only"
+        actionText="选择文件"
+        title="点击选择图片，可多选上传"
+        description="JPG / PNG / WEBP / GIF，单图最大 10MB"
       />
 
       {loadingImages ? <p className="text-xs text-neutral-500">正在加载图片...</p> : null}

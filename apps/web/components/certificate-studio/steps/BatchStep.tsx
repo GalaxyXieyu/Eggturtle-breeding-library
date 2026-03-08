@@ -1,14 +1,13 @@
 'use client';
 
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/native-select';
-import { Textarea } from '@/components/ui/textarea';
 import type { CertificateStudioState } from '@/components/certificate-studio/types';
-import type { ProductEvent, SaleBatch } from '@eggturtle/shared';
+import type { ProductEvent, SaleBatch, SaleSubjectMedia } from '@eggturtle/shared';
 import { formatDateShort } from '@/components/certificate-studio/utils';
+import { ImageUploadDropzone } from '@/components/ui/image-upload-dropzone';
+import { resolveAuthenticatedAssetUrl } from '@/lib/api-client';
 
 interface BatchStepProps {
   studio: CertificateStudioState;
@@ -17,8 +16,9 @@ interface BatchStepProps {
   eggEventOptionLabels: Map<string, string>;
   saleBatches: SaleBatch[];
   selectedBatch: SaleBatch | null;
-  creatingSaleBatch: boolean;
-  onCreateBatch: () => Promise<void>;
+  selectedSubjectMedia: SaleSubjectMedia | null;
+  uploadingSubjectMedia: boolean;
+  onUploadMedia: () => Promise<void>;
 }
 
 export function BatchStep({
@@ -28,94 +28,105 @@ export function BatchStep({
   eggEventOptionLabels,
   saleBatches,
   selectedBatch,
-  creatingSaleBatch,
-  onCreateBatch
+  selectedSubjectMedia,
+  uploadingSubjectMedia,
+  onUploadMedia
 }: BatchStepProps) {
+  const batchHint = selectedBatch
+    ? `已绑定批次 ${selectedBatch.batchNo}`
+    : studio.selectedEggEventId
+      ? '上传主题图时自动创建并绑定批次'
+      : '请先选择生蛋事件';
+
   return (
-    <div className="rounded-3xl border border-neutral-200 bg-gradient-to-br from-white to-neutral-50 p-4 shadow-[0_16px_40px_rgba(15,23,42,0.08)]">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-500">Step 01</p>
-          <h3 className="mt-1 text-lg font-semibold text-neutral-900">锁定销售批次</h3>
-          <p className="mt-1 text-sm text-neutral-500">一张证书必须绑定一个生蛋事件，一个事件可以拆分成多个客户分配。</p>
-        </div>
-        <Badge className="rounded-full bg-amber-100 px-3 py-1 text-[11px] font-semibold text-amber-800">父本按事件锁定</Badge>
+    <div className="space-y-4 rounded-2xl border border-neutral-200 bg-white p-4">
+      <div className="space-y-1">
+        <p className="text-xs font-semibold text-neutral-500">第 1 步 · 批次</p>
+        <p className="text-sm text-neutral-600">选择事件并上传主题图，系统自动复用该事件批次。</p>
       </div>
-      <div className="mt-4 grid gap-3 md:grid-cols-2">
-        <div className="space-y-2 md:col-span-2">
-          <Label>生蛋事件</Label>
+
+      <div className="space-y-2">
+        <Label>生蛋事件</Label>
+        <NativeSelect
+          value={studio.selectedEggEventId}
+          onChange={(event) => {
+            const nextEggEventId = event.target.value;
+            const matchedBatch = saleBatches.find((batch) => batch.eggEventId === nextEggEventId) ?? null;
+            setStudio((current) => ({
+              ...current,
+              selectedEggEventId: nextEggEventId,
+              selectedBatchId: matchedBatch?.id ?? '',
+              selectedAllocationId: '',
+              selectedSubjectMediaId: matchedBatch?.subjectMedia.find((item) => item.isPrimary)?.id ?? matchedBatch?.subjectMedia[0]?.id ?? ''
+            }));
+          }}
+        >
+          <option value="">请选择生蛋事件</option>
+          {eggEvents.map((event) => (
+            <option key={event.id} value={event.id}>
+              {eggEventOptionLabels.get(event.id) ?? `${formatDateShort(event.eventDate)} · 数量 ${event.eggCount ?? '-'}`}
+            </option>
+          ))}
+        </NativeSelect>
+        <p className="text-xs text-neutral-500">{batchHint}</p>
+      </div>
+
+      <div className="space-y-3">
+        <div className="space-y-2">
+          <Label>主题图</Label>
           <NativeSelect
-            value={studio.selectedEggEventId}
-            onChange={(event) => {
-              const nextEggEventId = event.target.value;
-              const matchedBatch = saleBatches.find((batch) => batch.eggEventId === nextEggEventId) ?? null;
-              setStudio((current) => ({
-                ...current,
-                selectedEggEventId: nextEggEventId,
-                selectedBatchId: matchedBatch?.id ?? '',
-                selectedAllocationId: matchedBatch?.allocations[0]?.id ?? '',
-                selectedSubjectMediaId: matchedBatch?.subjectMedia.find((item) => item.isPrimary)?.id ?? matchedBatch?.subjectMedia[0]?.id ?? ''
-              }));
-            }}
+            value={studio.selectedSubjectMediaId}
+            onChange={(event) => setStudio((current) => ({ ...current, selectedSubjectMediaId: event.target.value }))}
+            disabled={!selectedBatch}
           >
-            <option value="">请选择生蛋事件</option>
-            {eggEvents.map((event) => (
-              <option key={event.id} value={event.id}>
-                {eggEventOptionLabels.get(event.id) ?? `${formatDateShort(event.eventDate)} · 数量 ${event.eggCount ?? '-'}`}
+            <option value="">{selectedBatch ? '选择已上传主题图' : '先选事件并上传主题图'}</option>
+            {selectedBatch?.subjectMedia.map((media) => (
+              <option key={media.id} value={media.id}>
+                {media.label ?? '未命名主体图'}
+                {media.isPrimary ? ' · 主图' : ''}
               </option>
             ))}
           </NativeSelect>
         </div>
-        <div className="space-y-2">
-          <Label>销售批次</Label>
-          <NativeSelect
-            value={studio.selectedBatchId}
+
+        <div className="grid gap-2">
+          <ImageUploadDropzone
+            inputId="certificate-subject-upload"
             onChange={(event) => {
-              const nextBatch = saleBatches.find((batch) => batch.id === event.target.value) ?? null;
-              setStudio((current) => ({
-                ...current,
-                selectedEggEventId: nextBatch?.eggEventId ?? current.selectedEggEventId,
-                selectedBatchId: nextBatch?.id ?? '',
-                selectedAllocationId: nextBatch?.allocations[0]?.id ?? '',
-                selectedSubjectMediaId: nextBatch?.subjectMedia.find((item) => item.isPrimary)?.id ?? nextBatch?.subjectMedia[0]?.id ?? ''
-              }));
+              const nextFile = event.target.files?.[0] ?? null;
+              setStudio((current) => ({ ...current, subjectFile: nextFile }));
+              event.target.value = '';
             }}
+            actionText={studio.subjectFile ? '重新选择图片' : '选择图片'}
+            title={studio.subjectFile ? `已选择：${studio.subjectFile.name}` : '点击选择主题图文件'}
+            description="建议上传清晰近景图，证书展示效果更好。"
+            helperText={studio.selectedEggEventId ? '上传后将自动绑定当前事件批次。' : '先选择生蛋事件再上传。'}
+            disabled={!studio.selectedEggEventId || uploadingSubjectMedia}
+          />
+          <Button
+            variant="secondary"
+            onClick={() => void onUploadMedia()}
+            disabled={!studio.selectedEggEventId || !studio.subjectFile || uploadingSubjectMedia}
+            className="justify-self-end"
           >
-            <option value="">新建或选择批次</option>
-            {saleBatches.map((batch) => (
-              <option key={batch.id} value={batch.id}>
-                {batch.batchNo} · 剩余 {batch.remainingQuantity}
-              </option>
-            ))}
-          </NativeSelect>
+            {uploadingSubjectMedia ? '上传中...' : '上传主题图'}
+          </Button>
         </div>
-        <div className="space-y-2">
-          <Label>计划数量</Label>
-          <Input type="number" min={1} value={studio.plannedQuantity} onChange={(event) => setStudio((current) => ({ ...current, plannedQuantity: event.target.value }))} />
-        </div>
-        <div className="space-y-2">
-          <Label>价格下限</Label>
-          <Input inputMode="decimal" placeholder="如 1999" value={studio.priceLow} onChange={(event) => setStudio((current) => ({ ...current, priceLow: event.target.value }))} />
-        </div>
-        <div className="space-y-2">
-          <Label>价格上限</Label>
-          <Input inputMode="decimal" placeholder="如 2888" value={studio.priceHigh} onChange={(event) => setStudio((current) => ({ ...current, priceHigh: event.target.value }))} />
-        </div>
-        <div className="space-y-2 md:col-span-2">
-          <Label>批次备注</Label>
-          <Textarea value={studio.batchNote} onChange={(event) => setStudio((current) => ({ ...current, batchNote: event.target.value }))} placeholder="记录这一窝的亮点、留种比例、发朋友圈角度等。" />
-        </div>
-      </div>
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed border-neutral-300 bg-white px-4 py-3">
-        <div className="space-y-1 text-sm text-neutral-600">
-          <p className="font-semibold text-neutral-900">{selectedBatch?.batchNo ?? '尚未创建批次'}</p>
-          <p>
-            父本快照：{selectedBatch?.sireCodeSnapshot ?? '未锁定'} · 事件时间：{selectedBatch ? formatDateShort(selectedBatch.eventDateSnapshot) : '待绑定'}
+
+        {selectedSubjectMedia ? (
+          <div className="overflow-hidden rounded-xl border border-neutral-200">
+            <img src={resolveAuthenticatedAssetUrl(selectedSubjectMedia.contentPath)} alt={selectedSubjectMedia.label ?? '主题图'} className="h-40 w-full object-cover" />
+            <div className="px-3 py-2 text-xs text-neutral-600">
+              {selectedSubjectMedia.label ?? '成交主体图'} · {selectedSubjectMedia.isPrimary ? '当前主图' : '备用图'}
+            </div>
+          </div>
+        ) : null}
+
+        {selectedBatch ? (
+          <p className="text-xs text-neutral-500">
+            父本快照 {selectedBatch.sireCodeSnapshot} · 事件日期 {formatDateShort(selectedBatch.eventDateSnapshot)}
           </p>
-        </div>
-        <Button variant="primary" onClick={() => void onCreateBatch()} disabled={!studio.selectedEggEventId || creatingSaleBatch}>
-          {creatingSaleBatch ? '批次生成中...' : selectedBatch ? '按当前事件同步批次' : '创建销售批次'}
-        </Button>
+        ) : null}
       </div>
     </div>
   );

@@ -143,9 +143,17 @@ export const createSaleAllocationResponseSchema = z.object({
 });
 
 export const createSaleSubjectMediaRequestSchema = z.object({
-  saleBatchId: z.string().trim().min(1).max(120),
+  saleBatchId: z.string().trim().min(1).max(120).optional(),
+  eggEventId: z.string().trim().min(1).max(120).optional(),
   label: z.string().trim().max(120).nullable().optional(),
   isPrimary: optionalBooleanLikeSchema,
+}).superRefine((value, ctx) => {
+  if (!value.saleBatchId && !value.eggEventId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Either saleBatchId or eggEventId is required.'
+    });
+  }
 });
 
 export const createSaleSubjectMediaResponseSchema = z.object({
@@ -155,12 +163,19 @@ export const createSaleSubjectMediaResponseSchema = z.object({
 
 export const productCertificateGenerateRequestSchema = z.object({
   eggEventId: z.string().trim().min(1).max(120),
-  saleBatchId: z.string().trim().min(1).max(120),
-  saleAllocationId: z.string().trim().min(1).max(120),
+  saleBatchId: z.string().trim().min(1).max(120).optional(),
+  saleAllocationId: z.string().trim().min(1).max(120).optional(),
   subjectMediaId: z.string().trim().min(1).max(120),
   templateVersion: z.string().trim().min(1).max(40).optional(),
   buyerName: z.string().trim().min(1).max(120).optional(),
   buyerAccountId: z.string().trim().min(1).max(120).optional(),
+  buyerContact: z.string().trim().max(120).optional(),
+  quantity: z.coerce.number().int().positive().max(999).optional(),
+  unitPrice: nullableMoneySchema,
+  channel: z.string().trim().max(80).optional(),
+  campaignId: z.string().trim().max(120).optional(),
+  soldAt: z.string().trim().datetime().optional(),
+  note: z.string().trim().max(5000).optional(),
 });
 
 export const reissueProductCertificateRequestSchema = z.object({

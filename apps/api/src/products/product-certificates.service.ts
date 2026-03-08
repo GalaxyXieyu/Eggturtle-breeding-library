@@ -28,11 +28,13 @@ import type {
   SaleBatch as PrismaSaleBatchModel,
   SaleSubjectMedia as PrismaSaleSubjectMediaModel
 } from '@prisma/client'
+import { randomUUID } from 'node:crypto'
 
 import { AuditLogsService } from '../audit-logs/audit-logs.service'
 import { PrismaService } from '../prisma.service'
 
 import { ProductGeneratedAssetsSupportService, type StoredContentResult } from './product-generated-assets-support.service'
+import { ProductSaleBatchesService } from './product-sale-batches.service'
 import {
   buildCertificateEligibilityReasons,
   buildCertificateLineageSnapshot,
@@ -56,7 +58,8 @@ export class ProductCertificatesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditLogsService: AuditLogsService,
-    private readonly generatedAssetsSupportService: ProductGeneratedAssetsSupportService
+    private readonly generatedAssetsSupportService: ProductGeneratedAssetsSupportService,
+    private readonly productSaleBatchesService: ProductSaleBatchesService
   ) {}
 
   async getCertificateEligibility(
@@ -83,6 +86,7 @@ export class ProductCertificatesService {
   ): Promise<GenerateProductCertificatePreviewResponse> {
     const context = await this.loadCertificateLineageContext(tenantId, productId, payload)
     this.assertCertificateLineageEligible(context.requirements)
+    this.assertPreviewOrConfirmPayload(context, payload)
 
     const issuedAt = new Date()
     const certNo = this.buildCertificateNo(context.saleBatch?.batchNo || context.product.code, issuedAt)
@@ -117,14 +121,31 @@ export class ProductCertificatesService {
     productId: string,
     payload: ProductCertificateGenerateRequest
   ): Promise<ConfirmProductCertificateGenerateResponse> {
-    const context = await this.loadCertificateLineageContext(tenantId, productId, payload)
+    let context = await this.loadCertificateLineageContext(tenantId, productId, payload)
+    if (!context.saleBatch && payload.eggEventId) {
+      const ensured = await this.productSaleBatchesService.ensureSaleBatchForEggEvent(
+        tenantId,
+        actorUserId,
+        productId,
+        {
+          eggEventId: payload.eggEventId,
+          source: 'product.certificate.confirm'
+        }
+      )
+      context = await this.loadCertificateLineageContext(tenantId, productId, {
+        ...payload,
+        saleBatchId: ensured.batch.id
+      })
+    }
+
     this.assertCertificateLineageEligible(context.requirements)
+    this.assertPreviewOrConfirmPayload(context, payload)
 
     const issuedAt = new Date()
     const quota = await this.getCertificateQuota(tenantId, this.getMonthKey(issuedAt))
     if (quota.remaining <= 0) {
       throw new ForbiddenException({
-        message: 'Monthly certificate quota exceeded.',
+        message: '本月证书额度已用尽。',
         errorCode: ErrorCode.ProductCertificateQuotaExceeded
       })
     }
@@ -144,7 +165,6 @@ export class ProductCertificatesService {
     })
     const watermarkSnapshot = this.buildWatermarkSnapshot(context.tenantName)
     const lineageSnapshot = this.buildLineageSnapshot(context)
-    const saleSnapshot = this.buildSaleSnapshot(context)
     const imageKey = this.generatedAssetsSupportService.buildCertificateStorageKey(tenantId, context.product.id)
 
     let uploadResult: { key: string; url: string; contentType: string | null } | null = null
@@ -161,15 +181,104 @@ export class ProductCertificatesService {
         }
       })
 
-      const { certificate, quota } = await this.prisma.$transaction(async (tx) => {
+      const { certificate, quota, autoCreatedAllocation } = await this.prisma.$transaction(async (tx) => {
         const quotaResult = await this.consumeCertificateQuota(tx, tenantId, this.getMonthKey(issuedAt))
+        let effectiveBatch = context.saleBatch
+        let effectiveAllocation = context.saleAllocation
+        let createdAllocation: PrismaSaleAllocationModel | null = null
+
+        if (!effectiveBatch) {
+          throw new BadRequestException({
+            message: '证书确认时必须绑定销售批次。',
+            errorCode: ErrorCode.InvalidRequestPayload
+          })
+        }
+
+        if (!effectiveAllocation) {
+          const batchRow = await tx.saleBatch.findUniqueOrThrow({
+            where: {
+              id: effectiveBatch.id
+            }
+          })
+          const quantity = payload.quantity ?? 1
+          const remaining = Math.max(0, batchRow.plannedQuantity - batchRow.soldQuantity)
+          if (quantity > remaining) {
+            throw new BadRequestException({
+              message: `当前批次仅剩 ${remaining} 个可售名额。`,
+              errorCode: ErrorCode.SaleBatchQuantityExceeded
+            })
+          }
+
+          const allocationNo = this.buildSaleAllocationNo(batchRow.batchNo)
+          const soldAt = payload.soldAt ? new Date(payload.soldAt) : issuedAt
+          const unitPrice = payload.unitPrice ?? null
+          const nextPriceLow =
+            unitPrice === null
+              ? batchRow.priceLow
+              : batchRow.priceLow === null
+                ? unitPrice
+                : Math.min(batchRow.priceLow.toNumber(), unitPrice)
+          const nextPriceHigh =
+            unitPrice === null
+              ? batchRow.priceHigh
+              : batchRow.priceHigh === null
+                ? unitPrice
+                : Math.max(batchRow.priceHigh.toNumber(), unitPrice)
+          const soldQuantity = batchRow.soldQuantity + quantity
+
+          createdAllocation = await tx.saleAllocation.create({
+            data: {
+              tenantId,
+              saleBatchId: batchRow.id,
+              allocationNo,
+              status: 'SOLD',
+              quantity,
+              buyerName: payload.buyerName?.trim() || '',
+              buyerAccountId: payload.buyerAccountId?.trim() || null,
+              buyerContact: payload.buyerContact?.trim() || null,
+              unitPrice,
+              channel: payload.channel?.trim() || null,
+              campaignId: payload.campaignId?.trim() || null,
+              note: payload.note?.trim() || null,
+              soldAt
+            }
+          })
+
+          effectiveBatch = await tx.saleBatch.update({
+            where: {
+              id: batchRow.id
+            },
+            data: {
+              soldQuantity,
+              priceLow: nextPriceLow,
+              priceHigh: nextPriceHigh,
+              status:
+                soldQuantity >= batchRow.plannedQuantity
+                  ? 'SOLD'
+                  : soldQuantity > 0
+                    ? 'PARTIAL'
+                    : 'OPEN'
+            }
+          })
+          effectiveAllocation = createdAllocation
+        }
+
+        const saleSnapshot = buildCertificateSaleSnapshot(
+          {
+            ...context,
+            saleBatch: effectiveBatch,
+            saleAllocation: effectiveAllocation
+          },
+          this.generatedAssetsSupportService.decimalToNumber.bind(this.generatedAssetsSupportService)
+        )
+
         const created = await tx.productCertificate.create({
           data: {
             tenantId,
             productId: context.product.id,
-            eggEventId: context.saleBatch?.eggEventId ?? payload.eggEventId,
-            saleBatchId: context.saleBatch?.id ?? payload.saleBatchId,
-            saleAllocationId: context.saleAllocation?.id ?? payload.saleAllocationId,
+            eggEventId: effectiveBatch.eggEventId ?? payload.eggEventId,
+            saleBatchId: effectiveBatch.id ?? payload.saleBatchId,
+            saleAllocationId: effectiveAllocation?.id ?? payload.saleAllocationId,
             subjectMediaId: context.subjectMedia?.id ?? payload.subjectMediaId,
             certNo,
             verifyId,
@@ -189,9 +298,26 @@ export class ProductCertificatesService {
 
         return {
           certificate: created,
-          quota: quotaResult
+          quota: quotaResult,
+          autoCreatedAllocation: createdAllocation
         }
       })
+
+      if (autoCreatedAllocation) {
+        await this.auditLogsService.createLog({
+          tenantId,
+          actorUserId,
+          action: AuditAction.SaleAllocationCreate,
+          resourceType: 'sale_allocation',
+          resourceId: autoCreatedAllocation.id,
+          metadata: {
+            source: 'product.certificate.confirm',
+            productId: context.product.id,
+            saleBatchId: autoCreatedAllocation.saleBatchId,
+            allocationNo: autoCreatedAllocation.allocationNo
+          }
+        })
+      }
 
       await this.auditLogsService.createLog({
         tenantId,
@@ -201,8 +327,8 @@ export class ProductCertificatesService {
         resourceId: certificate.id,
         metadata: {
           productId: context.product.id,
-          saleBatchId: context.saleBatch?.id ?? null,
-          saleAllocationId: context.saleAllocation?.id ?? null,
+          saleBatchId: certificate.saleBatchId ?? null,
+          saleAllocationId: certificate.saleAllocationId ?? null,
           certNo,
           verifyId,
           templateVersion
@@ -219,7 +345,7 @@ export class ProductCertificatesService {
       }
 
       if (this.isCertificateConflict(error)) {
-        throw new ConflictException('Certificate number conflict, please retry.')
+        throw new ConflictException('证书编号冲突，请重试。')
       }
 
       throw error
@@ -262,13 +388,13 @@ export class ProductCertificatesService {
 
     if (!certificate) {
       throw new NotFoundException({
-        message: 'Product certificate not found.',
+        message: '未找到证书记录。',
         errorCode: ErrorCode.ProductCertificateNotFound
       })
     }
 
     return this.generatedAssetsSupportService.resolveStoredBinary(tenantId, certificate.imageKey, certificate.imageUrl, {
-      notFoundMessage: 'Product certificate content not found.',
+      notFoundMessage: '证书文件不存在。',
       errorCode: ErrorCode.ProductCertificateNotFound,
       contentType: certificate.contentType
     })
@@ -344,14 +470,14 @@ export class ProductCertificatesService {
 
     if (!certificate) {
       throw new NotFoundException({
-        message: 'Product certificate not found.',
+        message: '未找到证书记录。',
         errorCode: ErrorCode.ProductCertificateNotFound
       })
     }
 
     if (certificate.status !== 'ISSUED') {
       throw new BadRequestException({
-        message: 'Certificate is already void.',
+        message: '该证书已作废。',
         errorCode: ErrorCode.ProductCertificateAlreadyVoid
       })
     }
@@ -408,7 +534,7 @@ export class ProductCertificatesService {
     const quota = await this.getCertificateQuota(tenantId, this.getMonthKey(issuedAt))
     if (quota.remaining <= 0) {
       throw new ForbiddenException({
-        message: 'Monthly certificate quota exceeded.',
+        message: '本月证书额度已用尽。',
         errorCode: ErrorCode.ProductCertificateQuotaExceeded
       })
     }
@@ -541,19 +667,13 @@ export class ProductCertificatesService {
 
     if (!tenant) {
       throw new NotFoundException({
-        message: 'Tenant not found.',
+        message: '未找到租户。',
         errorCode: ErrorCode.TenantNotFound
       })
     }
 
-    const [seriesName, saleBatch, saleAllocation, subjectMedia] = await Promise.all([
+    const [seriesName, saleAllocation, subjectMedia] = await Promise.all([
       this.generatedAssetsSupportService.resolveSeriesName(tenantId, product.seriesId),
-      payload?.saleBatchId
-        ? this.generatedAssetsSupportService.findSaleBatchOrThrow(tenantId, payload.saleBatchId, {
-            femaleProductId: product.id,
-            eggEventId: payload.eggEventId
-          })
-        : Promise.resolve(null),
       payload?.saleAllocationId
         ? this.generatedAssetsSupportService.findSaleAllocationOrThrow(tenantId, payload.saleAllocationId)
         : Promise.resolve(null),
@@ -562,16 +682,47 @@ export class ProductCertificatesService {
         : Promise.resolve(null)
     ])
 
+    let saleBatch: PrismaSaleBatchModel | null = null
+    if (payload?.saleBatchId) {
+      saleBatch = await this.generatedAssetsSupportService.findSaleBatchOrThrow(tenantId, payload.saleBatchId, {
+        femaleProductId: product.id
+      })
+    } else if (subjectMedia) {
+      saleBatch = await this.generatedAssetsSupportService.findSaleBatchOrThrow(tenantId, subjectMedia.saleBatchId, {
+        femaleProductId: product.id
+      })
+    } else if (saleAllocation) {
+      saleBatch = await this.generatedAssetsSupportService.findSaleBatchOrThrow(tenantId, saleAllocation.saleBatchId, {
+        femaleProductId: product.id
+      })
+    } else if (payload?.eggEventId) {
+      saleBatch = await this.prisma.saleBatch.findFirst({
+        where: {
+          tenantId,
+          femaleProductId: product.id,
+          eggEventId: payload.eggEventId
+        },
+        orderBy: [{ createdAt: 'asc' }]
+      })
+    }
+
+    if (payload?.eggEventId && saleBatch && saleBatch.eggEventId !== payload.eggEventId) {
+      throw new BadRequestException({
+        message: '销售批次与所选产蛋事件不匹配。',
+        errorCode: ErrorCode.SaleBatchEventMismatch
+      })
+    }
+
     if (saleAllocation && saleBatch && saleAllocation.saleBatchId !== saleBatch.id) {
       throw new BadRequestException({
-        message: 'Sale allocation does not belong to selected batch.',
+        message: '成交记录不属于当前销售批次。',
         errorCode: ErrorCode.InvalidRequestPayload
       })
     }
 
     if (subjectMedia && saleBatch && subjectMedia.saleBatchId !== saleBatch.id) {
       throw new BadRequestException({
-        message: 'Subject media does not belong to selected batch.',
+        message: '主题图不属于当前销售批次。',
         errorCode: ErrorCode.InvalidRequestPayload
       })
     }
@@ -658,13 +809,21 @@ export class ProductCertificatesService {
       watermarkText: this.generatedAssetsSupportService.buildWatermarkText(input.context.tenantName)
     }
 
-    return renderCertificatePng({
-      style,
-      verifyUrl: this.generatedAssetsSupportService.buildPublicVerifyUrl(input.verifyId),
-      subjectImage,
-      sireImage,
-      damImage
-    })
+    try {
+      return await renderCertificatePng({
+        style,
+        verifyUrl: this.generatedAssetsSupportService.buildPublicVerifyUrl(input.verifyId),
+        subjectImage,
+        sireImage,
+        damImage
+      })
+    } catch {
+      throw new BadRequestException({
+        message:
+          '无法基于当前素材生成证书，请检查主题图和血统图片是否可用。',
+        errorCode: ErrorCode.InvalidRequestPayload
+      })
+    }
   }
 
   private buildEligibilityReasons(
@@ -681,7 +840,7 @@ export class ProductCertificatesService {
     }
 
     throw new BadRequestException({
-      message: 'Product is not eligible for certificate generation.',
+      message: '当前种龟不满足出证条件。',
       errorCode: ErrorCode.ProductCertificateEligibilityFailed,
       data: {
         reasons,
@@ -817,12 +976,12 @@ export class ProductCertificatesService {
       }
 
       throw new ForbiddenException({
-        message: 'Monthly certificate quota exceeded.',
+        message: '本月证书额度已用尽。',
         errorCode: ErrorCode.ProductCertificateQuotaExceeded
       })
     }
 
-    throw new ConflictException('Failed to consume certificate quota. Please retry.')
+    throw new ConflictException('证书额度扣减失败，请重试。')
   }
 
   private toProductCertificate(row: PrismaProductCertificateModel): ProductCertificate {
@@ -861,14 +1020,14 @@ export class ProductCertificatesService {
 
     if (!certificate) {
       throw new NotFoundException({
-        message: 'Product certificate not found.',
+        message: '未找到证书记录。',
         errorCode: ErrorCode.ProductCertificateNotFound
       })
     }
 
     if (certificate.status !== 'ISSUED') {
       throw new BadRequestException({
-        message: 'Only issued certificates can be reissued.',
+        message: '仅已签发状态的证书可补发。',
         errorCode: ErrorCode.ProductCertificateAlreadyVoid
       })
     }
@@ -890,7 +1049,7 @@ export class ProductCertificatesService {
 
     if (!eggEventId || !saleBatchId || !saleAllocationId || !subjectMediaId) {
       throw new BadRequestException({
-        message: 'Only sale-linked certificates can be reissued.',
+        message: '仅已关联成交信息的证书可补发。',
         errorCode: ErrorCode.InvalidRequestPayload
       })
     }
@@ -918,6 +1077,43 @@ export class ProductCertificatesService {
 
   private buildQuota(monthKey: string, used: number): CertificateQuota {
     return buildCertificateQuota(monthKey, used, CERTIFICATE_MONTHLY_LIMIT)
+  }
+
+  private assertPreviewOrConfirmPayload(
+    context: CertificateLineageContext,
+    payload: ProductCertificateGenerateRequest
+  ): void {
+    if (!payload.eggEventId?.trim()) {
+      throw new BadRequestException({
+        message: '必须选择产蛋事件。',
+        errorCode: ErrorCode.InvalidRequestPayload
+      })
+    }
+
+    if (!context.subjectMedia) {
+      throw new BadRequestException({
+        message: '必须选择主题图。',
+        errorCode: ErrorCode.InvalidRequestPayload
+      })
+    }
+
+    if (!context.saleBatch) {
+      throw new BadRequestException({
+        message: '生成证书必须绑定销售批次。',
+        errorCode: ErrorCode.InvalidRequestPayload
+      })
+    }
+
+    if (!context.saleAllocation && !payload.buyerName?.trim()) {
+      throw new BadRequestException({
+        message: '未选择成交记录时，买家名称为必填项。',
+        errorCode: ErrorCode.InvalidRequestPayload
+      })
+    }
+  }
+
+  private buildSaleAllocationNo(batchNo: string): string {
+    return `ALLOC-${batchNo.slice(-12)}-${randomUUID().replace(/-/g, '').toUpperCase().slice(0, 4)}`
   }
 
   private isQuotaConflict(error: unknown): boolean {

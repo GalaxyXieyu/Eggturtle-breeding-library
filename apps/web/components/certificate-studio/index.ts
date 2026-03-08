@@ -1,4 +1,3 @@
-export { CertificateStudioCard } from '@/components/certificate-studio/CertificateStudioCard';
 export { CouplePhotoSection } from '@/components/certificate-studio/CouplePhotoSection';
 export { BatchStep } from '@/components/certificate-studio/steps/BatchStep';
 export { AllocationStep } from '@/components/certificate-studio/steps/AllocationStep';

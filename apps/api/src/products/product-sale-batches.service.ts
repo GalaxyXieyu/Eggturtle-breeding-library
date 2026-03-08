@@ -65,14 +65,46 @@ export class ProductSaleBatchesService {
     femaleProductId: string,
     payload: CreateSaleBatchRequest
   ): Promise<{ batch: SaleBatch }> {
+    const { batch } = await this.ensureSaleBatchForEggEvent(
+      tenantId,
+      actorUserId,
+      femaleProductId,
+      {
+        eggEventId: payload.eggEventId,
+        plannedQuantity: payload.plannedQuantity,
+        priceLow: payload.priceLow ?? null,
+        priceHigh: payload.priceHigh ?? null,
+        note: payload.note ?? null,
+        source: 'sale.batch.create'
+      }
+    )
+
+    return {
+      batch
+    }
+  }
+
+  async ensureSaleBatchForEggEvent(
+    tenantId: string,
+    actorUserId: string,
+    femaleProductId: string,
+    input: {
+      eggEventId: string
+      plannedQuantity?: number | null
+      priceLow?: number | null
+      priceHigh?: number | null
+      note?: string | null
+      source?: string
+    }
+  ): Promise<{ batch: SaleBatch; created: boolean }> {
     const femaleProduct = await this.generatedAssetsSupportService.findProductOrThrow(tenantId, femaleProductId)
     if ((femaleProduct.sex ?? '').toLowerCase() !== 'female') {
-      throw new BadRequestException('Only female breeders can create sale batches.')
+      throw new BadRequestException('仅母种龟可创建销售批次。')
     }
 
     const eggEvent = await this.prisma.productEvent.findFirst({
       where: {
-        id: payload.eggEventId,
+        id: input.eggEventId,
         tenantId,
         productId: femaleProductId,
         eventType: 'egg'
@@ -81,7 +113,7 @@ export class ProductSaleBatchesService {
 
     if (!eggEvent) {
       throw new NotFoundException({
-        message: 'Egg event not found for selected female breeder.',
+        message: '未找到所选母种龟的产蛋事件。',
         errorCode: ErrorCode.SaleBatchNotFound
       })
     }
@@ -103,7 +135,7 @@ export class ProductSaleBatchesService {
     )
     if (!sireCode) {
       throw new BadRequestException({
-        message: 'Unable to lock sire from the selected egg event.',
+        message: '无法根据所选产蛋事件锁定父本编码。',
         errorCode: ErrorCode.SaleBatchEventMismatch
       })
     }
@@ -126,30 +158,33 @@ export class ProductSaleBatchesService {
 
     if (existingBatch) {
       return {
-        batch: this.toSaleBatch(existingBatch)
+        batch: this.toSaleBatch(existingBatch),
+        created: false
       }
     }
 
     const seriesName = await this.generatedAssetsSupportService.resolveSeriesName(tenantId, femaleProduct.seriesId)
-    const eggCountSnapshot = parseTaggedProductEventNote(eggEvent.note).eggCount ?? null
+    const parsedEggNote = parseTaggedProductEventNote(eggEvent.note)
+    const defaultPlannedQuantity = parsedEggNote.eggCount && parsedEggNote.eggCount > 0 ? parsedEggNote.eggCount : 1
+    const plannedQuantity = input.plannedQuantity && input.plannedQuantity > 0 ? input.plannedQuantity : defaultPlannedQuantity
     const batchNo = this.buildSaleBatchNo(femaleProduct.code, eggEvent.eventDate)
-    const created = await this.prisma.saleBatch.create({
+    const createdBatch = await this.prisma.saleBatch.create({
       data: {
         tenantId,
         femaleProductId,
         eggEventId: eggEvent.id,
         batchNo,
         status: 'OPEN',
-        plannedQuantity: payload.plannedQuantity,
+        plannedQuantity,
         soldQuantity: 0,
         eventDateSnapshot: eggEvent.eventDate,
-        eggCountSnapshot,
+        eggCountSnapshot: parsedEggNote.eggCount ?? null,
         femaleCodeSnapshot: femaleProduct.code,
         sireCodeSnapshot: sireCode,
         seriesNameSnapshot: seriesName,
-        priceLow: payload.priceLow ?? null,
-        priceHigh: payload.priceHigh ?? null,
-        note: payload.note ?? null
+        priceLow: input.priceLow ?? null,
+        priceHigh: input.priceHigh ?? null,
+        note: input.note ?? null
       },
       include: {
         allocations: true,
@@ -162,16 +197,18 @@ export class ProductSaleBatchesService {
       actorUserId,
       action: AuditAction.SaleBatchCreate,
       resourceType: 'sale_batch',
-      resourceId: created.id,
+      resourceId: createdBatch.id,
       metadata: {
         femaleProductId,
         eggEventId: eggEvent.id,
-        batchNo
+        batchNo,
+        source: input.source ?? 'sale.batch.ensure'
       }
     })
 
     return {
-      batch: this.toSaleBatch(created)
+      batch: this.toSaleBatch(createdBatch),
+      created: true
     }
   }
 
@@ -188,7 +225,7 @@ export class ProductSaleBatchesService {
     const remaining = Math.max(0, batch.plannedQuantity - batch.soldQuantity)
     if (payload.quantity > remaining) {
       throw new BadRequestException({
-        message: `Only ${remaining} items remain in this batch.`,
+        message: `当前批次仅剩 ${remaining} 个可售名额。`,
         errorCode: ErrorCode.SaleBatchQuantityExceeded
       })
     }
@@ -292,9 +329,38 @@ export class ProductSaleBatchesService {
     file: UploadedBinaryFile
   ): Promise<{ media: SaleSubjectMedia; batch: SaleBatch }> {
     await this.generatedAssetsSupportService.findProductOrThrow(tenantId, femaleProductId)
-    const batch = await this.generatedAssetsSupportService.findSaleBatchOrThrow(tenantId, payload.saleBatchId, {
-      femaleProductId
-    })
+
+    let batch: SaleBatch
+    if (payload.saleBatchId) {
+      const scoped = await this.generatedAssetsSupportService.findSaleBatchOrThrow(tenantId, payload.saleBatchId, {
+        femaleProductId
+      })
+      batch = this.toSaleBatch({
+        ...scoped,
+        allocations: [],
+        subjectMedia: []
+      })
+      if (payload.eggEventId && scoped.eggEventId !== payload.eggEventId) {
+        throw new BadRequestException({
+          message: '所选销售批次与产蛋事件不匹配。',
+          errorCode: ErrorCode.SaleBatchEventMismatch
+        })
+      }
+    } else {
+      if (!payload.eggEventId) {
+        throw new BadRequestException('必须提供 saleBatchId 或 eggEventId。')
+      }
+      const ensured = await this.ensureSaleBatchForEggEvent(
+        tenantId,
+        actorUserId,
+        femaleProductId,
+        {
+          eggEventId: payload.eggEventId,
+          source: 'sale.subject_media.upload'
+        }
+      )
+      batch = ensured.batch
+    }
 
     const key = this.generatedAssetsSupportService.buildSaleSubjectMediaStorageKey(
       tenantId,
@@ -403,13 +469,13 @@ export class ProductSaleBatchesService {
 
     if (!media) {
       throw new NotFoundException({
-        message: 'Sale subject media not found.',
+        message: '未找到成交主题图。',
         errorCode: ErrorCode.SaleSubjectMediaNotFound
       })
     }
 
     return this.generatedAssetsSupportService.resolveStoredBinary(media.tenantId, media.imageKey, media.imageUrl, {
-      notFoundMessage: 'Sale subject media content not found.',
+      notFoundMessage: '成交主题图内容不存在。',
       errorCode: ErrorCode.SaleSubjectMediaNotFound,
       contentType: media.contentType
     })

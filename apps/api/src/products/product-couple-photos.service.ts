@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common'
 import { AuditAction, ErrorCode } from '@eggturtle/shared'
 import type {
   GenerateProductCouplePhotoRequest,
@@ -53,26 +53,53 @@ export class ProductCouplePhotosService {
     }
     const generatedAt = new Date()
 
-    const [femaleImage, maleImage] = await Promise.all([
-      this.generatedAssetsSupportService.loadManagedImageBuffer(tenantId, context.femaleImageKey),
-      this.generatedAssetsSupportService.loadManagedImageBuffer(tenantId, context.maleImageKey)
-    ])
+    if (!context.femaleImageKey || !context.maleImageKey) {
+      throw new BadRequestException(
+        '无法生成夫妻图：母龟和公龟都必须设置主图。'
+      )
+    }
 
-    const png = await renderCouplePhotoPng({
-      style: {
-        femaleCode: context.femaleProduct.code,
-        maleCode: context.maleProduct.code,
-        lineLabel: context.seriesName ? `系别：${context.seriesName}` : '系别：未设置',
-        priceLabel:
-          context.femaleProduct.offspringUnitPrice !== null
-            ? `种苗参考价：¥${context.femaleProduct.offspringUnitPrice.toFixed(2)}`
-            : '种苗参考价：未设置',
-        generatedAtLabel: `生成时间：${this.generatedAssetsSupportService.formatDateTime(generatedAt)}`,
-        watermarkText: this.generatedAssetsSupportService.buildWatermarkText(context.tenantName)
-      },
-      femaleImage,
-      maleImage
-    })
+    let femaleImage: Buffer | null = null
+    let maleImage: Buffer | null = null
+    try {
+      const imageBuffers = await Promise.all([
+        this.generatedAssetsSupportService.loadManagedImageBuffer(tenantId, context.femaleImageKey),
+        this.generatedAssetsSupportService.loadManagedImageBuffer(tenantId, context.maleImageKey)
+      ])
+      femaleImage = imageBuffers[0]
+      maleImage = imageBuffers[1]
+    } catch {
+      throw new InternalServerErrorException('夫妻图素材读取失败，请稍后重试。')
+    }
+
+    if (!femaleImage || !maleImage) {
+      throw new BadRequestException(
+        '无法基于当前素材生成夫妻图，请检查公母龟主图是否可用。'
+      )
+    }
+
+    let png: Buffer
+    try {
+      png = await renderCouplePhotoPng({
+        style: {
+          femaleCode: context.femaleProduct.code,
+          maleCode: context.maleProduct.code,
+          lineLabel: context.seriesName ? `系别：${context.seriesName}` : '系别：未设置',
+          priceLabel:
+            context.femaleProduct.offspringUnitPrice !== null
+              ? `种苗参考价：¥${context.femaleProduct.offspringUnitPrice.toFixed(2)}`
+              : '种苗参考价：未设置',
+          generatedAtLabel: `生成时间：${this.generatedAssetsSupportService.formatDateTime(generatedAt)}`,
+          watermarkText: this.generatedAssetsSupportService.buildWatermarkText(context.tenantName)
+        },
+        femaleImage,
+        maleImage
+      })
+    } catch {
+      throw new BadRequestException(
+        '无法基于当前素材生成夫妻图，请检查公母龟主图是否可用。'
+      )
+    }
 
     const key = this.generatedAssetsSupportService.buildCouplePhotoStorageKey(tenantId, context.femaleProduct.id)
     let uploadResult: { key: string; url: string; contentType: string | null } | null = null
@@ -210,13 +237,13 @@ export class ProductCouplePhotosService {
 
     if (!photo) {
       throw new NotFoundException({
-        message: 'Product couple photo not found.',
+        message: '未找到夫妻图记录。',
         errorCode: ErrorCode.ProductCouplePhotoNotFound
       })
     }
 
     return this.generatedAssetsSupportService.resolveStoredBinary(tenantId, photo.imageKey, photo.imageUrl, {
-      notFoundMessage: 'Product couple photo content not found.',
+      notFoundMessage: '夫妻图内容不存在。',
       errorCode: ErrorCode.ProductCouplePhotoNotFound,
       contentType: photo.contentType
     })
@@ -236,28 +263,28 @@ export class ProductCouplePhotosService {
     ])
 
     if ((femaleProduct.sex ?? '').toLowerCase() !== 'female') {
-      throw new BadRequestException('Only female breeders can generate couple photos.')
+      throw new BadRequestException('仅母种龟可生成夫妻图。')
     }
 
     if (!tenant) {
       throw new NotFoundException({
-        message: 'Tenant not found.',
+        message: '未找到租户。',
         errorCode: ErrorCode.TenantNotFound
       })
     }
 
     const mateCode = await this.generatedAssetsSupportService.resolveCurrentMateCode(tenantId, femaleProduct)
     if (!mateCode) {
-      throw new BadRequestException('Current female breeder does not have a valid mate code.')
+      throw new BadRequestException('当前母种龟缺少有效的配偶编码。')
     }
 
     const maleProduct = await this.generatedAssetsSupportService.findProductByCode(tenantId, mateCode)
     if (!maleProduct) {
-      throw new BadRequestException(`Mate code ${mateCode} does not match an existing male breeder.`)
+      throw new BadRequestException(`配偶编码 ${mateCode} 未匹配到有效公种龟。`)
     }
 
     if ((maleProduct.sex ?? '').toLowerCase() !== 'male') {
-      throw new BadRequestException(`Mate code ${mateCode} does not reference a male breeder.`)
+      throw new BadRequestException(`配偶编码 ${mateCode} 对应的不是公种龟。`)
     }
 
     const [seriesName, femaleImageKey, maleImageKey] = await Promise.all([

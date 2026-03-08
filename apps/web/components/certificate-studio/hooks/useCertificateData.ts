@@ -21,10 +21,9 @@ const CERTIFICATE_STUDIO_STEPS: Array<{
   title: string;
   note: string;
 }> = [
-  { key: 'batch', title: '批次', note: '先锁定生蛋事件' },
-  { key: 'allocation', title: '买家', note: '再登记买家信息' },
-  { key: 'subject', title: '主图', note: '最后补成交主图' },
-  { key: 'preview', title: '出证', note: '确认后正式发证' }
+  { key: 'batch', title: '批次', note: '先选事件并上传主体图' },
+  { key: 'allocation', title: '客户', note: '再填写客户信息' },
+  { key: 'preview', title: '预览', note: '确认后正式发证' }
 ];
 
 function resolveImageUrl(value: string) {
@@ -129,19 +128,49 @@ export function useCertificateData({
   }, [selectedBatch, studio.selectedSubjectMediaId]);
 
   const certificateRequest = useMemo<ProductCertificateGenerateRequest | null>(() => {
-    if (!selectedBatch || !selectedAllocation || !selectedSubjectMedia) {
+    if (!studio.selectedEggEventId || !selectedSubjectMedia) {
       return null;
     }
 
+    const buyerName = studio.buyerName.trim() || selectedAllocation?.buyerName?.trim() || '';
+    if (!buyerName) {
+      return null;
+    }
+    const soldAt =
+      studio.soldAt && !Number.isNaN(Date.parse(studio.soldAt))
+        ? new Date(studio.soldAt).toISOString()
+        : undefined;
+
     return {
-      eggEventId: selectedBatch.eggEventId,
-      saleBatchId: selectedBatch.id,
-      saleAllocationId: selectedAllocation.id,
+      eggEventId: studio.selectedEggEventId,
+      saleBatchId: selectedBatch?.id || undefined,
+      saleAllocationId: selectedAllocation?.id || undefined,
       subjectMediaId: selectedSubjectMedia.id,
-      buyerName: selectedAllocation.buyerName,
-      buyerAccountId: selectedAllocation.buyerAccountId ?? undefined
+      buyerName,
+      buyerAccountId: studio.buyerAccountId.trim() || selectedAllocation?.buyerAccountId || undefined,
+      buyerContact: studio.buyerContact.trim() || undefined,
+      quantity: Number(studio.allocationQuantity) || 1,
+      unitPrice: studio.unitPrice.trim() ? Number(studio.unitPrice) : undefined,
+      channel: studio.channel.trim() || undefined,
+      campaignId: studio.campaignId.trim() || undefined,
+      soldAt,
+      note: studio.allocationNote.trim() || undefined
     };
-  }, [selectedAllocation, selectedBatch, selectedSubjectMedia]);
+  }, [
+    selectedAllocation,
+    selectedBatch,
+    selectedSubjectMedia,
+    studio.allocationNote,
+    studio.allocationQuantity,
+    studio.buyerAccountId,
+    studio.buyerContact,
+    studio.buyerName,
+    studio.campaignId,
+    studio.channel,
+    studio.selectedEggEventId,
+    studio.soldAt,
+    studio.unitPrice
+  ]);
 
   const canPreviewCertificate = Boolean(
     certificateRequest &&
@@ -194,23 +223,21 @@ export function useCertificateData({
   }, [eggEventOptionLabels, selectedEggEvent]);
 
   const nextCertificateStep = useMemo<CertificateStudioStep>(() => {
-    if (!selectedBatch) {
+    if (!studio.selectedEggEventId || !selectedSubjectMedia) {
       return 'batch';
     }
-    if (!selectedAllocation) {
+    if (!studio.buyerName.trim() && !selectedAllocation?.buyerName?.trim()) {
       return 'allocation';
     }
-    if (!selectedSubjectMedia) {
-      return 'subject';
-    }
     return 'preview';
-  }, [selectedAllocation, selectedBatch, selectedSubjectMedia]);
+  }, [selectedAllocation, selectedSubjectMedia, studio.buyerName, studio.selectedEggEventId]);
 
   const nextCertificateStepMeta =
     CERTIFICATE_STUDIO_STEPS.find((item) => item.key === nextCertificateStep) ?? CERTIFICATE_STUDIO_STEPS[0];
 
   const certificateProgressCount =
-    Number(Boolean(selectedBatch)) + Number(Boolean(selectedAllocation)) + Number(Boolean(selectedSubjectMedia));
+    Number(Boolean(studio.selectedEggEventId && selectedSubjectMedia)) +
+    Number(Boolean(studio.buyerName.trim() || selectedAllocation?.buyerName?.trim()));
 
   const certificateRequirementPassCount = [
     Boolean(certificateRequirements?.hasSireCode),

@@ -14,6 +14,7 @@ interface PreviewStepProps {
   certificateRequirements: GetProductCertificateEligibilityResponse['requirements'] | undefined;
   selectedBatch: SaleBatch | null;
   selectedAllocation: SaleAllocation | null;
+  buyerName: string;
   selectedSubjectMedia: SaleSubjectMedia | null;
   certificatePreview: ProductCertificatePreview | null;
   certificates: ProductCertificate[];
@@ -39,6 +40,7 @@ export function PreviewStep({
   certificateRequirements,
   selectedBatch,
   selectedAllocation,
+  buyerName,
   selectedSubjectMedia,
   certificatePreview,
   certificates,
@@ -56,7 +58,7 @@ export function PreviewStep({
       <div className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-500">Step 04</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-500">Step 03</p>
             <h3 className="mt-1 text-lg font-semibold text-neutral-900">出证预览</h3>
             <p className="mt-1 text-sm text-neutral-500">确认后会生成正式证书，可通过二维码公开验真。</p>
           </div>
@@ -77,7 +79,7 @@ export function PreviewStep({
           </div>
           <div className="flex items-center justify-between gap-3">
             <span>成交客户</span>
-            <span className="font-semibold text-neutral-900">{selectedAllocation?.buyerName ?? '待登记'}</span>
+            <span className="font-semibold text-neutral-900">{buyerName || selectedAllocation?.buyerName || '待登记'}</span>
           </div>
           <div className="flex items-center justify-between gap-3">
             <span>主体图</span>
@@ -89,7 +91,7 @@ export function PreviewStep({
             {previewingCertificate ? '生成预览中...' : '预览证书'}
           </Button>
           <Button variant="primary" disabled={!canConfirmCertificate || confirmingCertificate} onClick={() => void onConfirm()}>
-            {confirmingCertificate ? '确认生成中...' : '生成正式证书'}
+            {confirmingCertificate ? '确认生成中...' : '生成证书并登记成交'}
           </Button>
           <Button variant="outline" onClick={() => router.push(`/app/${tenantSlug}/certificates`)}>
             <Stamp size={14} />
@@ -106,7 +108,7 @@ export function PreviewStep({
           </div>
         ) : (
           <div className="mt-4 rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 px-4 py-6 text-sm leading-6 text-neutral-500">
-            先完成批次、客户分配与主体图选择，再生成正式证书预览。确认后二维码将指向公开验真页。
+            先完成事件主体图和客户姓名，再生成正式证书预览。确认后会自动登记成交记录并生成验真二维码。
           </div>
         )}
       </div>

@@ -149,8 +149,8 @@ export function useCertificateStudio({
       return;
     }
 
-    if (!studio.selectedBatchId) {
-      setAssetError('请先创建或选择一个销售批次。');
+    if (!studio.selectedEggEventId) {
+      setAssetError('请先选择一个生蛋事件。');
       return;
     }
 
@@ -163,7 +163,10 @@ export function useCertificateStudio({
 
     try {
       const formData = new FormData();
-      formData.append('saleBatchId', studio.selectedBatchId);
+      formData.append('eggEventId', studio.selectedEggEventId);
+      if (studio.selectedBatchId) {
+        formData.append('saleBatchId', studio.selectedBatchId);
+      }
       formData.append('label', studio.subjectLabel.trim() || '成交主体图');
       formData.append('isPrimary', studio.subjectIsPrimary ? 'true' : 'false');
       formData.append('file', studio.subjectFile);
@@ -176,6 +179,7 @@ export function useCertificateStudio({
 
       setStudio((current) => ({
         ...current,
+        selectedBatchId: response.batch.id,
         selectedSubjectMediaId: response.media.id,
         subjectFile: null
       }));
@@ -186,7 +190,7 @@ export function useCertificateStudio({
     } finally {
       setUploadingSubjectMedia(false);
     }
-  }, [breederId, onRefreshAssets, studio.selectedBatchId, studio.subjectFile, studio.subjectIsPrimary, studio.subjectLabel, setStudio]);
+  }, [breederId, onRefreshAssets, studio.selectedBatchId, studio.selectedEggEventId, studio.subjectFile, studio.subjectIsPrimary, studio.subjectLabel, setStudio]);
 
   const handlePreviewCertificate = useCallback(async () => {
     if (!breederId || !certificateRequest) {
@@ -222,7 +226,7 @@ export function useCertificateStudio({
     setConfirmingCertificate(true);
 
     try {
-      await apiRequest(`/products/${breederId}/certificates/confirm`, {
+      const response = await apiRequest(`/products/${breederId}/certificates/confirm`, {
         method: 'POST',
         body: certificateRequest,
         requestSchema: productCertificateGenerateRequestSchema,
@@ -230,6 +234,11 @@ export function useCertificateStudio({
       });
 
       onPreviewCleared();
+      setStudio((current) => ({
+        ...current,
+        selectedBatchId: response.certificate.saleBatchId ?? current.selectedBatchId,
+        selectedAllocationId: response.certificate.saleAllocationId ?? current.selectedAllocationId
+      }));
       await onRefreshAssets();
       setAssetError(null);
     } catch (requestError) {
@@ -237,7 +246,7 @@ export function useCertificateStudio({
     } finally {
       setConfirmingCertificate(false);
     }
-  }, [breederId, certificateRequest, onRefreshAssets, onPreviewCleared]);
+  }, [breederId, certificateRequest, onRefreshAssets, onPreviewCleared, setStudio]);
 
   return {
     assetError,

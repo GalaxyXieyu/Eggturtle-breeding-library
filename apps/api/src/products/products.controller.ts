@@ -379,7 +379,7 @@ export class ProductsController {
     const payload = parseOrThrow(createSaleSubjectMediaRequestSchema, body);
 
     if (!file || !file.buffer || file.buffer.length === 0) {
-      throw new BadRequestException('A single image file is required in form field "file".');
+      throw new BadRequestException('请在 file 字段上传 1 张图片文件。');
     }
 
     const response = await this.productSaleBatchesService.uploadSaleSubjectMedia(
@@ -570,7 +570,7 @@ export class ProductsController {
     const tenantId = this.requireTenantId(request.tenantId);
     const actorUserId = this.requireUserId(request.user?.id);
     if (!file || !file.buffer || file.buffer.length === 0) {
-      throw new BadRequestException('A single image file is required in form field "file".');
+      throw new BadRequestException('请在 file 字段上传 1 张图片文件。');
     }
 
     const image = await this.productsService.uploadProductImage(tenantId, actorUserId, productId, file);

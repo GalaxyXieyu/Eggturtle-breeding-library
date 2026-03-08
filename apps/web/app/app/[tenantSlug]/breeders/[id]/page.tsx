@@ -39,7 +39,7 @@ import {
 import ProductDrawer, { type ProductSeriesOption } from '@/components/product-drawer';
 import { Card } from '@/components/ui/card';
 import { useCertificateData, useCertificateStudio } from '@/components/certificate-studio';
-import { BreederAssetWorkflowDrawer } from '@/components/breeder-detail/BreederAssetWorkflowDrawer';
+import { BreederAssetWorkflowDrawer, type DrawerMode, type DrawerSection } from '@/components/breeder-detail/BreederAssetWorkflowDrawer';
 import { BreederInfoCard } from '@/components/breeder-detail/BreederInfoCard';
 import { FamilyTreeView } from '@/components/breeder-detail/FamilyTreeView';
 import { BreederEventTimeline } from '@/components/breeder-detail/BreederEventTimeline';
@@ -132,7 +132,11 @@ export default function BreederDetailPage() {
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
   const [eventFilter, setEventFilter] = useState<'all' | 'mating' | 'egg' | 'change_mate'>('all');
   const [eventExpanded, setEventExpanded] = useState(true);
-  const [generatingCouplePhoto, setGeneratingCouplePhoto] = useState(false);
+  const [, setGeneratingCouplePhoto] = useState(false);
+  const [quickActionError, setQuickActionError] = useState<string | null>(null);
+  const [isAssetDrawerOpen, setIsAssetDrawerOpen] = useState(false);
+  const [assetDrawerSection, setAssetDrawerSection] = useState<DrawerSection>('certificate');
+  const [assetDrawerMode, setAssetDrawerMode] = useState<DrawerMode>('quick');
   const [data, setData] = useState<DetailState>({
     breeder: null,
     events: [],
@@ -226,7 +230,7 @@ export default function BreederDetailPage() {
     }
 
     if (!tenantSlug || !breederId) {
-      setError('缺少租户或种龟 ID。');
+      setError('缺少用户或种龟 ID。');
       setLoading(false);
       return;
     }
@@ -365,19 +369,49 @@ export default function BreederDetailPage() {
     return selectedBatch.subjectMedia.find((media) => media.id === studio.selectedSubjectMediaId) ?? null;
   }, [selectedBatch, studio.selectedSubjectMediaId]);
   const certificateRequest = useMemo<ProductCertificateGenerateRequest | null>(() => {
-    if (!selectedBatch || !selectedAllocation || !selectedSubjectMedia) {
+    if (!studio.selectedEggEventId || !selectedSubjectMedia) {
       return null;
     }
 
+    const buyerName = studio.buyerName.trim() || selectedAllocation?.buyerName?.trim() || '';
+    if (!buyerName) {
+      return null;
+    }
+    const soldAt =
+      studio.soldAt && !Number.isNaN(Date.parse(studio.soldAt))
+        ? new Date(studio.soldAt).toISOString()
+        : undefined;
+
     return {
-      eggEventId: selectedBatch.eggEventId,
-      saleBatchId: selectedBatch.id,
-      saleAllocationId: selectedAllocation.id,
+      eggEventId: studio.selectedEggEventId,
+      saleBatchId: selectedBatch?.id || undefined,
+      saleAllocationId: selectedAllocation?.id || undefined,
       subjectMediaId: selectedSubjectMedia.id,
-      buyerName: selectedAllocation.buyerName,
-      buyerAccountId: selectedAllocation.buyerAccountId ?? undefined
+      buyerName,
+      buyerAccountId: studio.buyerAccountId.trim() || selectedAllocation?.buyerAccountId || undefined,
+      buyerContact: studio.buyerContact.trim() || undefined,
+      quantity: Number(studio.allocationQuantity) || 1,
+      unitPrice: studio.unitPrice.trim() ? Number(studio.unitPrice) : undefined,
+      channel: studio.channel.trim() || undefined,
+      campaignId: studio.campaignId.trim() || undefined,
+      soldAt,
+      note: studio.allocationNote.trim() || undefined
     };
-  }, [selectedAllocation, selectedBatch, selectedSubjectMedia]);
+  }, [
+    selectedAllocation,
+    selectedBatch,
+    selectedSubjectMedia,
+    studio.allocationNote,
+    studio.allocationQuantity,
+    studio.buyerAccountId,
+    studio.buyerContact,
+    studio.buyerName,
+    studio.campaignId,
+    studio.channel,
+    studio.selectedEggEventId,
+    studio.soldAt,
+    studio.unitPrice
+  ]);
   const canPreviewCertificate = Boolean(
     certificateRequest &&
       certificateRequirements?.hasSireCode &&
@@ -412,7 +446,7 @@ export default function BreederDetailPage() {
       const nextBatchId = fallbackBatch?.id ?? '';
       const nextAllocationId = fallbackBatch?.allocations.some((item) => item.id === current.selectedAllocationId)
         ? current.selectedAllocationId
-        : fallbackBatch?.allocations[0]?.id ?? '';
+        : '';
       const defaultSubjectMedia = fallbackBatch?.subjectMedia.find((item) => item.isPrimary) ?? fallbackBatch?.subjectMedia[0] ?? null;
       const nextSubjectMediaId = fallbackBatch?.subjectMedia.some((item) => item.id === current.selectedSubjectMediaId)
         ? current.selectedSubjectMediaId
@@ -472,27 +506,63 @@ export default function BreederDetailPage() {
     }
   });
 
-  const handleGenerateCouplePhoto = useCallback(async () => {
+  const handleAssetDrawerOpenChange = useCallback((open: boolean) => {
+    setIsAssetDrawerOpen(open);
+    if (!open) {
+      setAssetDrawerMode('quick');
+    }
+  }, []);
+
+  const openCouplePhotoPreview = useCallback((contentPath: string) => {
+    const target = resolveImageUrl(contentPath);
+    const popup = window.open(target, '_blank', 'noopener');
+    if (!popup) {
+      window.location.href = target;
+    }
+  }, []);
+
+  const handleGenerateCouplePhoto = useCallback(async (openPreview = false) => {
     if (!breederId) {
       return;
     }
 
     setGeneratingCouplePhoto(true);
+    setQuickActionError(null);
 
     try {
-      await apiRequest(`/products/${breederId}/couple-photos/generate`, {
+      const response = await apiRequest(`/products/${breederId}/couple-photos/generate`, {
         method: 'POST',
         body: {},
         requestSchema: generateProductCouplePhotoRequestSchema,
         responseSchema: generateProductCouplePhotoResponseSchema
       });
+      if (openPreview) {
+        openCouplePhotoPreview(response.photo.contentPath);
+      }
       await loadGeneratedAssets(breederId);
     } catch (requestError) {
-      certificateStudioHandlers.setAssetError(formatError(requestError));
+      const message = formatError(requestError);
+      certificateStudioHandlers.setAssetError(message);
+      setQuickActionError(message);
     } finally {
       setGeneratingCouplePhoto(false);
     }
-  }, [breederId, loadGeneratedAssets, certificateStudioHandlers]);
+  }, [breederId, loadGeneratedAssets, certificateStudioHandlers, openCouplePhotoPreview]);
+
+  const handleCouplePhotoAction = useCallback(() => {
+    if (!isFemaleBreeder) {
+      return;
+    }
+
+    setQuickActionError(null);
+
+    if (generatedAssets.currentCouplePhoto) {
+      openCouplePhotoPreview(generatedAssets.currentCouplePhoto.contentPath);
+      return;
+    }
+
+    void handleGenerateCouplePhoto(true);
+  }, [generatedAssets.currentCouplePhoto, handleGenerateCouplePhoto, isFemaleBreeder, openCouplePhotoPreview]);
 
   return (
     <main className="space-y-4 pb-10 sm:space-y-6">
@@ -505,7 +575,15 @@ export default function BreederDetailPage() {
         onImageClick={setActiveImageId}
         onBack={() => router.push(listHref)}
         onEdit={() => setIsEditDrawerOpen(true)}
-        onManageImages={() => router.push(`/app/${tenantSlug}/products/${currentBreeder?.id}`)}
+        actionErrorMessage={quickActionError}
+        onOpenCertificateDrawer={() => {
+          setQuickActionError(null);
+          setAssetDrawerMode('direct');
+          setAssetDrawerSection('certificate');
+          setIsAssetDrawerOpen(true);
+        }}
+        onOpenCouplePhotoDrawer={handleCouplePhotoAction}
+        actionsDisabled={loading || !currentBreeder}
         resolveImageUrl={resolveImageUrl}
       />
 
@@ -551,22 +629,18 @@ export default function BreederDetailPage() {
           canConfirmCertificate={canConfirmCertificate}
           previewingCertificate={certificateStudioHandlers.previewingCertificate}
           confirmingCertificate={certificateStudioHandlers.confirmingCertificate}
-          creatingSaleBatch={certificateStudioHandlers.creatingSaleBatch}
-          creatingSaleAllocation={certificateStudioHandlers.creatingSaleAllocation}
           uploadingSubjectMedia={certificateStudioHandlers.uploadingSubjectMedia}
           assetError={certificateStudioHandlers.assetError}
           studio={studio}
           setStudio={setStudio}
-          isFemaleBreeder={isFemaleBreeder}
-          currentCouplePhoto={generatedAssets.currentCouplePhoto}
-          couplePhotoHistory={generatedAssets.couplePhotoHistory}
-          generatingCouplePhoto={generatingCouplePhoto}
           onPreviewCertificate={certificateStudioHandlers.handlePreviewCertificate}
           onConfirmCertificate={certificateStudioHandlers.handleConfirmCertificate}
-          onCreateBatch={certificateStudioHandlers.handleCreateSaleBatch}
-          onCreateAllocation={certificateStudioHandlers.handleCreateSaleAllocation}
           onUploadSubjectMedia={certificateStudioHandlers.handleUploadSubjectMedia}
-          onGenerateCouplePhoto={handleGenerateCouplePhoto}
+          isOpen={isAssetDrawerOpen}
+          activeSection={assetDrawerSection}
+          mode={assetDrawerMode}
+          onOpenChange={handleAssetDrawerOpenChange}
+          onSectionChange={setAssetDrawerSection}
         />
       ) : null}
 

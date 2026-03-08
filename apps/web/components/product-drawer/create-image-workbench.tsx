@@ -14,6 +14,7 @@ import {
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ImageUploadDropzone } from '@/components/ui/image-upload-dropzone';
 import type { PendingImageItem } from '@/components/product-drawer/image-utils';
 
 type ProductCreateImageWorkbenchProps = {
@@ -54,33 +55,19 @@ export default function ProductCreateImageWorkbench({
           <CardDescription>支持多图上传，支持预览、设主图、上下排序。</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <label
-            htmlFor="create-drawer-upload-images"
-            className={`block rounded-xl border border-dashed px-4 py-5 transition ${
-              submitting
-                ? 'cursor-not-allowed border-neutral-200 bg-neutral-100'
-                : 'cursor-pointer border-neutral-300 bg-neutral-50 hover:border-neutral-400 hover:bg-white'
-            }`}
-          >
-            <input
-              id="create-drawer-upload-images"
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={onAddPendingImages}
-              disabled={submitting}
-              className="sr-only"
-            />
-            <span className="inline-flex rounded-full bg-neutral-900 px-3 py-1 text-xs font-semibold text-white">
-              {selectedImageCount > 0 ? '继续添加图片' : '选择图片'}
-            </span>
-            <p className="mt-3 text-sm font-medium text-neutral-800">
-              {selectedImageCount > 0
+          <ImageUploadDropzone
+            inputId="create-drawer-upload-images"
+            multiple
+            disabled={submitting}
+            onChange={onAddPendingImages}
+            actionText={selectedImageCount > 0 ? '继续添加图片' : '选择图片'}
+            title={
+              selectedImageCount > 0
                 ? `已选择 ${selectedImageCount} 张图片，可继续追加上传`
-                : '点击这里选择图片文件（支持多选）'}
-            </p>
-            <p className="mt-1 text-xs text-neutral-500">推荐先上传 1-3 张主视角图，后续可随时补图。</p>
-          </label>
+                : '点击这里选择图片文件（支持多选）'
+            }
+            description="推荐先上传 1-3 张主视角图，后续可随时补图。"
+          />
           {selectedImageCount === 0 ? (
             <p className="text-xs text-neutral-500">也可不上传图片，直接填写下方资料并创建。</p>
           ) : (

@@ -377,6 +377,7 @@ model SaleBatch {
 
   @@unique([id, tenantId], map: "sale_batches_id_tenant_id_key")
   @@unique([tenantId, batchNo], map: "sale_batches_tenant_id_batch_no_key")
+  @@unique([tenantId, femaleProductId, eggEventId], map: "sale_batches_tenant_female_egg_event_key")
   @@index([tenantId], map: "sale_batches_tenant_id_idx")
   @@index([tenantId, femaleProductId], map: "sale_batches_tenant_id_female_product_id_idx")
   @@index([tenantId, eggEventId], map: "sale_batches_tenant_id_egg_event_id_idx")
