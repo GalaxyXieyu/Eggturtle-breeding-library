@@ -27,6 +27,7 @@ import ProductEditImageWorkbench from '@/components/product-drawer/edit-image-wo
 import { createDemoDrawerImages } from '@/components/product-drawer/image-utils';
 import {
   createSeriesIfNeeded,
+  formatSeriesDisplayLabel,
   parseOffspringUnitPrice,
   parsePopularityScore,
   toSuggestedSeriesCode,
@@ -226,7 +227,7 @@ export default function ProductEditDrawer({
 
     const matched = resolvedSeriesOptions.find((item) => item.id === form.seriesId);
     if (matched) {
-      return `${matched.code} · ${matched.name}`;
+      return formatSeriesDisplayLabel(matched, { includeCodeForDistinct: true });
     }
 
     return `当前系列（${form.seriesId}）`;
@@ -602,22 +603,27 @@ export default function ProductEditDrawer({
                   >
                     不选择系列
                   </button>
-                  {resolvedSeriesOptions.map((item) => (
-                    <button
-                      key={`edit-drawer-series-pill-${item.id}`}
-                      type="button"
-                      className={buildInteractivePillClass(
-                        !isCreatingSeries && form.seriesId === item.id
-                      )}
-                      onClick={() => {
-                        setIsCreatingSeries(false);
-                        setForm((current) => ({ ...current, seriesId: item.id }));
-                      }}
-                      disabled={submitting}
-                    >
-                      {item.code}
-                    </button>
-                  ))}
+                  {resolvedSeriesOptions.map((item) => {
+                    const label = formatSeriesDisplayLabel(item, { includeCodeForDistinct: false });
+                    const title = formatSeriesDisplayLabel(item, { includeCodeForDistinct: true });
+                    return (
+                      <button
+                        key={`edit-drawer-series-pill-${item.id}`}
+                        type="button"
+                        title={title}
+                        className={buildInteractivePillClass(
+                          !isCreatingSeries && form.seriesId === item.id
+                        )}
+                        onClick={() => {
+                          setIsCreatingSeries(false);
+                          setForm((current) => ({ ...current, seriesId: item.id }));
+                        }}
+                        disabled={submitting}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
                 </div>
                 {loadingSeries ? <p className="text-xs text-neutral-500">正在加载系列...</p> : null}
                 <p className="text-xs text-neutral-500">当前选择：{isCreatingSeries ? '新增系列' : selectedSeriesLabel}</p>

@@ -22,6 +22,7 @@ import { formatApiError } from '@/lib/error-utils';
 import { uploadSingleFileWithAuth } from '@/lib/upload-client';
 import {
   createSeriesIfNeeded,
+  formatSeriesDisplayLabel,
   parseOffspringUnitPrice,
   parsePopularityScore,
   toSuggestedSeriesCode,
@@ -573,7 +574,7 @@ export default function ProductCreateDrawer({
                         <option value="">不选择系列</option>
                         {seriesOptions.map((item) => (
                           <option key={`create-drawer-series-option-${item.id}`} value={item.id}>
-                            {item.code} - {item.name}
+                            {formatSeriesDisplayLabel(item, { includeCodeForDistinct: true })}
                           </option>
                         ))}
                       </NativeSelect>
@@ -594,7 +595,7 @@ export default function ProductCreateDrawer({
                       <p className="text-xs text-amber-700">将先创建系列，再完成当前乌龟创建。</p>
                     ) : selectedSeries ? (
                       <p className="text-xs text-emerald-600">
-                        已选择系列：{selectedSeries.name}（{selectedSeries.code}）
+                        已选择系列：{formatSeriesDisplayLabel(selectedSeries, { includeCodeForDistinct: true })}
                       </p>
                     ) : (
                       <p className="text-xs text-neutral-500">可留空，或先新建系列后直接关联。</p>

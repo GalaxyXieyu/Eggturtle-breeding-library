@@ -124,6 +124,47 @@ export function normalizeText(value: string) {
   return value.trim().toLowerCase();
 }
 
+function isPlaceholderSeriesCode(code: string) {
+  const normalized = normalizeText(code);
+  return normalized === 'new-series' || normalized === 'new';
+}
+
+function isGeneratedSeriesCode(code: string) {
+  const normalized = normalizeText(code);
+  if (normalized.startsWith('legacy-series-')) {
+    return true;
+  }
+
+  return /^series-[a-f0-9]{8,}$/.test(normalized);
+}
+
+export function formatSeriesDisplayLabel(
+  series: Pick<ProductSeriesOption, 'code' | 'name'>,
+  options: { includeCodeForDistinct?: boolean } = {}
+) {
+  const includeCodeForDistinct = options.includeCodeForDistinct !== false;
+  const displayName = series.name.trim();
+  const displayCode = series.code.trim();
+
+  if (!displayName) {
+    return displayCode || '未命名系列';
+  }
+
+  if (!displayCode || isPlaceholderSeriesCode(displayCode) || isGeneratedSeriesCode(displayCode)) {
+    return displayName;
+  }
+
+  if (normalizeText(displayName) === normalizeText(displayCode)) {
+    return displayName;
+  }
+
+  if (!includeCodeForDistinct) {
+    return displayName;
+  }
+
+  return `${displayName}（${displayCode}）`;
+}
+
 export function resolveSeriesInput(
   input: string,
   seriesOptions: ProductSeriesOption[]
