@@ -56,6 +56,8 @@ export default function TenantShareDialogTrigger({
   const [link, setLink] = useState('');
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [posterDataUrl, setPosterDataUrl] = useState<string | null>(null);
+  const [posterPending, setPosterPending] = useState(false);
+  const [posterRetrySeed, setPosterRetrySeed] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const shareRequestIdRef = useRef(0);
@@ -108,6 +110,8 @@ export default function TenantShareDialogTrigger({
     setLink('');
     setQrDataUrl(null);
     setPosterDataUrl(null);
+    setPosterPending(false);
+    setPosterRetrySeed(0);
     setError(null);
   }, [cancelShareRequest]);
 
@@ -254,44 +258,74 @@ export default function TenantShareDialogTrigger({
 
   useEffect(() => {
     if (!open || !qrDataUrl) {
+      setPosterPending(false);
       return;
     }
 
     const sessionId = openSessionIdRef.current;
     const requestId = posterRequestIdRef.current + 1;
     posterRequestIdRef.current = requestId;
+    setPosterPending(true);
+    setPosterDataUrl(null);
+    setError((previousError) =>
+      previousError?.startsWith('海报') ? null : previousError,
+    );
+
+    const posterPayload: SharePosterPayload = {
+      title: cardTitle,
+      subtitle: cardSubtitle,
+      qrDataUrl,
+      previewImageUrl: normalizedPreviewImageUrl,
+      posterImageUrls: normalizedPosterImageUrls,
+      variant: resolvedPosterVariant,
+    };
 
     void (async () => {
-      try {
-        const dataUrl = await generateSharePoster({
-          title: cardTitle,
-          subtitle: cardSubtitle,
-          qrDataUrl,
-          previewImageUrl: normalizedPreviewImageUrl,
-          posterImageUrls: normalizedPosterImageUrls,
-          variant: resolvedPosterVariant,
+      const attemptPayloads: SharePosterPayload[] = [posterPayload, posterPayload];
+      if (
+        posterPayload.previewImageUrl ||
+        (posterPayload.posterImageUrls?.length ?? 0) > 0
+      ) {
+        attemptPayloads.push({
+          ...posterPayload,
+          previewImageUrl: null,
+          posterImageUrls: [],
         });
-
-        if (
-          !mountedRef.current ||
-          openSessionIdRef.current !== sessionId ||
-          posterRequestIdRef.current !== requestId
-        ) {
-          return;
-        }
-
-        setPosterDataUrl(dataUrl);
-      } catch {
-        if (
-          !mountedRef.current ||
-          openSessionIdRef.current !== sessionId ||
-          posterRequestIdRef.current !== requestId
-        ) {
-          return;
-        }
-
-        setPosterDataUrl(null);
       }
+
+      for (let attemptIndex = 0; attemptIndex < attemptPayloads.length; attemptIndex += 1) {
+        try {
+          const dataUrl = await generateSharePoster(attemptPayloads[attemptIndex]!);
+
+          if (
+            !mountedRef.current ||
+            openSessionIdRef.current !== sessionId ||
+            posterRequestIdRef.current !== requestId
+          ) {
+            return;
+          }
+
+          setPosterDataUrl(dataUrl);
+          setPosterPending(false);
+          return;
+        } catch {
+          if (attemptIndex < attemptPayloads.length - 1) {
+            await wait(180 * (attemptIndex + 1));
+          }
+        }
+      }
+
+      if (
+        !mountedRef.current ||
+        openSessionIdRef.current !== sessionId ||
+        posterRequestIdRef.current !== requestId
+      ) {
+        return;
+      }
+
+      setPosterDataUrl(null);
+      setPosterPending(false);
+      setError('海报生成失败，请点击重试。');
     })();
   }, [
     cardSubtitle,
@@ -301,6 +335,7 @@ export default function TenantShareDialogTrigger({
     normalizedPreviewImageUrl,
     qrDataUrl,
     resolvedPosterVariant,
+    posterRetrySeed,
   ]);
 
   function handleOpen() {
@@ -331,6 +366,11 @@ export default function TenantShareDialogTrigger({
   }
 
   function handleSaveImage() {
+    if (posterPending) {
+      setError('海报正在生成，请稍后再试。');
+      return;
+    }
+
     if (!posterDataUrl) {
       setError('海报尚未生成完成，请稍后再试。');
       return;
@@ -354,11 +394,19 @@ export default function TenantShareDialogTrigger({
   }
 
   function handleRetryShareLink() {
-    if (!open || pending) {
+    if (!open || pending || posterPending) {
       return;
     }
 
     setNotice(null);
+    setError(null);
+    if (link.trim() && qrDataUrl) {
+      posterRequestIdRef.current += 1;
+      setPosterDataUrl(null);
+      setPosterRetrySeed((previous) => previous + 1);
+      return;
+    }
+
     resetPreviewState();
     const sessionId = openSessionIdRef.current;
     void prepareShareAssets(sessionId);
@@ -423,6 +471,13 @@ export default function TenantShareDialogTrigger({
                     </span>
                     正在生成分享链接...
                   </div>
+                ) : posterPending ? (
+                  <div className="mx-auto flex aspect-[9/16] w-full max-w-[min(84vw,19rem)] min-h-[17.5rem] flex-col items-center justify-center gap-3 rounded-[22px] bg-[linear-gradient(180deg,#f8fafc,#eef2ff)] text-sm text-slate-500 sm:max-w-[18.75rem]">
+                    <span className="inline-flex h-10 w-10 animate-pulse items-center justify-center rounded-full bg-[#0f172a] text-[#ffd65a]">
+                      <QrCode size={18} />
+                    </span>
+                    正在渲染分享海报...
+                  </div>
                 ) : posterDataUrl ? (
                   <div className="mx-auto flex aspect-[9/16] w-full max-w-[min(84vw,19rem)] items-center justify-center rounded-[22px] bg-[#090f1d] p-1.5 shadow-[0_18px_34px_rgba(0,0,0,0.36)] sm:max-w-[18.75rem] sm:p-2">
                     <img
@@ -446,7 +501,7 @@ export default function TenantShareDialogTrigger({
               <button
                 type="button"
                 onClick={handleSaveImage}
-                disabled={!posterDataUrl}
+                disabled={!posterDataUrl || posterPending}
                 className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[linear-gradient(160deg,#0f172a,#111827)] px-3 text-sm font-semibold text-[#fef3c7] shadow-[0_10px_20px_rgba(15,23,42,0.35)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Download size={15} />
@@ -733,6 +788,100 @@ async function generateDetailSharePoster(payload: SharePosterPayload): Promise<s
   ctx.fillText('当前种龟详情可一键直达，适合直接发客户', qrX + qrSize + 34, qrY + 104);
   ctx.fillText('二维码、海报与链接复用同一分享链路', qrX + qrSize + 34, qrY + 144);
 
+  const dividerY = qrY + qrSize + 30;
+  ctx.strokeStyle = 'rgba(180,83,9,0.24)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(panelX + 34, dividerY);
+  ctx.lineTo(panelX + panelWidth - 34, dividerY);
+  ctx.stroke();
+
+  const sloganCardX = panelX + 34;
+  const sloganCardY = dividerY + 20;
+  const sloganCardWidth = panelWidth - 68;
+  const sloganCardHeight = 132;
+  const sloganCardGradient = ctx.createLinearGradient(
+    sloganCardX,
+    sloganCardY,
+    sloganCardX + sloganCardWidth,
+    sloganCardY + sloganCardHeight,
+  );
+  sloganCardGradient.addColorStop(0, 'rgba(253,230,138,0.78)');
+  sloganCardGradient.addColorStop(1, 'rgba(251,191,36,0.28)');
+  ctx.fillStyle = sloganCardGradient;
+  roundedRect(ctx, sloganCardX, sloganCardY, sloganCardWidth, sloganCardHeight, 24);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(146,64,14,0.28)';
+  ctx.lineWidth = 2;
+  roundedRect(ctx, sloganCardX, sloganCardY, sloganCardWidth, sloganCardHeight, 24);
+  ctx.stroke();
+
+  ctx.fillStyle = '#7c2d12';
+  ctx.font = '700 34px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
+  ctx.fillText('好龟看得见，成交更直接', sloganCardX + 28, sloganCardY + 52);
+  ctx.fillStyle = '#92400e';
+  ctx.font = '500 22px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
+  ctx.fillText(
+    'SLOGAN · Better genetics, better trust, better sales.',
+    sloganCardX + 28,
+    sloganCardY + 92,
+  );
+
+  const chipY = sloganCardY + sloganCardHeight + 20;
+  const chipGap = 16;
+  const chipHeight = 90;
+  const chipWidth = (sloganCardWidth - chipGap * 2) / 3;
+  drawPosterInfoChip(ctx, {
+    x: sloganCardX,
+    y: chipY,
+    width: chipWidth,
+    height: chipHeight,
+    label: '分享链路',
+    value: '图·码·链接同源',
+    accentFrom: '#f59e0b',
+    accentTo: '#fcd34d',
+  });
+  drawPosterInfoChip(ctx, {
+    x: sloganCardX + chipWidth + chipGap,
+    y: chipY,
+    width: chipWidth,
+    height: chipHeight,
+    label: '客户决策',
+    value: '先看图 再沟通',
+    accentFrom: '#0f172a',
+    accentTo: '#334155',
+  });
+  drawPosterInfoChip(ctx, {
+    x: sloganCardX + (chipWidth + chipGap) * 2,
+    y: chipY,
+    width: chipWidth,
+    height: chipHeight,
+    label: '转发效率',
+    value: '直达详情页',
+    accentFrom: '#92400e',
+    accentTo: '#d97706',
+  });
+
+  const accentY = chipY + chipHeight + 24;
+  ctx.strokeStyle = 'rgba(120,53,15,0.22)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(panelX + 34, accentY);
+  ctx.lineTo(panelX + panelWidth - 34, accentY);
+  ctx.stroke();
+  for (let index = 0; index < 3; index += 1) {
+    const dotX = panelX + panelWidth / 2 + (index - 1) * 22;
+    const dotRadius = index === 1 ? 4 : 3;
+    ctx.fillStyle = index === 1 ? '#f59e0b' : '#fcd34d';
+    ctx.beginPath();
+    ctx.arc(dotX, accentY, dotRadius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.fillStyle = '#92400e';
+  ctx.font = '500 20px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
+  ctx.fillText('A good card speaks before you do.', panelX + 34, panelY + panelHeight - 58);
+
   ctx.fillStyle = '#0f172a';
   ctx.font = '500 20px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
   ctx.fillText('Eggturtle Breeding Library', panelX + 34, panelY + panelHeight - 24);
@@ -906,9 +1055,69 @@ function drawMasonryTile(
   ctx.restore();
 }
 
+type PosterInfoChipOptions = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  label: string;
+  value: string;
+  accentFrom: string;
+  accentTo: string;
+};
+
+function drawPosterInfoChip(ctx: CanvasRenderingContext2D, options: PosterInfoChipOptions) {
+  const chipGradient = ctx.createLinearGradient(
+    options.x,
+    options.y,
+    options.x + options.width,
+    options.y + options.height,
+  );
+  chipGradient.addColorStop(0, 'rgba(255,255,255,0.94)');
+  chipGradient.addColorStop(1, 'rgba(255,247,224,0.94)');
+  ctx.fillStyle = chipGradient;
+  roundedRect(ctx, options.x, options.y, options.width, options.height, 18);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(146,64,14,0.18)';
+  ctx.lineWidth = 2;
+  roundedRect(ctx, options.x, options.y, options.width, options.height, 18);
+  ctx.stroke();
+
+  const accentGradient = ctx.createLinearGradient(
+    options.x + 12,
+    options.y + 10,
+    options.x + options.width - 12,
+    options.y + 10,
+  );
+  accentGradient.addColorStop(0, options.accentFrom);
+  accentGradient.addColorStop(1, options.accentTo);
+  ctx.fillStyle = accentGradient;
+  roundedRect(ctx, options.x + 12, options.y + 10, Math.max(64, options.width * 0.42), 6, 3);
+  ctx.fill();
+
+  ctx.fillStyle = '#7c2d12';
+  ctx.font = '600 18px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
+  ctx.fillText(options.label, options.x + 14, options.y + 40);
+  drawMultilineText(ctx, options.value, {
+    x: options.x + 14,
+    y: options.y + 46,
+    maxWidth: options.width - 28,
+    lineHeight: 24,
+    maxLines: 2,
+    font: '700 23px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif',
+    color: '#111827',
+  });
+}
+
 async function loadImages(urls: string[]) {
   const results = await Promise.allSettled(urls.map((url) => loadImage(url)));
   return results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []));
+}
+
+function wait(ms: number) {
+  return new Promise<void>((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
 }
 
 function ensureMasonryImages(images: HTMLImageElement[], minCount: number) {
@@ -1177,7 +1386,7 @@ function drawMultilineText(ctx: CanvasRenderingContext2D, text: string, options:
 async function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();
-    const timeoutId = window.setTimeout(() => reject(new Error('image load timeout')), 5000);
+    const timeoutId = window.setTimeout(() => reject(new Error('image load timeout')), 9000);
     const resolvedSrc = resolvePosterImageSource(src);
 
     image.decoding = 'async';
@@ -1187,6 +1396,14 @@ async function loadImage(src: string): Promise<HTMLImageElement> {
 
     image.onload = () => {
       window.clearTimeout(timeoutId);
+      if (typeof image.decode === 'function') {
+        image
+          .decode()
+          .catch(() => undefined)
+          .finally(() => resolve(image));
+        return;
+      }
+
       resolve(image);
     };
     image.onerror = () => {
