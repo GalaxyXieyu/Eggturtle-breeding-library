@@ -155,34 +155,13 @@ textarea:focus {
   background: #ffffff;
 }
 
+/* Keep foundation button rules non-visual to avoid global hover/color conflicts. */
 button {
-  min-height: 36px;
-  border: 1px solid #111827;
-  border-radius: var(--radius-md);
-  padding: 6px 12px;
-  background: #171717;
-  color: #ffffff;
   cursor: pointer;
-  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
-}
-
-button:hover:not(:disabled) {
-  background: #09090b;
 }
 
 button:disabled {
-  opacity: 0.58;
   cursor: not-allowed;
-}
-
-button.secondary {
-  background: #eef2f7;
-  border-color: transparent;
-  color: #1f2937;
-}
-
-button.secondary:hover:not(:disabled) {
-  background: #e2e8f0;
 }
 
 :root[data-theme='dark'] input,
@@ -196,27 +175,6 @@ button.secondary:hover:not(:disabled) {
 :root[data-theme='dark'] select:focus,
 :root[data-theme='dark'] textarea:focus {
   background: #152031;
-}
-
-:root[data-theme='dark'] button {
-  border-color: transparent;
-  background: #253247;
-  color: #e8eef8;
-}
-
-:root[data-theme='dark'] button:hover:not(:disabled) {
-  background: #304261;
-  color: #f8fbff;
-}
-
-:root[data-theme='dark'] button.secondary {
-  border-color: transparent;
-  background: #253247;
-  color: #e8eef8;
-}
-
-:root[data-theme='dark'] button.secondary:hover:not(:disabled) {
-  background: #304261;
 }
 
 .btn-compact {

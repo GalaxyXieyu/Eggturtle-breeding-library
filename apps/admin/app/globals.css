@@ -124,7 +124,7 @@ textarea:focus {
   box-shadow: 0 0 0 3px rgba(255, 212, 0, 0.22);
 }
 
-button {
+:where(button:not([data-ui='button'])) {
   min-height: 38px;
   border: 1px solid #111827;
   border-radius: 999px;
@@ -138,26 +138,26 @@ button {
   box-shadow: 0 4px 12px rgba(251, 191, 36, 0.38);
 }
 
-button:hover:not(:disabled) {
+:where(button:not([data-ui='button'])):hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 8px 18px rgba(251, 191, 36, 0.34);
 }
 
-button:disabled {
+:where(button:not([data-ui='button'])):disabled {
   cursor: not-allowed;
   opacity: 0.6;
   transform: none;
   box-shadow: none;
 }
 
-button.secondary {
+:where(button.secondary:not([data-ui='button'])) {
   border-color: var(--admin-border-strong);
   background: var(--admin-surface);
   color: var(--admin-ink-soft);
   box-shadow: none;
 }
 
-button.secondary:hover:not(:disabled) {
+:where(button.secondary:not([data-ui='button'])):hover:not(:disabled) {
   transform: none;
   border-color: #d4af0a;
   background: color-mix(in srgb, var(--admin-surface) 70%, #ffd400 30%);

@@ -8,6 +8,7 @@
     "dev:start": "./dev.sh start",
     "dev:stop": "./dev.sh stop",
     "dev:status": "./dev.sh status",
+    "styles:guard:buttons": "node scripts/devtools/check-global-button-selectors.mjs",
     "format": "prettier --write .",
     "imports:audit": "node scripts/devtools/alias_import_audit.mjs",
     "imports:fix": "node scripts/devtools/alias_import_audit.mjs --write",
