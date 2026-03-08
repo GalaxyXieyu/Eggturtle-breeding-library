@@ -1,6 +1,7 @@
 import { BadRequestException, Controller, Get, Header, Inject, StreamableFile, Query } from '@nestjs/common';
 import path from 'node:path';
 
+import { resolveAllowedMaxEdge, resizeToWebpMaxEdge } from '../images/image-variants';
 import { STORAGE_PROVIDER_TOKEN } from '../storage/storage.constants';
 import type { StorageProvider } from '../storage/storage.provider';
 
@@ -48,7 +49,7 @@ export class TenantSharePresentationPublicController {
   // Public endpoint used by the share pages to load tenant presentation assets (hero images, contact QR, etc.).
   @Get('assets')
   @Header('Cache-Control', 'public, max-age=31536000, immutable')
-  async getAsset(@Query('key') key: string | undefined) {
+  async getAsset(@Query('key') key: string | undefined, @Query('maxEdge') maxEdgeRaw: string | undefined) {
     const rawKey = key?.trim();
     if (!rawKey) {
       throw new BadRequestException('Query parameter "key" is required.');
@@ -64,6 +65,14 @@ export class TenantSharePresentationPublicController {
 
     const result = await this.storageProvider.getObject(normalizedKey);
     const contentType = result.contentType ?? guessContentTypeFromKey(normalizedKey) ?? 'application/octet-stream';
+    const maxEdge = resolveAllowedMaxEdge(maxEdgeRaw ? Number(maxEdgeRaw) : undefined);
+
+    if (maxEdge && contentType.startsWith('image/')) {
+      const resized = await resizeToWebpMaxEdge({ body: result.body, maxEdge });
+      return new StreamableFile(resized.body, {
+        type: resized.contentType
+      });
+    }
 
     return new StreamableFile(result.body, {
       type: contentType

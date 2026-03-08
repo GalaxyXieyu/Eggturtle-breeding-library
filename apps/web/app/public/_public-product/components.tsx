@@ -2,13 +2,14 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { PublicSharePresentation } from '@eggturtle/shared';
 
 import { PetCard } from '@/components/pet';
 import { FamilyNodeCard } from '@/components/family-tree/FamilyNodeCard';
 import { formatSex, formatShortDate } from '@/lib/pet-format';
 import type { Breeder, BreederEventItem, FamilyTree, MaleMateLoadItem, NeedMatingStatus, Series } from '@/app/public/_public-product/types';
+import { withPublicImageMaxEdge } from '@/app/public/_shared/public-image';
 
 function withDemo(path: string, demo: boolean) {
   return demo ? `${path}${path.includes('?') ? '&' : '?'}demo=1` : path;
@@ -70,23 +71,27 @@ export function ShareContactCard({
   className?: string;
 }) {
   const { showWechatBlock, wechatQrImageUrl, wechatId } = presentation.contact;
+  const contactQrImageUrl = withPublicImageMaxEdge(wechatQrImageUrl, 480);
 
   if (!showWechatBlock) {
     return null;
   }
 
-  if (!wechatQrImageUrl && !wechatId) {
+  if (!contactQrImageUrl && !wechatId) {
     return null;
   }
 
   return (
     <section className={`rounded-3xl border border-black/5 bg-white/90 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.08)] sm:p-5 ${className ?? ''}`}>
       <div className="flex flex-wrap items-start gap-4">
-        {wechatQrImageUrl ? (
+        {contactQrImageUrl ? (
           <img
-            src={wechatQrImageUrl}
+            src={contactQrImageUrl}
             alt="微信二维码"
             className="h-28 w-28 rounded-2xl border border-neutral-200 bg-white object-cover p-1"
+            loading="lazy"
+            decoding="async"
+            fetchPriority="low"
           />
         ) : null}
 
@@ -114,7 +119,7 @@ export function SeriesIntroCard({
   breeders: Breeder[];
 }) {
   const [isCollapsed, setIsCollapsed] = useState(true);
-  const firstImage = breeders[0]?.images[0]?.url;
+  const firstImage = withPublicImageMaxEdge(breeders[0]?.images[0]?.url, 960);
 
   if (!series) return null;
 
@@ -200,7 +205,7 @@ export function BreederCard({
       href={withDemo(publicPath(shareToken, `/products/${breeder.id}`, shareQuery), demo)}
       variant="public"
       code={breeder.code}
-      coverImageUrl={mainImage?.url}
+      coverImageUrl={withPublicImageMaxEdge(mainImage?.url, 480) ?? undefined}
       coverFallbackImageUrl="/images/mg_01.jpg"
       coverAlt={breeder.code}
       sex={breeder.sex}
@@ -237,7 +242,14 @@ export function BreederCarousel({
   const hasSeriesIntro = Boolean(series?.description);
   const effectiveSlide = hasSeriesIntro ? slide : 0;
   const activeImage = breeder.images[currentImageIndex] || breeder.images[0];
+  const activeImageUrl =
+    (withPublicImageMaxEdge(activeImage?.url || '/images/mg_01.jpg', 960) as string) ?? '/images/mg_01.jpg';
+  const [activeImageLoaded, setActiveImageLoaded] = useState(false);
   const resolvedHomeHref = homeHref ?? withDemo(publicPath(shareToken, '', shareQuery), demo);
+
+  useEffect(() => {
+    setActiveImageLoaded(false);
+  }, [activeImageUrl]);
 
   return (
     <div className="overflow-hidden rounded-3xl border border-black/5 bg-white shadow-[0_14px_38px_rgba(0,0,0,0.14)]">
@@ -273,13 +285,18 @@ export function BreederCarousel({
           ) : null}
 
           <div className="relative h-full w-full shrink-0">
+            {!activeImageLoaded ? (
+              <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-neutral-200 via-neutral-100 to-neutral-200" />
+            ) : null}
             <img
-              src={activeImage?.url || '/images/mg_01.jpg'}
+              src={activeImageUrl}
               alt={activeImage?.alt || breeder.code}
-              className="h-full w-full object-cover"
+              className={`h-full w-full object-cover transition-opacity duration-300 ${activeImageLoaded ? 'opacity-100' : 'opacity-0'}`}
               loading="eager"
               decoding="async"
               fetchPriority="high"
+              onLoad={() => setActiveImageLoaded(true)}
+              onError={() => setActiveImageLoaded(true)}
             />
 
             {breeder.images.length > 1 ? (
@@ -336,7 +353,7 @@ export function BreederCarousel({
                 onClick={() => setCurrentImageIndex(index)}
               >
                 <img
-                  src={img.url}
+                  src={withPublicImageMaxEdge(img.url, 480) ?? img.url}
                   alt={img.alt || `${breeder.code}-${index + 1}`}
                   className="h-full w-full object-cover"
                   loading="lazy"

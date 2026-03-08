@@ -9,6 +9,7 @@ import { getAccessToken } from '@/lib/api-client';
 import { resolvePublicSharePresentation } from '@/app/public/_public-product/presentation';
 import PublicBottomDock from '@/app/public/_shared/public-bottom-dock';
 import PublicFloatingActions from '@/app/public/_shared/public-floating-actions';
+import { withPublicImageMaxEdge } from '@/app/public/_shared/public-image';
 import { appendPublicShareQuery } from '@/app/public/_shared/public-share-api';
 
 type PublicShareMePageProps = {
@@ -55,9 +56,17 @@ export default function PublicShareMePage({ shareToken, shareQuery, presentation
   const resolvedPresentation = resolvePublicSharePresentation(presentation);
   const brandPrimary = resolvedPresentation.theme.brandPrimary;
   const brandSecondary = resolvedPresentation.theme.brandSecondary;
-  const contactQrImageUrl = resolvedPresentation.contact.showWechatBlock ? resolvedPresentation.contact.wechatQrImageUrl : null;
+  const contactQrImageUrl = resolvedPresentation.contact.showWechatBlock
+    ? withPublicImageMaxEdge(resolvedPresentation.contact.wechatQrImageUrl, 480)
+    : null;
   const contactWechatId = resolvedPresentation.contact.showWechatBlock ? resolvedPresentation.contact.wechatId : null;
-  const collageImages = useMemo(() => buildCollageImages(resolvedPresentation.hero.images), [resolvedPresentation.hero.images]);
+  const collageImages = useMemo(
+    () =>
+      buildCollageImages(resolvedPresentation.hero.images).map(
+        (imageUrl) => withPublicImageMaxEdge(imageUrl, 960) ?? imageUrl
+      ),
+    [resolvedPresentation.hero.images]
+  );
   const permalink = useMemo(
     () =>
       typeof window !== 'undefined' && window.location?.origin

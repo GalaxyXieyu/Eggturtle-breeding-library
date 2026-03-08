@@ -105,6 +105,7 @@ export class SharesController {
       resourceType: 'tenant_feed';
       resourceId: string;
       productId?: string;
+      maxEdge?: number;
       exp: string;
       sig: string;
     };
@@ -127,7 +128,7 @@ export class SharesController {
     );
 
     // Cache only until the share signature expires.
-    const maxAge = Math.max(0, Math.min(300, Math.floor((asset.expiresAt.getTime() - Date.now()) / 1000)));
+    const maxAge = Math.max(0, Math.min(3600, Math.floor((asset.expiresAt.getTime() - Date.now()) / 1000)));
     response.setHeader('Cache-Control', `public, max-age=${maxAge}, s-maxage=${maxAge}`);
 
     if (asset.contentType) {

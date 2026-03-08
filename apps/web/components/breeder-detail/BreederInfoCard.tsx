@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from 'react';
 import { type Product, type ProductImage } from '@eggturtle/shared';
 import { ArrowLeft, FileBadge2, HeartHandshake, Image as ImageIcon, PencilRuler } from 'lucide-react';
 import { formatPrice, formatSex } from '@/lib/pet-format';
@@ -38,6 +39,25 @@ function RelationPill({ label, value }: { label: keyof typeof relationPillStyles
   );
 }
 
+function withMaxEdge(url: string, maxEdge: 480 | 960): string {
+  if (!url.trim()) {
+    return url;
+  }
+
+  try {
+    const isAbsolute = /^https?:\/\//i.test(url);
+    const parsed = new URL(url, 'http://localhost');
+    parsed.searchParams.set('maxEdge', String(maxEdge));
+    if (isAbsolute) {
+      return parsed.toString();
+    }
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    const joiner = url.includes('?') ? '&' : '?';
+    return `${url}${joiner}maxEdge=${maxEdge}`;
+  }
+}
+
 export function BreederInfoCard({
   breeder,
   seriesLabel,
@@ -53,6 +73,16 @@ export function BreederInfoCard({
   actionErrorMessage = null,
   resolveImageUrl
 }: BreederInfoCardProps) {
+  const activeImageSrc = useMemo(
+    () => (activeImage ? withMaxEdge(resolveImageUrl(activeImage.url), 960) : null),
+    [activeImage, resolveImageUrl]
+  );
+  const [heroImageLoaded, setHeroImageLoaded] = useState(false);
+
+  useEffect(() => {
+    setHeroImageLoaded(false);
+  }, [activeImageSrc]);
+
   return (
     <Card className="tenant-card-lift overflow-hidden rounded-3xl border-neutral-200/90 bg-white transition-all">
       <CardContent className="grid gap-6 p-0 lg:grid-cols-[380px_minmax(0,1fr)]">
@@ -62,18 +92,30 @@ export function BreederInfoCard({
               type="button"
               data-ui="button"
               onClick={onBack}
-              className="absolute left-3 top-3 z-10 inline-flex h-9 items-center gap-1 rounded-full border border-white/40 bg-black/55 px-3 text-xs font-semibold text-white shadow-[0_8px_20px_rgba(0,0,0,0.28)] backdrop-blur-sm transition hover:bg-black/65"
+              className="absolute left-3 top-3 z-10 inline-flex h-9 items-center gap-1 rounded-full border border-white/40 bg-black/55 px-3 text-xs font-semibold text-white shadow-[0_8px_20px_rgba(0,0,0,0.28)] backdrop-blur-sm transition hover:bg-black/65 hover:text-white"
               aria-label="返回列表"
             >
               <ArrowLeft size={14} />
               返回
             </button>
             {activeImage ? (
-              <img
-                src={resolveImageUrl(activeImage.url)}
-                alt={`${breeder?.code ?? 'breeder'} 图片`}
-                className="aspect-[4/5] w-full object-cover sm:aspect-[5/6] lg:min-h-[420px] lg:aspect-auto"
-              />
+              <>
+                {!heroImageLoaded ? (
+                  <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-neutral-200 to-neutral-100" />
+                ) : null}
+                <img
+                  src={activeImageSrc ?? resolveImageUrl(activeImage.url)}
+                  alt={`${breeder?.code ?? 'breeder'} 图片`}
+                  className={`aspect-[4/5] w-full object-cover transition-opacity duration-300 sm:aspect-[5/6] lg:min-h-[420px] lg:aspect-auto ${
+                    heroImageLoaded ? 'opacity-100' : 'opacity-0'
+                  }`}
+                  loading="eager"
+                  decoding="async"
+                  fetchPriority="high"
+                  onLoad={() => setHeroImageLoaded(true)}
+                  onError={() => setHeroImageLoaded(true)}
+                />
+              </>
             ) : (
               <div className="flex min-h-[280px] items-center justify-center text-neutral-400">
                 <ImageIcon size={42} />
@@ -102,7 +144,13 @@ export function BreederInfoCard({
                     }`}
                     aria-label={`查看图片 ${image.id === activeImageId ? '(当前)' : ''}`}
                   >
-                    <img src={resolveImageUrl(image.url)} alt="种龟缩略图" className="aspect-square w-full object-cover" />
+                    <img
+                      src={withMaxEdge(resolveImageUrl(image.url), 480)}
+                      alt="种龟缩略图"
+                      className="aspect-square w-full object-cover"
+                      loading="lazy"
+                      decoding="async"
+                    />
                   </button>
                 ))}
               </div>

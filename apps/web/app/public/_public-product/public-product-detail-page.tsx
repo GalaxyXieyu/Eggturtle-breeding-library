@@ -8,6 +8,7 @@ import { UiPreferenceControls } from '@/components/ui-preferences';
 import PublicBottomDock from '@/app/public/_shared/public-bottom-dock';
 import PublicFloatingActions from '@/app/public/_shared/public-floating-actions';
 import { appendPublicShareQuery } from '@/app/public/_shared/public-share-api';
+import { withPublicImageMaxEdge } from '@/app/public/_shared/public-image';
 
 import type { Breeder, BreederEventItem, FamilyTree, MaleMateLoadItem, Series } from '@/app/public/_public-product/types';
 import {
@@ -60,9 +61,14 @@ export default function PublicProductDetailPage({
   const resolvedPresentation = resolvePublicSharePresentation(presentation);
   const brandPrimary = resolvedPresentation.theme.brandPrimary;
   const brandSecondary = resolvedPresentation.theme.brandSecondary;
-  const contactQrImageUrl = resolvedPresentation.contact.showWechatBlock ? resolvedPresentation.contact.wechatQrImageUrl : null;
+  const contactQrImageUrl = resolvedPresentation.contact.showWechatBlock
+    ? withPublicImageMaxEdge(resolvedPresentation.contact.wechatQrImageUrl, 480)
+    : null;
   const contactWechatId = resolvedPresentation.contact.showWechatBlock ? resolvedPresentation.contact.wechatId : null;
-  const shareCardHeroImageUrl = breeder?.images[0]?.url ?? resolvedPresentation.hero.images[0] ?? null;
+  const shareCardHeroImageUrl =
+    withPublicImageMaxEdge(breeder?.images[0]?.url, 960) ??
+    withPublicImageMaxEdge(resolvedPresentation.hero.images[0], 960) ??
+    null;
   const permalink =
     typeof window !== 'undefined' && window.location?.origin
       ? `${window.location.origin}/public/s/${shareToken}/products/${breederId}`
@@ -114,7 +120,7 @@ export default function PublicProductDetailPage({
                       >
                         <div className="relative aspect-[4/5] bg-neutral-100">
                           <img
-                            src={item.images[0]?.url || '/images/mg_01.jpg'}
+                            src={withPublicImageMaxEdge(item.images[0]?.url, 480) ?? '/images/mg_01.jpg'}
                             alt={item.code}
                             className="h-full w-full object-cover"
                             loading="lazy"

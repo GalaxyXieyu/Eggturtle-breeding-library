@@ -89,6 +89,8 @@ type PassthroughResponse = {
   redirect: (url: string) => void;
 };
 
+const PRIVATE_ASSET_CACHE_CONTROL = 'private, max-age=600, stale-while-revalidate=86400';
+
 @Controller('products')
 @UseGuards(AuthGuard, RbacGuard, TenantSubscriptionGuard)
 @RequireTenantRole('VIEWER')
@@ -99,6 +101,11 @@ export class ProductsController {
     private readonly productSaleBatchesService: ProductSaleBatchesService,
     private readonly productCouplePhotosService: ProductCouplePhotosService
   ) {}
+
+  private applyPrivateAssetCacheHeaders(response: PassthroughResponse) {
+    // Authenticated assets are user-private but can still be cached in browser.
+    response.setHeader('Cache-Control', PRIVATE_ASSET_CACHE_CONTROL);
+  }
 
   @Post()
   @RequireTenantRole('EDITOR')
@@ -467,7 +474,7 @@ export class ProductsController {
       certificateId
     );
 
-    response.setHeader('Cache-Control', 'private, no-store');
+    this.applyPrivateAssetCacheHeaders(response);
 
     if ('redirectUrl' in content) {
       response.redirect(content.redirectUrl);
@@ -530,7 +537,7 @@ export class ProductsController {
     const tenantId = this.requireTenantId(request.tenantId);
     const content = await this.productCouplePhotosService.getCouplePhotoContent(tenantId, productId, photoId);
 
-    response.setHeader('Cache-Control', 'private, no-store');
+    this.applyPrivateAssetCacheHeaders(response);
 
     if ('redirectUrl' in content) {
       response.redirect(content.redirectUrl);
@@ -592,7 +599,7 @@ export class ProductsController {
       maxEdge: parsedMaxEdge
     });
 
-    response.setHeader('Cache-Control', 'private, no-store');
+    this.applyPrivateAssetCacheHeaders(response);
 
     if ('redirectUrl' in imageContent) {
       response.redirect(imageContent.redirectUrl);

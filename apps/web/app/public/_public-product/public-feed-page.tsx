@@ -13,6 +13,7 @@ import {
 import { UiPreferenceControls } from '@/components/ui-preferences';
 import PublicBottomDock from '@/app/public/_shared/public-bottom-dock';
 import PublicFloatingActions from '@/app/public/_shared/public-floating-actions';
+import { withPublicImageMaxEdge } from '@/app/public/_shared/public-image';
 import { appendPublicShareQuery } from '@/app/public/_shared/public-share-api';
 
 import type { Breeder, NeedMatingStatus, Series } from '@/app/public/_public-product/types';
@@ -57,7 +58,11 @@ export default function PublicFeedPage({
   const [isMobileFilterModalOpen, setIsMobileFilterModalOpen] = useState(false);
 
   const resolvedPresentation = resolvePublicSharePresentation(presentation);
-  const heroImages = resolvedPresentation.hero.images;
+  const heroImages = useMemo(
+    () =>
+      resolvedPresentation.hero.images.map((imageUrl) => withPublicImageMaxEdge(imageUrl, 960) ?? imageUrl),
+    [resolvedPresentation.hero.images]
+  );
   const heroSignature = useMemo(() => heroImages.join('|'), [heroImages]);
   const [heroIndex, setHeroIndex] = useState(0);
 
@@ -145,7 +150,7 @@ export default function PublicFeedPage({
   const brandPrimary = resolvedPresentation.theme.brandPrimary;
   const brandSecondary = resolvedPresentation.theme.brandSecondary;
   const contactQrImageUrl = resolvedPresentation.contact.showWechatBlock
-    ? resolvedPresentation.contact.wechatQrImageUrl
+    ? withPublicImageMaxEdge(resolvedPresentation.contact.wechatQrImageUrl, 480)
     : null;
   const contactWechatId = resolvedPresentation.contact.showWechatBlock
     ? resolvedPresentation.contact.wechatId

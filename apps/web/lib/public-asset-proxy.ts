@@ -13,7 +13,8 @@ export async function proxyPublicAsset(pathname: string, search = '') {
 
   try {
     const upstreamResponse = await fetch(upstreamUrl.toString(), {
-      cache: 'no-store'
+      cache: 'force-cache',
+      next: { revalidate: 600 }
     });
     const headers = new Headers();
 

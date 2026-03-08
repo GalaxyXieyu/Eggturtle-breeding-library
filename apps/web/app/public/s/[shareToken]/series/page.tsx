@@ -13,6 +13,7 @@ import {
   shouldAutoRefreshShareSignature,
   type PublicSearchParams
 } from '@/app/public/_shared/public-share-api';
+import { withPublicImageMaxEdge } from '@/app/public/_shared/public-image';
 
 export default async function PublicShareSeriesPage({
   params,
@@ -123,7 +124,14 @@ export default async function PublicShareSeriesPage({
                 >
                   <div className="relative h-40 w-full">
                     {coverUrl ? (
-                      <img src={coverUrl} alt={`${series.name} 系列封面`} className="h-full w-full object-cover" />
+                      <img
+                        src={withPublicImageMaxEdge(coverUrl, 480) ?? coverUrl}
+                        alt={`${series.name} 系列封面`}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                        fetchPriority="low"
+                      />
                     ) : (
                       <div className="h-full w-full bg-gradient-to-br from-neutral-100 via-neutral-50 to-neutral-200" />
                     )}
@@ -165,7 +173,7 @@ export default async function PublicShareSeriesPage({
         shareCardSubtitle={presentation.feedSubtitle}
         shareCardPrimaryColor={presentation.theme.brandPrimary}
         shareCardSecondaryColor={presentation.theme.brandSecondary}
-        shareCardHeroImageUrl={presentation.hero.images[0] ?? null}
+        shareCardHeroImageUrl={withPublicImageMaxEdge(presentation.hero.images[0], 960) ?? null}
       />
       <PublicBottomDock shareToken={params.shareToken} shareQuery={shareQuery} activeTab="series" />
     </div>
