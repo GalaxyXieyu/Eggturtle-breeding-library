@@ -6,6 +6,8 @@ import {
   getAdminActivityOverviewQuerySchema,
   getAdminTenantUsageResponseSchema,
   getAdminUsageOverviewQuerySchema,
+  createTenantSubscriptionActivationCodeRequestSchema,
+  createTenantSubscriptionActivationCodeResponseSchema,
   getAdminTenantSubscriptionResponseSchema,
   offboardAdminTenantRequestSchema,
   offboardAdminTenantResponseSchema,
@@ -14,12 +16,13 @@ import {
   suspendAdminTenantResponseSchema,
   updateTenantSubscriptionRequestSchema,
   updateTenantSubscriptionResponseSchema,
+  type CreateTenantSubscriptionActivationCodeRequest,
   type GetAdminActivityOverviewQuery,
   type GetAdminRevenueOverviewQuery,
   type GetAdminUsageOverviewQuery,
   type OffboardAdminTenantRequest,
   type SuspendAdminTenantRequest,
-  type UpdateTenantSubscriptionRequest
+  type UpdateTenantSubscriptionRequest,
 } from '@eggturtle/shared';
 
 const LOGIN_PATH = '/login';
@@ -79,7 +82,7 @@ async function parseJsonBody(response: Response) {
     return JSON.parse(text) as unknown;
   } catch {
     return {
-      message: getSafeErrorMessage(text, response.status, response.headers.get('content-type'))
+      message: getSafeErrorMessage(text, response.status, response.headers.get('content-type')),
     };
   }
 }
@@ -157,7 +160,7 @@ function resolveRequestPath(path: string, shouldUseAuth: boolean) {
 
 export async function apiRequest<RequestPayload = never, ResponsePayload = unknown>(
   path: string,
-  options: ApiRequestOptions<RequestPayload, ResponsePayload>
+  options: ApiRequestOptions<RequestPayload, ResponsePayload>,
 ) {
   const shouldUseAuth = options.auth ?? true;
   const headers = new Headers(options.headers ?? {});
@@ -173,7 +176,7 @@ export async function apiRequest<RequestPayload = never, ResponsePayload = unkno
     method: options.method ?? 'GET',
     headers,
     body: typeof parsedBody === 'undefined' ? undefined : JSON.stringify(parsedBody),
-    cache: 'no-store'
+    cache: 'no-store',
   });
 
   const payload = await parseJsonBody(response);
@@ -187,7 +190,7 @@ export async function apiRequest<RequestPayload = never, ResponsePayload = unkno
     throw new ApiError(
       pickErrorMessage(payload, `Request failed with status ${response.status}`),
       response.status,
-      pickErrorCode(payload)
+      pickErrorCode(payload),
     );
   }
 
@@ -196,88 +199,93 @@ export async function apiRequest<RequestPayload = never, ResponsePayload = unkno
 
 export async function getAdminTenantSubscription(tenantId: string) {
   return apiRequest(`/admin/tenants/${tenantId}/subscription`, {
-    responseSchema: getAdminTenantSubscriptionResponseSchema
+    responseSchema: getAdminTenantSubscriptionResponseSchema,
   });
 }
 
 export async function updateAdminTenantSubscription(
   tenantId: string,
-  payload: UpdateTenantSubscriptionRequest
+  payload: UpdateTenantSubscriptionRequest,
 ) {
   return apiRequest(`/admin/tenants/${tenantId}/subscription`, {
     method: 'PUT',
     body: payload,
     requestSchema: updateTenantSubscriptionRequestSchema,
-    responseSchema: updateTenantSubscriptionResponseSchema
+    responseSchema: updateTenantSubscriptionResponseSchema,
   });
 }
 
-export async function suspendAdminTenant(
-  tenantId: string,
-  payload: SuspendAdminTenantRequest
+export async function createAdminTenantSubscriptionActivationCode(
+  payload: CreateTenantSubscriptionActivationCodeRequest,
 ) {
+  return apiRequest('/admin/subscription-activation-codes', {
+    method: 'POST',
+    body: payload,
+    requestSchema: createTenantSubscriptionActivationCodeRequestSchema,
+    responseSchema: createTenantSubscriptionActivationCodeResponseSchema,
+  });
+}
+
+export async function suspendAdminTenant(tenantId: string, payload: SuspendAdminTenantRequest) {
   return apiRequest(`/admin/tenants/${tenantId}/lifecycle/suspend`, {
     method: 'POST',
     body: payload,
     requestSchema: suspendAdminTenantRequestSchema,
-    responseSchema: suspendAdminTenantResponseSchema
+    responseSchema: suspendAdminTenantResponseSchema,
   });
 }
 
 export async function reactivateAdminTenant(tenantId: string) {
   return apiRequest(`/admin/tenants/${tenantId}/lifecycle/reactivate`, {
     method: 'POST',
-    responseSchema: reactivateAdminTenantResponseSchema
+    responseSchema: reactivateAdminTenantResponseSchema,
   });
 }
 
-export async function offboardAdminTenant(
-  tenantId: string,
-  payload: OffboardAdminTenantRequest
-) {
+export async function offboardAdminTenant(tenantId: string, payload: OffboardAdminTenantRequest) {
   return apiRequest(`/admin/tenants/${tenantId}/lifecycle/offboard`, {
     method: 'POST',
     body: payload,
     requestSchema: offboardAdminTenantRequestSchema,
-    responseSchema: offboardAdminTenantResponseSchema
+    responseSchema: offboardAdminTenantResponseSchema,
   });
 }
 
 export async function getAdminActivityOverview(query?: Partial<GetAdminActivityOverviewQuery>) {
   const parsedQuery = getAdminActivityOverviewQuerySchema.parse(query ?? {});
   const params = new URLSearchParams({
-    window: parsedQuery.window
+    window: parsedQuery.window,
   });
 
   return apiRequest(`/admin/analytics/activity/overview?${params.toString()}`, {
-    responseSchema: adminActivityOverviewResponseSchema
+    responseSchema: adminActivityOverviewResponseSchema,
   });
 }
 
 export async function getAdminUsageOverview(query?: Partial<GetAdminUsageOverviewQuery>) {
   const parsedQuery = getAdminUsageOverviewQuerySchema.parse(query ?? {});
   const params = new URLSearchParams({
-    topN: String(parsedQuery.topN)
+    topN: String(parsedQuery.topN),
   });
 
   return apiRequest(`/admin/analytics/usage/overview?${params.toString()}`, {
-    responseSchema: adminUsageOverviewResponseSchema
+    responseSchema: adminUsageOverviewResponseSchema,
   });
 }
 
 export async function getAdminTenantUsage(tenantId: string) {
   return apiRequest(`/admin/tenants/${tenantId}/usage`, {
-    responseSchema: getAdminTenantUsageResponseSchema
+    responseSchema: getAdminTenantUsageResponseSchema,
   });
 }
 
 export async function getAdminRevenueOverview(query?: Partial<GetAdminRevenueOverviewQuery>) {
   const parsedQuery = getAdminRevenueOverviewQuerySchema.parse(query ?? {});
   const params = new URLSearchParams({
-    window: parsedQuery.window
+    window: parsedQuery.window,
   });
 
   return apiRequest(`/admin/analytics/revenue/overview?${params.toString()}`, {
-    responseSchema: adminRevenueOverviewResponseSchema
+    responseSchema: adminRevenueOverviewResponseSchema,
   });
 }

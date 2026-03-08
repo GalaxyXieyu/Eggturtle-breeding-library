@@ -15,7 +15,8 @@
     "imports:fix": "node scripts/devtools/alias_import_audit.mjs --write",
     "api-tests": "pnpm --filter @eggturtle/api exec ts-node --project tsconfig.json ../../scripts/api-tests/run.ts",
     "api-tests:gate": "pnpm api-tests -- --only auth,products,series,breeders,images,featured,shares,admin,subscription --clear-token-cache",
-    "api-tests:matrix": "pnpm api-tests -- --only account-matrix"
+    "api-tests:matrix": "pnpm api-tests -- --only account-matrix",
+    "api-tests:subscription": "pnpm api-tests -- --only subscription"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^7.18.0",

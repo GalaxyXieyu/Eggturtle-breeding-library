@@ -24,6 +24,9 @@ pnpm api-tests -- --confirm-writes --only auth,products,shares
 # Clear local token cache before execution
 pnpm api-tests -- --confirm-writes --clear-token-cache
 
+# Subscription-only smoke path (use with tonight's membership checks)
+pnpm api-tests:subscription -- --confirm-writes
+
 # JSONL logs for CI or machine parsing
 pnpm api-tests -- --confirm-writes --json
 
