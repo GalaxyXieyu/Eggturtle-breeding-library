@@ -53,6 +53,133 @@ const WINDOW_OPTIONS: Array<{ key: DashboardOverviewWindow; label: string; short
   { key: '30d', label: '近 30 天', shortLabel: '近 30 天' },
 ];
 
+function DashboardLoadingState() {
+  return (
+    <section className="relative flex min-h-[calc(100vh-8rem)] items-center justify-center overflow-hidden rounded-[2rem] border border-stone-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(248,246,241,0.92))] px-5 py-12 shadow-[0_24px_80px_rgba(28,25,23,0.08)] sm:min-h-[460px] sm:px-8">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]">
+        <div className="absolute left-1/2 top-1/2 h-52 w-52 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-200/35 blur-3xl dashboard-loading-orb dashboard-loading-orb-delay" />
+        <div className="absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/70 bg-white/25 backdrop-blur-3xl" />
+        <div className="absolute inset-x-6 top-6 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-70" />
+      </div>
+
+      <div className="relative z-10 mx-auto flex w-full max-w-[22rem] flex-col items-center text-center">
+        <div className="dashboard-loading-float relative mb-7 flex h-24 w-24 items-center justify-center rounded-[30px] border border-white/80 bg-white/75 shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-2xl">
+          <div className="absolute inset-[10px] rounded-[24px] border border-stone-200/70 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.98),rgba(245,244,240,0.88))]" />
+          <div className="relative flex items-end gap-1.5">
+            <span className="dashboard-loading-bar h-7 w-2.5 rounded-full bg-stone-900/80" />
+            <span className="dashboard-loading-bar dashboard-loading-bar-delay-1 h-11 w-2.5 rounded-full bg-amber-400/95" />
+            <span className="dashboard-loading-bar dashboard-loading-bar-delay-2 h-8 w-2.5 rounded-full bg-stone-500/75" />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-stone-400">Dashboard</p>
+          <h2 className="text-xl font-semibold tracking-tight text-stone-950 sm:text-2xl">正在同步你的仪表盘</h2>
+          <p className="mx-auto max-w-xs text-sm leading-6 text-stone-500">
+            稍等片刻，系统正在整理今日数据与分享动态。
+          </p>
+        </div>
+
+        <div className="mt-7 flex items-center gap-2 rounded-full border border-stone-200/80 bg-white/70 px-3 py-2 text-[11px] font-medium tracking-[0.18em] text-stone-500 shadow-sm backdrop-blur-xl">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 dashboard-loading-dot" />
+          <span className="h-1.5 w-1.5 rounded-full bg-stone-300 dashboard-loading-dot dashboard-loading-dot-delay" />
+          <span>数据载入中</span>
+        </div>
+      </div>
+
+      <style jsx>{`
+        .dashboard-loading-float {
+          animation: dashboard-float 4.8s ease-in-out infinite;
+        }
+
+        .dashboard-loading-bar {
+          transform-origin: center bottom;
+          animation: dashboard-bar 1.8s ease-in-out infinite;
+        }
+
+        .dashboard-loading-bar-delay-1 {
+          animation-delay: 0.2s;
+        }
+
+        .dashboard-loading-bar-delay-2 {
+          animation-delay: 0.4s;
+        }
+
+        .dashboard-loading-dot {
+          animation: dashboard-dot 1.6s ease-in-out infinite;
+        }
+
+        .dashboard-loading-dot-delay {
+          animation-delay: 0.8s;
+        }
+
+        .dashboard-loading-orb {
+          animation: dashboard-orb 7s ease-in-out infinite;
+        }
+
+        .dashboard-loading-orb-delay {
+          animation-delay: 1.2s;
+        }
+
+        @keyframes dashboard-float {
+          0%,
+          100% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(-6px);
+          }
+        }
+
+        @keyframes dashboard-bar {
+          0%,
+          100% {
+            transform: scaleY(0.88);
+            opacity: 0.72;
+          }
+          50% {
+            transform: scaleY(1.08);
+            opacity: 1;
+          }
+        }
+
+        @keyframes dashboard-dot {
+          0%,
+          100% {
+            opacity: 0.35;
+            transform: scale(0.88);
+          }
+          50% {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+
+        @keyframes dashboard-orb {
+          0%,
+          100% {
+            transform: translate(-50%, -50%) scale(0.94);
+            opacity: 0.6;
+          }
+          50% {
+            transform: translate(-50%, -50%) scale(1.06);
+            opacity: 0.95;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .dashboard-loading-float,
+          .dashboard-loading-bar,
+          .dashboard-loading-dot,
+          .dashboard-loading-orb {
+            animation: none;
+          }
+        }
+      `}</style>
+    </section>
+  );
+}
+
 export default function TenantAppPage() {
   const router = useRouter();
   const params = useParams<{ tenantSlug: string }>();
@@ -228,14 +355,16 @@ export default function TenantAppPage() {
     setShareError(null);
   }
 
+  if (loading) {
+    return (
+      <main className="pb-16 sm:pb-8">
+        <DashboardLoadingState />
+      </main>
+    );
+  }
+
   return (
     <main className="space-y-4 pb-16 sm:space-y-6 sm:pb-8">
-      {loading ? (
-        <Card className="rounded-3xl border-neutral-200/90 bg-white/90 p-8">
-          <p className="text-sm text-neutral-600">正在加载用户仪表盘...</p>
-        </Card>
-      ) : null}
-
       {error ? (
         <Card className="rounded-3xl border-red-200 bg-red-50 p-6">
           <p className="text-sm font-semibold text-red-700">{error}</p>

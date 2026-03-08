@@ -149,8 +149,8 @@
 ## 开发执行计划
 
 ### 执行入口
-- `/Users/apple/coding/.openclaw/workspace/workspaces/groups/eggturtle/eggturtle/tasks/Tasks.csv` - 当前任务 SSOT（workspace 唯一写入口）
-- `docs/plan/EggsTask.csv` - 历史归档，只读参考，不再写入
+- `/Users/apple/coding/.openclaw/workspace/workspaces/groups/eggturtle/eggturtle/tasks/Tasks.csv` - 当前任务 SSOT（workspace 唯一写入口；任务审计/cron/盘点也必须从这里读取）
+- `docs/plan/EggsTask.csv` - 历史归档，只读参考，不再作为任务源
 - `docs/DEVELOPMENT_PLAN_GUIDE.md` - 开发计划结构指南
 
 ### Excel Sheet 结构
@@ -170,6 +170,7 @@
 - 在执行 `git commit` 前，必须再次核对并同步 workspace `tasks/Tasks.csv`，避免任务状态与代码提交不一致。
 - 若本次改动涉及多个任务，提交前需要逐条确认 workspace `tasks/Tasks.csv` 中每个任务状态与实际完成情况一致。
 - 默认串行推进：优先按 workspace `tasks/Tasks.csv` 做任务管理，做完一个再开下一个，避免并发派出多个 subagent 抢同一批任务。
+- 任务审计、进度盘点、cron 提示词统一以 workspace `tasks/Tasks.csv` 为准，不再以 `docs/plan/EggsTask.csv` 作为任务源。
 - `docs/plan/EggsTask.csv` 仅作为历史归档保留，不再写入。
 
 ### 2026-03-07 执行流程补充（强制）

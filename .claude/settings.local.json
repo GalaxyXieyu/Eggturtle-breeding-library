@@ -20,7 +20,8 @@
       "Bash(PYTHONPATH=. ./venv/bin/python:*)",
       "Bash(npx tsc --noEmit)",
       "Bash(wc -l /Volumes/DATABASE/code/Eggturtle-breeding-library/apps/web/app/app/[tenantSlug]/breeders/[id]/page.tsx)",
-      "Bash(pnpm --filter @eggturtle/web build)"
+      "Bash(pnpm --filter @eggturtle/web build)",
+      "Bash(ssh-copy-id -i ~/.ssh/id_ed25519.pub root@8.166.129.45)"
     ],
     "deny": []
   }
