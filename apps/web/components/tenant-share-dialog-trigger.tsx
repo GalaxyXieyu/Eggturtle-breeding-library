@@ -394,14 +394,14 @@ export default function TenantShareDialogTrigger({
             <div className="relative z-10 flex min-h-0 flex-1 items-center justify-center py-1 sm:py-2">
               <div className="flex h-full min-h-[min(62dvh,31rem)] w-full items-center justify-center overflow-hidden rounded-[24px] border border-[#d9c3a1] bg-[linear-gradient(160deg,#1b2436,#0d1628)] p-2 sm:min-h-[min(72vh,42rem)] sm:rounded-[26px] sm:p-2.5">
                 {pending ? (
-                  <div className="mx-auto flex aspect-[9/16] w-full max-w-[15.75rem] min-h-[17.5rem] flex-col items-center justify-center gap-3 rounded-[22px] bg-[linear-gradient(180deg,#f8fafc,#eef2ff)] text-sm text-slate-500 sm:max-w-[18.5rem]">
+                  <div className="mx-auto flex aspect-[9/16] w-full max-w-[min(84vw,19rem)] min-h-[17.5rem] flex-col items-center justify-center gap-3 rounded-[22px] bg-[linear-gradient(180deg,#f8fafc,#eef2ff)] text-sm text-slate-500 sm:max-w-[18.75rem]">
                     <span className="inline-flex h-10 w-10 animate-pulse items-center justify-center rounded-full bg-[#0f172a] text-[#ffd65a]">
                       <Share2 size={16} />
                     </span>
                     正在生成分享链接...
                   </div>
                 ) : posterDataUrl ? (
-                  <div className="mx-auto flex aspect-[9/16] w-full max-w-[15.75rem] items-center justify-center rounded-[22px] bg-[#090f1d] p-1.5 shadow-[0_18px_34px_rgba(0,0,0,0.36)] sm:max-w-[18.5rem] sm:p-2">
+                  <div className="mx-auto flex aspect-[9/16] w-full max-w-[min(84vw,19rem)] items-center justify-center rounded-[22px] bg-[#090f1d] p-1.5 shadow-[0_18px_34px_rgba(0,0,0,0.36)] sm:max-w-[18.75rem] sm:p-2">
                     <img
                       src={posterDataUrl}
                       alt="分享卡片预览"
@@ -409,7 +409,7 @@ export default function TenantShareDialogTrigger({
                     />
                   </div>
                 ) : (
-                  <div className="mx-auto flex aspect-[9/16] w-full max-w-[15.75rem] min-h-[17.5rem] flex-col items-center justify-center gap-3 rounded-[22px] bg-[linear-gradient(180deg,#f8fafc,#f1f5f9)] px-6 text-center text-sm text-slate-500 sm:max-w-[18.5rem]">
+                  <div className="mx-auto flex aspect-[9/16] w-full max-w-[min(84vw,19rem)] min-h-[17.5rem] flex-col items-center justify-center gap-3 rounded-[22px] bg-[linear-gradient(180deg,#f8fafc,#f1f5f9)] px-6 text-center text-sm text-slate-500 sm:max-w-[18.75rem]">
                     <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-500 shadow-sm">
                       <QrCode size={22} />
                     </span>
@@ -768,8 +768,8 @@ function drawPosterCollage(
   const innerHeight = height - innerPaddingY * 2;
   const columnWidth = (innerWidth - columnGap) / 2;
 
-  const leftColumnHeights = [0.34, 0.24, 0.3];
-  const rightColumnHeights = [0.24, 0.38, 0.24];
+  const leftColumnHeights = [0.31, 0.23, 0.34];
+  const rightColumnHeights = [0.26, 0.37, 0.23];
 
   ctx.save();
   roundedRect(ctx, x, y, width, height, 30);
@@ -778,7 +778,15 @@ function drawPosterCollage(
   let leftY = innerY;
   leftColumnHeights.forEach((ratio, index) => {
     const tileHeight = Math.round(innerHeight * ratio);
-    drawMasonryTile(ctx, images[index % images.length]!, innerX, leftY, columnWidth, tileHeight);
+    drawMasonryTile(
+      ctx,
+      images[index % images.length]!,
+      innerX,
+      leftY,
+      columnWidth,
+      tileHeight,
+      index + 1,
+    );
     leftY += tileHeight + rowGap;
   });
 
@@ -793,6 +801,7 @@ function drawPosterCollage(
       rightY,
       columnWidth,
       tileHeight,
+      imageIndex + 1,
     );
     rightY += tileHeight + rowGap;
   });
@@ -813,6 +822,7 @@ function drawMasonryTile(
   y: number,
   width: number,
   height: number,
+  index: number,
 ) {
   const radius = 22;
   ctx.save();
@@ -827,6 +837,34 @@ function drawMasonryTile(
   ctx.strokeStyle = 'rgba(255,255,255,0.85)';
   roundedRect(ctx, x, y, width, height, radius);
   ctx.stroke();
+
+  // Listing-card style footer improves the "waterfall feed" feeling.
+  const footerHeight = Math.max(40, Math.min(56, height * 0.2));
+  ctx.save();
+  roundedRect(ctx, x, y, width, height, radius);
+  ctx.clip();
+  const footerGradient = ctx.createLinearGradient(0, y + height - footerHeight, 0, y + height);
+  footerGradient.addColorStop(0, 'rgba(15,23,42,0)');
+  footerGradient.addColorStop(1, 'rgba(15,23,42,0.72)');
+  ctx.fillStyle = footerGradient;
+  ctx.fillRect(x, y + height - footerHeight, width, footerHeight);
+  ctx.restore();
+
+  ctx.fillStyle = 'rgba(255,255,255,0.94)';
+  ctx.font = '700 22px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
+  ctx.fillText(`${index}`, x + 14, y + height - 16);
+
+  const badgeWidth = Math.min(86, width * 0.42);
+  const badgeHeight = 24;
+  const badgeX = x + width - badgeWidth - 10;
+  const badgeY = y + 10;
+  ctx.fillStyle = 'rgba(255,255,255,0.92)';
+  roundedRect(ctx, badgeX, badgeY, badgeWidth, badgeHeight, 12);
+  ctx.fill();
+  ctx.fillStyle = '#0f172a';
+  ctx.font = '700 13px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
+  ctx.fillText('母', badgeX + badgeWidth / 2 - 6, badgeY + 16);
+
   ctx.restore();
 }
 
