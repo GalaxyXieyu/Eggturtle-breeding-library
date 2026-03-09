@@ -636,74 +636,96 @@ async function generateGenericSharePoster(payload: SharePosterPayload): Promise<
   // Draw hero image section
   await drawGenericPosterHero(ctx, payload, heroX, heroY, heroWidth, heroHeight);
 
-  // Title section with more breathing room
-  const titleY = heroY + heroHeight + 80;
+  // Decorative accent line above title
+  const titleY = heroY + heroHeight + 60;
+  const accentLineWidth = 80;
+  const accentLineGradient = ctx.createLinearGradient(heroX, titleY - 20, heroX + accentLineWidth, titleY - 20);
+  accentLineGradient.addColorStop(0, '#FFD400');
+  accentLineGradient.addColorStop(1, '#FFA500');
+  ctx.fillStyle = accentLineGradient;
+  roundedRect(ctx, heroX, titleY - 20, accentLineWidth, 6, 3);
+  ctx.fill();
+
+  // Title section with enhanced typography
   drawMultilineText(ctx, payload.title, {
     x: heroX,
-    y: titleY,
+    y: titleY + 30,
     maxWidth: heroWidth,
-    lineHeight: 68,
+    lineHeight: 72,
     maxLines: 2,
-    font: '700 58px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif',
+    font: '800 62px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif',
     color: '#0a0a0a',
   });
 
-  // Subtitle with better contrast
+  // Subtitle with refined styling
   drawMultilineText(ctx, payload.subtitle, {
     x: heroX,
-    y: titleY + 150,
+    y: titleY + 180,
     maxWidth: heroWidth,
-    lineHeight: 42,
+    lineHeight: 44,
     maxLines: 2,
-    font: '500 28px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif',
-    color: '#666666',
+    font: '500 30px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif',
+    color: '#555555',
   });
 
-  // QR code section - cleaner layout
-  const qrSectionY = cardY + cardHeight - 340;
+  // QR code section - enhanced design
+  const qrSectionY = cardY + cardHeight - 360;
   const qrSize = 200;
   const qrX = heroX;
   const qrY = qrSectionY;
 
-  // QR code with subtle border
-  ctx.fillStyle = '#f5f5f5';
-  roundedRect(ctx, qrX - 12, qrY - 12, qrSize + 24, qrSize + 24, 24);
+  // QR code container with gradient background
+  const qrBgGradient = ctx.createLinearGradient(qrX - 16, qrY - 16, qrX + qrSize + 16, qrY + qrSize + 16);
+  qrBgGradient.addColorStop(0, '#fffbeb');
+  qrBgGradient.addColorStop(1, '#fef3c7');
+  ctx.fillStyle = qrBgGradient;
+  roundedRect(ctx, qrX - 16, qrY - 16, qrSize + 32, qrSize + 32, 28);
   ctx.fill();
 
-  ctx.strokeStyle = '#e0e0e0';
-  ctx.lineWidth = 2;
-  roundedRect(ctx, qrX - 12, qrY - 12, qrSize + 24, qrSize + 24, 24);
+  // Accent border
+  ctx.strokeStyle = 'rgba(255,212,0,0.3)';
+  ctx.lineWidth = 3;
+  roundedRect(ctx, qrX - 16, qrY - 16, qrSize + 32, qrSize + 32, 28);
   ctx.stroke();
 
   const qrImage = await loadImage(payload.qrDataUrl);
   ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
 
-  // QR text section - simplified
-  const qrTextX = qrX + qrSize + 40;
-  ctx.fillStyle = '#0a0a0a';
-  ctx.font = '700 36px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
-  ctx.fillText('扫码查看', qrTextX, qrY + 60);
+  // QR text section - enhanced typography
+  const qrTextX = qrX + qrSize + 50;
 
-  ctx.fillStyle = '#666666';
-  ctx.font = '500 24px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
-  ctx.fillText('分享链接与二维码同源', qrTextX, qrY + 110);
-  ctx.fillText('可直接转发或复制链接', qrTextX, qrY + 150);
-
-  // Bottom accent bar with yellow
-  const accentBarY = qrY + qrSize + 40;
-  const accentBarHeight = 6;
-  const accentGradient = ctx.createLinearGradient(heroX, accentBarY, heroX + heroWidth, accentBarY);
-  accentGradient.addColorStop(0, '#FFD400');
-  accentGradient.addColorStop(0.5, '#FFC700');
-  accentGradient.addColorStop(1, '#FFD400');
-  ctx.fillStyle = accentGradient;
-  roundedRect(ctx, heroX, accentBarY, heroWidth, accentBarHeight, 3);
+  // Icon-style accent
+  ctx.fillStyle = '#FFD400';
+  ctx.beginPath();
+  ctx.arc(qrTextX - 8, qrY + 35, 4, 0, Math.PI * 2);
   ctx.fill();
 
-  // Footer text
+  ctx.fillStyle = '#0a0a0a';
+  ctx.font = '800 40px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
+  ctx.fillText('扫码查看', qrTextX, qrY + 45);
+
+  ctx.fillStyle = '#666666';
+  ctx.font = '500 26px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
+  ctx.fillText('分享链接与二维码同源', qrTextX, qrY + 100);
+  ctx.fillText('可直接转发或复制链接', qrTextX, qrY + 145);
+
+  // Bottom accent bar with enhanced gradient
+  const accentBarY = qrY + qrSize + 50;
+  const accentBarHeight = 8;
+  const accentGradient = ctx.createLinearGradient(heroX, accentBarY, heroX + heroWidth, accentBarY);
+  accentGradient.addColorStop(0, 'rgba(255,212,0,0.3)');
+  accentGradient.addColorStop(0.2, '#FFD400');
+  accentGradient.addColorStop(0.5, '#FFC700');
+  accentGradient.addColorStop(0.8, '#FFD400');
+  accentGradient.addColorStop(1, 'rgba(255,212,0,0.3)');
+  ctx.fillStyle = accentGradient;
+  roundedRect(ctx, heroX, accentBarY, heroWidth, accentBarHeight, 4);
+  ctx.fill();
+
+  // Footer text with refined styling
   ctx.fillStyle = '#999999';
-  ctx.font = '500 20px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
-  ctx.fillText('Eggturtle Breeding Library', heroX, accentBarY + 50);
+  ctx.font = '600 22px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
+  ctx.fillText('Eggturtle Breeding Library', heroX, accentBarY + 55);
 
   return canvas.toDataURL('image/png');
 }
@@ -961,21 +983,22 @@ function drawPosterCollage(
   width: number,
   height: number,
 ) {
-  // Clean background with subtle gradient
+  // Rich gradient background with depth
   const heroGradient = ctx.createLinearGradient(x, y, x + width, y + height);
-  heroGradient.addColorStop(0, '#f5f5f5');
-  heroGradient.addColorStop(1, '#e5e5e5');
+  heroGradient.addColorStop(0, '#fafaf9');
+  heroGradient.addColorStop(0.5, '#f5f5f4');
+  heroGradient.addColorStop(1, '#e7e5e4');
   ctx.fillStyle = heroGradient;
   roundedRect(ctx, x, y, width, height, 32);
   ctx.fill();
 
-  // Add subtle border
-  ctx.strokeStyle = '#d0d0d0';
-  ctx.lineWidth = 2;
+  // Decorative accent border
+  ctx.strokeStyle = 'rgba(255,212,0,0.15)';
+  ctx.lineWidth = 3;
   roundedRect(ctx, x, y, width, height, 32);
   ctx.stroke();
 
-  const padding = 6;
+  const padding = 8;
   const innerX = x + padding;
   const innerY = y + padding;
   const innerWidth = width - padding * 2;
@@ -985,40 +1008,114 @@ function drawPosterCollage(
   roundedRect(ctx, x, y, width, height, 32);
   ctx.clip();
 
-  // Simple grid layout: 2 columns
-  const gap = 6;
-  const mainWidth = innerWidth * 0.58;
-  const sideWidth = innerWidth - mainWidth - gap;
-  const mainHeight = innerHeight;
+  // Dynamic masonry layout based on image count
+  const gap = 8;
 
-  // Main large image
-  drawCoverImage(ctx, images[0]!, innerX, innerY, mainWidth, mainHeight, 20);
-
-  // Subtle shadow on main image
-  ctx.shadowColor = 'rgba(0,0,0,0.1)';
-  ctx.shadowBlur = 10;
-  ctx.shadowOffsetY = 4;
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 3;
-  roundedRect(ctx, innerX, innerY, mainWidth, mainHeight, 20);
-  ctx.stroke();
-  ctx.shadowColor = 'transparent';
-  ctx.shadowBlur = 0;
-  ctx.shadowOffsetY = 0;
-
-  // Side images - up to 9 rows for more content
-  const sideX = innerX + mainWidth + gap;
-  const maxSideImages = Math.min(images.length - 1, 9);
-  const sideImageHeight = (mainHeight - gap * (maxSideImages - 1)) / maxSideImages;
-
-  // Draw side images
-  for (let i = 1; i < Math.min(images.length, 10); i++) {
-    const imageY = innerY + (sideImageHeight + gap) * (i - 1);
-    drawCoverImage(ctx, images[i]!, sideX, imageY, sideWidth, sideImageHeight, 14);
+  if (images.length === 1) {
+    // Single image: full width with elegant frame
+    drawCoverImage(ctx, images[0]!, innerX, innerY, innerWidth, innerHeight, 24);
+    ctx.shadowColor = 'rgba(0,0,0,0.15)';
+    ctx.shadowBlur = 20;
+    ctx.shadowOffsetY = 8;
     ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 3;
-    roundedRect(ctx, sideX, imageY, sideWidth, sideImageHeight, 14);
+    ctx.lineWidth = 4;
+    roundedRect(ctx, innerX, innerY, innerWidth, innerHeight, 24);
     ctx.stroke();
+  } else if (images.length === 2) {
+    // Two images: side by side
+    const imgWidth = (innerWidth - gap) / 2;
+    drawCoverImage(ctx, images[0]!, innerX, innerY, imgWidth, innerHeight, 20);
+    drawCoverImage(ctx, images[1]!, innerX + imgWidth + gap, innerY, imgWidth, innerHeight, 20);
+
+    // Add frames
+    ctx.shadowColor = 'rgba(0,0,0,0.12)';
+    ctx.shadowBlur = 15;
+    ctx.shadowOffsetY = 6;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 4;
+    roundedRect(ctx, innerX, innerY, imgWidth, innerHeight, 20);
+    ctx.stroke();
+    roundedRect(ctx, innerX + imgWidth + gap, innerY, imgWidth, innerHeight, 20);
+    ctx.stroke();
+  } else if (images.length === 3) {
+    // Three images: one large left, two stacked right
+    const mainWidth = innerWidth * 0.6;
+    const sideWidth = innerWidth - mainWidth - gap;
+    const sideHeight = (innerHeight - gap) / 2;
+
+    drawCoverImage(ctx, images[0]!, innerX, innerY, mainWidth, innerHeight, 20);
+    drawCoverImage(ctx, images[1]!, innerX + mainWidth + gap, innerY, sideWidth, sideHeight, 16);
+    drawCoverImage(ctx, images[2]!, innerX + mainWidth + gap, innerY + sideHeight + gap, sideWidth, sideHeight, 16);
+
+    // Add frames with shadows
+    ctx.shadowColor = 'rgba(0,0,0,0.12)';
+    ctx.shadowBlur = 15;
+    ctx.shadowOffsetY = 6;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 4;
+    roundedRect(ctx, innerX, innerY, mainWidth, innerHeight, 20);
+    ctx.stroke();
+    roundedRect(ctx, innerX + mainWidth + gap, innerY, sideWidth, sideHeight, 16);
+    ctx.stroke();
+    roundedRect(ctx, innerX + mainWidth + gap, innerY + sideHeight + gap, sideWidth, sideHeight, 16);
+    ctx.stroke();
+  } else {
+    // 4+ images: asymmetric masonry grid for visual interest
+    const mainWidth = innerWidth * 0.55;
+    const sideWidth = innerWidth - mainWidth - gap;
+    const mainHeight = innerHeight;
+
+    // Main hero image with prominent shadow
+    drawCoverImage(ctx, images[0]!, innerX, innerY, mainWidth, mainHeight, 22);
+    ctx.shadowColor = 'rgba(0,0,0,0.18)';
+    ctx.shadowBlur = 20;
+    ctx.shadowOffsetY = 10;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 5;
+    roundedRect(ctx, innerX, innerY, mainWidth, mainHeight, 22);
+    ctx.stroke();
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+
+    // Side grid with varied heights for dynamic feel
+    const sideX = innerX + mainWidth + gap;
+    const maxSideImages = Math.min(images.length - 1, 9);
+
+    // Create varied row heights for visual rhythm
+    const rowHeights: number[] = [];
+    let totalHeight = 0;
+    const baseHeight = mainHeight / maxSideImages;
+
+    for (let i = 0; i < maxSideImages; i++) {
+      // Alternate between slightly taller and shorter rows
+      const variation = i % 3 === 0 ? 1.15 : i % 3 === 1 ? 0.9 : 1.0;
+      rowHeights.push(baseHeight * variation);
+      totalHeight += baseHeight * variation;
+    }
+
+    // Normalize heights to fit exactly
+    const scale = (mainHeight - gap * (maxSideImages - 1)) / totalHeight;
+    let currentY = innerY;
+
+    for (let i = 1; i < Math.min(images.length, 10); i++) {
+      const rowHeight = rowHeights[i - 1]! * scale;
+
+      // Draw image with subtle shadow
+      drawCoverImage(ctx, images[i]!, sideX, currentY, sideWidth, rowHeight, 14);
+      ctx.shadowColor = 'rgba(0,0,0,0.08)';
+      ctx.shadowBlur = 8;
+      ctx.shadowOffsetY = 4;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 3;
+      roundedRect(ctx, sideX, currentY, sideWidth, rowHeight, 14);
+      ctx.stroke();
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetY = 0;
+
+      currentY += rowHeight + gap;
+    }
   }
 
   ctx.restore();

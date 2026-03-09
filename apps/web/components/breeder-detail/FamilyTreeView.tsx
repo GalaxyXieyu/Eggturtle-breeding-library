@@ -71,15 +71,15 @@ export function FamilyTreeView({ tree, openBreederDetail }: FamilyTreeViewProps)
 
       <div className="space-y-4 rounded-3xl border border-neutral-200 bg-neutral-50/35 p-4 sm:p-5">
         <div className="overflow-x-auto pb-1">
-          <div className="grid min-w-[16rem] grid-cols-3 items-start gap-2.5 rounded-2xl border border-neutral-200 bg-white/70 p-3 sm:min-w-0 sm:gap-4">
+          <div className="grid min-w-[20rem] grid-cols-3 items-start gap-3 rounded-2xl border border-neutral-200 bg-white/70 p-4 sm:min-w-0 sm:gap-5">
             <div className="flex flex-col items-center gap-2">
               <div className="flex items-center gap-1 text-[11px] font-semibold text-neutral-600">
                 <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-neutral-200 text-[10px] text-neutral-700">1</span>
                 <span>父母辈</span>
               </div>
               <div className="flex flex-col items-center gap-2">
-                <TreeCard node={tree.sire} onOpen={openBreederDetail} className="w-[5.2rem]" />
-                <TreeCard node={tree.dam} onOpen={openBreederDetail} className="w-[5.2rem]" />
+                <TreeCard node={tree.sire} onOpen={openBreederDetail} className="w-[7rem] sm:w-[7.5rem]" />
+                <TreeCard node={tree.dam} onOpen={openBreederDetail} className="w-[7rem] sm:w-[7.5rem]" />
               </div>
             </div>
 
@@ -88,7 +88,7 @@ export function FamilyTreeView({ tree, openBreederDetail }: FamilyTreeViewProps)
                 <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-amber-100 text-[10px] text-amber-700">2</span>
                 <span>当前</span>
               </div>
-              <TreeCard node={tree.self} onOpen={openBreederDetail} highlight className="w-[5.5rem]" />
+              <TreeCard node={tree.self} onOpen={openBreederDetail} highlight className="w-[7.5rem] sm:w-[8rem]" />
 
               <div className="w-full space-y-1.5 pt-1">
                 <div className="flex items-center justify-center gap-1 text-[10px] font-semibold text-neutral-500">
@@ -109,7 +109,7 @@ export function FamilyTreeView({ tree, openBreederDetail }: FamilyTreeViewProps)
                           key={mate.id}
                           className="flex flex-col items-center gap-1.5 rounded-2xl border border-neutral-200 bg-white p-2 shadow-sm"
                         >
-                          <TreeCard node={mate} onOpen={openBreederDetail} className="w-[4.8rem] sm:w-[5rem]" />
+                          <TreeCard node={mate} onOpen={openBreederDetail} className="w-[6.5rem] sm:w-[7rem]" />
                           <div className="flex flex-wrap items-center justify-center gap-1">
                             {needMatingStatus ? (
                               <PetStatusBadge status={needMatingStatus} daysSinceEgg={daysSinceEgg} />
@@ -125,7 +125,7 @@ export function FamilyTreeView({ tree, openBreederDetail }: FamilyTreeViewProps)
                   </div>
                 ) : (
                   <div className="rounded-2xl border border-dashed border-neutral-300 bg-white/80 p-2.5">
-                    <TreeCard node={null} onOpen={openBreederDetail} className="mx-auto w-[5rem]" />
+                    <TreeCard node={null} onOpen={openBreederDetail} className="mx-auto w-[6.5rem] sm:w-[7rem]" />
                   </div>
                 )}
               </div>
