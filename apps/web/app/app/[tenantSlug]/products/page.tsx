@@ -193,14 +193,35 @@ export default function TenantProductsPage() {
       sharePreview.heroImages[0] ??
       DEFAULT_SHARE_PREVIEW_HERO,
   );
-  const sharePosterImageUrls = useMemo(
-    () =>
-      sharePreview.heroImages
-        .map((item) => item.trim())
-        .filter(Boolean)
-        .map((item) => resolveAuthenticatedAssetUrl(item)),
-    [sharePreview.heroImages],
-  );
+  const sharePosterImageUrls = useMemo(() => {
+    // First, try to get images from different series in the product list
+    const seriesImageMap = new Map<string, string>();
+
+    for (const product of items) {
+      if (!product.primaryImageUrl) continue;
+
+      const seriesId = product.seriesId || 'no-series';
+      if (!seriesImageMap.has(seriesId)) {
+        seriesImageMap.set(seriesId, product.primaryImageUrl);
+      }
+    }
+
+    // Collect images from different series
+    const diverseImages = Array.from(seriesImageMap.values());
+
+    // If we have enough diverse images from products, use them
+    if (diverseImages.length >= 5) {
+      return diverseImages
+        .slice(0, 10)
+        .map((item) => resolveAuthenticatedAssetUrl(item));
+    }
+
+    // Otherwise, fall back to configured hero images
+    return sharePreview.heroImages
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .map((item) => resolveAuthenticatedAssetUrl(item));
+  }, [items, sharePreview.heroImages]);
   const shareOverlayColor = hexToRgba(sharePreview.brandSecondary, 0.4);
 
   useEffect(() => {

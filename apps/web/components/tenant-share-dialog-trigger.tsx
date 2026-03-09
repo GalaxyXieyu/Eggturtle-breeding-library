@@ -132,6 +132,8 @@ export default function TenantShareDialogTrigger({
       setPending(true);
       setError(null);
 
+      console.log('[Share] Starting share link generation...');
+
       try {
         const share = await createTenantFeedShareLink({
           intent: normalizedIntent,
@@ -139,16 +141,32 @@ export default function TenantShareDialogTrigger({
           signal: abortController.signal,
         });
 
+        console.log('[Share] Share link generated:', share.permanentUrl);
+
+        console.log('[Share] Checking state:', {
+          mounted: mountedRef.current,
+          sessionMatch: openSessionIdRef.current === sessionId,
+          requestMatch: shareRequestIdRef.current === requestId,
+          currentSession: openSessionIdRef.current,
+          expectedSession: sessionId,
+          currentRequest: shareRequestIdRef.current,
+          expectedRequest: requestId,
+        });
+
         if (
           !mountedRef.current ||
           openSessionIdRef.current !== sessionId ||
           shareRequestIdRef.current !== requestId
         ) {
+          console.log('[Share] Component unmounted or session changed, aborting');
           return;
         }
 
+        console.log('[Share] Setting link state...');
         setLink(share.permanentUrl);
+        console.log('[Share] Link state set');
       } catch (currentError) {
+        console.error('[Share] Share link generation failed:', currentError);
         if (abortController.signal.aborted) {
           return;
         }
@@ -172,6 +190,7 @@ export default function TenantShareDialogTrigger({
           openSessionIdRef.current === sessionId &&
           shareRequestIdRef.current === requestId
         ) {
+          console.log('[Share] Setting pending to false');
           setPending(false);
         }
       }
@@ -203,11 +222,9 @@ export default function TenantShareDialogTrigger({
       return;
     }
 
-    resetPreviewState();
-    setNotice(null);
     const sessionId = openSessionIdRef.current;
     void prepareShareAssets(sessionId);
-  }, [intentKey, open, prepareShareAssets, resetPreviewState]);
+  }, [intentKey, open, prepareShareAssets]);
 
   useEffect(() => {
     if (!open) {
@@ -293,9 +310,13 @@ export default function TenantShareDialogTrigger({
         });
       }
 
+      console.log('[Poster] Starting poster generation with', posterPayload.posterImageUrls?.length ?? 0, 'images');
+
       for (let attemptIndex = 0; attemptIndex < attemptPayloads.length; attemptIndex += 1) {
         try {
+          console.log('[Poster] Attempt', attemptIndex + 1, 'of', attemptPayloads.length);
           const dataUrl = await generateSharePoster(attemptPayloads[attemptIndex]!);
+          console.log('[Poster] Generation successful');
 
           if (
             !mountedRef.current ||
@@ -308,7 +329,8 @@ export default function TenantShareDialogTrigger({
           setPosterDataUrl(dataUrl);
           setPosterPending(false);
           return;
-        } catch {
+        } catch (error) {
+          console.error('[Poster] Generation failed:', error);
           if (attemptIndex < attemptPayloads.length - 1) {
             await wait(180 * (attemptIndex + 1));
           }
@@ -609,13 +631,13 @@ async function generateGenericSharePoster(payload: SharePosterPayload): Promise<
   const heroX = cardX + contentPadding;
   const heroY = cardY + contentPadding;
   const heroWidth = cardWidth - contentPadding * 2;
-  const heroHeight = 800;
+  const heroHeight = 1000;
 
   // Draw hero image section
   await drawGenericPosterHero(ctx, payload, heroX, heroY, heroWidth, heroHeight);
 
   // Title section with more breathing room
-  const titleY = heroY + heroHeight + 60;
+  const titleY = heroY + heroHeight + 80;
   drawMultilineText(ctx, payload.title, {
     x: heroX,
     y: titleY,
@@ -906,20 +928,29 @@ async function drawGenericPosterHero(
 ) {
   const imageUrls = Array.from(
     new Set([payload.previewImageUrl, ...(payload.posterImageUrls ?? [])].filter(Boolean)),
-  ).slice(0, 5) as string[];
+  ).slice(0, 10) as string[];
+
+  console.log('[Poster] Drawing hero with', imageUrls.length, 'image URLs');
 
   if (imageUrls.length === 0) {
+    console.log('[Poster] No images, using fallback');
     drawHeroFallback(ctx, x, y, width, height);
     return;
   }
 
+  console.log('[Poster] Loading images...');
   const images = await loadImages(imageUrls);
+  console.log('[Poster] Loaded', images.length, 'images successfully');
+
   if (images.length === 0) {
+    console.log('[Poster] All images failed to load, using fallback');
     drawHeroFallback(ctx, x, y, width, height);
     return;
   }
 
-  drawPosterCollage(ctx, ensureMasonryImages(images, 5), x, y, width, height);
+  console.log('[Poster] Drawing collage...');
+  drawPosterCollage(ctx, ensureMasonryImages(images, 10), x, y, width, height);
+  console.log('[Poster] Collage drawn');
 }
 
 function drawPosterCollage(
@@ -975,12 +1006,13 @@ function drawPosterCollage(
   ctx.shadowBlur = 0;
   ctx.shadowOffsetY = 0;
 
-  // Side images - 4 rows for more content
+  // Side images - up to 9 rows for more content
   const sideX = innerX + mainWidth + gap;
-  const sideImageHeight = (mainHeight - gap * 3) / 4;
+  const maxSideImages = Math.min(images.length - 1, 9);
+  const sideImageHeight = (mainHeight - gap * (maxSideImages - 1)) / maxSideImages;
 
-  // Draw up to 4 side images
-  for (let i = 1; i < Math.min(images.length, 5); i++) {
+  // Draw side images
+  for (let i = 1; i < Math.min(images.length, 10); i++) {
     const imageY = innerY + (sideImageHeight + gap) * (i - 1);
     drawCoverImage(ctx, images[i]!, sideX, imageY, sideWidth, sideImageHeight, 14);
     ctx.strokeStyle = '#ffffff';
