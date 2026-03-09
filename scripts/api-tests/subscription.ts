@@ -1,3 +1,4 @@
+import { getAdminTenantUsageResponseSchema } from '../../packages/shared/src/admin';
 import {
   createTenantSubscriptionActivationCodeResponseSchema,
   getAdminTenantSubscriptionResponseSchema,
@@ -8,16 +9,21 @@ import {
 import {
   ApiTestError,
   ModuleResult,
+  TenantSession,
   TestContext,
   TestModule,
+  asArray,
   asObject,
   assertErrorCode,
   assertStatus,
   createTinyPngFile,
+  defaultEmail,
   ensureTenantSession,
+  formatError,
   loginWithDevCode,
   readObject,
   readString,
+  switchTenant,
   uniqueSuffix,
 } from './lib';
 
@@ -32,17 +38,9 @@ export const subscriptionModule: TestModule = {
 async function run(ctx: TestContext): Promise<ModuleResult> {
   ctx.requireWrites('subscription');
 
-  const session = await ensureTenantSession(ctx, {
-    email: ctx.options.email,
-    tenantId: ctx.options.tenantId,
-    tenantSlug: ctx.options.tenantSlug,
-    tenantName: ctx.options.tenantName,
-  });
-
   if (!ctx.options.superAdminEmail) {
     ctx.log.warn('subscription.skipped', {
       reason: 'missing --super-admin-email for admin GET/PUT subscription checks',
-      tenantId: session.tenantId,
     });
 
     return {
@@ -50,13 +48,32 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
       details: {
         skipped: true,
         reason: 'missing-super-admin-email',
-        tenantId: session.tenantId,
+        tenantId: null,
       },
     };
   }
 
   let checks = 0;
+  const ownerEmail = ctx.options.email ?? defaultEmail('subscription-owner');
   const superAdminLogin = await loginWithDevCode(ctx, ctx.options.superAdminEmail);
+  const session = await resolveSubscriptionSession(ctx, {
+    ownerEmail,
+    superAdminToken: superAdminLogin.token,
+  });
+
+  const usageBaseline = await readTenantUsageBaseline(ctx, superAdminLogin.token, session.tenantId);
+  const freeProductLimit = Math.max(usageBaseline.productsUsed + 1, 1);
+  const freeImageLimit = Math.max(usageBaseline.imagesUsed + 1, 1);
+  const freeStorageLimit = (usageBaseline.storageUsedBytes + BigInt(1024)).toString();
+  ctx.log.info('subscription.free-baseline', {
+    tenantId: session.tenantId,
+    existingProductCount: usageBaseline.productsUsed,
+    existingImageCount: usageBaseline.imagesUsed,
+    existingStorageBytes: usageBaseline.storageUsedBytes.toString(),
+    freeProductLimit,
+    freeImageLimit,
+    freeStorageLimit,
+  });
 
   const getBeforeResponse = await ctx.request({
     method: 'GET',
@@ -99,9 +116,9 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
     token: superAdminLogin.token,
     json: {
       plan: 'FREE',
-      maxImages: 1,
-      maxStorageBytes: '2048',
-      maxShares: 1,
+      maxImages: freeImageLimit,
+      maxStorageBytes: freeStorageLimit,
+      maxShares: freeProductLimit,
     },
   });
   assertStatus(setFreeResponse, 200, 'subscription.admin.set-free');
@@ -124,6 +141,20 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
   assertStatus(createProductResponse, 201, 'subscription.product.create');
   const product = readObject(asObject(createProductResponse.body), 'product');
   const productId = readString(product, 'id', 'subscription.product.id');
+  checks += 1;
+
+  const createProductDeniedResponse = await ctx.request({
+    method: 'POST',
+    path: '/products',
+    token: session.token,
+    json: {
+      code: uniqueSuffix('sub-product-denied').toUpperCase().slice(0, 64),
+      name: `Subscription Product Denied ${Date.now()}`,
+      description: 'Subscription module quota denial fixture',
+    },
+  });
+  assertStatus(createProductDeniedResponse, 403, 'subscription.product.create-denied-max-products');
+  assertErrorCode(createProductDeniedResponse, 'TENANT_SUBSCRIPTION_QUOTA_EXCEEDED');
   checks += 1;
 
   const createShareOnFree = await ctx.request({
@@ -276,6 +307,174 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
     details: {
       tenantId: session.tenantId,
       productId,
+      freeProductLimit,
+      freeImageLimit,
+      freeStorageLimit,
     },
+  };
+}
+
+async function resolveSubscriptionSession(
+  ctx: TestContext,
+  input: {
+    ownerEmail: string;
+    superAdminToken: string;
+  },
+): Promise<TenantSession> {
+  if (ctx.options.provision) {
+    return provisionSubscriptionSession(ctx, {
+      ownerEmail: input.ownerEmail,
+      superAdminToken: input.superAdminToken,
+      tenantId: ctx.options.tenantId,
+      tenantSlug: ctx.options.tenantSlug,
+      tenantName: ctx.options.tenantName,
+    });
+  }
+
+  try {
+    return await ensureTenantSession(ctx, {
+      email: input.ownerEmail,
+      tenantId: ctx.options.tenantId,
+      tenantSlug: ctx.options.tenantSlug,
+      tenantName: ctx.options.tenantName,
+    });
+  } catch (error) {
+    const message = formatError(error);
+
+    if (message.includes('Email code login is only available for existing accounts.')) {
+      ctx.log.warn('subscription.session.fallback-provision', {
+        ownerEmail: input.ownerEmail,
+        reason: 'owner-account-not-existing',
+      });
+
+      return provisionSubscriptionSession(ctx, {
+        ownerEmail: input.ownerEmail,
+        superAdminToken: input.superAdminToken,
+        tenantId: ctx.options.tenantId,
+        tenantSlug: ctx.options.tenantSlug,
+        tenantName: ctx.options.tenantName,
+      });
+    }
+
+    if (!ctx.options.tenantId && message.includes('User is already bound to tenant')) {
+      ctx.log.warn('subscription.session.fallback-existing-tenant', {
+        ownerEmail: input.ownerEmail,
+      });
+      return resolveBoundTenantSession(ctx, input.ownerEmail);
+    }
+
+    throw error;
+  }
+}
+
+async function provisionSubscriptionSession(
+  ctx: TestContext,
+  input: {
+    ownerEmail: string;
+    superAdminToken: string;
+    tenantId?: string;
+    tenantSlug?: string;
+    tenantName?: string;
+  },
+): Promise<TenantSession> {
+  let tenantId = input.tenantId;
+  let tenantSlug = input.tenantSlug ?? uniqueSuffix('subscription-tenant');
+  let tenantName = input.tenantName ?? `Subscription Tenant ${Date.now()}`;
+
+  if (!tenantId) {
+    const createTenantResponse = await ctx.request({
+      method: 'POST',
+      path: '/admin/tenants',
+      token: input.superAdminToken,
+      json: {
+        slug: tenantSlug,
+        name: tenantName,
+      },
+    });
+    assertStatus(createTenantResponse, 201, 'subscription.bootstrap.create-tenant');
+    const tenant = readObject(asObject(createTenantResponse.body), 'tenant');
+    tenantId = readString(tenant, 'id', 'subscription.bootstrap.tenant.id');
+    tenantSlug = readString(tenant, 'slug', 'subscription.bootstrap.tenant.slug');
+    tenantName = readString(tenant, 'name', 'subscription.bootstrap.tenant.name');
+  }
+
+  const upsertMemberResponse = await ctx.request({
+    method: 'POST',
+    path: `/admin/tenants/${tenantId}/members`,
+    token: input.superAdminToken,
+    json: {
+      email: input.ownerEmail,
+      role: 'OWNER',
+    },
+  });
+  assertStatus(upsertMemberResponse, 201, 'subscription.bootstrap.upsert-owner');
+
+  return ensureTenantSession(ctx, {
+    email: input.ownerEmail,
+    tenantId,
+    tenantSlug,
+    tenantName,
+  });
+}
+
+async function resolveBoundTenantSession(ctx: TestContext, ownerEmail: string): Promise<TenantSession> {
+  const ownerLogin = await loginWithDevCode(ctx, ownerEmail);
+  const listTenantResponse = await ctx.request({
+    method: 'GET',
+    path: '/tenants/me',
+    token: ownerLogin.token,
+  });
+  assertStatus(listTenantResponse, 200, 'subscription.tenants-me');
+  const listTenantBody = asObject(listTenantResponse.body, 'subscription.tenants-me.body');
+  const memberships = asArray(listTenantBody.tenants, 'subscription.tenants-me.tenants');
+  if (memberships.length === 0) {
+    throw new ApiTestError('subscription.tenants-me expected at least one tenant membership');
+  }
+
+  const firstMembership = asObject(memberships[0], 'subscription.tenants-me.tenants[0]');
+  const tenant = readObject(firstMembership, 'tenant', 'subscription.tenants-me.tenants[0].tenant');
+  const tenantId = readString(tenant, 'id', 'subscription.tenants-me.tenant.id');
+  const tenantSlug = readString(tenant, 'slug', 'subscription.tenants-me.tenant.slug');
+  const tenantName = readString(tenant, 'name', 'subscription.tenants-me.tenant.name');
+  const switched = await switchTenant(ctx, ownerLogin.token, { tenantId });
+
+  return {
+    email: ownerEmail,
+    baseToken: ownerLogin.token,
+    token: switched.token,
+    tenantId,
+    tenantSlug,
+    tenantName,
+  };
+}
+
+async function readTenantUsageBaseline(
+  ctx: TestContext,
+  superAdminToken: string,
+  tenantId: string,
+): Promise<{ productsUsed: number; imagesUsed: number; storageUsedBytes: bigint }> {
+  const usageResponse = await ctx.request({
+    method: 'GET',
+    path: `/admin/tenants/${tenantId}/usage`,
+    token: superAdminToken,
+  });
+  assertStatus(usageResponse, 200, 'subscription.admin.tenant-usage');
+  const usagePayload = getAdminTenantUsageResponseSchema.parse(usageResponse.body);
+  const productsUsed = usagePayload.tenant.usage.products.used;
+  const imagesUsed = usagePayload.tenant.usage.images.used;
+
+  let storageUsedBytes: bigint;
+  try {
+    storageUsedBytes = BigInt(usagePayload.tenant.usage.storageBytes.usedBytes);
+  } catch {
+    throw new ApiTestError(
+      `subscription.admin.tenant-usage invalid storage usedBytes: ${usagePayload.tenant.usage.storageBytes.usedBytes}`,
+    );
+  }
+
+  return {
+    productsUsed,
+    imagesUsed,
+    storageUsedBytes,
   };
 }

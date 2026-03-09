@@ -63,12 +63,6 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
     viewerEmail,
   });
 
-  const ownerBase = await loginWithDevCode(ctx, ownerEmail);
-  const adminBase = await loginWithDevCode(ctx, adminEmail);
-  const editorBase = await loginWithDevCode(ctx, editorEmail);
-  const viewerBase = await loginWithDevCode(ctx, viewerEmail);
-  checks += 4;
-
   let superAdminBaseToken: string | null = null;
   if (ctx.options.superAdminEmail) {
     superAdminBaseToken = (await loginWithDevCode(ctx, ctx.options.superAdminEmail)).token;
@@ -122,6 +116,12 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
       checks += 1;
     }
   }
+
+  const ownerBase = await loginWithDevCode(ctx, ownerEmail);
+  const adminBase = await loginWithDevCode(ctx, adminEmail);
+  const editorBase = await loginWithDevCode(ctx, editorEmail);
+  const viewerBase = await loginWithDevCode(ctx, viewerEmail);
+  checks += 4;
 
   if (!tenantId) {
     throw new ApiTestError('tenantId is required after provisioning stage');
