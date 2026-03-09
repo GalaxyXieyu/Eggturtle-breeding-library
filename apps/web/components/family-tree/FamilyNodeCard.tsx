@@ -44,7 +44,9 @@ export function FamilyNodeCard({
   size = 'default'
 }: FamilyNodeCardProps) {
   const isLarge = size === 'large';
-  const shellClassName = isLarge ? 'w-28 gap-2.5 rounded-2xl p-2.5 sm:w-32' : 'w-24 gap-2 rounded-xl p-2';
+  // Slightly larger cards so family tree images are more legible (T86).
+  // Keep mobile from breaking by increasing widths conservatively and keeping square media.
+  const shellClassName = isLarge ? 'w-32 gap-2.5 rounded-2xl p-2.5 sm:w-36' : 'w-28 gap-2 rounded-xl p-2 sm:w-32';
   const imageFrameClassName = isLarge ? 'rounded-xl' : 'rounded-lg';
   const emptyTextClassName = isLarge ? 'text-xs' : 'text-[11px]';
   const codeTextClassName = isLarge ? 'px-1 text-xs leading-4' : 'px-1 text-[11px] leading-4';
