@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { type ProductEvent } from '@eggturtle/shared';
 import { CalendarClock } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -47,9 +48,11 @@ export function BreederEventTimeline({
   groupedEvents,
   eventDetailLabels,
 }: BreederEventTimelineProps) {
+  const searchParams = useSearchParams();
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [pendingScrollEventId, setPendingScrollEventId] = useState<string | null>(null);
   const recordRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const highlightTimers = useRef<Record<string, number | undefined>>({});
 
   useEffect(() => {
     if (!selectedEventId) {
@@ -75,13 +78,48 @@ export function BreederEventTimeline({
     }
 
     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    // keep highlight a bit longer when navigation lands here (hash/link)
+    highlightTimers.current[pendingScrollEventId] = window.setTimeout(() => {
+      setSelectedEventId((current) => (current === pendingScrollEventId ? null : current));
+    }, 2200);
+
     setPendingScrollEventId(null);
   }, [eventExpanded, groupedEvents, pendingScrollEventId]);
 
+  useEffect(() => {
+    const hash = typeof window === 'undefined' ? '' : window.location.hash;
+    const normalizedHash = hash.startsWith('#') ? hash.slice(1) : hash;
+
+    const fromHash = normalizedHash.startsWith('event-') ? normalizedHash.slice('event-'.length) : '';
+    const fromQuery = searchParams.get('event');
+    const nextEventId = fromQuery || fromHash;
+
+    if (!nextEventId) {
+      return;
+    }
+
+    if (!filteredEvents.some((event) => event.id === nextEventId)) {
+      return;
+    }
+
+    setSelectedEventId(nextEventId);
+    setPendingScrollEventId(nextEventId);
+    setEventExpanded(true);
+  }, [filteredEvents, searchParams, setEventExpanded]);
+
   function handleEventJump(eventId: string) {
+    highlightTimers.current[eventId] = window.setTimeout(() => {
+      setSelectedEventId((current) => (current === eventId ? null : current));
+    }, 2200);
+
     setSelectedEventId(eventId);
     setPendingScrollEventId(eventId);
     setEventExpanded(true);
+
+    if (typeof window !== 'undefined') {
+      window.history.replaceState({}, '', `#event-${eventId}`);
+    }
   }
 
   return (
@@ -128,7 +166,7 @@ export function BreederEventTimeline({
                       type="button"
                       onClick={() => handleEventJump(event.id)}
                       aria-pressed={isSelected}
-                      className={`flex w-[84px] shrink-0 flex-col items-center gap-1 rounded-xl border px-2 py-2.5 text-center shadow-sm transition ${
+                      className={`flex w-[84px] shrink-0 flex-col items-center gap-1 rounded-xl border px-2 py-2.5 text-center shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-neutral-950 ${
                         isSelected
                           ? 'border-amber-500/70 bg-amber-100 text-amber-950 ring-1 ring-amber-300/80 shadow-[0_12px_28px_rgba(245,158,11,0.18)] dark:border-amber-400/70 dark:bg-amber-500/14 dark:text-amber-50 dark:ring-amber-500/30'
                           : 'border-neutral-200/90 bg-white text-neutral-700 hover:-translate-y-0.5 hover:border-amber-200 hover:bg-amber-50/40 dark:border-white/10 dark:bg-neutral-950/40 dark:text-neutral-200'
@@ -185,12 +223,18 @@ export function BreederEventTimeline({
                                 className="scroll-mt-24 px-4 py-3"
                               >
                                 <div
-                                  className={`rounded-2xl px-3 py-3 transition ${
+                                  className={`relative rounded-2xl px-3 py-3 transition focus-within:ring-2 focus-within:ring-amber-400/40 ${
                                     isSelected
-                                      ? 'border border-amber-400/80 bg-amber-50/95 ring-1 ring-amber-200/80 shadow-[0_12px_30px_rgba(245,158,11,0.12)]'
-                                      : 'border border-neutral-200/70 bg-white/90'
+                                      ? 'border border-amber-400/80 bg-amber-50/95 shadow-[0_12px_30px_rgba(245,158,11,0.12)]'
+                                      : 'border border-neutral-200/70 bg-white/90 hover:border-amber-200/70 hover:bg-amber-50/30'
                                   }`}
                                 >
+                                  {isSelected ? (
+                                    <span
+                                      aria-hidden="true"
+                                      className="pointer-events-none absolute inset-y-2 left-2 w-1 rounded-full bg-amber-500/70"
+                                    />
+                                  ) : null}
                                   <div className="flex flex-wrap items-center gap-2">
                                     <span className="text-sm leading-none">
                                       {eventTypeIcon(event.eventType)}
