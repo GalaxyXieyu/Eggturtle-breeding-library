@@ -532,15 +532,8 @@ export function BreederEventTimeline({ events, breeder }: { events: BreederEvent
                         <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{eventLabel(event)}</span>
                         <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{formatShortDate(event.eventDate)}</span>
                       </div>
-                      {event.eventType === 'mating' ? (
-                        <div className="mt-1 text-sm text-neutral-700 dark:text-neutral-200">公龟 <span className="font-mono">{event.maleCode || '-'}</span></div>
-                      ) : null}
-                      {event.eventType === 'egg' ? (
-                        <div className="mt-1 text-sm text-neutral-700 dark:text-neutral-200">数量 {typeof event.eggCount === 'number' ? event.eggCount : '-'}</div>
-                      ) : null}
-                      {event.eventType === 'change_mate' ? (
-                        <div className="mt-1 text-sm text-neutral-700 dark:text-neutral-200">{(event.oldMateCode || '-') + ' → ' + (event.newMateCode || '-')}</div>
-                      ) : null}
+                      {/* Public pages should not leak internal meta fields (maleCode/eggCount/mate codes)
+                          that may be duplicated into legacy event notes. Keep only sanitized user remarks. */}
                       {note ? <div className="mt-2 whitespace-pre-wrap text-sm text-neutral-600 dark:text-neutral-300">{note}</div> : null}
                     </div>
                   </div>
