@@ -33,13 +33,12 @@ const DOCK_COPY = {
   }
 } as const;
 
-const overviewItems = dashboardNavGroups.find((group) => group.id === 'overview')?.items ?? [];
 const dataItems = dashboardNavGroups.find((group) => group.id === 'data')?.items ?? [];
-const managementItems = dashboardNavGroups.find((group) => group.id === 'governance')?.items ?? [];
+const managementItems = dashboardNavGroups.find((group) => group.id === 'users')?.items ?? [];
 
-const dataMatchItems = [...overviewItems, ...dataItems];
+const dataMatchItems = [...dataItems];
 const dataEntry = '/dashboard';
-const managementEntry = '/dashboard/memberships';
+const managementEntry = '/dashboard/tenant-management';
 
 export function DashboardBottomDock() {
   const pathname = usePathname();
@@ -65,7 +64,7 @@ export function DashboardBottomDock() {
               aria-current={isDataActive ? 'page' : undefined}
             >
               <span className="dashboard-bottom-dock-icon" aria-hidden="true">
-                <DashboardNavIconGlyph icon="activity" />
+                <DashboardNavIconGlyph icon="overview" />
               </span>
               <span className="dashboard-bottom-dock-label">{copy.dataLabel}</span>
             </Link>
@@ -78,7 +77,7 @@ export function DashboardBottomDock() {
               aria-current={isManagementActive ? 'page' : undefined}
             >
               <span className="dashboard-bottom-dock-icon" aria-hidden="true">
-                <DashboardNavIconGlyph icon="memberships" />
+                <DashboardNavIconGlyph icon="tenantManagement" />
               </span>
               <span className="dashboard-bottom-dock-label">{copy.managementLabel}</span>
             </Link>

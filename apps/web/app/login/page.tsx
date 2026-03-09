@@ -519,6 +519,7 @@ function LoginPageContent() {
         method: 'POST',
         auth: false,
         body: payload,
+        headers: { 'x-eggturtle-auth-surface': 'web' },
         responseSchema: passwordLoginResponseSchema,
       });
 
@@ -559,6 +560,7 @@ function LoginPageContent() {
         method: 'POST',
         auth: false,
         body: payload,
+        headers: { 'x-eggturtle-auth-surface': 'web' },
         requestSchema: phoneLoginRequestSchema,
         responseSchema: phoneLoginResponseSchema,
       });

@@ -28,7 +28,8 @@ export async function POST(request: Request) {
     const upstreamResponse = await fetch(`${getAdminApiBaseUrl()}/auth/password-login`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'x-eggturtle-auth-surface': 'admin'
       },
       body: JSON.stringify(payload),
       cache: 'no-store'

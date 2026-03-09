@@ -1,92 +1,27 @@
-'use client';
+'use client'
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 
-import { useUiPreferences } from '@/components/ui-preferences';
+import { useUiPreferences } from '@/components/ui-preferences'
 
-type TopTabItem = {
-  href: string;
-  match: 'exact' | 'prefix';
-  label: {
-    zh: string;
-    en: string;
-  };
-};
-
-type TopTabGroup = {
-  id: 'data' | 'management';
-  items: TopTabItem[];
-};
-
-const TOP_TAB_COPY = {
-  zh: {
-    data: '数据导航',
-    management: '管理导航'
-  },
-  en: {
-    data: 'Data tabs',
-    management: 'Management tabs'
-  }
-} as const;
-
-const DATA_TAB_ITEMS: TopTabItem[] = [
-  {
-    href: '/dashboard',
-    match: 'exact',
-    label: { zh: '平台总览', en: 'Overview' }
-  },
-  {
-    href: '/dashboard/analytics',
-    match: 'prefix',
-    label: { zh: '活跃度', en: 'Activity' }
-  },
-  {
-    href: '/dashboard/usage',
-    match: 'prefix',
-    label: { zh: '用量', en: 'Usage' }
-  },
-  {
-    href: '/dashboard/analytics/revenue',
-    match: 'prefix',
-    label: { zh: '营收', en: 'Revenue' }
-  }
-];
-
-const MANAGEMENT_TAB_ITEMS: TopTabItem[] = [
-  {
-    href: '/dashboard/memberships',
-    match: 'prefix',
-    label: { zh: '成员权限', en: 'Member Access' }
-  },
-  {
-    href: '/dashboard/tenants',
-    match: 'prefix',
-    label: { zh: '用户目录', en: 'Tenant Directory' }
-  },
-  {
-    href: '/dashboard/audit-logs',
-    match: 'prefix',
-    label: { zh: '操作记录', en: 'Activity Logs' }
-  }
-];
+const TAB_ITEMS = [
+  { href: '/dashboard', match: 'exact', label: { zh: '数据', en: 'Data' } },
+  { href: '/dashboard/tenant-management', match: 'prefix', label: { zh: '用户', en: 'Users' } },
+  { href: '/dashboard/audit-logs', match: 'prefix', label: { zh: '记录', en: 'Records' } }
+] as const
 
 export function DashboardTopTabs() {
-  const pathname = usePathname();
-  const { locale } = useUiPreferences();
-  const group = resolveActiveGroup(pathname);
-
-  if (!group) {
-    return null;
-  }
-
-  const navLabel = TOP_TAB_COPY[locale][group.id];
+  const pathname = usePathname()
+  const { locale } = useUiPreferences()
 
   return (
-    <nav className="dashboard-top-tabs" aria-label={navLabel}>
+    <nav className="dashboard-top-tabs" aria-label={locale === 'zh' ? '主导航' : 'Primary navigation'}>
       <ul className="dashboard-top-tabs-list">
-        {group.items.map((item) => {
-          const active = isTabItemActive(pathname, item);
+        {TAB_ITEMS.map((item) => {
+          const active = item.match === 'exact'
+            ? pathname === item.href
+            : pathname === item.href || pathname.startsWith(`${item.href}/`)
 
           return (
             <li key={item.href} className="dashboard-top-tabs-item">
@@ -98,35 +33,9 @@ export function DashboardTopTabs() {
                 {item.label[locale]}
               </Link>
             </li>
-          );
+          )
         })}
       </ul>
     </nav>
-  );
-}
-
-function resolveActiveGroup(pathname: string): TopTabGroup | null {
-  if (DATA_TAB_ITEMS.some((item) => isTabItemActive(pathname, item))) {
-    return {
-      id: 'data',
-      items: DATA_TAB_ITEMS
-    };
-  }
-
-  if (MANAGEMENT_TAB_ITEMS.some((item) => isTabItemActive(pathname, item))) {
-    return {
-      id: 'management',
-      items: MANAGEMENT_TAB_ITEMS
-    };
-  }
-
-  return null;
-}
-
-function isTabItemActive(pathname: string, item: TopTabItem) {
-  if (item.match === 'exact') {
-    return pathname === item.href;
-  }
-
-  return pathname === item.href || pathname.startsWith(`${item.href}/`);
+  )
 }

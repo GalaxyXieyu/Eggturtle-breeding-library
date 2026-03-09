@@ -4,6 +4,7 @@ import {
   adminUsageOverviewResponseSchema,
   getAdminRevenueOverviewQuerySchema,
   getAdminActivityOverviewQuerySchema,
+  getAdminTenantInsightsResponseSchema,
   getAdminTenantUsageResponseSchema,
   getAdminUsageOverviewQuerySchema,
   createTenantSubscriptionActivationCodeRequestSchema,
@@ -195,6 +196,12 @@ export async function apiRequest<RequestPayload = never, ResponsePayload = unkno
   }
 
   return options.responseSchema.parse(payload);
+}
+
+export async function getAdminTenantInsights(tenantId: string) {
+  return apiRequest(`/admin/tenants/${tenantId}/insights`, {
+    responseSchema: getAdminTenantInsightsResponseSchema,
+  });
 }
 
 export async function getAdminTenantSubscription(tenantId: string) {

@@ -5,7 +5,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { ErrorCode } from '@eggturtle/shared';
+import { AuditAction, ErrorCode } from '@eggturtle/shared';
 import type {
   AuthUser,
   PasswordLoginResponse,
@@ -18,7 +18,7 @@ import type {
   SwitchTenantResponse,
   VerifyCodeResponse,
 } from '@eggturtle/shared';
-import { TenantMemberRole } from '@prisma/client';
+import { Prisma, TenantMemberRole } from '@prisma/client';
 import { randomBytes, randomInt } from 'node:crypto';
 
 import { PrismaService } from '../prisma.service';
@@ -163,7 +163,12 @@ export class AuthIdentityService {
     };
   }
 
-  async verifyCode(email: string, code: string, password?: string): Promise<VerifyCodeResponse> {
+  async verifyCode(
+    email: string,
+    code: string,
+    password?: string,
+    surface?: string
+  ): Promise<VerifyCodeResponse> {
     const latestCode = await this.prisma.authCode.findFirst({
       where: {
         email,
@@ -243,6 +248,10 @@ export class AuthIdentityService {
       tenantId,
     );
 
+    if (tenantId) {
+      await this.recordLoginEvent(this.prisma, tenantId, user.id, 'email_code', surface);
+    }
+
     return {
       accessToken,
       user: {
@@ -254,7 +263,11 @@ export class AuthIdentityService {
     };
   }
 
-  async passwordLogin(login: string, password: string): Promise<PasswordLoginResponse> {
+  async passwordLogin(
+    login: string,
+    password: string,
+    surface?: string
+  ): Promise<PasswordLoginResponse> {
     const loginIdentifier = login.trim().toLowerCase();
     let user = null;
 
@@ -324,6 +337,10 @@ export class AuthIdentityService {
       tenantId,
     );
 
+    if (tenantId) {
+      await this.recordLoginEvent(this.prisma, tenantId, user.id, 'password', surface);
+    }
+
     return {
       accessToken,
       user: {
@@ -335,7 +352,11 @@ export class AuthIdentityService {
     };
   }
 
-  async phoneLogin(phoneNumber: string, code: string): Promise<PhoneLoginResponse> {
+  async phoneLogin(
+    phoneNumber: string,
+    code: string,
+    surface?: string
+  ): Promise<PhoneLoginResponse> {
     const now = new Date();
 
     try {
@@ -446,6 +467,8 @@ export class AuthIdentityService {
           },
           membership.tenantId,
         );
+
+        await this.recordLoginEvent(tx, membership.tenantId, user.id, 'phone_code', surface);
 
         return {
           accessToken,
@@ -694,6 +717,7 @@ export class AuthIdentityService {
           membership.tenantId,
         );
 
+
         return {
           accessToken,
           user: {
@@ -735,4 +759,35 @@ export class AuthIdentityService {
       throw error;
     }
   }
+
+  private normalizeLoginSurface(surface?: string) {
+    if (surface === 'admin' || surface === 'web') {
+      return surface;
+    }
+
+    return 'unknown';
+  }
+
+  private async recordLoginEvent(
+    db: Prisma.TransactionClient | PrismaService,
+    tenantId: string,
+    actorUserId: string,
+    loginMethod: 'password' | 'email_code' | 'phone_code',
+    surface?: string
+  ) {
+    await db.auditLog.create({
+      data: {
+        tenantId,
+        actorUserId,
+        action: AuditAction.AuthLogin,
+        resourceType: 'auth',
+        resourceId: actorUserId,
+        metadata: {
+          loginMethod,
+          surface: this.normalizeLoginSurface(surface)
+        }
+      }
+    });
+  }
+
 }

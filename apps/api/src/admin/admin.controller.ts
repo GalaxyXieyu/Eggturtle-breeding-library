@@ -11,6 +11,7 @@ import {
   exportSuperAdminAuditLogsQuerySchema,
   getAdminActivityOverviewQuerySchema,
   getAdminRevenueOverviewQuerySchema,
+  getAdminTenantInsightsResponseSchema,
   getAdminTenantResponseSchema,
   getAdminTenantSubscriptionResponseSchema,
   getAdminTenantUsageResponseSchema,
@@ -71,6 +72,15 @@ export class AdminController {
   ) {
     const response = await this.adminTenantsService.getTenant(user.id, tenantId);
     return getAdminTenantResponseSchema.parse(response);
+  }
+
+  @Get('tenants/:tenantId/insights')
+  async getTenantInsights(
+    @CurrentUser() user: NonNullable<AuthenticatedRequest['user']>,
+    @Param('tenantId') tenantId: string
+  ) {
+    const response = await this.adminTenantsService.getTenantInsights(user.id, tenantId);
+    return getAdminTenantInsightsResponseSchema.parse(response);
   }
 
   @Get('tenants/:tenantId/subscription')
