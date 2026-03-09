@@ -1,7 +1,9 @@
 import {
+  AuditAction,
   SuperAdminAuditAction,
   type AdminUsageLimitStatus,
   type AdminUsageMetricKey,
+  type AuditActionType,
   type SuperAdminAuditActionType,
   type TenantRole,
   type TenantSubscriptionPlan,
@@ -41,7 +43,7 @@ const USAGE_STATUS_LABELS: Record<AdminUsageLimitStatus, string> = {
   unlimited: '不限制'
 };
 
-const AUDIT_ACTION_LABELS: Record<SuperAdminAuditActionType, string> = {
+const SUPER_ADMIN_AUDIT_ACTION_LABELS: Record<SuperAdminAuditActionType, string> = {
   [SuperAdminAuditAction.ListTenants]: '查看用户列表',
   [SuperAdminAuditAction.CreateTenant]: '创建用户',
   [SuperAdminAuditAction.ListUsers]: '查看用户列表',
@@ -60,6 +62,27 @@ const AUDIT_ACTION_LABELS: Record<SuperAdminAuditActionType, string> = {
   [SuperAdminAuditAction.GetUsageOverview]: '查看用量概览',
   [SuperAdminAuditAction.GetTenantUsage]: '查看用户用量',
   [SuperAdminAuditAction.GetRevenueOverview]: '查看营收概览'
+};
+
+const BUSINESS_AUDIT_ACTION_LABELS: Record<AuditActionType, string> = {
+  [AuditAction.ProductCreate]: '新建产品',
+  [AuditAction.ProductUpdate]: '编辑产品',
+  [AuditAction.ProductEventCreate]: '新增产品事件',
+  [AuditAction.ProductImageUpload]: '上传图片',
+  [AuditAction.ProductImageDelete]: '删除图片',
+  [AuditAction.ProductImageSetMain]: '设为主图',
+  [AuditAction.ProductImageReorder]: '调整图片顺序',
+  [AuditAction.ProductCertificateConfirm]: '确认生成证书',
+  [AuditAction.ProductCertificateVoid]: '作废证书',
+  [AuditAction.ProductCertificateReissue]: '补发证书',
+  [AuditAction.ProductCouplePhotoGenerate]: '生成配对图',
+  [AuditAction.SaleBatchCreate]: '创建销售批次',
+  [AuditAction.SaleAllocationCreate]: '创建分配记录',
+  [AuditAction.SaleSubjectMediaUpload]: '上传销售素材',
+  [AuditAction.ShareCreate]: '创建分享',
+  [AuditAction.ShareAccess]: '访问分享',
+  [AuditAction.SubscriptionActivationRedeem]: '兑换激活码',
+  [AuditAction.AuthLogin]: '登录'
 };
 
 export function formatPlanLabel(plan: TenantSubscriptionPlan | string) {
@@ -83,5 +106,9 @@ export function formatUsageStatusLabel(status: AdminUsageLimitStatus | string) {
 }
 
 export function formatAuditActionLabel(action: SuperAdminAuditActionType | string) {
-  return AUDIT_ACTION_LABELS[action as SuperAdminAuditActionType] ?? action;
+  return SUPER_ADMIN_AUDIT_ACTION_LABELS[action as SuperAdminAuditActionType] ?? action;
+}
+
+export function formatBusinessAuditActionLabel(action: AuditActionType | string) {
+  return BUSINESS_AUDIT_ACTION_LABELS[action as AuditActionType] ?? action;
 }

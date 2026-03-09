@@ -207,8 +207,12 @@ function resolveSectionLabel(firstSegment: string, locale: UiLocale) {
     return locale === 'zh' ? '数据' : 'Data';
   }
 
-  if (firstSegment === 'tenants' || firstSegment === 'memberships' || firstSegment === 'audit-logs') {
-    return locale === 'zh' ? '用户治理' : 'Tenant Governance';
+  if (firstSegment === 'tenant-management' || firstSegment === 'tenants' || firstSegment === 'memberships') {
+    return locale === 'zh' ? '用户' : 'Users';
+  }
+
+  if (firstSegment === 'audit-logs') {
+    return locale === 'zh' ? '记录' : 'Records';
   }
 
   return null;
@@ -216,9 +220,10 @@ function resolveSectionLabel(firstSegment: string, locale: UiLocale) {
 
 function resolveSegmentLabel(segment: string, locale: UiLocale) {
   const labelMap: Record<string, { zh: string; en: string }> = {
-    tenants: { zh: '用户目录', en: 'Tenant Directory' },
+    'tenant-management': { zh: '用户', en: 'Users' },
+    tenants: { zh: '用户详情', en: 'Tenant Detail' },
     memberships: { zh: '成员权限', en: 'Member Access' },
-    'audit-logs': { zh: '操作记录', en: 'Activity Logs' },
+    'audit-logs': { zh: '记录', en: 'Records' },
     analytics: { zh: '活跃度', en: 'Activity' },
     usage: { zh: '用量', en: 'Usage' },
     billing: { zh: '营收', en: 'Revenue' },
