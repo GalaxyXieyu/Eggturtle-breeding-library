@@ -950,7 +950,7 @@ async function drawGenericPosterHero(
 ) {
   const imageUrls = Array.from(
     new Set([payload.previewImageUrl, ...(payload.posterImageUrls ?? [])].filter(Boolean)),
-  ).slice(0, 10) as string[];
+  ).slice(0, 3) as string[];
 
   console.log('[Poster] Drawing hero with', imageUrls.length, 'image URLs');
 
