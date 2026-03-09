@@ -92,7 +92,11 @@ export function FamilyNodeCard({
             alt={node.code}
             className={cn(
               'h-full w-full',
-              imageFit === 'contain' ? (isLarge ? 'object-contain p-2' : 'object-contain p-1.5') : 'object-cover'
+              imageFit === 'contain'
+                ? isLarge
+                  ? 'object-contain p-1.5'
+                  : 'object-contain p-1'
+                : 'object-cover'
             )}
             loading="lazy"
             decoding="async"
