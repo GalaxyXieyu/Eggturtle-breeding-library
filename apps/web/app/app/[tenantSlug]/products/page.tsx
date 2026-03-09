@@ -194,34 +194,29 @@ export default function TenantProductsPage() {
       DEFAULT_SHARE_PREVIEW_HERO,
   );
   const sharePosterImageUrls = useMemo(() => {
-    // First, try to get images from different series in the product list
-    const seriesImageMap = new Map<string, string>();
+    const sourceItems =
+      statusFilter.length > 0
+        ? items.filter((item) => item.needMatingStatus === statusFilter)
+        : items;
+    const visibleCoverUrls = sourceItems
+      .map((item) => item.coverImageUrl?.trim() ?? '')
+      .filter(Boolean);
+    const uniqueVisibleCoverUrls = Array.from(new Set(visibleCoverUrls)).slice(0, 10);
 
-    for (const product of items) {
-      if (!product.coverImageUrl) continue;
-
-      const seriesId = product.seriesId || 'no-series';
-      if (!seriesImageMap.has(seriesId)) {
-        seriesImageMap.set(seriesId, product.coverImageUrl);
-      }
+    if (uniqueVisibleCoverUrls.length > 0) {
+      return uniqueVisibleCoverUrls.map((item) => resolveAuthenticatedAssetUrl(item));
     }
 
-    // Collect images from different series
-    const diverseImages = Array.from(seriesImageMap.values());
+    const fallbackHeroUrls = Array.from(
+      new Set(
+        sharePreview.heroImages
+          .map((item) => item.trim())
+          .filter(Boolean),
+      ),
+    ).slice(0, 10);
 
-    // If we have enough diverse images from products, use them
-    if (diverseImages.length >= 5) {
-      return diverseImages
-        .slice(0, 10)
-        .map((item) => resolveAuthenticatedAssetUrl(item));
-    }
-
-    // Otherwise, fall back to configured hero images
-    return sharePreview.heroImages
-      .map((item) => item.trim())
-      .filter(Boolean)
-      .map((item) => resolveAuthenticatedAssetUrl(item));
-  }, [items, sharePreview.heroImages]);
+    return fallbackHeroUrls.map((item) => resolveAuthenticatedAssetUrl(item));
+  }, [items, sharePreview.heroImages, statusFilter]);
   const shareOverlayColor = hexToRgba(sharePreview.brandSecondary, 0.4);
 
   useEffect(() => {

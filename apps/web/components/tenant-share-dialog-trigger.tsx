@@ -971,7 +971,7 @@ async function drawGenericPosterHero(
   }
 
   console.log('[Poster] Drawing collage...');
-  drawPosterCollage(ctx, ensureMasonryImages(images, 10), x, y, width, height);
+  drawPosterCollage(ctx, images, x, y, width, height);
   console.log('[Poster] Collage drawn');
 }
 
@@ -1184,19 +1184,6 @@ function wait(ms: number) {
   return new Promise<void>((resolve) => {
     window.setTimeout(resolve, ms);
   });
-}
-
-function ensureMasonryImages(images: HTMLImageElement[], minCount: number) {
-  if (images.length >= minCount) {
-    return images;
-  }
-
-  const filled = [...images];
-  while (filled.length < minCount) {
-    filled.push(images[filled.length % images.length]!);
-  }
-
-  return filled;
 }
 
 function drawGlowCircle(
