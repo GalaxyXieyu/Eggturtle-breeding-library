@@ -9,6 +9,7 @@ import {
   formatEventClock,
   formatEventShortDate,
   buildEventSummary,
+  sanitizeEventNoteForDisplay,
 } from '@/lib/breeder-utils';
 
 const EVENT_FILTER_OPTIONS = [
@@ -129,9 +130,9 @@ export function BreederEventTimeline({
                       aria-pressed={isSelected}
                       className={`flex w-[84px] shrink-0 flex-col items-center gap-1 rounded-xl border px-2 py-2.5 text-center shadow-sm transition ${
                         isSelected
-                          ? 'border-amber-300 bg-amber-50 text-amber-900 shadow-[0_10px_24px_rgba(245,158,11,0.18)]'
-                          : 'border-neutral-200 bg-white hover:-translate-y-0.5 hover:border-neutral-300'
-                      } dark:border-white/10 dark:bg-neutral-950/40`}
+                          ? 'border-amber-400/80 bg-amber-100/90 text-amber-950 ring-1 ring-amber-200/80 shadow-[0_10px_24px_rgba(245,158,11,0.14)] dark:border-amber-500/60 dark:bg-amber-500/10 dark:text-amber-100'
+                          : 'border-neutral-200 bg-white hover:-translate-y-0.5 hover:border-neutral-300 hover:bg-neutral-50 dark:border-white/10 dark:bg-neutral-950/40'
+                      }`}
                     >
                       <span className="text-sm leading-none">{eventTypeIcon(event.eventType)}</span>
                       <span className="text-[10px] font-semibold leading-tight text-neutral-900 dark:text-neutral-100">
@@ -148,7 +149,9 @@ export function BreederEventTimeline({
             <div className="overflow-hidden rounded-2xl border border-black/5 bg-white shadow-[0_8px_24px_rgba(0,0,0,0.06)] dark:border-white/10 dark:bg-neutral-900/75">
               <div className="border-b bg-neutral-50 px-4 py-3 dark:border-white/10 dark:bg-neutral-950/35">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">记录（已加载 {filteredEvents.length} 条）</div>
+                  <div className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">
+                    记录（已加载 {filteredEvents.length} 条）
+                  </div>
                   <button
                     type="button"
                     onClick={() => setEventExpanded((current) => !current)}
@@ -171,7 +174,7 @@ export function BreederEventTimeline({
                         <div className="divide-y dark:divide-white/10">
                           {group.items.map((event) => {
                             const isSelected = event.id === selectedEventId;
-                            const note = event.note?.trim();
+                            const note = sanitizeEventNoteForDisplay(event.note);
 
                             return (
                               <div
@@ -184,12 +187,14 @@ export function BreederEventTimeline({
                                 <div
                                   className={`rounded-2xl px-3 py-3 transition ${
                                     isSelected
-                                      ? 'border border-amber-200 bg-amber-50/70 shadow-[0_10px_24px_rgba(245,158,11,0.12)]'
+                                      ? 'border border-amber-300/80 bg-amber-50/85 shadow-[0_10px_24px_rgba(245,158,11,0.1)]'
                                       : 'border border-transparent'
                                   }`}
                                 >
                                   <div className="flex flex-wrap items-center gap-2">
-                                    <span className="text-sm leading-none">{eventTypeIcon(event.eventType)}</span>
+                                    <span className="text-sm leading-none">
+                                      {eventTypeIcon(event.eventType)}
+                                    </span>
                                     <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
                                       {eventTypeLabel(event.eventType)}
                                     </span>
@@ -201,9 +206,9 @@ export function BreederEventTimeline({
                                     {eventDetailLabels.get(event.id) ?? buildEventSummary(event)}
                                   </p>
                                   {isSelected ? (
-                                    <div className="mt-3 rounded-xl border border-amber-200/70 bg-white/80 px-3 py-2 text-xs leading-5 text-neutral-600">
+                                    <div className="mt-3 rounded-xl border border-amber-300/70 bg-white/90 px-3 py-2 text-xs leading-5 text-neutral-700 dark:border-amber-500/40 dark:bg-neutral-950/70 dark:text-neutral-200">
                                       <p>录入时间 {formatEventClock(event.createdAt)}</p>
-                                      <p className="mt-1 whitespace-pre-wrap text-neutral-700">
+                                      <p className="mt-1 whitespace-pre-wrap text-neutral-700 dark:text-neutral-200">
                                         {note ? `备注：${note}` : '备注：暂无补充说明'}
                                       </p>
                                     </div>

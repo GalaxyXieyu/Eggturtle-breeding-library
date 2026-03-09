@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 
 import type { Breeder, BreederEventItem, FamilyTree, MaleMateLoadItem, NeedMatingStatus, Series } from '@/app/public/_legacy/types';
+import { sanitizeEventNoteForDisplay } from '@/lib/breeder-utils';
 
 function formatShortDate(value?: string | null) {
   const iso = (value || '').trim();
@@ -439,7 +440,10 @@ export function BreederEventTimeline({ events, breeder }: { events: BreederEvent
             <div className="p-6 text-sm text-neutral-500">暂无记录</div>
           ) : (
             <div className="divide-y">
-              {filtered.map((event) => (
+              {filtered.map((event) => {
+                const note = sanitizeEventNoteForDisplay(event.note);
+
+                return (
                 <div key={event.id} className="px-4 py-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -457,11 +461,12 @@ export function BreederEventTimeline({ events, breeder }: { events: BreederEvent
                       {event.eventType === 'change_mate' ? (
                         <div className="mt-1 text-sm text-neutral-700">{(event.oldMateCode || '-') + ' → ' + (event.newMateCode || '-')}</div>
                       ) : null}
-                      {event.note ? <div className="mt-2 whitespace-pre-wrap text-sm text-neutral-600">{event.note}</div> : null}
+                      {note ? <div className="mt-2 whitespace-pre-wrap text-sm text-neutral-600">{note}</div> : null}
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )
         ) : null}

@@ -101,7 +101,7 @@ export function buildEventCollisionMeta(events: ProductEvent[]) {
     seen.set(key, duplicateIndex);
     meta.set(event.id, {
       duplicateCount: counts.get(key) ?? 1,
-      duplicateIndex
+      duplicateIndex,
     });
   }
 
@@ -124,6 +124,112 @@ export function buildEventDetailLabel(event: ProductEvent, collision?: EventColl
   }
 
   return `${baseLabel} · 录入 ${formatEventClock(event.createdAt)}`;
+}
+
+const EVENT_NOTE_SKIP_KEYS = new Set([
+  'backfill',
+  'flags',
+  'malecode',
+  'eggcount',
+  'oldmatecode',
+  'newmatecode',
+]);
+
+const EVENT_NOTE_PROMOTE_KEYS = new Set([
+  'raw',
+  'note',
+  'remark',
+  'comment',
+  'memo',
+  'description',
+]);
+
+function normalizeEventNoteSegment(value: string) {
+  const normalized = value.trim().replace(/^['"`]+|['"`]+$/g, '');
+  return normalized || null;
+}
+
+function collectReadableEventNoteSegments(source: string, segments: string[]) {
+  for (const part of source.split(/\s*;\s*/)) {
+    const normalizedPart = normalizeEventNoteSegment(part);
+    if (!normalizedPart) {
+      continue;
+    }
+
+    const taggedMatch = normalizedPart.match(/^(?:#)?([A-Za-z][\w-]*)\s*[:=]\s*(.+)$/);
+    if (!taggedMatch) {
+      segments.push(normalizedPart);
+      continue;
+    }
+
+    const key = taggedMatch[1].trim().toLowerCase();
+    const value = normalizeEventNoteSegment(taggedMatch[2]);
+    if (!value || EVENT_NOTE_SKIP_KEYS.has(key)) {
+      continue;
+    }
+
+    if (EVENT_NOTE_PROMOTE_KEYS.has(key)) {
+      segments.push(value);
+    }
+  }
+}
+
+function extractReadableEventNoteFromJson(note: string) {
+  if (!note.startsWith('{') || !note.endsWith('}')) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(note) as Record<string, unknown>;
+    const readableSegments: string[] = [];
+
+    for (const [rawKey, rawValue] of Object.entries(parsed)) {
+      const key = rawKey.trim().toLowerCase();
+      if (EVENT_NOTE_SKIP_KEYS.has(key)) {
+        continue;
+      }
+
+      if (typeof rawValue !== 'string') {
+        continue;
+      }
+
+      const value = normalizeEventNoteSegment(rawValue);
+      if (!value) {
+        continue;
+      }
+
+      if (EVENT_NOTE_PROMOTE_KEYS.has(key)) {
+        readableSegments.push(value);
+      }
+    }
+
+    return readableSegments.length > 0 ? readableSegments.join('\n') : null;
+  } catch {
+    return null;
+  }
+}
+
+export function sanitizeEventNoteForDisplay(note: string | null | undefined) {
+  const trimmedNote = note?.trim();
+  if (!trimmedNote) {
+    return null;
+  }
+
+  const jsonExtracted = extractReadableEventNoteFromJson(trimmedNote);
+  if (jsonExtracted) {
+    return jsonExtracted;
+  }
+
+  const readableSegments: string[] = [];
+  for (const line of trimmedNote.split(/\r?\n/)) {
+    collectReadableEventNoteSegments(line, readableSegments);
+  }
+
+  const dedupedSegments = readableSegments.filter(
+    (segment, index) => readableSegments.indexOf(segment) === index,
+  );
+
+  return dedupedSegments.length > 0 ? dedupedSegments.join('\n') : null;
 }
 
 export function buildEventSummary(event: ProductEvent) {
