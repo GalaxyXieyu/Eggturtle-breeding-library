@@ -183,6 +183,19 @@ function collectReadableEventNoteSegments(source: string, segments: string[]) {
       continue;
     }
 
+    // Some historical notes were serialized as JSON strings (double-encoded).
+    // Try to decode once so the normal JSON extraction logic can work.
+    if (
+      (normalizedPart.startsWith("\"{") && normalizedPart.endsWith("}\"")) ||
+      (normalizedPart.startsWith("'{") && normalizedPart.endsWith("}'"))
+    ) {
+      const decoded = normalizeEventNoteSegment(normalizedPart.slice(1, -1));
+      if (decoded) {
+        appendReadableEventNoteValue(decoded, segments);
+        continue;
+      }
+    }
+
     const taggedMatch = normalizedPart.match(/^(?:#)?([A-Za-z][\w-]*)\s*[:=]\s*(.+)$/);
     if (!taggedMatch) {
       appendReadableEventNoteValue(normalizedPart, segments);
