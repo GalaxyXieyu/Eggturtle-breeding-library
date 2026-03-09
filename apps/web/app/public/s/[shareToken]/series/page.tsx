@@ -14,6 +14,7 @@ import {
   type PublicSearchParams
 } from '@/app/public/_shared/public-share-api';
 import { withPublicImageMaxEdge } from '@/app/public/_shared/public-image';
+import SeriesCoverImage from './SeriesCoverImage';
 
 export default async function PublicShareSeriesPage({
   params,
@@ -124,13 +125,9 @@ export default async function PublicShareSeriesPage({
                 >
                   <div className="relative h-40 w-full">
                     {coverUrl ? (
-                      <img
-                        src={withPublicImageMaxEdge(coverUrl, 320) ?? coverUrl}
-                        alt={`${series.name} 系列封面`}
-                        className="h-full w-full object-cover"
-                        loading="lazy"
-                        decoding="async"
-                        fetchPriority="low"
+                      <SeriesCoverImage
+                        coverUrl={withPublicImageMaxEdge(coverUrl, 320) ?? coverUrl}
+                        seriesName={series.name}
                       />
                     ) : (
                       <div className="h-full w-full bg-gradient-to-br from-neutral-100 via-neutral-50 to-neutral-200" />

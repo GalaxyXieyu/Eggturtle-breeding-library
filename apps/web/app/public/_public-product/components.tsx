@@ -12,6 +12,7 @@ import { formatSex, formatShortDate } from '@/lib/pet-format';
 import { sanitizeEventNoteForDisplay } from '@/lib/breeder-utils';
 import type { Breeder, BreederEventItem, FamilyTree, MaleMateLoadItem, NeedMatingStatus, Series } from '@/app/public/_public-product/types';
 import { withPublicImageMaxEdge } from '@/app/public/_shared/public-image';
+import PublicImageWithRetry from '@/app/public/_shared/PublicImageWithRetry';
 
 function withDemo(path: string, demo: boolean) {
   return demo ? `${path}${path.includes('?') ? '&' : '?'}demo=1` : path;
@@ -87,7 +88,7 @@ export function ShareContactCard({
     <section className={`rounded-3xl border border-black/5 bg-white/90 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.08)] sm:p-5 ${className ?? ''}`}>
       <div className="flex flex-wrap items-start gap-4">
         {contactQrImageUrl ? (
-          <img
+          <PublicImageWithRetry
             src={contactQrImageUrl}
             alt="微信二维码"
             className="h-28 w-28 rounded-2xl border border-neutral-200 bg-white object-cover p-1"
@@ -123,14 +124,6 @@ export function SeriesIntroCard({
   const [isCollapsed, setIsCollapsed] = useState(true);
   const firstImage = withPublicImageMaxEdge(breeders[0]?.images[0]?.url, 640);
   const [coverLoaded, setCoverLoaded] = useState(false);
-  const coverImageRef = useRef<HTMLImageElement | null>(null);
-
-  useEffect(() => {
-    setCoverLoaded(false);
-    if (coverImageRef.current?.complete) {
-      setCoverLoaded(true);
-    }
-  }, [firstImage]);
 
   if (!series) return null;
 
@@ -153,16 +146,15 @@ export function SeriesIntroCard({
             {!coverLoaded ? (
               <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-neutral-600 via-neutral-500 to-neutral-600" />
             ) : null}
-            <img
-              ref={coverImageRef}
+            <PublicImageWithRetry
               src={firstImage}
               alt={`${series.name} 系列封面`}
               className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${coverLoaded ? 'opacity-100' : 'opacity-0'}`}
               loading="lazy"
               decoding="async"
               fetchPriority="low"
-              onLoad={() => setCoverLoaded(true)}
-              onError={() => setCoverLoaded(true)}
+              onLoadSuccess={() => setCoverLoaded(true)}
+              onLoadFailure={() => setCoverLoaded(true)}
             />
             <div className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/60 to-black/50" />
           </>
