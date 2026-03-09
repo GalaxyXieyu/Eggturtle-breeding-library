@@ -86,8 +86,8 @@ export default async function TenantPublicFeedPage({
 
             return (
               <Link key={item.id} href={detailHref} className="public-feed-card">
-                {item.coverImageUrl ? (
-                  <img src={item.coverImageUrl} alt={item.name ?? item.code} className="public-feed-cover" />
+                {item.publicUrl || item.thumbnailUrl || item.coverImageUrl ? (
+                  <img src={item.publicUrl || item.thumbnailUrl || item.coverImageUrl || ''} alt={item.name ?? item.code} className="public-feed-cover" />
                 ) : (
                   <div className="public-feed-cover public-feed-cover-empty">暂无封面</div>
                 )}

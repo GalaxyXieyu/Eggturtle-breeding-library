@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 type FamilyNodeLike = {
   id: string;
   code: string;
+  publicUrl?: string | null;
   thumbnailUrl?: string | null;
   coverImageUrl?: string | null;
   imageUrl?: string | null;
@@ -23,7 +24,7 @@ type FamilyNodeCardProps = {
 };
 
 function resolveNodeImageUrl(node: FamilyNodeLike, imageResolver?: (url: string) => string) {
-  const raw = node.imageUrl ?? node.thumbnailUrl ?? node.coverImageUrl ?? null;
+  const raw = node.publicUrl ?? node.imageUrl ?? node.thumbnailUrl ?? node.coverImageUrl ?? null;
   if (!raw) {
     return null;
   }

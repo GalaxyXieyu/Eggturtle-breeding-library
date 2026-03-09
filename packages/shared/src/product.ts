@@ -236,6 +236,9 @@ export const productFamilyTreeNodeSchema = z.object({
   code: productCodeSchema,
   name: z.string().nullable(),
   sex: z.string().nullable(),
+  // Prefer these on public/share pages so images don't go through auth-only content routes.
+  publicUrl: z.string().nullable().optional(),
+  thumbnailUrl: z.string().nullable().optional(),
   coverImageUrl: z.string().nullable().optional()
 });
 

@@ -150,6 +150,8 @@ export const publicShareFeedItemSchema = z.object({
   daysSinceEgg: z.number().int().nonnegative().nullable().optional(),
   offspringUnitPrice: z.number().finite().nonnegative().nullable(),
   coverImageUrl: z.string().nullable(),
+  publicUrl: z.string().nullable().optional(),
+  thumbnailUrl: z.string().nullable().optional(),
   popularityScore: z.number().int().min(0).max(100),
   isFeatured: z.boolean()
 });

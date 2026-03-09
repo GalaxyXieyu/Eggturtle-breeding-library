@@ -845,12 +845,16 @@ export class ProductsReadService {
     product: PrismaProduct,
     coverImageUrlByProductId?: Map<string, string | null>,
   ) {
+    const coverImageUrl = coverImageUrlByProductId?.get(product.id) ?? null;
+
     return {
       id: product.id,
       code: product.code,
       name: product.name,
       sex: product.sex,
-      coverImageUrl: coverImageUrlByProductId?.get(product.id) ?? null,
+      publicUrl: coverImageUrl,
+      thumbnailUrl: coverImageUrl,
+      coverImageUrl,
     };
   }
 

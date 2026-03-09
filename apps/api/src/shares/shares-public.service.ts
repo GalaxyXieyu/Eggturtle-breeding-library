@@ -273,6 +273,8 @@ export class SharesPublicService {
           daysSinceEgg: needMatingSummary?.daysSinceEgg ?? null,
           offspringUnitPrice: product.offspringUnitPrice?.toNumber() ?? null,
           coverImageUrl,
+          publicUrl: coverImageUrl,
+          thumbnailUrl: coverImageUrl,
           popularityScore: product.popularityScore ?? 0,
           isFeatured: product.isFeatured ?? false
         };
@@ -829,6 +831,8 @@ export class SharesPublicService {
           femaleCode: female.code,
           femaleMainImageUrl,
           femaleThumbnailUrl,
+          publicUrl: femaleMainImageUrl ?? null,
+          thumbnailUrl: femaleThumbnailUrl ?? null,
           lastEggAt: lastEggAt ? lastEggAt.toISOString() : null,
           lastMatingWithThisMaleAt: lastMatingWithThisMaleAt ? lastMatingWithThisMaleAt.toISOString() : null,
           daysSinceEgg,
