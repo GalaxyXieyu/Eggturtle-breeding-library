@@ -26,6 +26,25 @@ import {
   getAccessToken,
   resolveAuthenticatedAssetUrl,
 } from '@/lib/api-client';
+
+const PUBLIC_ASSET_BASE_URL = (process.env.NEXT_PUBLIC_PUBLIC_ASSET_BASE_URL ?? '').trim().replace(/\/+$/, '');
+
+function stripPublicAssetBase(url: string): string | null {
+  if (!PUBLIC_ASSET_BASE_URL) {
+    return null;
+  }
+
+  if (!url.startsWith(PUBLIC_ASSET_BASE_URL)) {
+    return null;
+  }
+
+  const stripped = url.slice(PUBLIC_ASSET_BASE_URL.length).trim();
+  if (!stripped) {
+    return null;
+  }
+
+  return stripped.startsWith('/') ? stripped : `/${stripped}`;
+}
 import { switchTenantBySlug } from '@/lib/tenant-session';
 import TenantFloatingShareButton from '@/components/tenant-floating-share-button';
 import { Badge } from '@/components/ui/badge';
@@ -655,11 +674,38 @@ async function updateSeries(id: string, payload: SeriesUpdatePayload) {
 }
 
 function SeriesCover({ item }: { item: SeriesItem }) {
-  const coverImageUrl = item.coverImageUrl
-    ? resolveAuthenticatedAssetUrl(item.coverImageUrl)
-    : null;
+  const resolvedCover = item.coverImageUrl?.trim() || null;
+  const [imageSrc, setImageSrc] = useState(resolvedCover);
+  const [imageFailed, setImageFailed] = useState(false);
+  const [hasRetriedWithoutCdn, setHasRetriedWithoutCdn] = useState(false);
 
-  if (!coverImageUrl) {
+  useEffect(() => {
+    setImageSrc(resolvedCover);
+    setImageFailed(false);
+    setHasRetriedWithoutCdn(false);
+  }, [resolvedCover]);
+
+  function handleImageError() {
+    if (!imageSrc) {
+      setImageFailed(true);
+      return;
+    }
+
+    if (!hasRetriedWithoutCdn) {
+      const fallbackFromCdn = stripPublicAssetBase(imageSrc);
+      if (fallbackFromCdn) {
+        setHasRetriedWithoutCdn(true);
+        setImageSrc(fallbackFromCdn);
+        return;
+      }
+    }
+
+    setImageFailed(true);
+  }
+
+  const coverImageUrl = imageSrc ? resolveAuthenticatedAssetUrl(imageSrc) : null;
+
+  if (!coverImageUrl || imageFailed) {
     return (
       <div className="relative h-40 w-full bg-gradient-to-br from-neutral-100 via-neutral-50 to-neutral-200">
         <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/35 to-transparent" />
@@ -675,7 +721,12 @@ function SeriesCover({ item }: { item: SeriesItem }) {
 
   return (
     <div className="relative h-40 w-full">
-      <img src={coverImageUrl} alt={`${item.code} cover`} className="h-full w-full object-cover" />
+      <img
+        src={coverImageUrl}
+        alt={`${item.code} cover`}
+        className="h-full w-full object-cover"
+        onError={handleImageError}
+      />
       <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/45 to-transparent" />
       <div className="absolute bottom-3 left-4 rounded-full bg-black/55 px-2.5 py-1 text-xs text-white">
         系列封面
