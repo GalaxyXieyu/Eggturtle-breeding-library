@@ -525,7 +525,10 @@ export class SharesPublicService {
     }
   ) {
     const currentMateCode = await this.resolveCurrentMateCode(tenantId, detailProduct);
-    const [sire, dam, mate, children] = await Promise.all([
+    const isMale = detailProduct.sex?.trim().toLowerCase() === 'male';
+    const mateCodeCandidates = canonicalMateCodeCandidates(isMale ? detailProduct.code : currentMateCode);
+
+    const [sire, dam, mate, children, relatedFemales] = await Promise.all([
       this.findProductByCodeInsensitive(tenantId, detailProduct.sireCode),
       this.findProductByCodeInsensitive(tenantId, detailProduct.damCode),
       this.findProductByCodeCandidates(tenantId, canonicalMateCodeCandidates(currentMateCode)),
@@ -549,22 +552,76 @@ export class SharesPublicService {
         },
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         take: 100
-      })
+      }),
+      isMale && mateCodeCandidates.length > 0
+        ? this.prisma.product.findMany({
+            where: {
+              tenantId,
+              inStock: true,
+              sex: {
+                equals: 'female',
+                mode: 'insensitive'
+              },
+              OR: mateCodeCandidates.map((candidate) => ({
+                mateCode: {
+                  equals: candidate,
+                  mode: 'insensitive'
+                }
+              }))
+            },
+            orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+            take: 100
+          })
+        : Promise.resolve([])
     ]);
+
+    const needMatingSummaryByProductId = await this.loadNeedMatingSummaryByProductIds(
+      tenantId,
+      relatedFemales.map((item) => item.id)
+    );
+
+    const sortedRelatedFemales = relatedFemales.slice().sort((a, b) => {
+      const aSummary = needMatingSummaryByProductId.get(a.id);
+      const bSummary = needMatingSummaryByProductId.get(b.id);
+      const rank = (status?: 'normal' | 'need_mating' | 'warning') =>
+        status === 'warning' ? 2 : status === 'need_mating' ? 1 : 0;
+      const bySeverity = rank(bSummary?.status) - rank(aSummary?.status);
+      if (bySeverity !== 0) {
+        return bySeverity;
+      }
+
+      const byDays = (bSummary?.daysSinceEgg ?? -1) - (aSummary?.daysSinceEgg ?? -1);
+      if (byDays !== 0) {
+        return byDays;
+      }
+
+      return b.updatedAt.getTime() - a.updatedAt.getTime();
+    });
 
     return {
       self: this.toPublicFamilyTreeNode(detailProduct),
       sire: this.toPublicFamilyTreeNodeOrNull(sire),
       dam: this.toPublicFamilyTreeNodeOrNull(dam),
       mate: this.toPublicFamilyTreeNodeOrNull(mate),
+      mates: sortedRelatedFemales.map((female) => {
+        const summary = needMatingSummaryByProductId.get(female.id);
+        return {
+          ...this.toPublicFamilyTreeNode(female),
+          needMatingStatus: summary?.status ?? null,
+          lastEggAt: summary?.lastEggAt?.toISOString() ?? null,
+          lastMatingAt: summary?.lastMatingAt?.toISOString() ?? null,
+          daysSinceEgg: summary?.daysSinceEgg ?? null
+        };
+      }),
       children: children.map((item) => this.toPublicFamilyTreeNode(item)),
       links: {
         sire: this.toPublicFamilyTreeLink(detailProduct.sireCode, sire),
         dam: this.toPublicFamilyTreeLink(detailProduct.damCode, dam),
         mate: this.toPublicFamilyTreeLink(currentMateCode, mate)
       },
-      limitations:
-        '当前家族谱系仅展示自己、直属父母、当前配偶与直系子代。'
+      limitations: isMale
+        ? '当前家族谱系按竖向展示自己、直属父母、关联母龟与直系子代；关联母龟按待交配优先级与天数排序。'
+        : '当前家族谱系仅展示自己、直属父母、当前配偶与直系子代。'
     };
   }
 

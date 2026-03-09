@@ -110,21 +110,9 @@ export function FamilyTreeView({ tree, openBreederDetail }: FamilyTreeViewProps)
                           className="flex flex-col items-center gap-1.5 rounded-2xl border border-neutral-200 bg-white p-2 shadow-sm"
                         >
                           <TreeCard node={mate} onOpen={openBreederDetail} className="w-[4.8rem] sm:w-[5rem]" />
-                          <button
-                            type="button"
-                            onClick={() => openBreederDetail(mate.id)}
-                            className="w-full truncate text-center text-[11px] font-semibold text-neutral-900 hover:text-amber-700"
-                          >
-                            {mate.code}
-                          </button>
                           <div className="flex flex-wrap items-center justify-center gap-1">
                             {needMatingStatus ? (
                               <PetStatusBadge status={needMatingStatus} daysSinceEgg={daysSinceEgg} />
-                            ) : null}
-                            {typeof daysSinceEgg === 'number' ? (
-                              <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] text-neutral-600">
-                                待交配 {daysSinceEgg} 天
-                              </span>
                             ) : null}
                           </div>
                           <div className="space-y-0.5 text-center text-[10px] text-neutral-500">
