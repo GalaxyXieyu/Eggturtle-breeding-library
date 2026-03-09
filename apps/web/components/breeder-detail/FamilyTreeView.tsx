@@ -142,7 +142,7 @@ export function FamilyTreeView({ tree, openBreederDetail }: FamilyTreeViewProps)
                     key={child?.id ?? `empty-child-${index}`}
                     node={child}
                     onOpen={openBreederDetail}
-                    className="w-[4.8rem] sm:w-[5.2rem]"
+                    className="w-[6.5rem] sm:w-[7rem]"
                   />
                 ))}
               </div>
