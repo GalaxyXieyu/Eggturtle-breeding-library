@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Headers, Post, UseGuards } from '@nestjs/common';
 import {
   passwordLoginRequestSchema,
   passwordLoginResponseSchema,
@@ -44,25 +44,25 @@ export class AuthController {
   }
 
   @Post('verify-code')
-  async verifyCode(@Body() body: unknown) {
+  async verifyCode(@Body() body: unknown, @Headers('x-eggturtle-auth-surface') surface?: string) {
     const payload = parseOrThrow(verifyCodeRequestSchema, body);
-    const response = await this.authIdentityService.verifyCode(payload.email, payload.code, payload.password);
+    const response = await this.authIdentityService.verifyCode(payload.email, payload.code, payload.password, surface);
 
     return verifyCodeResponseSchema.parse(response);
   }
 
   @Post('password-login')
-  async passwordLogin(@Body() body: unknown) {
+  async passwordLogin(@Body() body: unknown, @Headers('x-eggturtle-auth-surface') surface?: string) {
     const payload = parseOrThrow(passwordLoginRequestSchema, body);
-    const response = await this.authIdentityService.passwordLogin(payload.login, payload.password);
+    const response = await this.authIdentityService.passwordLogin(payload.login, payload.password, surface);
 
     return passwordLoginResponseSchema.parse(response);
   }
 
   @Post('phone-login')
-  async phoneLogin(@Body() body: unknown) {
+  async phoneLogin(@Body() body: unknown, @Headers('x-eggturtle-auth-surface') surface?: string) {
     const payload = parseOrThrow(phoneLoginRequestSchema, body);
-    const response = await this.authIdentityService.phoneLogin(payload.phoneNumber, payload.code);
+    const response = await this.authIdentityService.phoneLogin(payload.phoneNumber, payload.code, surface);
 
     return phoneLoginResponseSchema.parse(response);
   }

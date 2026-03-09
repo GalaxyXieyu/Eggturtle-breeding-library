@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod'
 
 export const AuditAction = {
   ProductCreate: 'product.create',
@@ -17,8 +17,9 @@ export const AuditAction = {
   SaleSubjectMediaUpload: 'sale.subject_media.upload',
   ShareCreate: 'share.create',
   ShareAccess: 'share.access',
-  SubscriptionActivationRedeem: 'subscription.activation.redeem'
-} as const;
+  SubscriptionActivationRedeem: 'subscription.activation.redeem',
+  AuthLogin: 'auth.login'
+} as const
 
 export const auditActionSchema = z.enum([
   AuditAction.ProductCreate,
@@ -37,8 +38,9 @@ export const auditActionSchema = z.enum([
   AuditAction.SaleSubjectMediaUpload,
   AuditAction.ShareCreate,
   AuditAction.ShareAccess,
-  AuditAction.SubscriptionActivationRedeem
-]);
+  AuditAction.SubscriptionActivationRedeem,
+  AuditAction.AuthLogin
+])
 
 export const auditLogSchema = z.object({
   id: z.string().min(1),
@@ -49,13 +51,13 @@ export const auditLogSchema = z.object({
   resourceId: z.string().trim().min(1).nullable(),
   metadata: z.unknown().nullable(),
   createdAt: z.string().datetime()
-});
+})
 
 export const listAuditLogsQuerySchema = z.object({
   tenantId: z.string().trim().min(1).optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20)
-});
+})
 
 export const listAuditLogsResponseSchema = z.object({
   logs: z.array(auditLogSchema),
@@ -63,9 +65,9 @@ export const listAuditLogsResponseSchema = z.object({
   page: z.number().int().min(1),
   pageSize: z.number().int().min(1),
   totalPages: z.number().int().min(1)
-});
+})
 
-export type AuditAction = (typeof AuditAction)[keyof typeof AuditAction];
-export type AuditLog = z.infer<typeof auditLogSchema>;
-export type ListAuditLogsQuery = z.infer<typeof listAuditLogsQuerySchema>;
-export type ListAuditLogsResponse = z.infer<typeof listAuditLogsResponseSchema>;
+export type AuditAction = (typeof AuditAction)[keyof typeof AuditAction]
+export type AuditLog = z.infer<typeof auditLogSchema>
+export type ListAuditLogsQuery = z.infer<typeof listAuditLogsQuerySchema>
+export type ListAuditLogsResponse = z.infer<typeof listAuditLogsResponseSchema>
