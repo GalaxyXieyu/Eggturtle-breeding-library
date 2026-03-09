@@ -133,6 +133,7 @@ const EVENT_NOTE_SKIP_KEYS = new Set([
   'eggcount',
   'oldmatecode',
   'newmatecode',
+  'legacyeventid',
 ]);
 
 const EVENT_NOTE_PROMOTE_KEYS = new Set([
@@ -144,8 +145,14 @@ const EVENT_NOTE_PROMOTE_KEYS = new Set([
   'description',
 ]);
 
+function stripLegacyEventMetadataBlock(value: string) {
+  return value.replace(/(?:^|\s+)\[legacy[^\]]*\]/gi, ' ').trim();
+}
+
 function normalizeEventNoteSegment(value: string) {
-  const normalized = value.trim().replace(/^['"`]+|['"`]+$/g, '');
+  const normalized = stripLegacyEventMetadataBlock(value.trim())
+    .replace(/^['"`]+|['"`]+$/g, '')
+    .trim();
   return normalized || null;
 }
 
