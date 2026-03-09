@@ -739,12 +739,26 @@ export default function BreederDetailPage() {
         tenantSlug={tenantSlug}
         isDemoMode={isDemoMode}
         onClose={() => setIsEditDrawerOpen(false)}
-        onSaved={(nextProduct) => {
+        onSaved={(nextProduct, createdEvent) => {
           setData((current) => ({
             ...current,
             breeder: nextProduct,
+            events: createdEvent
+              ? [createdEvent, ...current.events].sort((left, right) => {
+                  const eventDateDiff = Date.parse(right.eventDate) - Date.parse(left.eventDate);
+                  if (eventDateDiff !== 0) {
+                    return eventDateDiff;
+                  }
+
+                  const createdAtDiff = Date.parse(right.createdAt) - Date.parse(left.createdAt);
+                  if (createdAtDiff !== 0) {
+                    return createdAtDiff;
+                  }
+
+                  return right.id.localeCompare(left.id);
+                })
+              : current.events,
           }));
-          setIsEditDrawerOpen(false);
         }}
       />
     </main>

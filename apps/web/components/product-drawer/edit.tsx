@@ -3,6 +3,8 @@
 
 import { ChangeEvent, useEffect, useMemo, useState } from 'react';
 import {
+  createProductEventRequestSchema,
+  createProductEventResponseSchema,
   deleteProductImageResponseSchema,
   getProductResponseSchema,
   listProductImagesResponseSchema,
@@ -12,7 +14,9 @@ import {
   setMainProductImageResponseSchema,
   updateProductRequestSchema,
   uploadProductImageResponseSchema,
+  type CreateProductEventRequest,
   type Product,
+  type ProductEvent,
   type ProductImage
 } from '@eggturtle/shared';
 import {
@@ -54,6 +58,16 @@ type ProductEditFormState = {
   isFeatured: boolean;
 };
 
+type ProductEventFormState = {
+  eventType: 'none' | 'mating' | 'egg' | 'change_mate';
+  eventDate: string;
+  maleCode: string;
+  eggCount: string;
+  oldMateCode: string;
+  newMateCode: string;
+  note: string;
+};
+
 type ProductEditDrawerProps = {
   open: boolean;
   product: Product | null;
@@ -61,7 +75,7 @@ type ProductEditDrawerProps = {
   isDemoMode: boolean;
   seriesOptions?: ProductSeriesOption[];
   onClose: () => void;
-  onSaved: (product: Product) => void;
+  onSaved: (product: Product, createdEvent?: ProductEvent) => void;
   onSeriesCreated?: (series: ProductSeriesOption) => void;
 };
 
@@ -76,6 +90,7 @@ export default function ProductEditDrawer({
   onSeriesCreated
 }: ProductEditDrawerProps) {
   const [form, setForm] = useState<ProductEditFormState>(toProductEditFormState(product));
+  const [eventForm, setEventForm] = useState<ProductEventFormState>(toDefaultEventFormState());
   const [resolvedSeriesOptions, setResolvedSeriesOptions] = useState<ProductSeriesOption[]>(
     seriesOptions ?? []
   );
@@ -107,6 +122,7 @@ export default function ProductEditDrawer({
     setNewSeriesDescription('');
     setNewSeriesSortOrder('');
     setNewSeriesIsActive(true);
+    setEventForm(toDefaultEventFormState());
     setError(null);
   }, [open, product]);
 
@@ -214,7 +230,22 @@ export default function ProductEditDrawer({
     }
   }, [currentImageIndex, images.length]);
 
+  useEffect(() => {
+    if (form.sex === 'female') {
+      return;
+    }
+
+    setEventForm((current) => {
+      if (current.eventType === 'none') {
+        return current;
+      }
+
+      return toDefaultEventFormState();
+    });
+  }, [form.sex]);
+
   const canShowPrice = useMemo(() => form.sex === 'female', [form.sex]);
+  const canRecordEvent = useMemo(() => form.sex === 'female', [form.sex]);
   const currentImage = useMemo(
     () => images[currentImageIndex] ?? images[0] ?? null,
     [currentImageIndex, images]
@@ -267,6 +298,48 @@ export default function ProductEditDrawer({
     if (parsedOffspringPrice === 'invalid') {
       setError('子代单价格式不正确，请输入非负数字。');
       return;
+    }
+
+    let eventPayload: CreateProductEventRequest | null = null;
+    if (eventForm.eventType !== 'none') {
+      if (!canRecordEvent) {
+        setError('仅母龟支持录入种龟事件。请先将性别设置为母。');
+        return;
+      }
+
+      const normalizedEventDate = eventForm.eventDate.trim();
+      if (!normalizedEventDate) {
+        setError('请选择事件日期。');
+        return;
+      }
+
+      let parsedEggCount: number | null = null;
+      if (eventForm.eventType === 'egg' && eventForm.eggCount.trim()) {
+        const rawEggCount = Number(eventForm.eggCount.trim());
+        if (!Number.isInteger(rawEggCount) || rawEggCount < 0 || rawEggCount > 999) {
+          setError('产蛋数量需要是 0-999 的整数。');
+          return;
+        }
+        parsedEggCount = rawEggCount;
+      }
+
+      const oldMateCode = normalizeOptionalCode(eventForm.oldMateCode);
+      const newMateCode = normalizeOptionalCode(eventForm.newMateCode);
+      if (eventForm.eventType === 'change_mate' && !oldMateCode && !newMateCode) {
+        setError('换公事件至少填写旧配偶或新配偶其中一个。');
+        return;
+      }
+
+      eventPayload = createProductEventRequestSchema.parse({
+        eventType: eventForm.eventType,
+        eventDate: normalizedEventDate,
+        maleCode:
+          eventForm.eventType === 'mating' ? normalizeOptionalCode(eventForm.maleCode) : null,
+        eggCount: eventForm.eventType === 'egg' ? parsedEggCount : null,
+        oldMateCode: eventForm.eventType === 'change_mate' ? oldMateCode : null,
+        newMateCode: eventForm.eventType === 'change_mate' ? newMateCode : null,
+        note: eventForm.note.trim() ? eventForm.note.trim() : null
+      });
     }
 
     setSubmitting(true);
@@ -334,7 +407,10 @@ export default function ProductEditDrawer({
           updatedAt: new Date().toISOString()
         } as Product;
 
-        onSaved(nextProduct);
+        const createdDemoEvent = eventPayload
+          ? toDemoProductEvent(currentProduct.id, currentProduct.tenantId, eventPayload)
+          : undefined;
+        onSaved(nextProduct, createdDemoEvent);
         onClose();
         return;
       }
@@ -346,7 +422,24 @@ export default function ProductEditDrawer({
         responseSchema: getProductResponseSchema
       });
 
-      onSaved(response.product);
+      let createdEvent: ProductEvent | undefined;
+      if (eventPayload) {
+        try {
+          const eventResponse = await apiRequest(`/products/${currentProduct.id}/events`, {
+            method: 'POST',
+            body: eventPayload,
+            requestSchema: createProductEventRequestSchema,
+            responseSchema: createProductEventResponseSchema
+          });
+          createdEvent = eventResponse.event;
+        } catch (eventRequestError) {
+          onSaved(response.product);
+          setError(`资料已保存，但事件录入失败：${formatApiError(eventRequestError)}`);
+          return;
+        }
+      }
+
+      onSaved(response.product, createdEvent);
       onClose();
     } catch (requestError) {
       setError(formatApiError(requestError));
@@ -838,6 +931,198 @@ export default function ProductEditDrawer({
               </label>
             </section>
 
+            <section className="space-y-3 rounded-2xl border border-neutral-200 bg-neutral-50/70 p-3">
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-neutral-600">种龟事件录入（可选）</p>
+                <p className="text-xs text-neutral-500">
+                  不选事件时仅保存资料。修改“配偶编号”会自动记录换公事件，这里用于补录历史交配/产蛋/换公。
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { key: 'none' as const, label: '不录入' },
+                  { key: 'mating' as const, label: '交配' },
+                  { key: 'egg' as const, label: '产蛋' },
+                  { key: 'change_mate' as const, label: '换公' }
+                ].map((item) => (
+                  <button
+                    key={`edit-drawer-event-type-${item.key}`}
+                    type="button"
+                    className={buildInteractivePillClass(eventForm.eventType === item.key, {
+                      activeClassName:
+                        'border-[#D7B411] bg-[#FFE680] text-neutral-900 shadow-[0_8px_18px_rgba(215,180,17,0.18)]',
+                      idleClassName:
+                        'border-neutral-200 bg-[#FFFBE8] text-neutral-700 hover:border-[#E7C94C] hover:bg-[#FFF6C2] hover:text-neutral-900'
+                    })}
+                    onClick={() => {
+                      if (!canRecordEvent) {
+                        return;
+                      }
+
+                      setEventForm((current) => {
+                        if (item.key === 'none') {
+                          return toDefaultEventFormState();
+                        }
+
+                        const nextMaleCode =
+                          item.key === 'mating'
+                            ? current.maleCode || normalizeOptionalCode(form.mateCode) || ''
+                            : current.maleCode;
+                        const nextOldMateCode =
+                          item.key === 'change_mate'
+                            ? current.oldMateCode || normalizeOptionalCode(product.mateCode) || ''
+                            : current.oldMateCode;
+                        const nextNewMateCode =
+                          item.key === 'change_mate'
+                            ? current.newMateCode || normalizeOptionalCode(form.mateCode) || ''
+                            : current.newMateCode;
+
+                        return {
+                          ...current,
+                          eventType: item.key,
+                          maleCode: nextMaleCode,
+                          oldMateCode: nextOldMateCode,
+                          newMateCode: nextNewMateCode
+                        };
+                      });
+                    }}
+                    disabled={submitting || !canRecordEvent}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+
+              {!canRecordEvent ? (
+                <p className="rounded-md border border-dashed border-neutral-200 bg-white px-3 py-2 text-xs text-neutral-500">
+                  仅母龟支持录入种龟事件。请先将性别设置为母。
+                </p>
+              ) : null}
+
+              {canRecordEvent && eventForm.eventType !== 'none' ? (
+                <div className="space-y-3 rounded-xl border border-[#FFD400]/35 bg-[#FFF9D8] p-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="grid gap-1.5">
+                      <label htmlFor="edit-drawer-event-date" className="text-xs font-semibold text-neutral-600">
+                        事件日期
+                      </label>
+                      <Input
+                        id="edit-drawer-event-date"
+                        type="date"
+                        value={eventForm.eventDate}
+                        onChange={(event) =>
+                          setEventForm((current) => ({
+                            ...current,
+                            eventDate: event.target.value
+                          }))
+                        }
+                        disabled={submitting}
+                      />
+                    </div>
+
+                    {eventForm.eventType === 'mating' ? (
+                      <div className="grid gap-1.5">
+                        <label htmlFor="edit-drawer-event-male-code" className="text-xs font-semibold text-neutral-600">
+                          公龟编码（可选）
+                        </label>
+                        <Input
+                          id="edit-drawer-event-male-code"
+                          value={eventForm.maleCode}
+                          placeholder="留空时使用配偶编号"
+                          onChange={(event) =>
+                            setEventForm((current) => ({
+                              ...current,
+                              maleCode: event.target.value
+                            }))
+                          }
+                          disabled={submitting}
+                        />
+                      </div>
+                    ) : null}
+
+                    {eventForm.eventType === 'egg' ? (
+                      <div className="grid gap-1.5">
+                        <label htmlFor="edit-drawer-event-egg-count" className="text-xs font-semibold text-neutral-600">
+                          产蛋数量（可选）
+                        </label>
+                        <Input
+                          id="edit-drawer-event-egg-count"
+                          type="number"
+                          min={0}
+                          max={999}
+                          value={eventForm.eggCount}
+                          onChange={(event) =>
+                            setEventForm((current) => ({
+                              ...current,
+                              eggCount: event.target.value
+                            }))
+                          }
+                          disabled={submitting}
+                        />
+                      </div>
+                    ) : null}
+
+                    {eventForm.eventType === 'change_mate' ? (
+                      <>
+                        <div className="grid gap-1.5">
+                          <label htmlFor="edit-drawer-event-old-mate" className="text-xs font-semibold text-neutral-600">
+                            旧配偶编码
+                          </label>
+                          <Input
+                            id="edit-drawer-event-old-mate"
+                            value={eventForm.oldMateCode}
+                            onChange={(event) =>
+                              setEventForm((current) => ({
+                                ...current,
+                                oldMateCode: event.target.value
+                              }))
+                            }
+                            disabled={submitting}
+                          />
+                        </div>
+                        <div className="grid gap-1.5">
+                          <label htmlFor="edit-drawer-event-new-mate" className="text-xs font-semibold text-neutral-600">
+                            新配偶编码
+                          </label>
+                          <Input
+                            id="edit-drawer-event-new-mate"
+                            value={eventForm.newMateCode}
+                            onChange={(event) =>
+                              setEventForm((current) => ({
+                                ...current,
+                                newMateCode: event.target.value
+                              }))
+                            }
+                            disabled={submitting}
+                          />
+                        </div>
+                      </>
+                    ) : null}
+                  </div>
+                  <div className="grid gap-1.5">
+                    <label htmlFor="edit-drawer-event-note" className="text-xs font-semibold text-neutral-600">
+                      事件备注（可选）
+                    </label>
+                    <textarea
+                      id="edit-drawer-event-note"
+                      rows={3}
+                      className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm"
+                      value={eventForm.note}
+                      onChange={(event) =>
+                        setEventForm((current) => ({
+                          ...current,
+                          note: event.target.value
+                        }))
+                      }
+                      disabled={submitting}
+                      placeholder="例如：本次为补录历史数据。"
+                    />
+                  </div>
+                </div>
+              ) : null}
+            </section>
+
             <ProductEditImageWorkbench
               productId={product.id}
               isDemoMode={isDemoMode}
@@ -932,4 +1217,65 @@ function toProductEditFormState(product: Product | null): ProductEditFormState {
     popularityScore: String(product.popularityScore ?? 0),
     isFeatured: !!product.isFeatured
   };
+}
+
+function toDefaultEventFormState(): ProductEventFormState {
+  return {
+    eventType: 'none',
+    eventDate: toLocalDateInputValue(new Date()),
+    maleCode: '',
+    eggCount: '',
+    oldMateCode: '',
+    newMateCode: '',
+    note: ''
+  };
+}
+
+function toLocalDateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function normalizeOptionalCode(value: string | null | undefined): string | null {
+  const normalized = value?.trim().toUpperCase();
+  return normalized ? normalized : null;
+}
+
+function toDemoProductEvent(
+  productId: string,
+  tenantId: string,
+  payload: CreateProductEventRequest
+): ProductEvent {
+  const now = new Date().toISOString();
+
+  return {
+    id: `demo-event-${Date.now()}`,
+    tenantId,
+    productId,
+    eventType: payload.eventType,
+    eventDate: toEventDateIso(payload.eventDate),
+    maleCode: normalizeOptionalCode(payload.maleCode),
+    eggCount: payload.eggCount ?? null,
+    oldMateCode: normalizeOptionalCode(payload.oldMateCode),
+    newMateCode: normalizeOptionalCode(payload.newMateCode),
+    note: payload.note ?? null,
+    createdAt: now,
+    updatedAt: now
+  };
+}
+
+function toEventDateIso(value: string) {
+  const normalized = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+    return `${normalized}T00:00:00.000Z`;
+  }
+
+  const parsed = new Date(normalized);
+  if (Number.isNaN(parsed.getTime())) {
+    return new Date().toISOString();
+  }
+
+  return parsed.toISOString();
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { type Product } from '@eggturtle/shared';
+import { type Product, type ProductEvent } from '@eggturtle/shared';
 
 import ProductCreateDrawer, {
   type ProductCreateResult
@@ -27,7 +27,7 @@ type ProductDrawerEditProps = {
   isDemoMode: boolean;
   seriesOptions?: ProductSeriesOption[];
   onClose: () => void;
-  onSaved: (product: Product) => void;
+  onSaved: (product: Product, createdEvent?: ProductEvent) => void;
   onSeriesCreated?: (series: ProductSeriesOption) => void;
 };
 
