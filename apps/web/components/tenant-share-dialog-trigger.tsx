@@ -418,7 +418,7 @@ export default function TenantShareDialogTrigger({
 
       {open ? (
         <div
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-[radial-gradient(circle_at_top,rgba(28,25,23,0.58),rgba(10,10,10,0.76))] p-3 backdrop-blur-[2px] sm:p-6"
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm sm:p-6"
           role="dialog"
           aria-modal="true"
           aria-labelledby={titleId}
@@ -426,29 +426,24 @@ export default function TenantShareDialogTrigger({
         >
           <div
             className={cn(
-              'relative flex max-h-[min(96dvh,920px)] w-full max-w-[min(96vw,25rem)] flex-col overflow-hidden rounded-[30px] border border-[#e7dac5]/80 bg-[linear-gradient(165deg,rgba(255,252,246,0.98),rgba(246,236,216,0.95))] p-3 text-neutral-900 shadow-[0_36px_90px_rgba(0,0,0,0.38)] sm:max-h-[min(88vh,920px)] sm:max-w-[min(88vw,34rem)] sm:rounded-[32px] sm:p-4 dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100',
+              'relative flex max-h-[min(96dvh,920px)] w-full max-w-[min(96vw,26rem)] flex-col overflow-hidden rounded-3xl border border-neutral-200 bg-white p-4 text-neutral-900 shadow-2xl sm:max-h-[min(88vh,920px)] sm:max-w-[min(88vw,36rem)] sm:rounded-[32px] sm:p-5',
               className,
             )}
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="pointer-events-none absolute inset-0 overflow-hidden">
-              <div className="absolute -right-14 -top-14 h-40 w-40 rounded-full bg-[#f4bf63]/28 blur-2xl" />
-              <div className="absolute -bottom-20 left-[-20%] h-48 w-56 rounded-full bg-[#a16207]/22 blur-3xl" />
-            </div>
-
-            <div className="relative z-10 mb-2.5 flex items-start justify-between gap-3 sm:mb-3">
-              <div className="min-w-0 space-y-1">
-                <p className="inline-flex items-center gap-1 rounded-full border border-[#efcf95] bg-[#fff5dd] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#9a6708] sm:text-[11px]">
-                  <Sparkles size={12} />
-                  Share
+            <div className="relative z-10 mb-3 flex items-start justify-between gap-3 sm:mb-4">
+              <div className="min-w-0 space-y-1.5">
+                <p className="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-neutral-600 sm:text-[11px]">
+                  <Share2 size={12} />
+                  分享
                 </p>
                 <p
                   id={titleId}
-                  className="line-clamp-1 text-[17px] font-semibold tracking-tight sm:text-[18px]"
+                  className="line-clamp-1 text-lg font-bold tracking-tight sm:text-xl"
                 >
                   {cardTitle}
                 </p>
-                <p className="line-clamp-2 text-[11px] leading-4 text-neutral-600 sm:text-xs">
+                <p className="line-clamp-2 text-xs leading-relaxed text-neutral-500 sm:text-sm">
                   {intentCopy.body}
                 </p>
               </div>
@@ -458,38 +453,38 @@ export default function TenantShareDialogTrigger({
                 className={modalCloseButtonClass}
                 onClick={handleClose}
               >
-                <X size={17} strokeWidth={2.6} />
+                <X size={18} strokeWidth={2.5} />
               </button>
             </div>
 
-            <div className="relative z-10 flex min-h-0 flex-1 items-center justify-center py-1 sm:py-2">
-              <div className="flex h-full min-h-[min(62dvh,31rem)] w-full items-center justify-center overflow-hidden rounded-[24px] border border-[#d9c3a1] bg-[linear-gradient(160deg,#1b2436,#0d1628)] p-2 sm:min-h-[min(72vh,42rem)] sm:rounded-[26px] sm:p-2.5">
+            <div className="relative z-10 flex min-h-0 flex-1 items-center justify-center py-2 sm:py-3">
+              <div className="flex h-full min-h-[min(62dvh,32rem)] w-full items-center justify-center overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-50 p-3 sm:min-h-[min(72vh,42rem)] sm:rounded-3xl sm:p-4">
                 {pending ? (
-                  <div className="mx-auto flex aspect-[9/16] w-full max-w-[min(84vw,19rem)] min-h-[17.5rem] flex-col items-center justify-center gap-3 rounded-[22px] bg-[linear-gradient(180deg,#f8fafc,#eef2ff)] text-sm text-slate-500 sm:max-w-[18.75rem]">
-                    <span className="inline-flex h-10 w-10 animate-pulse items-center justify-center rounded-full bg-[#0f172a] text-[#ffd65a]">
-                      <Share2 size={16} />
+                  <div className="mx-auto flex aspect-[9/16] w-full max-w-[min(84vw,19rem)] min-h-[17.5rem] flex-col items-center justify-center gap-4 rounded-2xl bg-white text-sm text-neutral-600 shadow-sm sm:max-w-[19rem]">
+                    <span className="inline-flex h-12 w-12 animate-pulse items-center justify-center rounded-full bg-neutral-900 text-[#FFD400]">
+                      <Share2 size={18} />
                     </span>
                     正在生成分享链接...
                   </div>
                 ) : posterPending ? (
-                  <div className="mx-auto flex aspect-[9/16] w-full max-w-[min(84vw,19rem)] min-h-[17.5rem] flex-col items-center justify-center gap-3 rounded-[22px] bg-[linear-gradient(180deg,#f8fafc,#eef2ff)] text-sm text-slate-500 sm:max-w-[18.75rem]">
-                    <span className="inline-flex h-10 w-10 animate-pulse items-center justify-center rounded-full bg-[#0f172a] text-[#ffd65a]">
-                      <QrCode size={18} />
+                  <div className="mx-auto flex aspect-[9/16] w-full max-w-[min(84vw,19rem)] min-h-[17.5rem] flex-col items-center justify-center gap-4 rounded-2xl bg-white text-sm text-neutral-600 shadow-sm sm:max-w-[19rem]">
+                    <span className="inline-flex h-12 w-12 animate-pulse items-center justify-center rounded-full bg-neutral-900 text-[#FFD400]">
+                      <QrCode size={20} />
                     </span>
                     正在渲染分享海报...
                   </div>
                 ) : posterDataUrl ? (
-                  <div className="mx-auto flex aspect-[9/16] w-full max-w-[min(84vw,19rem)] items-center justify-center rounded-[22px] bg-[#0b1323] p-0.5 shadow-[0_16px_30px_rgba(0,0,0,0.32)] sm:max-w-[18.75rem] sm:p-1">
+                  <div className="mx-auto flex aspect-[9/16] w-full max-w-[min(84vw,19rem)] items-center justify-center rounded-2xl bg-neutral-900 p-1 shadow-xl sm:max-w-[19rem]">
                     <img
                       src={posterDataUrl}
                       alt="分享卡片预览"
-                      className="h-full w-full rounded-[18px] object-contain"
+                      className="h-full w-full rounded-xl object-contain"
                     />
                   </div>
                 ) : (
-                  <div className="mx-auto flex aspect-[9/16] w-full max-w-[min(84vw,19rem)] min-h-[17.5rem] flex-col items-center justify-center gap-3 rounded-[22px] bg-[linear-gradient(180deg,#f8fafc,#f1f5f9)] px-6 text-center text-sm text-slate-500 sm:max-w-[18.75rem]">
-                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-500 shadow-sm">
-                      <QrCode size={22} />
+                  <div className="mx-auto flex aspect-[9/16] w-full max-w-[min(84vw,19rem)] min-h-[17.5rem] flex-col items-center justify-center gap-4 rounded-2xl bg-white px-6 text-center text-sm text-neutral-500 shadow-sm sm:max-w-[19rem]">
+                    <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 text-neutral-400">
+                      <QrCode size={24} />
                     </span>
                     暂无卡片预览
                   </div>
@@ -497,23 +492,23 @@ export default function TenantShareDialogTrigger({
               </div>
             </div>
 
-            <div className="relative z-10 mt-2.5 grid grid-cols-1 gap-2 sm:mt-3 sm:grid-cols-2">
+            <div className="relative z-10 mt-3 grid grid-cols-1 gap-2.5 sm:mt-4 sm:grid-cols-2">
               <button
                 type="button"
                 onClick={handleSaveImage}
                 disabled={!posterDataUrl || posterPending}
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[linear-gradient(160deg,#0f172a,#111827)] px-3 text-sm font-semibold text-[#fef3c7] shadow-[0_10px_20px_rgba(15,23,42,0.35)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-neutral-900 px-4 text-sm font-semibold text-white shadow-lg transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <Download size={15} />
+                <Download size={16} />
                 保存图片
               </button>
               <button
                 type="button"
                 onClick={() => void handleCopyLink()}
                 disabled={!link}
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-[#d5bf98] bg-[#fffaf0] px-3 text-sm font-semibold text-[#4b5563] transition hover:bg-[#fff3de] disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border-2 border-neutral-900 bg-white px-4 text-sm font-semibold text-neutral-900 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <Copy size={15} />
+                <Copy size={16} />
                 复制链接
               </button>
             </div>
@@ -583,125 +578,110 @@ async function generateGenericSharePoster(payload: SharePosterPayload): Promise<
     throw new Error('Canvas unavailable');
   }
 
+  // Modern gradient background (black to dark gray)
   const background = ctx.createLinearGradient(0, 0, width, height);
-  background.addColorStop(0, '#0c182f');
-  background.addColorStop(0.55, '#111d34');
-  background.addColorStop(1, '#172542');
+  background.addColorStop(0, '#0a0a0a');
+  background.addColorStop(0.5, '#1a1a1a');
+  background.addColorStop(1, '#0f0f0f');
   ctx.fillStyle = background;
   ctx.fillRect(0, 0, width, height);
 
-  drawGlowCircle(ctx, width * 0.84, 160, 340, 'rgba(245,158,11,0.22)');
-  drawGlowCircle(ctx, 150, height - 180, 320, 'rgba(56,189,248,0.16)');
+  // Subtle accent glow (yellow accent)
+  drawGlowCircle(ctx, width * 0.85, 200, 400, 'rgba(255,212,0,0.12)');
+  drawGlowCircle(ctx, 120, height - 200, 350, 'rgba(255,212,0,0.08)');
 
-  const cardX = 40;
-  const cardY = 40;
-  const cardWidth = width - 80;
-  const cardHeight = height - 80;
+  const cardX = 50;
+  const cardY = 50;
+  const cardWidth = width - 100;
+  const cardHeight = height - 100;
 
+  // Main card with clean white background
   ctx.save();
-  ctx.shadowColor = 'rgba(0,0,0,0.42)';
-  ctx.shadowBlur = 42;
-  ctx.shadowOffsetY = 24;
-  roundedRect(ctx, cardX, cardY, cardWidth, cardHeight, 42);
-  ctx.fillStyle = 'rgba(255,251,242,0.98)';
+  ctx.shadowColor = 'rgba(0,0,0,0.5)';
+  ctx.shadowBlur = 60;
+  ctx.shadowOffsetY = 30;
+  roundedRect(ctx, cardX, cardY, cardWidth, cardHeight, 48);
+  ctx.fillStyle = '#ffffff';
   ctx.fill();
   ctx.restore();
 
-  const heroX = cardX + 30;
-  const heroY = cardY + 34;
-  const heroWidth = cardWidth - 60;
-  const heroHeight = 930;
+  const contentPadding = 48;
+  const heroX = cardX + contentPadding;
+  const heroY = cardY + contentPadding;
+  const heroWidth = cardWidth - contentPadding * 2;
+  const heroHeight = 800;
+
+  // Draw hero image section
   await drawGenericPosterHero(ctx, payload, heroX, heroY, heroWidth, heroHeight);
 
-  ctx.fillStyle = 'rgba(255,255,255,0.93)';
-  ctx.font = '700 28px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
-  ctx.fillText('蛋龟选育库 SHARE', heroX + 24, heroY + 46);
-
+  // Title section with more breathing room
+  const titleY = heroY + heroHeight + 60;
   drawMultilineText(ctx, payload.title, {
     x: heroX,
-    y: heroY + heroHeight + 52,
+    y: titleY,
     maxWidth: heroWidth,
-    lineHeight: 62,
+    lineHeight: 68,
     maxLines: 2,
-    font: '700 54px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif',
-    color: '#111827',
+    font: '700 58px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif',
+    color: '#0a0a0a',
   });
 
+  // Subtitle with better contrast
   drawMultilineText(ctx, payload.subtitle, {
     x: heroX,
-    y: heroY + heroHeight + 178,
+    y: titleY + 150,
     maxWidth: heroWidth,
-    lineHeight: 38,
+    lineHeight: 42,
     maxLines: 2,
-    font: '500 27px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif',
-    color: '#475569',
+    font: '500 28px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif',
+    color: '#666666',
   });
 
-  const sloganX = heroX;
-  const sloganY = heroY + heroHeight + 264;
-  const sloganWidth = heroWidth;
-  const sloganHeight = 108;
-  const sloganGradient = ctx.createLinearGradient(
-    sloganX,
-    sloganY,
-    sloganX + sloganWidth,
-    sloganY + sloganHeight,
-  );
-  sloganGradient.addColorStop(0, 'rgba(253,230,138,0.72)');
-  sloganGradient.addColorStop(1, 'rgba(250,204,21,0.30)');
-  ctx.fillStyle = sloganGradient;
-  roundedRect(ctx, sloganX, sloganY, sloganWidth, sloganHeight, 24);
+  // QR code section - cleaner layout
+  const qrSectionY = cardY + cardHeight - 340;
+  const qrSize = 200;
+  const qrX = heroX;
+  const qrY = qrSectionY;
+
+  // QR code with subtle border
+  ctx.fillStyle = '#f5f5f5';
+  roundedRect(ctx, qrX - 12, qrY - 12, qrSize + 24, qrSize + 24, 24);
   ctx.fill();
-  ctx.strokeStyle = 'rgba(146,64,14,0.24)';
+
+  ctx.strokeStyle = '#e0e0e0';
   ctx.lineWidth = 2;
-  roundedRect(ctx, sloganX, sloganY, sloganWidth, sloganHeight, 24);
+  roundedRect(ctx, qrX - 12, qrY - 12, qrSize + 24, qrSize + 24, 24);
   ctx.stroke();
-  ctx.fillStyle = '#7c2d12';
-  ctx.font = '700 32px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
-  ctx.fillText('10秒看懂选育实力，分享更有说服力', sloganX + 26, sloganY + 46);
-  ctx.fillStyle = '#92400e';
-  ctx.font = '500 21px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
-  ctx.fillText('SLOGAN · Better visuals, faster trust.', sloganX + 26, sloganY + 80);
-
-  const qrPanelX = heroX;
-  const qrPanelY = cardY + cardHeight - 304;
-  const qrPanelWidth = heroWidth;
-  const qrPanelHeight = 228;
-
-  ctx.fillStyle = '#fff8e8';
-  roundedRect(ctx, qrPanelX, qrPanelY, qrPanelWidth, qrPanelHeight, 30);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(217,119,6,0.34)';
-  ctx.lineWidth = 3;
-  roundedRect(ctx, qrPanelX, qrPanelY, qrPanelWidth, qrPanelHeight, 30);
-  ctx.stroke();
-
-  const qrX = qrPanelX + 34;
-  const qrY = qrPanelY + 20;
-  const qrSize = 176;
-
-  ctx.fillStyle = '#ffffff';
-  roundedRect(ctx, qrX - 10, qrY - 10, qrSize + 20, qrSize + 20, 20);
-  ctx.fill();
 
   const qrImage = await loadImage(payload.qrDataUrl);
   ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
 
-  ctx.fillStyle = '#111827';
-  ctx.font = '700 34px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
-  ctx.fillText('扫码查看公开页', qrX + qrSize + 34, qrY + 50);
-  ctx.font = '500 23px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
-  ctx.fillStyle = '#475569';
-  ctx.fillText('海报、二维码与链接共用同一分享链路', qrX + qrSize + 34, qrY + 94);
-  ctx.fillText('可直接转发客户，也可复制链接分发', qrX + qrSize + 34, qrY + 132);
+  // QR text section - simplified
+  const qrTextX = qrX + qrSize + 40;
+  ctx.fillStyle = '#0a0a0a';
+  ctx.font = '700 36px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
+  ctx.fillText('扫码查看', qrTextX, qrY + 60);
 
-  ctx.fillStyle = '#0f172a';
+  ctx.fillStyle = '#666666';
+  ctx.font = '500 24px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
+  ctx.fillText('分享链接与二维码同源', qrTextX, qrY + 110);
+  ctx.fillText('可直接转发或复制链接', qrTextX, qrY + 150);
+
+  // Bottom accent bar with yellow
+  const accentBarY = qrY + qrSize + 40;
+  const accentBarHeight = 6;
+  const accentGradient = ctx.createLinearGradient(heroX, accentBarY, heroX + heroWidth, accentBarY);
+  accentGradient.addColorStop(0, '#FFD400');
+  accentGradient.addColorStop(0.5, '#FFC700');
+  accentGradient.addColorStop(1, '#FFD400');
+  ctx.fillStyle = accentGradient;
+  roundedRect(ctx, heroX, accentBarY, heroWidth, accentBarHeight, 3);
+  ctx.fill();
+
+  // Footer text
+  ctx.fillStyle = '#999999';
   ctx.font = '500 20px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
-  ctx.fillText(
-    'Eggturtle Breeding Library',
-    qrPanelX + 34,
-    qrPanelY + qrPanelHeight - 22,
-  );
+  ctx.fillText('Eggturtle Breeding Library', heroX, accentBarY + 50);
 
   return canvas.toDataURL('image/png');
 }
@@ -950,171 +930,64 @@ function drawPosterCollage(
   width: number,
   height: number,
 ) {
+  // Clean background with subtle gradient
   const heroGradient = ctx.createLinearGradient(x, y, x + width, y + height);
-  heroGradient.addColorStop(0, '#0d1b34');
-  heroGradient.addColorStop(1, '#1a3258');
+  heroGradient.addColorStop(0, '#f5f5f5');
+  heroGradient.addColorStop(1, '#e5e5e5');
   ctx.fillStyle = heroGradient;
-  roundedRect(ctx, x, y, width, height, 30);
+  roundedRect(ctx, x, y, width, height, 32);
   ctx.fill();
 
-  const headPillX = x + 20;
-  const headPillY = y + 16;
-  const headPillWidth = 208;
-  const headPillHeight = 34;
-  ctx.fillStyle = 'rgba(255,255,255,0.16)';
-  roundedRect(ctx, headPillX, headPillY, headPillWidth, headPillHeight, 17);
-  ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,0.92)';
-  ctx.font = '700 18px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
-  ctx.fillText('精选在售展示', headPillX + 14, headPillY + 23);
+  // Add subtle border
+  ctx.strokeStyle = '#d0d0d0';
+  ctx.lineWidth = 2;
+  roundedRect(ctx, x, y, width, height, 32);
+  ctx.stroke();
 
-  const innerPaddingX = 22;
-  const innerPaddingY = 62;
-  const innerX = x + innerPaddingX;
-  const innerY = y + innerPaddingY;
-  const innerWidth = width - innerPaddingX * 2;
-  const innerHeight = height - innerPaddingY - 20;
-  const columnGap = 12;
-  const sideWidth = Math.max(186, innerWidth * 0.34);
-  const mainWidth = innerWidth - sideWidth - columnGap;
-  const sideHeights = resolveColumnHeights(innerHeight - 12, [0.51, 0.49]);
+  const padding = 6;
+  const innerX = x + padding;
+  const innerY = y + padding;
+  const innerWidth = width - padding * 2;
+  const innerHeight = height - padding * 2;
 
   ctx.save();
-  roundedRect(ctx, x, y, width, height, 30);
+  roundedRect(ctx, x, y, width, height, 32);
   ctx.clip();
 
-  const mainX = innerX;
-  const mainY = innerY;
+  // Simple grid layout: 2 columns
+  const gap = 6;
+  const mainWidth = innerWidth * 0.58;
+  const sideWidth = innerWidth - mainWidth - gap;
   const mainHeight = innerHeight;
-  drawCoverImage(ctx, images[0]!, mainX, mainY, mainWidth, mainHeight, 24);
-  ctx.lineWidth = 4;
-  ctx.strokeStyle = 'rgba(255,255,255,0.82)';
-  roundedRect(ctx, mainX, mainY, mainWidth, mainHeight, 24);
+
+  // Main large image
+  drawCoverImage(ctx, images[0]!, innerX, innerY, mainWidth, mainHeight, 20);
+
+  // Subtle shadow on main image
+  ctx.shadowColor = 'rgba(0,0,0,0.1)';
+  ctx.shadowBlur = 10;
+  ctx.shadowOffsetY = 4;
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 3;
+  roundedRect(ctx, innerX, innerY, mainWidth, mainHeight, 20);
   ctx.stroke();
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
 
-  const mainOverlay = ctx.createLinearGradient(0, mainY + mainHeight * 0.5, 0, mainY + mainHeight);
-  mainOverlay.addColorStop(0, 'rgba(15,23,42,0)');
-  mainOverlay.addColorStop(1, 'rgba(15,23,42,0.72)');
-  ctx.fillStyle = mainOverlay;
-  roundedRect(ctx, mainX, mainY, mainWidth, mainHeight, 24);
-  ctx.fill();
+  // Side images - 4 rows for more content
+  const sideX = innerX + mainWidth + gap;
+  const sideImageHeight = (mainHeight - gap * 3) / 4;
 
-  const sideX = mainX + mainWidth + columnGap;
-  drawMasonryTile(ctx, images[1]!, sideX, innerY, sideWidth, sideHeights[0]!, 2);
-  drawMasonryTile(
-    ctx,
-    images[2]!,
-    sideX,
-    innerY + sideHeights[0]! + 12,
-    sideWidth,
-    sideHeights[1]!,
-    3,
-  );
-
-  const stripY = mainY + mainHeight - 148;
-  const stripX = mainX + 16;
-  const stripGap = 8;
-  const stripWidth = mainWidth - 32;
-  const thumbWidth = (stripWidth - stripGap * 2) / 3;
-  const stripSources = [images[3]!, images[4]!, images[0]!];
-  for (let index = 0; index < 3; index += 1) {
-    drawMiniPosterThumb(
-      ctx,
-      stripSources[index]!,
-      stripX + (thumbWidth + stripGap) * index,
-      stripY,
-      thumbWidth,
-      132,
-    );
+  // Draw up to 4 side images
+  for (let i = 1; i < Math.min(images.length, 5); i++) {
+    const imageY = innerY + (sideImageHeight + gap) * (i - 1);
+    drawCoverImage(ctx, images[i]!, sideX, imageY, sideWidth, sideImageHeight, 14);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3;
+    roundedRect(ctx, sideX, imageY, sideWidth, sideImageHeight, 14);
+    ctx.stroke();
   }
-
-  ctx.fillStyle = 'rgba(255,255,255,0.95)';
-  ctx.font = '700 29px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
-  ctx.fillText('公开图鉴入口', mainX + 22, mainY + 46);
-  ctx.fillStyle = 'rgba(255,255,255,0.86)';
-  ctx.font = '500 21px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
-  ctx.fillText('分享后客户可直接浏览在售个体', mainX + 22, mainY + 78);
-
-  const overlay = ctx.createLinearGradient(0, y + height * 0.55, 0, y + height);
-  overlay.addColorStop(0, 'rgba(15,23,42,0)');
-  overlay.addColorStop(1, 'rgba(15,23,42,0.4)');
-  ctx.fillStyle = overlay;
-  ctx.fillRect(x, y, width, height);
-  ctx.restore();
-}
-
-function drawMiniPosterThumb(
-  ctx: CanvasRenderingContext2D,
-  image: HTMLImageElement,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-) {
-  ctx.save();
-  ctx.fillStyle = 'rgba(255,255,255,0.2)';
-  roundedRect(ctx, x - 2, y - 2, width + 4, height + 4, 14);
-  ctx.fill();
-  drawCoverImage(ctx, image, x, y, width, height, 12);
-  ctx.lineWidth = 2.5;
-  ctx.strokeStyle = 'rgba(255,255,255,0.82)';
-  roundedRect(ctx, x, y, width, height, 12);
-  ctx.stroke();
-  ctx.restore();
-}
-
-function drawMasonryTile(
-  ctx: CanvasRenderingContext2D,
-  image: HTMLImageElement,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  index: number,
-) {
-  const radius = 22;
-  ctx.save();
-  ctx.shadowColor = 'rgba(15,23,42,0.3)';
-  ctx.shadowBlur = 18;
-  ctx.shadowOffsetY = 12;
-  ctx.fillStyle = 'rgba(255,255,255,0.22)';
-  roundedRect(ctx, x - 3, y - 3, width + 6, height + 6, radius + 3);
-  ctx.fill();
-  drawCoverImage(ctx, image, x, y, width, height, radius);
-  ctx.lineWidth = 5;
-  ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-  roundedRect(ctx, x, y, width, height, radius);
-  ctx.stroke();
-
-  const footerHeight = Math.max(34, Math.min(48, height * 0.24));
-  ctx.save();
-  roundedRect(ctx, x, y, width, height, radius);
-  ctx.clip();
-  const footerGradient = ctx.createLinearGradient(0, y + height - footerHeight, 0, y + height);
-  footerGradient.addColorStop(0, 'rgba(15,23,42,0)');
-  footerGradient.addColorStop(1, 'rgba(15,23,42,0.72)');
-  ctx.fillStyle = footerGradient;
-  ctx.fillRect(x, y + height - footerHeight, width, footerHeight);
-  ctx.restore();
-
-  ctx.fillStyle = 'rgba(255,255,255,0.96)';
-  ctx.font = '700 13px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
-  ctx.fillText(`精选 ${String(index).padStart(2, '0')}`, x + 12, y + height - 14);
-
-  const rankSize = 28;
-  const rankX = x + 10;
-  const rankY = y + 10;
-  const rankGradient = ctx.createLinearGradient(rankX, rankY, rankX + rankSize, rankY + rankSize);
-  rankGradient.addColorStop(0, '#facc15');
-  rankGradient.addColorStop(1, '#f59e0b');
-  ctx.fillStyle = rankGradient;
-  roundedRect(ctx, rankX, rankY, rankSize, rankSize, 14);
-  ctx.fill();
-  ctx.fillStyle = '#0f172a';
-  ctx.font = '700 15px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
-  const rankText = String(index);
-  const rankWidth = ctx.measureText(rankText).width;
-  ctx.fillText(rankText, rankX + (rankSize - rankWidth) / 2, rankY + 19);
 
   ctx.restore();
 }
@@ -1195,23 +1068,6 @@ function ensureMasonryImages(images: HTMLImageElement[], minCount: number) {
   }
 
   return filled;
-}
-
-function resolveColumnHeights(totalHeight: number, ratios: number[]) {
-  const safeTotal = Math.max(120, Math.floor(totalHeight));
-  const safeRatios = ratios.length > 0 ? ratios : [1];
-  const sum = safeRatios.reduce((acc, item) => acc + item, 0) || 1;
-
-  let used = 0;
-  return safeRatios.map((item, index) => {
-    if (index === safeRatios.length - 1) {
-      return Math.max(40, safeTotal - used);
-    }
-
-    const value = Math.max(40, Math.round((safeTotal * item) / sum));
-    used += value;
-    return value;
-  });
 }
 
 function drawGlowCircle(
