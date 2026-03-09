@@ -44,6 +44,20 @@ export function DashboardNavIconGlyph({ icon }: DashboardNavIconProps) {
     );
   }
 
+  if (icon === 'tenantManagement') {
+    return (
+      <svg viewBox="0 0 16 16" width="14" height="14">
+        <path
+          d="M3 3.5h10v9H3z"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.2"
+        />
+        <path d="M5 6h6M5 8.5h6M5 11h4" fill="none" stroke="currentColor" strokeWidth="1.2" />
+      </svg>
+    );
+  }
+
   if (icon === 'tenants') {
     return (
       <svg viewBox="0 0 16 16" width="14" height="14">

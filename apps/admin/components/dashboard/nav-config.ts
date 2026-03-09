@@ -10,7 +10,8 @@ export type DashboardNavIcon =
   | 'revenue'
   | 'tenants'
   | 'memberships'
-  | 'audit';
+  | 'audit'
+  | 'tenantManagement';
 
 export type DashboardNavItem = {
   href: string;
@@ -81,21 +82,30 @@ export const dashboardNavGroups: DashboardNavGroup[] = [
     title: { zh: '用户治理', en: 'Tenant Governance' },
     items: [
       {
+        href: '/dashboard/tenant-management',
+        icon: 'tenantManagement',
+        label: { zh: '用户管理', en: 'Tenant Management' },
+        description: {
+          zh: '统一管理用户目录与成员权限。',
+          en: 'Manage tenant directory and memberships in one place.'
+        }
+      },
+      {
         href: '/dashboard/tenants',
         icon: 'tenants',
-        label: { zh: '用户目录', en: 'Tenant Directory' },
+        label: { zh: '用户目录（旧）', en: 'Tenant Directory (legacy)' },
         description: {
-          zh: '浏览用户信息并进入详情治理。',
-          en: 'Browse tenants and open governance details.'
+          zh: '旧入口，后续会逐步合并到「用户管理」。',
+          en: 'Legacy entry, to be consolidated into Tenant Management.'
         }
       },
       {
         href: '/dashboard/memberships',
         icon: 'memberships',
-        label: { zh: '成员权限', en: 'Member Access' },
+        label: { zh: '成员权限（旧）', en: 'Member Access (legacy)' },
         description: {
-          zh: '按用户管理成员角色与权限。',
-          en: 'Manage tenant member roles and access.'
+          zh: '旧入口，后续会逐步合并到「用户管理」。',
+          en: 'Legacy entry, to be consolidated into Tenant Management.'
         }
       },
       {
