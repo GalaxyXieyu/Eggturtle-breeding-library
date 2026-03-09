@@ -56,7 +56,12 @@ export const adminUserSchema = authUserSchema.extend({
 
 export const adminTenantSchema = tenantSchema.extend({
   createdAt: z.string().datetime(),
-  memberCount: z.number().int().nonnegative()
+  memberCount: z.number().int().nonnegative(),
+  ownerAccount: z.string().trim().min(1).nullable(),
+  ownerEmail: z.string().trim().min(1).nullable(),
+  ownerPhone: z.string().trim().min(1).nullable(),
+  subscriptionPlan: tenantSubscriptionPlanSchema.nullable(),
+  subscriptionStatus: tenantSubscriptionStatusSchema.nullable()
 });
 
 export const listAdminTenantsQuerySchema = z.object({

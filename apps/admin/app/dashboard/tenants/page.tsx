@@ -23,14 +23,14 @@ const COPY = {
   zh: {
     eyebrow: '用户治理',
     title: '用户目录',
-    description: '统一查看平台用户，支持按名称或 slug 快速检索。',
+    description: '统一查看平台用户，支持按名称、slug 或 Owner（账号/邮箱/手机号）快速检索。',
     metricTenant: '用户总数',
     metricTenantMeta: '覆盖当前可访问的全部用户空间',
     metricMember: '成员关系总数',
     metricMemberMeta: '按当前筛选条件统计',
     searchTitle: '搜索条件',
-    searchDesc: '支持用户名称与 slug 模糊检索。',
-    searchPlaceholder: '按用户 slug 或名称搜索',
+    searchDesc: '支持用户名称、slug 与 Owner（账号/邮箱/手机号）模糊检索。',
+    searchPlaceholder: '按用户 slug/名称/Owner 账号/邮箱/手机号搜索',
     apply: '应用',
     reset: '重置',
     tableTitle: '用户列表',
@@ -39,6 +39,11 @@ const COPY = {
     empty: '当前筛选下未找到用户。',
     thName: '名称',
     thSlug: 'Slug',
+    thOwner: 'Owner',
+    thOwnerEmail: 'Owner 邮箱',
+    thOwnerPhone: 'Owner 手机',
+    thPlan: '套餐',
+    thStatus: '状态',
     thMembers: '成员数',
     thCreatedAt: '创建时间',
     viewDetail: '查看详情',
@@ -48,14 +53,14 @@ const COPY = {
   en: {
     eyebrow: 'Tenant Directory',
     title: 'Tenant Directory',
-    description: 'View all tenants with quick search by name or slug.',
+    description: 'View all tenants with quick search by name, slug, or owner (account/email/phone).',
     metricTenant: 'Total Tenants',
     metricTenantMeta: 'All accessible tenant workspaces',
     metricMember: 'Total Memberships',
     metricMemberMeta: 'Count under current filter',
     searchTitle: 'Search Filters',
-    searchDesc: 'Fuzzy search by tenant name or slug.',
-    searchPlaceholder: 'Search by tenant slug or name',
+    searchDesc: 'Fuzzy search by tenant name, slug, or owner (account/email/phone).',
+    searchPlaceholder: 'Search by slug, name, or owner account/email/phone',
     apply: 'Apply',
     reset: 'Reset',
     tableTitle: 'Tenant List',
@@ -65,6 +70,11 @@ const COPY = {
     empty: 'No tenants found under current filter.',
     thName: 'Name',
     thSlug: 'Slug',
+    thOwner: 'Owner',
+    thOwnerEmail: 'Owner Email',
+    thOwnerPhone: 'Owner Phone',
+    thPlan: 'Plan',
+    thStatus: 'Status',
     thMembers: 'Members',
     thCreatedAt: 'Created At',
     viewDetail: 'View Details',
@@ -196,6 +206,11 @@ export default function DashboardTenantsPage() {
               <tr>
                 <th>{copy.thName}</th>
                 <th>{copy.thSlug}</th>
+                <th>{copy.thOwner}</th>
+                <th>{copy.thOwnerEmail}</th>
+                <th>{copy.thOwnerPhone}</th>
+                <th>{copy.thPlan}</th>
+                <th>{copy.thStatus}</th>
                 <th>{copy.thMembers}</th>
                 <th>{copy.thCreatedAt}</th>
                 <th />
@@ -206,6 +221,11 @@ export default function DashboardTenantsPage() {
                 <tr key={tenant.id}>
                   <td>{tenant.name}</td>
                   <td className="mono">{tenant.slug}</td>
+                  <td className="mono">{tenant.ownerAccount ?? '-'}</td>
+                  <td>{tenant.ownerEmail ?? '-'}</td>
+                  <td>{tenant.ownerPhone ?? '-'}</td>
+                  <td className="mono">{tenant.subscriptionPlan ?? '-'}</td>
+                  <td className="mono">{tenant.subscriptionStatus ?? '-'}</td>
                   <td>{tenant.memberCount}</td>
                   <td>{formatDateTime(tenant.createdAt)}</td>
                   <td>

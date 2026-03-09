@@ -57,6 +57,39 @@ export class AdminTenantsService {
                   contains: query.search,
                   mode: 'insensitive'
                 }
+              },
+              {
+                members: {
+                  some: {
+                    role: TenantMemberRole.OWNER,
+                    user: {
+                      OR: [
+                        {
+                          account: {
+                            contains: query.search,
+                            mode: 'insensitive'
+                          }
+                        },
+                        {
+                          email: {
+                            contains: query.search,
+                            mode: 'insensitive'
+                          }
+                        },
+                        {
+                          phoneBinding: {
+                            is: {
+                              phoneNumber: {
+                                contains: query.search,
+                                mode: 'insensitive'
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
               }
             ]
           }
@@ -68,6 +101,31 @@ export class AdminTenantsService {
         _count: {
           select: {
             members: true
+          }
+        },
+        members: {
+          where: {
+            role: TenantMemberRole.OWNER
+          },
+          take: 1,
+          orderBy: {
+            createdAt: 'asc'
+          },
+          select: {
+            user: {
+              select: {
+                account: true,
+                email: true,
+                phoneBinding: { select: { phoneNumber: true } }
+              }
+            }
+          }
+        },
+        subscription: {
+          select: {
+            plan: true,
+            expiresAt: true,
+            disabledAt: true
           }
         }
       }
@@ -83,13 +141,23 @@ export class AdminTenantsService {
     });
 
     return {
-      tenants: tenants.map((tenant) => ({
-        id: tenant.id,
-        slug: tenant.slug,
-        name: tenant.name,
-        createdAt: tenant.createdAt.toISOString(),
-        memberCount: tenant._count.members
-      }))
+      tenants: tenants.map((tenant) => {
+        const owner = tenant.members?.[0]?.user ?? null;
+        return {
+          id: tenant.id,
+          slug: tenant.slug,
+          name: tenant.name,
+          createdAt: tenant.createdAt.toISOString(),
+          memberCount: tenant._count.members,
+          ownerAccount: owner?.account ?? null,
+          ownerEmail: owner?.email ?? null,
+          ownerPhone: owner?.phoneBinding?.phoneNumber ?? null,
+          subscriptionPlan: tenant.subscription?.plan ?? null,
+          subscriptionStatus: tenant.subscription
+            ? (tenant.subscription.disabledAt ? 'DISABLED' : tenant.subscription.expiresAt && tenant.subscription.expiresAt.getTime() <= Date.now() ? 'EXPIRED' : 'ACTIVE')
+            : null
+        };
+      })
     };
   }
 
@@ -130,7 +198,12 @@ export class AdminTenantsService {
         slug: tenant.slug,
         name: tenant.name,
         createdAt: tenant.createdAt.toISOString(),
-        memberCount: tenant._count.members
+        memberCount: tenant._count.members,
+        ownerAccount: null,
+        ownerEmail: null,
+        ownerPhone: null,
+        subscriptionPlan: null,
+        subscriptionStatus: null
       }
     };
   }
@@ -507,7 +580,12 @@ export class AdminTenantsService {
           slug: tenant.slug,
           name: tenant.name,
           createdAt: tenant.createdAt.toISOString(),
-          memberCount: 0
+          memberCount: 0,
+          ownerAccount: null,
+          ownerEmail: null,
+          ownerPhone: null,
+          subscriptionPlan: null,
+          subscriptionStatus: null
         }
       };
     } catch (error) {
