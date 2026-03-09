@@ -1,7 +1,7 @@
 const ABSOLUTE_URL_PATTERN = /^[a-zA-Z][a-zA-Z\d+.-]*:\/\//;
 const PUBLIC_ASSET_BASE_URL = normalizePublicAssetBaseUrl(process.env.NEXT_PUBLIC_PUBLIC_ASSET_BASE_URL);
 
-export type PublicImageMaxEdge = 320 | 480 | 960;
+export type PublicImageMaxEdge = 320 | 480 | 640 | 960 | 1200;
 
 function normalizePublicAssetBaseUrl(value: string | undefined): string | null {
   const normalized = value?.trim();

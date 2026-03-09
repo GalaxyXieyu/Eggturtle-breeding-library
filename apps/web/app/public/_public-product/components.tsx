@@ -121,7 +121,7 @@ export function SeriesIntroCard({
   breeders: Breeder[];
 }) {
   const [isCollapsed, setIsCollapsed] = useState(true);
-  const firstImage = withPublicImageMaxEdge(breeders[0]?.images[0]?.url, 960);
+  const firstImage = withPublicImageMaxEdge(breeders[0]?.images[0]?.url, 640);
   const [coverLoaded, setCoverLoaded] = useState(false);
   const coverImageRef = useRef<HTMLImageElement | null>(null);
 
