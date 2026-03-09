@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Copy, Download, QrCode, Share2, Sparkles, X } from 'lucide-react';
+import { Copy, Download, QrCode, Share2, X } from 'lucide-react';
 import QRCode from 'qrcode';
 
 import { copyTextWithFallback } from '@/lib/browser-share';
