@@ -149,7 +149,7 @@ export class SharesPublicService {
     let contentType: string | null;
     let resolvedFromVariant = false;
 
-    if (variantKey) {
+    if (variantKey && maxEdge) {
       try {
         const variantObject = await this.storageProvider.getObject(variantKey);
         content = variantObject.body;
@@ -160,7 +160,7 @@ export class SharesPublicService {
           throw error;
         }
         const object = await this.storageProvider.getObject(query.key);
-        const resized = await resizeToWebpMaxEdge({ body: object.body, maxEdge: maxEdge as 320 | 480 | 960 });
+        const resized = await resizeToWebpMaxEdge({ body: object.body, maxEdge });
         content = resized.body;
         contentType = resized.contentType;
       }
