@@ -130,8 +130,8 @@ export function BreederEventTimeline({
                       aria-pressed={isSelected}
                       className={`flex w-[84px] shrink-0 flex-col items-center gap-1 rounded-xl border px-2 py-2.5 text-center shadow-sm transition ${
                         isSelected
-                          ? 'border-amber-400/80 bg-amber-100/90 text-amber-950 ring-1 ring-amber-200/80 shadow-[0_10px_24px_rgba(245,158,11,0.14)] dark:border-amber-500/60 dark:bg-amber-500/10 dark:text-amber-100'
-                          : 'border-neutral-200 bg-white hover:-translate-y-0.5 hover:border-neutral-300 hover:bg-neutral-50 dark:border-white/10 dark:bg-neutral-950/40'
+                          ? 'border-amber-500/70 bg-amber-100 text-amber-950 ring-1 ring-amber-300/80 shadow-[0_12px_28px_rgba(245,158,11,0.18)] dark:border-amber-400/70 dark:bg-amber-500/14 dark:text-amber-50 dark:ring-amber-500/30'
+                          : 'border-neutral-200/90 bg-white text-neutral-700 hover:-translate-y-0.5 hover:border-amber-200 hover:bg-amber-50/40 dark:border-white/10 dark:bg-neutral-950/40 dark:text-neutral-200'
                       }`}
                     >
                       <span className="text-sm leading-none">{eventTypeIcon(event.eventType)}</span>
@@ -187,8 +187,8 @@ export function BreederEventTimeline({
                                 <div
                                   className={`rounded-2xl px-3 py-3 transition ${
                                     isSelected
-                                      ? 'border border-amber-300/80 bg-amber-50/85 shadow-[0_10px_24px_rgba(245,158,11,0.1)]'
-                                      : 'border border-transparent'
+                                      ? 'border border-amber-400/80 bg-amber-50/95 ring-1 ring-amber-200/80 shadow-[0_12px_30px_rgba(245,158,11,0.12)]'
+                                      : 'border border-neutral-200/70 bg-white/90'
                                   }`}
                                 >
                                   <div className="flex flex-wrap items-center gap-2">
@@ -206,7 +206,7 @@ export function BreederEventTimeline({
                                     {eventDetailLabels.get(event.id) ?? buildEventSummary(event)}
                                   </p>
                                   {isSelected ? (
-                                    <div className="mt-3 rounded-xl border border-amber-300/70 bg-white/90 px-3 py-2 text-xs leading-5 text-neutral-700 dark:border-amber-500/40 dark:bg-neutral-950/70 dark:text-neutral-200">
+                                    <div className="mt-3 rounded-xl border border-amber-300/80 bg-white px-3 py-2 text-xs leading-5 text-neutral-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] dark:border-amber-500/40 dark:bg-neutral-950/75 dark:text-neutral-200">
                                       <p>录入时间 {formatEventClock(event.createdAt)}</p>
                                       <p className="mt-1 whitespace-pre-wrap text-neutral-700 dark:text-neutral-200">
                                         {note ? `备注：${note}` : '备注：暂无补充说明'}

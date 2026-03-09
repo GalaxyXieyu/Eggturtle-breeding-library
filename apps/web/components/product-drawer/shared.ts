@@ -138,6 +138,14 @@ function isGeneratedSeriesCode(code: string) {
   return /^series-[a-f0-9]{8,}$/.test(normalized);
 }
 
+function containsCjkCharacter(value: string) {
+  return /[㐀-鿿]/.test(value);
+}
+
+function isAsciiSeriesCode(value: string) {
+  return /^[A-Z0-9_-]+$/i.test(value);
+}
+
 export function formatSeriesDisplayLabel(
   series: Pick<ProductSeriesOption, 'code' | 'name'>,
   options: { includeCodeForDistinct?: boolean } = {}
@@ -155,6 +163,10 @@ export function formatSeriesDisplayLabel(
   }
 
   if (normalizeText(displayName) === normalizeText(displayCode)) {
+    return displayName;
+  }
+
+  if (containsCjkCharacter(displayName) && isAsciiSeriesCode(displayCode)) {
     return displayName;
   }
 

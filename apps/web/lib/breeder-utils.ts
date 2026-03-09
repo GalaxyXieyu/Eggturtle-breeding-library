@@ -149,6 +149,33 @@ function normalizeEventNoteSegment(value: string) {
   return normalized || null;
 }
 
+function appendReadableEventNoteValue(value: string, segments: string[]) {
+  const normalizedValue = normalizeEventNoteSegment(value);
+  if (!normalizedValue) {
+    return;
+  }
+
+  const jsonExtracted = extractReadableEventNoteFromJson(normalizedValue);
+  if (jsonExtracted) {
+    for (const line of jsonExtracted.split(/\r?\n/)) {
+      const normalizedLine = normalizeEventNoteSegment(line);
+      if (normalizedLine) {
+        segments.push(normalizedLine);
+      }
+    }
+    return;
+  }
+
+  if (/[;\n]/.test(normalizedValue)) {
+    for (const line of normalizedValue.split(/\r?\n/)) {
+      collectReadableEventNoteSegments(line, segments);
+    }
+    return;
+  }
+
+  segments.push(normalizedValue);
+}
+
 function collectReadableEventNoteSegments(source: string, segments: string[]) {
   for (const part of source.split(/\s*;\s*/)) {
     const normalizedPart = normalizeEventNoteSegment(part);
@@ -158,7 +185,7 @@ function collectReadableEventNoteSegments(source: string, segments: string[]) {
 
     const taggedMatch = normalizedPart.match(/^(?:#)?([A-Za-z][\w-]*)\s*[:=]\s*(.+)$/);
     if (!taggedMatch) {
-      segments.push(normalizedPart);
+      appendReadableEventNoteValue(normalizedPart, segments);
       continue;
     }
 
@@ -169,7 +196,7 @@ function collectReadableEventNoteSegments(source: string, segments: string[]) {
     }
 
     if (EVENT_NOTE_PROMOTE_KEYS.has(key)) {
-      segments.push(value);
+      appendReadableEventNoteValue(value, segments);
     }
   }
 }
@@ -199,7 +226,7 @@ function extractReadableEventNoteFromJson(note: string) {
       }
 
       if (EVENT_NOTE_PROMOTE_KEYS.has(key)) {
-        readableSegments.push(value);
+        appendReadableEventNoteValue(value, readableSegments);
       }
     }
 

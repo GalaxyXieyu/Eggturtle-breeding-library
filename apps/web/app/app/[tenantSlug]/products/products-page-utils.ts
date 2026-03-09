@@ -34,6 +34,14 @@ function isGeneratedSeriesCode(code: string) {
   return /^series-[a-f0-9]{8,}$/.test(normalized);
 }
 
+function containsCjkCharacter(value: string) {
+  return /[㐀-鿿]/.test(value);
+}
+
+function isAsciiSeriesCode(value: string) {
+  return /^[A-Z0-9_-]+$/i.test(value);
+}
+
 export const PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
 
 export const DEFAULT_LIST_QUERY: ProductsListQuery = {
@@ -226,6 +234,10 @@ export function formatSeriesLabelById(seriesId: string, options: SeriesOptionLik
   }
 
   if (normalizeText(displayName) === normalizeText(displayCode)) {
+    return displayName;
+  }
+
+  if (containsCjkCharacter(displayName) && isAsciiSeriesCode(displayCode)) {
     return displayName;
   }
 

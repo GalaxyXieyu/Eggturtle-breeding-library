@@ -582,7 +582,12 @@ export default function ProductEditDrawer({
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    className={buildInteractivePillClass(isCreatingSeries)}
+                    className={buildInteractivePillClass(isCreatingSeries, {
+                      activeClassName:
+                        'border-[#D7B411] bg-[#FFE680] text-neutral-900 shadow-[0_8px_18px_rgba(215,180,17,0.18)]',
+                      idleClassName:
+                        'border-neutral-200 bg-[#FFFBE8] text-neutral-700 hover:border-[#E7C94C] hover:bg-[#FFF6C2] hover:text-neutral-900'
+                    })}
                     onClick={() => {
                       setIsCreatingSeries(true);
                       setForm((current) => ({ ...current, seriesId: '' }));
@@ -594,7 +599,12 @@ export default function ProductEditDrawer({
                   </button>
                   <button
                     type="button"
-                    className={buildInteractivePillClass(!isCreatingSeries && !form.seriesId)}
+                    className={buildInteractivePillClass(!isCreatingSeries && !form.seriesId, {
+                      activeClassName:
+                        'border-[#D7B411] bg-[#FFE680] text-neutral-900 shadow-[0_8px_18px_rgba(215,180,17,0.18)]',
+                      idleClassName:
+                        'border-neutral-200 bg-[#FFFBE8] text-neutral-700 hover:border-[#E7C94C] hover:bg-[#FFF6C2] hover:text-neutral-900'
+                    })}
                     onClick={() => {
                       setIsCreatingSeries(false);
                       setForm((current) => ({ ...current, seriesId: '' }));
@@ -611,9 +621,12 @@ export default function ProductEditDrawer({
                         key={`edit-drawer-series-pill-${item.id}`}
                         type="button"
                         title={title}
-                        className={buildInteractivePillClass(
-                          !isCreatingSeries && form.seriesId === item.id
-                        )}
+                        className={buildInteractivePillClass(!isCreatingSeries && form.seriesId === item.id, {
+                          activeClassName:
+                            'border-[#D7B411] bg-[#FFE680] text-neutral-900 shadow-[0_8px_18px_rgba(215,180,17,0.18)]',
+                          idleClassName:
+                            'border-neutral-200 bg-[#FFFBE8] text-neutral-700 hover:border-[#E7C94C] hover:bg-[#FFF6C2] hover:text-neutral-900'
+                        })}
                         onClick={() => {
                           setIsCreatingSeries(false);
                           setForm((current) => ({ ...current, seriesId: item.id }));
