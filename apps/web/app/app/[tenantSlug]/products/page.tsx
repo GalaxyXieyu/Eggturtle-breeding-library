@@ -198,11 +198,11 @@ export default function TenantProductsPage() {
     const seriesImageMap = new Map<string, string>();
 
     for (const product of items) {
-      if (!product.primaryImageUrl) continue;
+      if (!product.coverImageUrl) continue;
 
       const seriesId = product.seriesId || 'no-series';
       if (!seriesImageMap.has(seriesId)) {
-        seriesImageMap.set(seriesId, product.primaryImageUrl);
+        seriesImageMap.set(seriesId, product.coverImageUrl);
       }
     }
 
