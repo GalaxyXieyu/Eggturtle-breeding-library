@@ -27,7 +27,22 @@ function withPublicAssetBase(url: string): string {
   }
 
   const normalized = url.startsWith('/') ? url : `/${url}`;
+
+  // Signed share assets should stay same-origin to avoid external asset-host failures.
+  if (shouldKeepSameOriginPublicAsset(normalized)) {
+    return normalized;
+  }
+
   return `${PUBLIC_ASSET_BASE_URL}${normalized}`;
+}
+
+function shouldKeepSameOriginPublicAsset(url: string): boolean {
+  try {
+    const parsed = new URL(url, 'http://localhost');
+    return isResizablePublicAssetPath(parsed.pathname);
+  } catch {
+    return isLikelyResizablePublicAssetUrl(url);
+  }
 }
 
 function isResizablePublicAssetPath(pathname: string): boolean {
