@@ -81,6 +81,64 @@ const DASHBOARD_METRIC_LABELS: Partial<Record<string, string>> = {
   share_pv: '页面访问',
 };
 
+// State persistence for products page
+const PRODUCTS_PAGE_STATE_KEY_PREFIX = 'products-page-state:v1:';
+const PRODUCTS_PAGE_STATE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+type ProductsPagePersistedState = {
+  savedAt: number;
+  searchInput: string;
+  sexFilter: string;
+  seriesFilterId: string;
+  statusFilter: string;
+  items: Product[];
+  nextPage: number;
+  hasMore: boolean;
+  scrollY: number;
+};
+
+function buildProductsStateKey(tenantSlug: string, filterQuery: string): string {
+  return `${PRODUCTS_PAGE_STATE_KEY_PREFIX}${tenantSlug}:${filterQuery}`;
+}
+
+function parseProductsPersistedState(raw: string | null): ProductsPagePersistedState | null {
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<ProductsPagePersistedState>;
+
+    if (
+      typeof parsed.savedAt !== 'number' ||
+      typeof parsed.searchInput !== 'string' ||
+      typeof parsed.sexFilter !== 'string' ||
+      typeof parsed.seriesFilterId !== 'string' ||
+      typeof parsed.statusFilter !== 'string' ||
+      !Array.isArray(parsed.items) ||
+      typeof parsed.nextPage !== 'number' ||
+      typeof parsed.hasMore !== 'boolean' ||
+      typeof parsed.scrollY !== 'number'
+    ) {
+      return null;
+    }
+
+    return {
+      savedAt: parsed.savedAt,
+      searchInput: parsed.searchInput,
+      sexFilter: parsed.sexFilter,
+      seriesFilterId: parsed.seriesFilterId,
+      statusFilter: parsed.statusFilter,
+      items: parsed.items,
+      nextPage: parsed.nextPage,
+      hasMore: parsed.hasMore,
+      scrollY: parsed.scrollY,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export default function TenantProductsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -120,6 +178,11 @@ export default function TenantProductsPage() {
   const [sexFilter, setSexFilter] = useState(listQuery.sex);
   const [seriesFilterId, setSeriesFilterId] = useState(listQuery.seriesId);
   const [statusFilter, setStatusFilter] = useState(listQuery.status);
+  const [hasHydratedState, setHasHydratedState] = useState(false);
+  const stateStorageKey = useMemo(
+    () => buildProductsStateKey(tenantSlug, filterQueryKey),
+    [tenantSlug, filterQueryKey]
+  );
   const editingProduct = useMemo(
     () => items.find((item) => item.id === editingProductId) ?? null,
     [editingProductId, items],
@@ -176,6 +239,33 @@ export default function TenantProductsPage() {
     total: 0,
     totalPages: 1,
   });
+
+  const persistProductsState = useCallback(
+    (scrollY: number) => {
+      if (typeof window === 'undefined') {
+        return;
+      }
+
+      const snapshot: ProductsPagePersistedState = {
+        savedAt: Date.now(),
+        searchInput,
+        sexFilter,
+        seriesFilterId,
+        statusFilter,
+        items,
+        nextPage,
+        hasMore,
+        scrollY: Math.max(0, Math.floor(scrollY)),
+      };
+
+      try {
+        window.sessionStorage.setItem(stateStorageKey, JSON.stringify(snapshot));
+      } catch {
+        // Ignore storage quota and private mode write errors.
+      }
+    },
+    [searchInput, sexFilter, seriesFilterId, statusFilter, items, nextPage, hasMore, stateStorageKey]
+  );
 
   useEffect(() => {
     setSearchInput(listQuery.search);
@@ -496,8 +586,62 @@ export default function TenantProductsPage() {
     };
   }, [isDemoMode, router, tenantSlug]);
 
+  // Restore persisted state on mount
   useEffect(() => {
-    if (!tenantReady) {
+    if (typeof window === 'undefined' || !tenantReady) {
+      return;
+    }
+
+    const parsed = parseProductsPersistedState(window.sessionStorage.getItem(stateStorageKey));
+    if (!parsed || Date.now() - parsed.savedAt > PRODUCTS_PAGE_STATE_TTL_MS) {
+      setHasHydratedState(true);
+      return;
+    }
+
+    // Restore filter states
+    setSearchInput(parsed.searchInput);
+    setSexFilter(parsed.sexFilter);
+    setSeriesFilterId(parsed.seriesFilterId);
+    setStatusFilter(parsed.statusFilter);
+
+    // Restore loaded items and pagination
+    setItems(parsed.items);
+    setNextPage(parsed.nextPage);
+    setHasMore(parsed.hasMore);
+    setListStats(buildStatsFromProducts(parsed.items));
+    setLoading(false);
+
+    // Restore scroll position
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const scrollRoot = document.querySelector('[data-tenant-scroll-root="true"]');
+        if (scrollRoot) {
+          scrollRoot.scrollTop = parsed.scrollY;
+        } else {
+          window.scrollTo(0, parsed.scrollY);
+        }
+      });
+    });
+
+    setHasHydratedState(true);
+  }, [stateStorageKey, tenantReady]);
+
+  useEffect(() => {
+    if (!tenantReady || !hasHydratedState) {
+      return;
+    }
+
+    // Skip loading if we just restored from persisted state
+    const parsed = parseProductsPersistedState(window.sessionStorage.getItem(stateStorageKey));
+    if (parsed && Date.now() - parsed.savedAt <= PRODUCTS_PAGE_STATE_TTL_MS && items.length > 0) {
+      // State was restored, just load series options and share preview
+      void (async () => {
+        try {
+          await Promise.all([loadSeriesOptions(), loadSharePreview()]);
+        } catch (requestError) {
+          setError(formatApiError(requestError));
+        }
+      })();
       return;
     }
 
@@ -517,7 +661,7 @@ export default function TenantProductsPage() {
     return () => {
       isCancelled = true;
     };
-  }, [listQuery, loadProducts, loadSeriesOptions, loadSharePreview, tenantReady]);
+  }, [listQuery, loadProducts, loadSeriesOptions, loadSharePreview, tenantReady, hasHydratedState, stateStorageKey, items.length]);
 
   useEffect(() => {
     if (!tenantReady || loading || isLoadingMore || !hasMore) {
@@ -549,6 +693,63 @@ export default function TenantProductsPage() {
     observer.observe(sentinel);
     return () => observer.disconnect();
   }, [hasMore, isLoadingMore, items.length, loadMoreProducts, loading, tenantReady]);
+
+  // Persist state on scroll
+  useEffect(() => {
+    if (!hasHydratedState) {
+      return;
+    }
+
+    let rafId: number | null = null;
+    const scrollTarget =
+      typeof document !== 'undefined'
+        ? document.querySelector<HTMLElement>('[data-tenant-scroll-root="true"]') ?? window
+        : null;
+
+    if (!scrollTarget) {
+      return;
+    }
+
+    const handleScroll = () => {
+      if (rafId !== null) {
+        return;
+      }
+
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null;
+        const scrollY = scrollTarget instanceof Window ? scrollTarget.scrollY : scrollTarget.scrollTop;
+        persistProductsState(scrollY);
+      });
+    };
+
+    scrollTarget.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => {
+      scrollTarget.removeEventListener('scroll', handleScroll);
+      if (rafId !== null) {
+        window.cancelAnimationFrame(rafId);
+      }
+    };
+  }, [hasHydratedState, persistProductsState]);
+
+  // Persist state when filters or items change
+  useEffect(() => {
+    if (!hasHydratedState) {
+      return;
+    }
+
+    const scrollTarget =
+      typeof document !== 'undefined'
+        ? document.querySelector<HTMLElement>('[data-tenant-scroll-root="true"]') ?? window
+        : null;
+
+    if (!scrollTarget) {
+      return;
+    }
+
+    const scrollY = scrollTarget instanceof Window ? scrollTarget.scrollY : scrollTarget.scrollTop;
+    persistProductsState(scrollY);
+  }, [searchInput, sexFilter, seriesFilterId, statusFilter, items, nextPage, hasMore, hasHydratedState, persistProductsState]);
 
   const buildDraftQuery = useCallback(() => {
     return {

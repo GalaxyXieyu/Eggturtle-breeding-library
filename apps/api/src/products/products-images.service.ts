@@ -109,6 +109,9 @@ export class ProductsImagesService {
         },
       });
 
+      // Pre-generate image variants at upload time
+      void this.generateImageVariants(uploadResult.key, file.buffer, tenantId, product.id);
+
       return this.toProductImage(image);
     } catch (error) {
       if (uploadResult) {
@@ -491,5 +494,37 @@ export class ProductsImagesService {
 
   private buildImageAccessPath(productId: string, imageId: string): string {
     return `/products/${productId}/images/${imageId}/content`;
+  }
+
+  private async generateImageVariants(
+    originalKey: string,
+    originalBuffer: Buffer,
+    tenantId: string,
+    productId: string,
+  ): Promise<void> {
+    const variantSizes: Array<320 | 640 | 1200> = [320, 640, 1200];
+
+    for (const maxEdge of variantSizes) {
+      try {
+        const resized = await resizeToWebpMaxEdge({ body: originalBuffer, maxEdge });
+        const variantKey = buildWebpVariantKey(originalKey, maxEdge);
+
+        await this.storageProvider.putObject({
+          key: variantKey,
+          body: resized.body,
+          contentType: resized.contentType,
+          metadata: {
+            tenantId,
+            productId,
+            source: 'product-image-variant-upload',
+            originalKey,
+            maxEdge: String(maxEdge),
+          },
+        });
+      } catch (error) {
+        // Log but don't fail the upload if variant generation fails
+        console.error(`Failed to generate ${maxEdge}px variant for ${originalKey}:`, error);
+      }
+    }
   }
 }

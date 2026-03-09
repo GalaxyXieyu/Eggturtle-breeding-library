@@ -1,10 +1,10 @@
 import sharp from 'sharp';
 
-export type AllowedMaxEdge = 320 | 480 | 960;
+export type AllowedMaxEdge = 320 | 480 | 640 | 960 | 1200;
 
 export function resolveAllowedMaxEdge(raw: unknown): AllowedMaxEdge | undefined {
   // Keep a strict allowlist to avoid arbitrary resize abuse.
-  if (raw === 320 || raw === 480 || raw === 960) {
+  if (raw === 320 || raw === 480 || raw === 640 || raw === 960 || raw === 1200) {
     return raw;
   }
   return undefined;
@@ -26,7 +26,7 @@ export async function resizeToWebpMaxEdge(input: {
   body: Buffer;
   maxEdge: AllowedMaxEdge;
 }): Promise<{ body: Buffer; contentType: string }> {
-  const quality = input.maxEdge <= 320 ? 70 : input.maxEdge <= 480 ? 74 : 80;
+  const quality = input.maxEdge <= 320 ? 70 : input.maxEdge <= 480 ? 74 : input.maxEdge <= 640 ? 78 : 80;
 
   // Use a deterministic output format for thumbnails.
   const pipeline = sharp(input.body, { failOn: 'none' })

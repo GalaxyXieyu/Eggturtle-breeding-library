@@ -4,7 +4,7 @@ import type { MouseEvent as ReactMouseEvent, RefObject } from 'react';
 import type { Product } from '@eggturtle/shared';
 import { Search, SquarePen } from 'lucide-react';
 
-import { resolveAuthenticatedAssetUrl } from '@/lib/api-client';
+import { resolveAuthenticatedAssetUrl, withAuthenticatedImageMaxEdge } from '@/lib/api-client';
 import { formatSex } from '@/lib/pet-format';
 import { buildFilterPillClass } from '@/components/filter-pill';
 import { PetCard } from '@/components/pet';
@@ -266,10 +266,14 @@ export default function ProductsListCard({
                 key={`preview-${item.id}`}
                 variant="tenant"
                 code={item.code}
-                coverImageUrl={item.coverImageUrl ? resolveAuthenticatedAssetUrl(item.coverImageUrl) : null}
+                coverImageUrl={
+                  item.coverImageUrl
+                    ? withAuthenticatedImageMaxEdge(resolveAuthenticatedAssetUrl(item.coverImageUrl), 320)
+                    : null
+                }
                 coverFallbackImageUrl="/images/mg_01.jpg"
                 coverAlt={`${item.code} 封面`}
-                imageLoading={index < 6 ? 'eager' : 'lazy'}
+                imageLoading={index < 3 ? 'eager' : 'lazy'}
                 sex={item.sex}
                 needMatingStatus={item.needMatingStatus}
                 daysSinceEgg={item.daysSinceEgg}

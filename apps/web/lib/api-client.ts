@@ -146,6 +146,47 @@ export function resolveAuthenticatedAssetUrl(rawValue: string) {
   return parsed.toString();
 }
 
+/**
+ * Add maxEdge parameter to authenticated asset URL for image resizing
+ * @param url - The asset URL
+ * @param maxEdge - Maximum edge size (320, 480, or 960)
+ */
+export function withAuthenticatedImageMaxEdge(
+  url: string | null | undefined,
+  maxEdge: 320 | 480 | 960
+): string | null | undefined {
+  if (typeof url !== 'string') {
+    return url;
+  }
+
+  const normalized = url.trim();
+  if (!normalized || normalized.startsWith('data:') || normalized.startsWith('blob:')) {
+    return url;
+  }
+
+  // Only add maxEdge for product image URLs
+  if (!normalized.includes('/products/') || !normalized.includes('/images/')) {
+    return url;
+  }
+
+  try {
+    const isAbsolute = /^https?:\/\//i.test(normalized);
+    const parsed = new URL(normalized, isAbsolute ? undefined : 'http://localhost');
+    parsed.searchParams.set('maxEdge', String(maxEdge));
+
+    // If it's a relative URL, return without the origin
+    if (!isAbsolute) {
+      return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    }
+
+    return parsed.toString();
+  } catch {
+    // Fallback: simple string concatenation
+    const joiner = normalized.includes('?') ? '&' : '?';
+    return `${normalized}${joiner}maxEdge=${maxEdge}`;
+  }
+}
+
 export class ApiError extends Error {
   status: number;
 
