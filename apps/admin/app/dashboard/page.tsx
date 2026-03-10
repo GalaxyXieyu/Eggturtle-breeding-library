@@ -15,7 +15,6 @@ import {
   AdminActionLink,
   AdminBadge,
   AdminMetricCard,
-  AdminPageHeader,
   AdminPanel,
   AdminTableFrame
 } from '@/components/dashboard/polish-primitives';
@@ -240,7 +239,7 @@ export default function DashboardOverviewPage() {
 
   return (
     <section className="page admin-page">
-      <AdminPageHeader eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
+      <h2 className="visually-hidden">{copy.title}</h2>
 
       <nav
         className="data-overview-section-nav"

@@ -164,7 +164,7 @@ function buildBreadcrumbs(
   tenantName: string | null
 ) {
   const baseLabel = locale === 'zh' ? '平台后台' : 'Admin Console';
-  const overviewLabel = locale === 'zh' ? '平台总览' : 'Overview';
+  const overviewLabel = locale === 'zh' ? '数据' : 'Data';
 
   if (!pathname.startsWith('/dashboard')) {
     return [{ label: baseLabel, isCurrent: true }] satisfies BreadcrumbItem[];
@@ -179,8 +179,15 @@ function buildBreadcrumbs(
   }
 
   const section = resolveSectionLabel(segments[0], locale);
+  const firstSegmentLabel = resolveSegmentLabel(segments[0], locale);
+
   if (section) {
-    breadcrumbs.push({ label: section, isCurrent: false });
+    const shouldCollapseFirstSegment = segments.length === 1 && firstSegmentLabel === section;
+    breadcrumbs.push({
+      label: section,
+      href: shouldCollapseFirstSegment ? undefined : '/dashboard',
+      isCurrent: shouldCollapseFirstSegment
+    });
   }
 
   segments.forEach((segment, index) => {
@@ -191,6 +198,10 @@ function buildBreadcrumbs(
       previousSegment === 'tenants' && tenantId === segment
         ? formatTenantLabel(segment, tenantName, locale)
         : resolveSegmentLabel(segment, locale);
+
+    if (index === 0 && section && label === section) {
+      return;
+    }
 
     breadcrumbs.push({
       label,
@@ -212,7 +223,7 @@ function resolveSectionLabel(firstSegment: string, locale: UiLocale) {
   }
 
   if (firstSegment === 'audit-logs') {
-    return locale === 'zh' ? '记录' : 'Records';
+    return locale === 'zh' ? '设置' : 'Settings';
   }
 
   return null;
@@ -223,7 +234,7 @@ function resolveSegmentLabel(segment: string, locale: UiLocale) {
     'tenant-management': { zh: '用户', en: 'Users' },
     tenants: { zh: '用户详情', en: 'Tenant Detail' },
     memberships: { zh: '成员权限', en: 'Member Access' },
-    'audit-logs': { zh: '记录', en: 'Records' },
+    'audit-logs': { zh: '设置', en: 'Settings' },
     analytics: { zh: '活跃度', en: 'Activity' },
     usage: { zh: '用量', en: 'Usage' },
     billing: { zh: '营收', en: 'Revenue' },

@@ -13,7 +13,6 @@ import {
 import {
   AdminActionLink,
   AdminBadge,
-  AdminPageHeader,
   AdminPanel
 } from '@/components/dashboard/polish-primitives'
 import { useUiPreferences } from '@/components/ui-preferences'
@@ -327,12 +326,19 @@ export default function DashboardTenantManagementPage() {
 
   return (
     <section className="page admin-page">
-      <AdminPageHeader eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
+      <h2 className="visually-hidden">{copy.title}</h2>
 
       <AdminPanel className="stack governance-toolbar-panel">
         <form className="governance-toolbar" onSubmit={handleSearchSubmit}>
+          <label className="visually-hidden" htmlFor="tenant-governance-search">
+            {copy.searchPlaceholder}
+          </label>
           <input
+            id="tenant-governance-search"
+            name="tenantSearch"
             type="search"
+            autoComplete="off"
+            aria-label={copy.searchPlaceholder}
             value={searchInput}
             placeholder={copy.searchPlaceholder}
             onChange={(event) => setSearchInput(event.target.value)}
@@ -346,6 +352,7 @@ export default function DashboardTenantManagementPage() {
                 key={item}
                 type="button"
                 className={`governance-scope-chip${scope === item ? ' active' : ''}`}
+                aria-pressed={scope === item}
                 onClick={() => handleScopeChange(item)}
               >
                 {copy.scopes[item]}
@@ -378,48 +385,49 @@ export default function DashboardTenantManagementPage() {
                   key={tenant.id}
                   type="button"
                   className={`tenant-governance-item${tenant.id === selectedTenant?.id ? ' active' : ''}`}
+                  aria-pressed={tenant.id === selectedTenant?.id}
                   onClick={() => handleTenantSelect(tenant.id)}
                 >
-                  <div className="tenant-governance-item-top">
-                    <div className="stack row-tight tenant-governance-item-copy">
+                  <span className="tenant-governance-item-top">
+                    <span className="stack row-tight tenant-governance-item-copy">
                       <strong>{tenant.name}</strong>
-                      <div className="tenant-governance-subline">
+                      <span className="tenant-governance-subline">
                         <span className="mono">{tenant.slug}</span>
-                        <p className="tenant-governance-owner" title={ownerLabel}>
+                        <span className="tenant-governance-owner" title={ownerLabel}>
                           {ownerLabel}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="inline-actions">
+                        </span>
+                      </span>
+                    </span>
+                    <span className="inline-actions">
                       <AdminBadge tone={toPlanTone(tenant.subscription?.plan ?? 'FREE')}>
                         {formatPlanLabel(tenant.subscription?.plan ?? 'FREE')}
                       </AdminBadge>
                       <AdminBadge tone={toStatusTone(tenant.subscription?.status ?? 'ACTIVE')}>
                         {formatSubscriptionStatusLabel(tenant.subscription?.status ?? 'ACTIVE')}
                       </AdminBadge>
-                    </div>
-                  </div>
-                  <div className="tenant-governance-meta">
-                    <div className="tenant-governance-stat">
+                    </span>
+                  </span>
+                  <span className="tenant-governance-meta">
+                    <span className="tenant-governance-stat">
                       <span className="tenant-governance-stat-label">{copy.createdAt}</span>
                       <strong className="tenant-governance-stat-value">
                         {formatCompactDateTime(tenant.createdAt, locale)}
                       </strong>
-                    </div>
-                    <div className="tenant-governance-stat">
+                    </span>
+                    <span className="tenant-governance-stat">
                       <span className="tenant-governance-stat-label">{copy.lastActiveAt}</span>
                       <strong className="tenant-governance-stat-value">
                         {formatCompactDateTime(tenant.lastActiveAt, locale)}
                       </strong>
-                    </div>
-                  </div>
-                  <div className="governance-tag-row">
+                    </span>
+                  </span>
+                  <span className="governance-tag-row">
                     {tenant.autoTags.slice(0, 2).map((tag) => (
                       <AdminBadge key={tag.key} tone={tag.tone}>
                         {tag.label}
                       </AdminBadge>
                     ))}
-                  </div>
+                  </span>
                 </button>
               )
             })}

@@ -81,6 +81,18 @@ a {
   text-decoration: none;
 }
 
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 label {
   color: var(--admin-ink-soft);
   font-size: 12px;
@@ -2034,8 +2046,8 @@ textarea:focus {
 
 .tenant-governance-workbench {
   display: grid;
-  grid-template-columns: 360px minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: minmax(380px, 420px) minmax(0, 1fr);
+  gap: 14px;
   align-items: start;
 }
 
@@ -2060,7 +2072,10 @@ textarea:focus {
 
 .tenant-governance-item {
   width: 100%;
-  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-height: fit-content;
   border: 1px solid var(--admin-border);
   border-radius: 16px;
   background: var(--admin-surface-muted);

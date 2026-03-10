@@ -14,7 +14,6 @@ import {
 
 import {
   AdminBadge,
-  AdminPageHeader,
   AdminPanel,
   AdminTableFrame
 } from '@/components/dashboard/polish-primitives';
@@ -213,11 +212,7 @@ export default function DashboardAuditLogsPage() {
 
   return (
     <section className="page admin-page settings-audit-page">
-      <AdminPageHeader
-        eyebrow="平台设置"
-        title="设置"
-        description="把平台操作记录、筛选条件和分页浏览收进一个更适合移动端的工作台。"
-      />
+      <h2 className="visually-hidden">设置</h2>
 
       <AdminPanel className="stack settings-mobile-hero">
         <div className="stack row-tight settings-mobile-hero-copy">
