@@ -13,6 +13,7 @@ import type {
   ProductEvent,
   ProductFamilyTree,
   ProductImage,
+  ProductMaleMatingHistoryItem,
   ProductPublicClicksSummary,
   ReorderProductImagesRequest,
 } from '@eggturtle/shared';
@@ -358,6 +359,13 @@ export class ProductsService {
 
   async listProductEvents(tenantId: string, productId: string): Promise<ProductEvent[]> {
     return this.productsEventsService.listProductEvents(tenantId, productId);
+  }
+
+  async listProductMaleMatingHistory(
+    tenantId: string,
+    productId: string,
+  ): Promise<ProductMaleMatingHistoryItem[]> {
+    return this.productsReadService.listProductMaleMatingHistory(tenantId, productId);
   }
 
   async getProductFamilyTree(tenantId: string, productId: string): Promise<ProductFamilyTree> {

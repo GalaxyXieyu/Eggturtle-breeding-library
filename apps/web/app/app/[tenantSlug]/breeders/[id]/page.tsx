@@ -13,6 +13,7 @@ import {
   listProductCouplePhotosResponseSchema,
   listProductEventsResponseSchema,
   listProductImagesResponseSchema,
+  listProductMaleMatingHistoryResponseSchema,
   listSaleBatchesResponseSchema,
   listSeriesResponseSchema,
   type GetProductCertificateEligibilityResponse,
@@ -24,6 +25,7 @@ import {
   type ProductEvent,
   type ProductFamilyTree,
   type ProductImage,
+  type ProductMaleMatingHistoryItem,
   type SaleBatch,
 } from '@eggturtle/shared';
 import { apiRequest, getAccessToken, resolveAuthenticatedAssetUrl } from '@/lib/api-client';
@@ -49,11 +51,13 @@ import {
 import { BreederInfoCard } from '@/components/breeder-detail/BreederInfoCard';
 import { FamilyTreeView } from '@/components/breeder-detail/FamilyTreeView';
 import { BreederEventTimeline } from '@/components/breeder-detail/BreederEventTimeline';
+import { BreederMaleMatingHistoryCard } from '@/components/breeder-detail/BreederMaleMatingHistoryCard';
 import { formatSeriesLabelById } from '@/app/app/[tenantSlug]/products/products-page-utils';
 
 type DetailState = {
   breeder: Product | null;
   events: ProductEvent[];
+  maleMatingHistory: ProductMaleMatingHistoryItem[];
   tree: ProductFamilyTree | null;
   images: ProductImage[];
 };
@@ -147,6 +151,7 @@ export default function BreederDetailPage() {
   const [data, setData] = useState<DetailState>({
     breeder: null,
     events: [],
+    maleMatingHistory: [],
     tree: null,
     images: [],
   });
@@ -253,12 +258,9 @@ export default function BreederDetailPage() {
       try {
         await switchTenantBySlug(tenantSlug);
 
-        const [productResponse, eventsResponse, treeResponse, seriesResponse] = await Promise.all([
+        const [productResponse, treeResponse, seriesResponse] = await Promise.all([
           apiRequest(`/products/${breederId}`, {
             responseSchema: getProductResponseSchema,
-          }),
-          apiRequest(`/products/${breederId}/events`, {
-            responseSchema: listProductEventsResponseSchema,
           }),
           apiRequest(`/products/${breederId}/family-tree`, {
             responseSchema: getProductFamilyTreeResponseSchema,
@@ -268,10 +270,34 @@ export default function BreederDetailPage() {
           }),
         ]);
 
-        const imageResponse = await apiRequest(`/products/${productResponse.product.id}/images`, {
-          responseSchema: listProductImagesResponseSchema,
-        });
-        const images = imageResponse.images;
+        const isMaleProduct = (productResponse.product.sex ?? '').toLowerCase() === 'male';
+        let events: ProductEvent[] = [];
+        let maleMatingHistory: ProductMaleMatingHistoryItem[] = [];
+        let images: ProductImage[] = [];
+
+        if (isMaleProduct) {
+          const [maleMatingHistoryResponse, imageResponse] = await Promise.all([
+            apiRequest(`/products/${breederId}/mating-history`, {
+              responseSchema: listProductMaleMatingHistoryResponseSchema,
+            }),
+            apiRequest(`/products/${productResponse.product.id}/images`, {
+              responseSchema: listProductImagesResponseSchema,
+            }),
+          ]);
+          maleMatingHistory = maleMatingHistoryResponse.items;
+          images = imageResponse.images;
+        } else {
+          const [eventsResponse, imageResponse] = await Promise.all([
+            apiRequest(`/products/${breederId}/events`, {
+              responseSchema: listProductEventsResponseSchema,
+            }),
+            apiRequest(`/products/${productResponse.product.id}/images`, {
+              responseSchema: listProductImagesResponseSchema,
+            }),
+          ]);
+          events = eventsResponse.events;
+          images = imageResponse.images;
+        }
 
         try {
           await loadGeneratedAssets(productResponse.product.id);
@@ -284,7 +310,8 @@ export default function BreederDetailPage() {
         if (!cancelled) {
           setData({
             breeder: productResponse.product,
-            events: eventsResponse.events,
+            events,
+            maleMatingHistory,
             tree: treeResponse.tree,
             images,
           });
@@ -476,6 +503,7 @@ export default function BreederDetailPage() {
   );
   const canConfirmCertificate = Boolean(certificateRequest && certificateEligibility?.eligible);
   const isFemaleBreeder = (currentBreeder?.sex ?? '').toLowerCase() === 'female';
+  const isMaleBreeder = (currentBreeder?.sex ?? '').toLowerCase() === 'male';
 
   useEffect(() => {
     if (eggEvents.length === 0) {
@@ -666,7 +694,14 @@ export default function BreederDetailPage() {
         </Card>
       ) : null}
 
-      {!loading ? (
+      {!loading && currentBreeder && isMaleBreeder ? (
+        <BreederMaleMatingHistoryCard
+          items={data.maleMatingHistory}
+          openBreederDetail={openBreederDetail}
+        />
+      ) : null}
+
+      {!loading && currentBreeder && !isMaleBreeder ? (
         <BreederEventTimeline
           events={data.events}
           eventFilter={eventFilter}

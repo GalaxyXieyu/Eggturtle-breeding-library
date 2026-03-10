@@ -231,6 +231,24 @@ export const listProductEventsResponseSchema = z.object({
   events: z.array(productEventSchema)
 });
 
+export const productMaleMatingHistoryItemSchema = z.object({
+  id: z.string().trim().min(1).max(120),
+  tenantId: z.string().min(1),
+  maleProductId: productIdParamSchema,
+  maleCode: z.string().trim().max(120).nullable(),
+  femaleProductId: productIdParamSchema,
+  femaleCode: productCodeSchema,
+  femaleName: z.string().nullable(),
+  eventDate: z.string().datetime(),
+  note: z.string().nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime()
+});
+
+export const listProductMaleMatingHistoryResponseSchema = z.object({
+  items: z.array(productMaleMatingHistoryItemSchema)
+});
+
 export const productFamilyTreeNodeSchema = z.object({
   id: productIdParamSchema,
   code: productCodeSchema,
@@ -319,6 +337,7 @@ export type ProductListStats = z.infer<typeof listProductsResponseSchema.shape.s
 export type ProductImage = z.infer<typeof productImageSchema>;
 export type ReorderProductImagesRequest = z.infer<typeof reorderProductImagesRequestSchema>;
 export type ProductEvent = z.infer<typeof productEventSchema>;
+export type ProductMaleMatingHistoryItem = z.infer<typeof productMaleMatingHistoryItemSchema>;
 export type ProductFamilyTreeLink = z.infer<typeof productFamilyTreeLinkSchema>;
 export type ProductFamilyTree = z.infer<typeof productFamilyTreeSchema>;
 export type ProductPublicClicksQuery = z.infer<typeof productPublicClicksQuerySchema>;

@@ -38,6 +38,7 @@ import {
   getCurrentProductCouplePhotoResponseSchema,
   getProductCertificateEligibilityResponseSchema,
   getProductFamilyTreeResponseSchema,
+  listProductMaleMatingHistoryResponseSchema,
   getProductPublicClicksResponseSchema,
   getProductResponseSchema,
   listProductCertificateCenterQuerySchema,
@@ -285,6 +286,15 @@ export class ProductsController {
     const events = await this.productsService.listProductEvents(tenantId, productId);
 
     return listProductEventsResponseSchema.parse({ events });
+  }
+
+  @Get(':id/mating-history')
+  async listProductMaleMatingHistory(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const productId = parseOrThrow(productIdParamSchema, id);
+    const items = await this.productsService.listProductMaleMatingHistory(tenantId, productId);
+
+    return listProductMaleMatingHistoryResponseSchema.parse({ items });
   }
 
   @Post(':id/events')

@@ -7,6 +7,7 @@ import type {
   ProductFamilyTree,
   ProductFamilyTreeLink,
   ProductListStats,
+  ProductMaleMatingHistoryItem,
   ProductPublicClicksItem,
   ProductPublicClicksSummary,
 } from '@eggturtle/shared';
@@ -380,26 +381,7 @@ export class ProductsReadService {
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         take: 100,
       }),
-      isMale && mateCodeCandidates.length > 0
-        ? this.prisma.product.findMany({
-            where: {
-              tenantId,
-              inStock: true,
-              sex: {
-                equals: 'female',
-                mode: 'insensitive',
-              },
-              OR: mateCodeCandidates.map((candidate) => ({
-                mateCode: {
-                  equals: candidate,
-                  mode: 'insensitive',
-                },
-              })),
-            },
-            orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
-            take: 100,
-          })
-        : Promise.resolve([]),
+      this.listMatchedFemaleProductsForMale(tenantId, product, mateCodeCandidates),
     ]);
 
     const needMatingSummaryByProductId = await this.loadNeedMatingSummaryByProductIds(
@@ -456,6 +438,74 @@ export class ProductsReadService {
         ? '当前家族谱系按竖向展示自己、直属父母、关联母龟与直系子代；关联母龟按待交配优先级与天数排序。'
         : '当前家族谱系仅展示自己、直属父母、当前配偶与直系子代。',
     };
+  }
+
+  async listProductMaleMatingHistory(
+    tenantId: string,
+    productId: string,
+  ): Promise<ProductMaleMatingHistoryItem[]> {
+    const product = await this.findProductOrThrow(tenantId, productId);
+    const isMale = product.sex?.trim().toLowerCase() === 'male';
+    if (!isMale) {
+      return [];
+    }
+
+    const maleCodeCandidates = canonicalMateCodeCandidates(product.code);
+    const matchedFemales = await this.listMatchedFemaleProductsForMale(
+      tenantId,
+      product,
+      maleCodeCandidates,
+    );
+    if (matchedFemales.length === 0) {
+      return [];
+    }
+
+    const femaleById = new Map(matchedFemales.map((female) => [female.id, female]));
+    const events = await this.prisma.productEvent.findMany({
+      where: {
+        tenantId,
+        productId: {
+          in: matchedFemales.map((female) => female.id),
+        },
+        eventType: 'mating',
+        OR: maleCodeCandidates.map((candidate) => ({
+          note: {
+            contains: `#maleCode=${candidate}`,
+            mode: 'insensitive',
+          },
+        })),
+      },
+      orderBy: [{ eventDate: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+    });
+
+    return events.flatMap((event) => {
+      const female = femaleById.get(event.productId);
+      if (!female) {
+        return [];
+      }
+
+      const parsedNote = parseTaggedProductEventNote(event.note);
+      const maleCode = this.normalizeOptionalCode(parsedNote.maleCode);
+      if (!maleCode || !maleCodeCandidates.includes(maleCode)) {
+        return [];
+      }
+
+      return [
+        {
+          id: event.id,
+          tenantId: event.tenantId,
+          maleProductId: product.id,
+          maleCode,
+          femaleProductId: female.id,
+          femaleCode: female.code,
+          femaleName: female.name,
+          eventDate: event.eventDate.toISOString(),
+          note: parsedNote.note,
+          createdAt: event.createdAt.toISOString(),
+          updatedAt: event.updatedAt.toISOString(),
+        },
+      ];
+    });
   }
 
   private async loadListStats(
@@ -617,6 +667,35 @@ export class ProductsReadService {
     }
 
     return null;
+  }
+
+  private async listMatchedFemaleProductsForMale(
+    tenantId: string,
+    product: PrismaProduct,
+    mateCodeCandidates = canonicalMateCodeCandidates(product.code),
+  ): Promise<PrismaProduct[]> {
+    if (product.sex?.trim().toLowerCase() !== 'male' || mateCodeCandidates.length === 0) {
+      return [];
+    }
+
+    return this.prisma.product.findMany({
+      where: {
+        tenantId,
+        inStock: true,
+        sex: {
+          equals: 'female',
+          mode: 'insensitive',
+        },
+        OR: mateCodeCandidates.map((candidate) => ({
+          mateCode: {
+            equals: candidate,
+            mode: 'insensitive',
+          },
+        })),
+      },
+      orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+      take: 100,
+    });
   }
 
   private async resolveCurrentMateCode(tenantId: string, product: PrismaProduct): Promise<string | null> {
