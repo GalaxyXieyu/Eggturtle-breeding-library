@@ -20,7 +20,7 @@ const SIDEBAR_COPY = {
   zh: {
     asideAriaLabel: '后台导航',
     navAriaLabel: '后台主导航',
-    brandTitle: '蛋龟选育库 平台后台',
+    brandTitle: '选育溯源档案 平台后台',
     brandSubtitle: '跨用户运维控制台',
     hint: '后台权限由服务端会话 + 白名单双重校验。'
   },

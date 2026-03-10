@@ -326,7 +326,7 @@ export function buildCertificateStyleSvg(input: CertificateStyleInput): string {
   ${
     useExternalBackground
       ? ''
-      : `<text x="${w / 2}" y="126" text-anchor="middle" font-size="64" font-weight="700" fill="#22170f" class="font-title">蛋龟选育库</text>
+      : `<text x="${w / 2}" y="126" text-anchor="middle" font-size="64" font-weight="700" fill="#22170f" class="font-title">选育溯源档案</text>
   <text x="${w / 2}" y="172" text-anchor="middle" font-size="22" fill="#3d2f21" letter-spacing="1.1" class="font-code">EGG TURTLE BREEDING REGISTRY</text>`
   }
 
@@ -373,7 +373,7 @@ export function buildCertificateStyleSvg(input: CertificateStyleInput): string {
   <g transform="translate(${STAMP_CENTER.x},${STAMP_CENTER.y})">
     <circle cx="0" cy="0" r="82" fill="none" stroke="#8f2f28" stroke-width="7.6"/>
     <circle cx="0" cy="0" r="61" fill="none" stroke="#8f2f28" stroke-width="3.3"/>
-    <text x="0" y="-10" text-anchor="middle" font-size="22" font-weight="700" fill="#8f2f28" class="font-title">蛋龟选育库</text>
+    <text x="0" y="-10" text-anchor="middle" font-size="22" font-weight="700" fill="#8f2f28" class="font-title">选育溯源档案</text>
     <text x="0" y="34" text-anchor="middle" font-size="40" font-weight="700" fill="#8f2f28" class="font-title">认证</text>
   </g>
 

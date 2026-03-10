@@ -284,9 +284,7 @@ export default function TenantShareDialogTrigger({
     posterRequestIdRef.current = requestId;
     setPosterPending(true);
     setPosterDataUrl(null);
-    setError((previousError) =>
-      previousError?.startsWith('海报') ? null : previousError,
-    );
+    setError((previousError) => (previousError?.startsWith('海报') ? null : previousError));
 
     const posterPayload: SharePosterPayload = {
       title: cardTitle,
@@ -299,10 +297,7 @@ export default function TenantShareDialogTrigger({
 
     void (async () => {
       const attemptPayloads: SharePosterPayload[] = [posterPayload, posterPayload];
-      if (
-        posterPayload.previewImageUrl ||
-        (posterPayload.posterImageUrls?.length ?? 0) > 0
-      ) {
+      if (posterPayload.previewImageUrl || (posterPayload.posterImageUrls?.length ?? 0) > 0) {
         attemptPayloads.push({
           ...posterPayload,
           previewImageUrl: null,
@@ -310,7 +305,11 @@ export default function TenantShareDialogTrigger({
         });
       }
 
-      console.log('[Poster] Starting poster generation with', posterPayload.posterImageUrls?.length ?? 0, 'images');
+      console.log(
+        '[Poster] Starting poster generation with',
+        posterPayload.posterImageUrls?.length ?? 0,
+        'images',
+      );
 
       for (let attemptIndex = 0; attemptIndex < attemptPayloads.length; attemptIndex += 1) {
         try {
@@ -399,7 +398,8 @@ export default function TenantShareDialogTrigger({
     }
 
     try {
-      const fileBase = cardTitle.replace(/[^\w\u4e00-\u9fa5-]+/g, '').slice(0, 24) || 'eggturtle-share';
+      const fileBase =
+        cardTitle.replace(/[^\w\u4e00-\u9fa5-]+/g, '').slice(0, 24) || 'eggturtle-share';
       const fileName = `${fileBase}.png`;
       const anchor = document.createElement('a');
       anchor.href = posterDataUrl;
@@ -440,7 +440,7 @@ export default function TenantShareDialogTrigger({
 
       {open ? (
         <div
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm sm:p-6"
+          className="fixed inset-0 z-[70] flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-6"
           role="dialog"
           aria-modal="true"
           aria-labelledby={titleId}
@@ -448,7 +448,7 @@ export default function TenantShareDialogTrigger({
         >
           <div
             className={cn(
-              'relative flex max-h-[min(96dvh,920px)] w-full max-w-[min(96vw,26rem)] flex-col overflow-hidden rounded-3xl border border-neutral-200 bg-white p-4 text-neutral-900 shadow-2xl sm:max-h-[min(88vh,920px)] sm:max-w-[min(88vw,36rem)] sm:rounded-[32px] sm:p-5',
+              'relative flex max-h-[min(94dvh,920px)] w-full max-w-none flex-col overflow-hidden rounded-t-[32px] border border-neutral-200 bg-white p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] text-neutral-900 shadow-2xl sm:max-h-[min(88vh,920px)] sm:max-w-[min(88vw,36rem)] sm:rounded-[32px] sm:p-5',
               className,
             )}
             onClick={(event) => event.stopPropagation()}
@@ -466,7 +466,7 @@ export default function TenantShareDialogTrigger({
                   {cardTitle}
                 </p>
                 <p className="line-clamp-2 text-xs leading-relaxed text-neutral-500 sm:text-sm">
-                  {intentCopy.body}
+                  {cardSubtitle}
                 </p>
               </div>
               <button
@@ -639,7 +639,12 @@ async function generateGenericSharePoster(payload: SharePosterPayload): Promise<
   // Decorative accent line above title
   const titleY = heroY + heroHeight + 60;
   const accentLineWidth = 80;
-  const accentLineGradient = ctx.createLinearGradient(heroX, titleY - 20, heroX + accentLineWidth, titleY - 20);
+  const accentLineGradient = ctx.createLinearGradient(
+    heroX,
+    titleY - 20,
+    heroX + accentLineWidth,
+    titleY - 20,
+  );
   accentLineGradient.addColorStop(0, '#FFD400');
   accentLineGradient.addColorStop(1, '#FFA500');
   ctx.fillStyle = accentLineGradient;
@@ -675,7 +680,12 @@ async function generateGenericSharePoster(payload: SharePosterPayload): Promise<
   const qrY = qrSectionY;
 
   // QR code container with gradient background
-  const qrBgGradient = ctx.createLinearGradient(qrX - 16, qrY - 16, qrX + qrSize + 16, qrY + qrSize + 16);
+  const qrBgGradient = ctx.createLinearGradient(
+    qrX - 16,
+    qrY - 16,
+    qrX + qrSize + 16,
+    qrY + qrSize + 16,
+  );
   qrBgGradient.addColorStop(0, '#fffbeb');
   qrBgGradient.addColorStop(1, '#fef3c7');
   ctx.fillStyle = qrBgGradient;
@@ -939,7 +949,6 @@ async function generateDetailSharePoster(payload: SharePosterPayload): Promise<s
   return canvas.toDataURL('image/png');
 }
 
-
 async function drawGenericPosterHero(
   ctx: CanvasRenderingContext2D,
   payload: SharePosterPayload,
@@ -1045,7 +1054,15 @@ function drawPosterCollage(
 
     drawCoverImage(ctx, images[0]!, innerX, innerY, mainWidth, innerHeight, 20);
     drawCoverImage(ctx, images[1]!, innerX + mainWidth + gap, innerY, sideWidth, sideHeight, 16);
-    drawCoverImage(ctx, images[2]!, innerX + mainWidth + gap, innerY + sideHeight + gap, sideWidth, sideHeight, 16);
+    drawCoverImage(
+      ctx,
+      images[2]!,
+      innerX + mainWidth + gap,
+      innerY + sideHeight + gap,
+      sideWidth,
+      sideHeight,
+      16,
+    );
 
     // Add frames with shadows
     ctx.shadowColor = 'rgba(0,0,0,0.12)';
@@ -1057,7 +1074,14 @@ function drawPosterCollage(
     ctx.stroke();
     roundedRect(ctx, innerX + mainWidth + gap, innerY, sideWidth, sideHeight, 16);
     ctx.stroke();
-    roundedRect(ctx, innerX + mainWidth + gap, innerY + sideHeight + gap, sideWidth, sideHeight, 16);
+    roundedRect(
+      ctx,
+      innerX + mainWidth + gap,
+      innerY + sideHeight + gap,
+      sideWidth,
+      sideHeight,
+      16,
+    );
     ctx.stroke();
   } else {
     // 4+ images: asymmetric masonry grid for visual interest
@@ -1250,7 +1274,7 @@ function drawHeroFallback(
 
   ctx.fillStyle = 'rgba(255,255,255,0.96)';
   ctx.font = '700 56px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
-  ctx.fillText('蛋龟选育库', x + 38, y + height - 174);
+  ctx.fillText('选育溯源档案', x + 38, y + height - 174);
   ctx.font = '500 28px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.84)';
   ctx.fillText('暂无主图，也可直接分享入口', x + 38, y + height - 124);

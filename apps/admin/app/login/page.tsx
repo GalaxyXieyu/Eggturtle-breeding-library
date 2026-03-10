@@ -45,7 +45,7 @@ type LoginCopy = {
 
 const COPY: Record<UiLocale, LoginCopy> = {
   zh: {
-    productTitle: '蛋龟选育库',
+    productTitle: '选育溯源档案',
     productSubtitle: '用数据驱动选育优化，提升繁育决策效率。',
     checkingSession: '正在检查会话状态...',
     modeLabel: '登录模式',

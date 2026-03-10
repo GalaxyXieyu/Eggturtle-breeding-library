@@ -372,7 +372,7 @@ def build_html(data: dict) -> str:
 <body>
   <article class="certificate">
     <header class="top">
-      <h1>蛋龟选育库</h1>
+      <h1>选育溯源档案</h1>
       <h2>Official Pedigree Certificate</h2>
       <p>选育溯源档案</p>
     </header>
@@ -414,7 +414,7 @@ def build_html(data: dict) -> str:
     </section>
 
     <section class="bottom">
-      <div class="seal">蛋龟选育库<br/>认证</div>
+      <div class="seal">选育溯源档案<br/>认证</div>
       <div class="parents">
         <p>父系 (Sire): {esc(data.get("sire"))}</p>
         <p>母系 (Dam): {esc(data.get("dam"))}</p>
@@ -433,7 +433,7 @@ def build_html(data: dict) -> str:
     </section>
 
     <div class="signature">Hugo Yuan</div>
-    <div class="footer">This certificate certifies that the above turtle is registered under the Egg Turtle Breeding Registry.</div>
+    <div class="footer">This certificate certifies that the above turtle is registered under the Breeding Traceability Record.</div>
   </article>
 </body>
 </html>

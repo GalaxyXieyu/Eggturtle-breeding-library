@@ -127,7 +127,7 @@ export function getTenantShareDialogCopy(
   }
 
   return {
-    title: '蛋龟选育库分享',
+    title: '选育溯源档案分享',
     subtitle: '扫码查看公开页面，或复制链接直接转发。',
     body: '访客会打开公开瀑布流页面，适合直接分享整库入口。',
     hint: '公开页、二维码和海报预览共用同一条公开分享链路。',

@@ -373,7 +373,7 @@ def build_html(payload: dict, template_path: Path) -> str:
           <p>外祖母 (Dam's Dam): {html.escape(dam_dam)}</p>
         </div>
 
-        <div class="seal">蛋龟选育库<br/>认证</div>
+        <div class="seal">选育溯源档案<br/>认证</div>
 
         <div class="qr"><img src="{qr_data_uri}" alt="qr" /></div>
         <div class="verify">{html.escape(verify_id)}</div>

@@ -17,8 +17,8 @@ const fontDisplay = Playfair_Display({
 });
 
 export const metadata = {
-  title: '蛋龟选育库',
-  description: '蛋龟选育库多用户选育管理平台'
+  title: '选育溯源档案',
+  description: '选育溯源档案多用户选育管理平台'
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -321,7 +321,7 @@ function drawQrPlaceholder(ctx: CanvasRenderingContext2D) {
 }
 
 function drawCertificateText(ctx: CanvasRenderingContext2D, form: CertificateForm) {
-  drawCenter(ctx, '蛋龟选育库', 120, 62, true);
+  drawCenter(ctx, '选育溯源档案', 120, 62, true);
   drawCenter(ctx, 'TURTLE BREEDING ARCHIVE', 168, 36, false);
   drawCenter(ctx, '选育溯源档案', 218, 38, true);
   drawCenter(ctx, 'BREEDING TRACEABILITY RECORD', 256, 26, false);
@@ -341,7 +341,7 @@ function drawCertificateText(ctx: CanvasRenderingContext2D, form: CertificateFor
   drawKV(ctx, "外祖父 (Dam's Sire)", form.damSireCode, 550, 900);
   drawKV(ctx, "外祖母 (Dam's Dam)", form.damDamCode, 550, 980);
 
-  drawCenter(ctx, '本证书内容由蛋龟选育库生成，扫码可查验档案真实性。', 1390, 24, false);
+  drawCenter(ctx, '本证书内容由选育溯源档案生成，扫码可查验档案真实性。', 1390, 24, false);
 
   ctx.save();
   ctx.fillStyle = '#574a31';

@@ -82,7 +82,7 @@ const ACCOUNT_PATTERN = /^[a-zA-Z][a-zA-Z0-9_-]{2,30}[a-zA-Z0-9]$/;
 
 const COPY: Record<UiLocale, LoginCopy> = {
   zh: {
-    title: '蛋龟选育库',
+    title: '选育溯源档案',
     subtitle: '用数据驱动选育优化，提升繁育决策效率。',
     loginTitle: '登录用户端',
     registerTitle: '注册并开始',
@@ -207,7 +207,7 @@ function LoginPageSkeleton() {
         <section className="login-showcase">
           <div className="login-showcase-glow" aria-hidden />
           <div className="login-brand-copy">
-            <h1>蛋龟选育库</h1>
+            <h1>选育溯源档案</h1>
             <p className="muted">正在准备登录体验…</p>
           </div>
         </section>

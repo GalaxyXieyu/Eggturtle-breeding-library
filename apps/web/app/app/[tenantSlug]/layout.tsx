@@ -78,7 +78,7 @@ const SHELL_COPY = {
     createShare: '打开统一分享弹窗',
     openSharePage: '打开分享弹窗',
     logout: '退出登录',
-    defaultTenant: '蛋龟选育库',
+    defaultTenant: '选育溯源档案',
     quickSharePending: '正在准备分享弹窗...',
     quickShareSuccess: '分享弹窗已打开',
     quickShareMissingTenant: '当前用户上下文未就绪，暂时无法生成链接。',

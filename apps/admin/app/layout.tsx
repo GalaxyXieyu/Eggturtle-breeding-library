@@ -17,8 +17,8 @@ const playfairDisplay = Playfair_Display({
 });
 
 export const metadata = {
-  title: '蛋龟选育库 平台后台',
-  description: '蛋龟选育库平台超级管理员后台'
+  title: '选育溯源档案 平台后台',
+  description: '选育溯源档案平台超级管理员后台'
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

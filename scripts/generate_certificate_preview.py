@@ -396,7 +396,7 @@ def draw_stamp(draw: ImageDraw.ImageDraw, cx: int, cy: int, scale: float) -> Non
     label_font = cn_font(max(12, int(22 * scale)))
     center_font = cn_font(max(13, int(24 * scale)))
 
-    top_text = "蛋龟选育库"
+    top_text = "选育溯源档案"
     top_box = draw.textbbox((0, 0), top_text, font=label_font)
     draw.text((cx - (top_box[2] - top_box[0]) // 2, cy - int(52 * scale)), top_text, fill="#8b2d26", font=label_font)
 
@@ -1160,7 +1160,7 @@ def render_certificate(
             draw,
             width,
             layout["footer"]["en_y"],
-            "This certificate certifies that the above turtle is registered under the Egg Turtle Breeding Registry.",
+            "This certificate certifies that the above turtle is registered under the Breeding Traceability Record.",
             footer_en_font,
             ink,
         )
@@ -1168,7 +1168,7 @@ def render_certificate(
             draw,
             width,
             layout["footer"]["zh_y"],
-            f"本证书由蛋龟选育库签发（数据源：{data.source_label}）。",
+            f"本证书由选育溯源档案签发（数据源：{data.source_label}）。",
             footer_zh_font,
             soft_ink,
         )

@@ -32,7 +32,7 @@ type PublicFloatingActionsProps = {
   shareCardHeroImageUrl?: string | null;
 };
 
-const DEFAULT_SHARE_TITLE = '蛋龟选育库 · 公开图鉴';
+const DEFAULT_SHARE_TITLE = '选育溯源档案 · 公开图鉴';
 const DEFAULT_SHARE_SUBTITLE = '扫码查看完整公开图鉴与更新动态';
 
 export default function PublicFloatingActions({
