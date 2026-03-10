@@ -307,7 +307,12 @@ export class ProductGeneratedAssetsSupportService {
 
   buildPublicVerifyUrl(verifyId: string): string {
     const verifyPath = this.buildPublicVerifyPath(verifyId)
-    const baseUrl = (process.env.PUBLIC_VERIFY_BASE_URL ?? process.env.PUBLIC_WEB_BASE_URL ?? '')
+    const baseUrl = (
+      process.env.PUBLIC_VERIFY_BASE_URL ??
+      process.env.PUBLIC_WEB_BASE_URL ??
+      process.env.NEXT_PUBLIC_PUBLIC_APP_ORIGIN ??
+      ''
+    )
       .trim()
       .replace(/\/+$/, '')
     if (!baseUrl) {

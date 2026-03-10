@@ -88,6 +88,30 @@
 - 旧产品管理页只允许做重定向，不再承载编辑业务。
 - 新交互能力必须回归 `/app/[tenantSlug]/products`。
 
+## 5. 证书二维码与扫码落地口径
+
+### 5.1 证书二维码内容（验真 URL）
+- 证书 PNG 的二维码内容为「证书验真页」URL，路径固定：
+  - `/public/certificates/verify/:verifyId`
+- URL 组装逻辑在 API 端生成证书时完成：
+  - `apps/api/src/products/product-generated-assets-support.service.ts`
+    - `buildPublicVerifyUrl(verifyId)`
+
+### 5.2 公网 baseUrl 选择（按优先级）
+二维码的公网域名（baseUrl）按以下优先级取值：
+1. `PUBLIC_VERIFY_BASE_URL`（推荐：专用于验真页的公网域名）
+2. `PUBLIC_WEB_BASE_URL`（备用：公开 Web 域名）
+3. `NEXT_PUBLIC_PUBLIC_APP_ORIGIN`（兼容：与 Web 端公开/分享域名一致）
+
+> 会自动 trim，并去掉末尾 `/`。
+
+### 5.3 扫码落地页口径
+- 扫码落地页为 Web 端公开页面（验真页）：
+  - `apps/web/app/public/certificates/verify/[verifyId]/page.tsx`
+- 该页面展示：证书正文预览、血统快照、成交摘要等。
+- 用户口径映射：
+  - 文案中「母龟详情页」= 代码中的「宠物详情页」（public product 页面），但 **证书二维码落地必须是验真页**，避免误跳转到宠物详情页导致展示“微信联系”等模块。
+
 ## 5. Admin 端口径补充
 
 实现锚点：`apps/admin/lib/formatters.ts`
