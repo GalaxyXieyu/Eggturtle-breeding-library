@@ -266,14 +266,20 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      await apiRequest('/api/auth/password-login', {
+      // Use code login flow by default; password login is not supported on admin surface yet.
+      const response = await apiRequest('/api/auth/request-code', {
         method: 'POST',
         body: {
-          login: resolvedIdentifier.login,
-          password
+          email: resolvedIdentifier.login
         },
-        responseSchema: meResponseSchema
+        requestSchema: requestCodeRequestSchema,
+        responseSchema: requestCodeResponseSchema
       });
+
+      setRequestedEmail(resolvedIdentifier.login);
+      setDevCode(response.devCode ?? null);
+      setCode('');
+      switchMode('code');
 
       router.replace(redirectTo);
     } catch (requestError) {
