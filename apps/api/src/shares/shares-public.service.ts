@@ -266,6 +266,7 @@ export class SharesPublicService {
           seriesId: product.seriesId,
           seriesCode: seriesSummary?.code ?? null,
           seriesName: seriesSummary?.name ?? null,
+          seriesDescription: seriesSummary?.description ?? null,
           sex: product.sex,
           needMatingStatus: needMatingSummary?.status ?? null,
           lastEggAt: needMatingSummary?.lastEggAt?.toISOString() ?? null,
@@ -344,6 +345,7 @@ export class SharesPublicService {
         seriesId: detailProduct.seriesId,
         seriesCode: detailSeriesSummary?.code ?? null,
         seriesName: detailSeriesSummary?.name ?? null,
+        seriesDescription: detailSeriesSummary?.description ?? null,
         sex: detailProduct.sex,
         offspringUnitPrice: detailProduct?.offspringUnitPrice?.toNumber() ?? null,
         sireCode: detailProduct.sireCode,
@@ -383,7 +385,7 @@ export class SharesPublicService {
   }
 
   private async loadSeriesSummaryByIds(tenantId: string, seriesIds: Array<string | null | undefined>) {
-    const summaryById = new Map<string, { code: string; name: string }>();
+    const summaryById = new Map<string, { code: string; name: string; description: string | null }>();
     const uniqueSeriesIds = [...new Set(seriesIds.map((seriesId) => seriesId?.trim() ?? '').filter(Boolean))];
 
     if (uniqueSeriesIds.length === 0) {
@@ -400,14 +402,16 @@ export class SharesPublicService {
       select: {
         id: true,
         code: true,
-        name: true
+        name: true,
+        description: true
       }
     });
 
     rows.forEach((row) => {
       summaryById.set(row.id, {
         code: row.code,
-        name: row.name
+        name: row.name,
+        description: row.description ?? null
       });
     });
 

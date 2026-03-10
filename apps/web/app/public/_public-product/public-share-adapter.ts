@@ -114,7 +114,13 @@ function buildSeriesFromItems(items: PublicShareFeedItem[]): Series[] {
 
   for (const item of items) {
     const id = resolveSeriesKey(item.seriesId);
-    if (byId.has(id)) {
+    const description = item.seriesDescription?.trim() || undefined;
+    const existing = byId.get(id);
+
+    if (existing) {
+      if (!existing.description && description) {
+        existing.description = description;
+      }
       continue;
     }
 
@@ -126,6 +132,7 @@ function buildSeriesFromItems(items: PublicShareFeedItem[]): Series[] {
       id,
       code,
       name,
+      description,
     });
   }
 

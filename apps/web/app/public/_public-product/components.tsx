@@ -152,6 +152,7 @@ export function SeriesIntroCard({
   );
 
   const hasDescription = Boolean(series.description?.trim());
+  const descriptionPanelId = `series-intro-panel-${series.id}`;
 
   return (
     <div className="mb-3 overflow-hidden rounded-2xl border border-black/5 shadow-[0_12px_30px_rgba(0,0,0,0.08)]">
@@ -179,10 +180,10 @@ export function SeriesIntroCard({
 
         <div className="relative">
           <div className="flex items-center justify-between px-4 py-3 sm:px-5">
-            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-white/70">
-              <span>系列介绍</span>
-              <div className="ml-1 flex items-center gap-1">
-                <div className="text-base font-bold text-white sm:text-lg">{series.name}</div>
+            <div className="flex min-w-0 items-center gap-2 text-xs font-medium uppercase tracking-wide text-white/70">
+              <span className="shrink-0">系列介绍</span>
+              <div className="ml-1 flex min-w-0 items-center gap-1.5">
+                <div className="truncate text-base font-bold text-white sm:text-lg">{series.name}</div>
                 <div className="rounded-full bg-white/20 px-2 py-0.5 text-xs font-medium text-white backdrop-blur-sm">
                   公{counts.male} 母{counts.female}
                 </div>
@@ -190,11 +191,17 @@ export function SeriesIntroCard({
             </div>
             <button
               type="button"
+              aria-expanded={!isCollapsed}
+              aria-controls={descriptionPanelId}
+              aria-label={isCollapsed ? `展开 ${series.name} 系列介绍` : `收起 ${series.name} 系列介绍`}
               onClick={() => setIsCollapsed((current) => !current)}
-              className="rounded-full p-1.5 text-white/70 transition hover:bg-white/10 hover:text-white"
+              className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/18 bg-white/12 px-3 py-2 text-xs font-semibold text-white shadow-[0_10px_24px_rgba(0,0,0,0.18)] backdrop-blur-md [touch-action:manipulation] transition hover:border-white/28 hover:bg-white/18 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black/35"
             >
+              <span className="hidden sm:inline">{isCollapsed ? '展开介绍' : '收起介绍'}</span>
+              <span className="sm:hidden">{isCollapsed ? '展开' : '收起'}</span>
               <svg
-                className={`h-4 w-4 transition-transform ${isCollapsed ? 'rotate-180' : ''}`}
+                aria-hidden="true"
+                className={`h-4 w-4 shrink-0 transition-transform duration-200 ${isCollapsed ? 'rotate-180' : 'rotate-0'}`}
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -210,7 +217,8 @@ export function SeriesIntroCard({
           </div>
 
           <div
-            className={`overflow-hidden transition-all duration-300 ${isCollapsed ? 'max-h-0 opacity-0' : 'max-h-[600px] opacity-100'}`}
+            id={descriptionPanelId}
+            className={`overflow-hidden transition-[max-height,opacity] duration-300 ${isCollapsed ? 'max-h-0 opacity-0' : 'max-h-[600px] opacity-100'}`}
           >
             <div className="px-4 pb-3 sm:px-5">
               {hasDescription ? (
