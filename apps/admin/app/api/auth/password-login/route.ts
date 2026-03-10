@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { passwordLoginRequestSchema, passwordLoginResponseSchema } from '@eggturtle/shared/auth';
 
-import { isSuperAdminEmailAllowlisted, isSuperAdminIdentifierAllowlisted } from '@/lib/admin-auth';
+import { isSuperAdminEmailAllowlisted } from '@/lib/admin-auth';
 import {
   applySessionCookie,
   clearSessionCookie,
@@ -12,19 +12,6 @@ import {
 export async function POST(request: Request) {
   try {
     const payload = passwordLoginRequestSchema.parse(await request.json());
-    const loginIdentifier = payload.login;
-
-    if (!isSuperAdminIdentifierAllowlisted(loginIdentifier)) {
-      return withClearedSessionCookie(
-        NextResponse.json(
-          {
-            message: '后台访问未授权。'
-          },
-          { status: 403 }
-        )
-      );
-    }
-
     const upstreamResponse = await fetch(`${getAdminApiBaseUrl()}/auth/password-login`, {
       method: 'POST',
       headers: {
