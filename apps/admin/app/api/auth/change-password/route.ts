@@ -1,73 +1,66 @@
 import { NextResponse } from 'next/server';
-import { passwordLoginRequestSchema, passwordLoginResponseSchema } from '@eggturtle/shared/auth';
+import { updateMyPasswordRequestSchema, updateMyPasswordResponseSchema } from '@eggturtle/shared/auth';
 
 import {
-  applySessionCookie,
   clearSessionCookie,
   getAdminApiBaseUrl,
-  resolveSessionFromToken
+  getSessionToken
 } from '@/lib/server-session';
 
-export async function POST(request: Request) {
+export async function PUT(request: Request) {
+  const token = getSessionToken();
+
+  if (!token) {
+    return withClearedSessionCookie(NextResponse.json({ message: '未登录' }, { status: 401 }));
+  }
+
   try {
-    const payload = passwordLoginRequestSchema.parse(await request.json());
-    const upstreamResponse = await fetch(`${getAdminApiBaseUrl()}/auth/password-login`, {
-      method: 'POST',
+    const payload = updateMyPasswordRequestSchema.parse(await request.json());
+    const upstreamResponse = await fetch(`${getAdminApiBaseUrl()}/me/password`, {
+      method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        'x-eggturtle-auth-surface': 'admin'
+        Authorization: `Bearer ${token}`
       },
-      body: JSON.stringify({
-        login: payload.login,
-        password: payload.password
-      }),
+      body: JSON.stringify(payload),
       cache: 'no-store'
     });
 
     const body = await parseJsonBody(upstreamResponse);
 
     if (!upstreamResponse.ok) {
-      return withClearedSessionCookie(
+      return withOptionalClearedSessionCookie(
         NextResponse.json(
           {
             message: pickErrorMessage(body, `请求失败（${upstreamResponse.status}）`)
           },
           { status: upstreamResponse.status }
-        )
+        ),
+        upstreamResponse.status
       );
     }
 
-    const { accessToken } = passwordLoginResponseSchema.parse(body);
-    const session = await resolveSessionFromToken(accessToken);
-
-    if (!session || !session.user.isSuperAdmin) {
-      return withClearedSessionCookie(
-        NextResponse.json(
-          {
-            message: '后台访问未授权。'
-          },
-          { status: 403 }
-        )
-      );
-    }
-
-    const response = NextResponse.json(session);
-    applySessionCookie(response, accessToken);
-    return response;
+    return NextResponse.json(updateMyPasswordResponseSchema.parse(body));
   } catch {
-    return withClearedSessionCookie(
-      NextResponse.json(
-        {
-          message: '请求参数无效。'
-        },
-        { status: 400 }
-      )
+    return NextResponse.json(
+      {
+        message: '请求参数无效。'
+      },
+      { status: 400 }
     );
   }
 }
 
 function withClearedSessionCookie(response: NextResponse) {
   clearSessionCookie(response);
+  return response;
+}
+
+function withOptionalClearedSessionCookie(response: NextResponse, status: number) {
+  if (status === 401) {
+    clearSessionCookie(response);
+  }
+
   return response;
 }
 

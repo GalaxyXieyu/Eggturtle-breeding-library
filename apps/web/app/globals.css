@@ -269,11 +269,6 @@ button,
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
 }
 
-:root[data-theme='dark'] .ui-pref-controls {
-  background: rgba(0, 0, 0, 0.28);
-  border-color: rgba(255, 255, 255, 0.14);
-}
-
 :root[data-theme='dark'] .ui-pref-icon-btn {
   color: rgba(255, 255, 255, 0.65);
 }
@@ -302,6 +297,11 @@ button,
 
 .tenant-mobile-toolbar-action.ui-pref-controls {
   gap: 2px;
+}
+
+.tenant-mobile-pref .ui-pref-controls {
+  background: transparent;
+  border: none;
 }
 
 .public-floating-pref {
@@ -392,26 +392,47 @@ button,
   box-shadow: 0 0 0 2px rgba(255, 212, 0, 0.6);
 }
 
+.tenant-mobile-pref .ui-pref-icon-btn {
+  border: 1px solid transparent;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
 :root[data-theme='light'] .tenant-mobile-pref .ui-pref-icon-btn {
   color: rgba(30, 41, 59, 0.8);
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
 :root[data-theme='light'] .tenant-mobile-pref .ui-pref-icon-btn:hover:not(:disabled) {
-  background: rgba(15, 23, 42, 0.08);
+  background: #ffffff;
   color: rgba(15, 23, 42, 0.92);
+  border-color: rgba(0, 0, 0, 0.12);
 }
 
 :root[data-theme='light'] .tenant-mobile-pref .ui-pref-icon-btn:focus-visible {
-  box-shadow: 0 0 0 2px rgba(255, 212, 0, 0.6);
+  box-shadow:
+    0 0 0 2px rgba(255, 212, 0, 0.6),
+    0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
 :root[data-theme='dark'] .tenant-mobile-pref .ui-pref-icon-btn {
   color: rgba(226, 232, 240, 0.88);
+  background: rgba(15, 23, 42, 0.84);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
 }
 
 :root[data-theme='dark'] .tenant-mobile-pref .ui-pref-icon-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(30, 41, 59, 0.96);
   color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+:root[data-theme='dark'] .tenant-mobile-pref .ui-pref-icon-btn:focus-visible {
+  box-shadow:
+    0 0 0 2px rgba(255, 212, 0, 0.7),
+    0 10px 24px rgba(0, 0, 0, 0.28);
 }
 
 .login-card {
@@ -1501,15 +1522,17 @@ button.auth-action {
   font-size: 0.75rem;
   font-weight: 600;
   transition: all 0.2s;
-  border: 1px solid rgb(23, 23, 23);
-  background: rgb(23, 23, 23);
-  color: rgb(255, 255, 255);
+  border: 1px solid #ffd400;
+  background: rgb(255, 255, 255);
+  color: rgb(23, 23, 23);
+  box-shadow: 0 6px 20px rgba(255, 212, 0, 0.22);
 }
 
 :root[data-theme='dark'] .public-btn-filter-active {
-  border-color: rgba(255, 255, 255, 0.15);
-  background: rgb(250, 250, 250);
-  color: rgb(10, 10, 10);
+  border-color: #ffd400;
+  background: rgba(10, 10, 10, 0.78);
+  color: rgb(250, 250, 250);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
 }
 
 .public-btn-filter-inactive {
@@ -1522,22 +1545,28 @@ button.auth-action {
   font-weight: 600;
   transition: all 0.2s;
   border: 1px solid rgb(229, 229, 229);
-  background: rgb(255, 255, 255);
+  background: rgba(255, 255, 255, 0.96);
   color: rgb(64, 64, 64);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
 }
 
 :root[data-theme='dark'] .public-btn-filter-inactive {
-  border-color: rgba(255, 255, 255, 0.1);
-  background: rgba(10, 10, 10, 0.3);
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
   color: rgb(229, 229, 229);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 .public-btn-filter-inactive:hover {
   border-color: rgb(212, 212, 212);
+  background: rgb(255, 255, 255);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
 }
 
 :root[data-theme='dark'] .public-btn-filter-inactive:hover {
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
 }
 
 /* Badge styles */
@@ -2417,7 +2446,7 @@ button.auth-action {
 
 /* 统一悬浮按钮外观（与 TenantFloatingShareButton / PublicFloatingActions 一致） */
 .tenant-fab-button {
-  @apply flex h-11 w-11 items-center justify-center rounded-full border border-black/10 bg-white/95 text-neutral-800 shadow-[0_8px_24px_rgba(0,0,0,0.18)] backdrop-blur transition hover:scale-[1.05] hover:bg-white dark:border-white/15 dark:bg-neutral-900/95 dark:text-neutral-100;
+  @apply flex h-11 w-11 items-center justify-center rounded-full border border-black/10 bg-neutral-900 text-white shadow-[0_14px_30px_rgba(0,0,0,0.18)] backdrop-blur transition hover:scale-[1.05] hover:bg-neutral-800 hover:shadow-[0_10px_24px_rgba(0,0,0,0.2)] [&_svg]:text-white;
 }
 
 @media (min-width: 1024px) {

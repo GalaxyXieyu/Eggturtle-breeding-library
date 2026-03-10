@@ -5,24 +5,11 @@ import { ErrorCode } from '@eggturtle/shared';
 import type { AuthenticatedRequest } from './auth.types';
 import { REQUIRE_SUPER_ADMIN_KEY } from './super-admin.constants';
 
-function parseSuperAdminEmails(rawValue: string | undefined): Set<string> {
-  if (!rawValue) {
-    return new Set();
-  }
-
-  return new Set(
-    rawValue
-      .split(',')
-      .map((item) => item.trim().toLowerCase())
-      .filter(Boolean)
-  );
-}
-
 @Injectable()
 export class SuperAdminGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const required = this.reflector.getAllAndOverride<boolean>(REQUIRE_SUPER_ADMIN_KEY, [
       context.getHandler(),
       context.getClass()
@@ -42,10 +29,9 @@ export class SuperAdminGuard implements CanActivate {
       });
     }
 
-    const allowlist = parseSuperAdminEmails(process.env.SUPER_ADMIN_EMAILS);
-    if (allowlist.size === 0 || !allowlist.has(user.email.toLowerCase())) {
+    if (!user.isSuperAdmin) {
       throw new ForbiddenException({
-        message: 'User is not in SUPER_ADMIN_EMAILS allowlist.',
+        message: 'Admin access denied.',
         errorCode: ErrorCode.Forbidden
       });
     }

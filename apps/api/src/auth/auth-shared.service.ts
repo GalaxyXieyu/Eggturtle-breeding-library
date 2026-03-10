@@ -1,4 +1,5 @@
 import {
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -62,6 +63,22 @@ export class AuthSharedService {
     };
   }
 
+  toAuthUser(user: {
+    id: string;
+    email: string;
+    account?: string | null;
+    name: string | null;
+    isSuperAdmin: boolean;
+  }): AuthUser {
+    return {
+      id: user.id,
+      email: user.email,
+      account: this.resolveUserAccount(user),
+      name: user.name,
+      isSuperAdmin: user.isSuperAdmin,
+    };
+  }
+
   normalizeOptionalName(value: string | null | undefined) {
     if (typeof value !== 'string') {
       return null;
@@ -86,6 +103,22 @@ export class AuthSharedService {
 
   generateCode(): string {
     return String(randomInt(0, 1_000_000)).padStart(6, '0');
+  }
+
+  assertAdminSurfaceAccess(
+    user: {
+      isSuperAdmin: boolean;
+    },
+    surface?: string,
+  ): void {
+    if (surface !== 'admin' || user.isSuperAdmin) {
+      return;
+    }
+
+    throw new ForbiddenException({
+      message: 'Admin access denied.',
+      errorCode: ErrorCode.Forbidden,
+    });
   }
 
   async consumeSmsCodeOrThrow(

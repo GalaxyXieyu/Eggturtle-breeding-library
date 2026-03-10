@@ -72,10 +72,15 @@ function toBusinessErrorMessage(rawMessage: string, locale: ErrorLocale) {
     return locale === 'zh' ? '请求超时，请稍后重试。' : 'Request timed out. Please try again later.';
   }
 
-  if (message.includes('后台访问未授权。') || message.includes('Admin access denied.')) {
+  if (
+    message.includes('后台访问未授权。') ||
+    message.includes('Admin access denied.') ||
+    message.includes('This account does not have super-admin access.') ||
+    message.includes('User is not in the super-admin allowlist.')
+  ) {
     return locale === 'zh'
-      ? '当前账号未加入后台白名单，请使用超级管理员账号登录。'
-      : 'This account is not allowlisted for admin access.';
+      ? '当前账号没有后台超级管理员权限，请使用超级管理员账号登录。'
+      : 'This account does not have super-admin access.';
   }
 
   if (
@@ -88,8 +93,8 @@ function toBusinessErrorMessage(rawMessage: string, locale: ErrorLocale) {
 
   if (message.includes('Login identifier or password is incorrect.')) {
     return locale === 'zh'
-      ? '账号名 / 邮箱或密码不正确，请重新输入。'
-      : 'The account, email, or password is incorrect.';
+      ? '账号名 / 手机号 / 邮箱或密码不正确，请重新输入。'
+      : 'The account, phone number, email, or password is incorrect.';
   }
 
   if (message.includes('Code is invalid.')) {
@@ -100,10 +105,26 @@ function toBusinessErrorMessage(rawMessage: string, locale: ErrorLocale) {
     return locale === 'zh' ? '验证码已过期，请重新获取。' : 'The verification code has expired.';
   }
 
+  if (message.includes('Current password is incorrect.')) {
+    return locale === 'zh' ? '当前密码不正确，请重新输入。' : 'The current password is incorrect.';
+  }
+
+  if (message.includes('New password must be different from current password.')) {
+    return locale === 'zh'
+      ? '新密码不能与当前密码相同。'
+      : 'The new password must be different from the current password.';
+  }
+
   if (message.includes('Email code login is only available for existing accounts.')) {
     return locale === 'zh'
       ? '该邮箱尚未开通后台账号，请先确认管理员身份后再登录。'
       : 'Email code sign-in is only available for existing admin accounts.';
+  }
+
+  if (message.includes('Phone number is not registered.')) {
+    return locale === 'zh'
+      ? '该手机号尚未绑定后台账号，请先确认超级管理员手机号绑定。'
+      : 'This phone number is not bound to an admin account.';
   }
 
   if (message.includes('Invalid request payload.')) {
@@ -210,7 +231,7 @@ function resolveFieldLabel(path: unknown, locale: ErrorLocale) {
 
   const labels: Record<string, { zh: string; en: string }> = {
     account: { zh: '账号名', en: 'Account' },
-    login: { zh: '邮箱或账号名', en: 'Email or account' },
+    login: { zh: '账号名、手机号或邮箱', en: 'Account, phone, or email' },
     email: { zh: '邮箱', en: 'Email' },
     password: { zh: '密码', en: 'Password' },
     phoneNumber: { zh: '手机号', en: 'Phone number' },
@@ -230,7 +251,9 @@ function translateKnownValidationText(message: string, locale: ErrorLocale) {
   }
 
   if (message.includes('Login identifier is required.')) {
-    return locale === 'zh' ? '请输入后台邮箱或账号名。' : 'Enter your admin email or account.';
+    return locale === 'zh'
+      ? '请输入后台账号、手机号，或旧邮箱。'
+      : 'Enter your admin account, phone number, or legacy email.';
   }
 
   if (message.includes('Password must be at least 8 characters.')) {

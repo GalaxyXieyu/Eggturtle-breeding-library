@@ -16,6 +16,7 @@ import { LayoutDashboard, Package, Layers, Share2, LogOut, UserRound } from 'luc
 import { UiPreferenceControls, useUiPreferences } from '@/components/ui-preferences';
 import { Button } from '@/components/ui/button';
 import TenantFloatingShareButton from '@/components/tenant-floating-share-button';
+import TenantFloatingPreferences from '@/components/tenant-floating-preferences';
 import type { TenantShareIntent } from '@/lib/tenant-share';
 import { apiRequest, clearAccessToken } from '@/lib/api-client';
 import { useResolvedTenantBranding } from '@/lib/branding-client';
@@ -405,6 +406,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
       {shouldRenderLayoutFloatingShare && !setupRequired ? (
         <TenantFloatingShareButton intent={floatingShareIntent} className="lg:hidden" />
       ) : null}
+      <TenantFloatingPreferences className="lg:hidden" />
     </div>
   );
 }

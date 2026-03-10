@@ -91,7 +91,7 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
 
     ctx.log.warn('subscription.super-admin.warn', {
       status: getBeforeResponse.status,
-      hint: 'Enable SUPER_ADMIN_ENABLED and include email in SUPER_ADMIN_EMAILS for positive checks.',
+      hint: 'Mark the target user as isSuperAdmin=true for positive checks.',
     });
 
     return {

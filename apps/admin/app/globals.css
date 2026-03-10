@@ -196,6 +196,57 @@ textarea:focus {
   flex-direction: column;
 }
 
+.force-password-reset-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.42);
+  backdrop-filter: blur(10px);
+}
+
+.force-password-reset-card {
+  width: min(100%, 480px);
+  display: grid;
+  gap: 18px;
+  border: 1px solid color-mix(in srgb, var(--admin-border-strong) 78%, #ffd400 22%);
+  border-radius: 28px;
+  padding: 22px;
+  background:
+    radial-gradient(circle at top right, rgba(255, 212, 0, 0.18), transparent 42%),
+    linear-gradient(180deg, color-mix(in srgb, var(--admin-surface) 90%, #fff9d6 10%) 0%, var(--admin-surface) 100%);
+  box-shadow: var(--admin-shadow-elevated);
+}
+
+.force-password-reset-head {
+  display: grid;
+  gap: 14px;
+}
+
+.force-password-reset-head strong {
+  color: var(--admin-ink-soft);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.force-password-reset-head span,
+.force-password-reset-head p {
+  color: var(--admin-ink-soft);
+}
+
+.force-password-reset-form {
+  display: grid;
+  gap: 14px;
+}
+
+.force-password-reset-fields {
+  gap: 12px;
+}
+
 .dashboard-sidebar {
   border-right: 1px solid rgba(24, 24, 27, 0.08);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(255, 249, 225, 0.9) 100%);

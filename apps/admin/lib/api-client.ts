@@ -27,7 +27,7 @@ import {
 } from '@eggturtle/shared';
 
 const LOGIN_PATH = '/login';
-const AUTH_PROXY_PREFIX = '/api/proxy';
+const ADMIN_PROXY_PREFIX = '/api/admin-proxy';
 const MAX_ERROR_MESSAGE_LENGTH = 220;
 
 type SchemaParser<T> = {
@@ -153,7 +153,7 @@ function resolveRequestPath(path: string, shouldUseAuth: boolean) {
   }
 
   if (shouldUseAuth && normalizedPath.startsWith('/admin/')) {
-    return `${AUTH_PROXY_PREFIX}${normalizedPath}`;
+    return `${ADMIN_PROXY_PREFIX}${normalizedPath.slice('/admin'.length)}`;
   }
 
   return normalizedPath;
@@ -187,7 +187,7 @@ export async function apiRequest<RequestPayload = never, ResponsePayload = unkno
 
   const payload = await parseJsonBody(response);
 
-  if (response.status === 401) {
+  if (response.status === 401 && shouldUseAuth && !path.includes('/auth/')) {
     redirectToLogin();
     throw new ApiUnauthorizedError();
   }

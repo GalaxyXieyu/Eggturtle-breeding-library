@@ -2,7 +2,8 @@ import { ReactNode } from 'react';
 import { redirect } from 'next/navigation';
 
 import { DashboardShell } from '@/components/dashboard/dashboard-shell';
-import { getSessionToken, resolveSessionFromToken } from '@/lib/server-session';
+import { validateAdminAccessToken } from '@/lib/admin-auth';
+import { getSessionToken, resolveProfileFromToken } from '@/lib/server-session';
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const token = getSessionToken();
@@ -11,10 +12,22 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     redirect('/login?redirect=/dashboard');
   }
 
-  const session = await resolveSessionFromToken(token);
-  if (!session) {
+  const validationResult = await validateAdminAccessToken(token);
+  if (!validationResult.ok) {
     redirect('/login?redirect=/dashboard');
   }
 
-  return <DashboardShell currentUserEmail={session.user.email}>{children}</DashboardShell>;
+  const profile = await resolveProfileFromToken(token);
+  if (!profile) {
+    redirect('/login?redirect=/dashboard');
+  }
+
+  return (
+    <DashboardShell
+      currentUserEmail={validationResult.user.email}
+      mustChangePassword={profile.passwordUpdatedAt === null}
+    >
+      {children}
+    </DashboardShell>
+  );
 }

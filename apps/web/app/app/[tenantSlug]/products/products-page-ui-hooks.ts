@@ -1,5 +1,10 @@
 import { useEffect, type Dispatch, type RefObject, type SetStateAction } from 'react';
 
+const MOBILE_FILTER_FAB_SHOW_SCROLL_TOP = 180;
+const MOBILE_FILTER_FAB_HIDE_SCROLL_TOP = 96;
+const MOBILE_FILTER_FAB_SHOW_TOP_FILTER_BOTTOM = -24;
+const MOBILE_FILTER_FAB_HIDE_TOP_FILTER_BOTTOM = 24;
+
 function resolveTenantScrollRoot(): HTMLElement | null {
   if (typeof document === 'undefined') {
     return null;
@@ -14,6 +19,36 @@ function readScrollTop(target: HTMLElement | Window) {
   }
 
   return target.scrollTop;
+}
+
+function resolveNextMobileFilterFabVisibility(
+  current: boolean,
+  topFilter: HTMLDivElement | null,
+  scrollY: number,
+) {
+  if (topFilter) {
+    const bottom = topFilter.getBoundingClientRect().bottom;
+
+    if (bottom <= MOBILE_FILTER_FAB_SHOW_TOP_FILTER_BOTTOM) {
+      return true;
+    }
+
+    if (bottom >= MOBILE_FILTER_FAB_HIDE_TOP_FILTER_BOTTOM) {
+      return false;
+    }
+
+    return current;
+  }
+
+  if (scrollY >= MOBILE_FILTER_FAB_SHOW_SCROLL_TOP) {
+    return true;
+  }
+
+  if (scrollY <= MOBILE_FILTER_FAB_HIDE_SCROLL_TOP) {
+    return false;
+  }
+
+  return current;
 }
 
 type UseProductsPageUiEffectsInput = {
@@ -80,18 +115,11 @@ export function useProductsPageUiEffects({
       const topFilter = mobileTopFilterRef.current;
       const scrollY = readScrollTop(scrollTarget);
 
-      setShowMobileFilterFab((current) => {
-        if (current) {
-          return scrollY > 140;
-        }
-
-        if (!topFilter) {
-          return scrollY > 220;
-        }
-
-        const bottom = topFilter.getBoundingClientRect().bottom;
-        return bottom < 8;
-      });
+      // Use hysteresis so list-height changes near the threshold do not flip
+      // between the top filter bar and the floating action button.
+      setShowMobileFilterFab((current) =>
+        resolveNextMobileFilterFabVisibility(current, topFilter, scrollY),
+      );
     };
 
     const scheduleUpdate = () => {

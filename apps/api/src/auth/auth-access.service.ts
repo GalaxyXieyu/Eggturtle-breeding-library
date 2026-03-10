@@ -36,12 +36,7 @@ export class AuthAccessService {
     }
 
     return {
-      user: {
-        id: user.id,
-        email: user.email,
-        account: this.authSharedService.resolveUserAccount(user),
-        name: user.name,
-      },
+      user: this.authSharedService.toAuthUser(user),
       tenantId: payload.tenantId,
     };
   }

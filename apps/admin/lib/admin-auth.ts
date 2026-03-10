@@ -2,10 +2,12 @@ import 'server-only';
 
 import { meResponseSchema, type AuthUser } from '@eggturtle/shared/auth';
 
+import { ADMIN_SESSION_COOKIE_NAME } from '@/lib/session-constants';
+
 const DEFAULT_API_BASE_URL = 'http://localhost:30011';
 const DEFAULT_ADMIN_SESSION_MAX_AGE_SECONDS = 60 * 60 * 12;
 
-export const ADMIN_ACCESS_COOKIE_NAME = 'eggturtle.admin.access_token';
+export const ADMIN_ACCESS_COOKIE_NAME = ADMIN_SESSION_COOKIE_NAME;
 
 type AuthValidationResult =
   | {
@@ -17,15 +19,6 @@ type AuthValidationResult =
       status: number;
       message: string;
     };
-
-function parseAllowlist(rawValue: string | undefined) {
-  return new Set(
-    (rawValue ?? '')
-      .split(',')
-      .map((email) => email.trim().toLowerCase())
-      .filter(Boolean)
-  );
-}
 
 function getAdminSessionMaxAgeSeconds() {
   const configuredValue = Number(process.env.ADMIN_AUTH_COOKIE_MAX_AGE_SECONDS);
@@ -39,53 +32,6 @@ function getAdminSessionMaxAgeSeconds() {
 
 export function getApiBaseUrl() {
   return process.env.ADMIN_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE_URL;
-}
-
-function getSuperAdminAllowlist() {
-  const configuredAllowlist = parseAllowlist(
-    process.env.ADMIN_SUPER_EMAIL_ALLOWLIST ??
-      process.env.ADMIN_SUPER_ADMIN_EMAILS ??
-      process.env.SUPER_ADMIN_EMAILS
-  );
-
-  if (configuredAllowlist.size > 0) {
-    return configuredAllowlist;
-  }
-
-  if (process.env.NODE_ENV !== 'production') {
-    return new Set(['admin@local.test', 'synthetic.superadmin@local.test']);
-  }
-
-  return configuredAllowlist;
-}
-
-export function isSuperAdminEmailAllowlisted(email: string) {
-  return getSuperAdminAllowlist().has(email.trim().toLowerCase());
-}
-
-export function isSuperAdminIdentifierAllowlisted(identifier: string) {
-  const normalized = identifier.trim().toLowerCase();
-  const allowlist = getSuperAdminAllowlist();
-
-  if (!normalized) {
-    return false;
-  }
-
-  if (allowlist.has(normalized)) {
-    return true;
-  }
-
-  if (normalized.includes('@')) {
-    return false;
-  }
-
-  for (const email of allowlist) {
-    if (email.startsWith(`${normalized}@`)) {
-      return true;
-    }
-  }
-
-  return false;
 }
 
 export function getAdminSessionCookieOptions() {
@@ -106,16 +52,6 @@ export function clearAdminSessionCookieOptions() {
 }
 
 export async function validateAdminAccessToken(token: string): Promise<AuthValidationResult> {
-  const allowlist = getSuperAdminAllowlist();
-
-  if (allowlist.size === 0) {
-    return {
-      ok: false,
-      status: 500,
-      message: 'Admin authentication is currently unavailable.'
-    };
-  }
-
   try {
     const response = await fetch(`${getApiBaseUrl()}/me`, {
       method: 'GET',
@@ -134,9 +70,7 @@ export async function validateAdminAccessToken(token: string): Promise<AuthValid
     }
 
     const payload = meResponseSchema.parse(await response.json());
-    const email = payload.user.email.toLowerCase();
-
-    if (!allowlist.has(email)) {
+    if (!payload.user.isSuperAdmin) {
       return {
         ok: false,
         status: 403,

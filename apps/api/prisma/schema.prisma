@@ -25,6 +25,7 @@ model User {
   email               String               @unique @db.VarChar(255)
   account             String?              @unique @db.VarChar(32)
   name                String?              @db.VarChar(120)
+  isSuperAdmin        Boolean              @default(false) @map("is_super_admin")
   referralCode        String?              @unique @map("referral_code") @db.VarChar(32)
   passwordHash        String?              @map("password_hash") @db.VarChar(255)
   passwordUpdatedAt   DateTime?            @map("password_updated_at")

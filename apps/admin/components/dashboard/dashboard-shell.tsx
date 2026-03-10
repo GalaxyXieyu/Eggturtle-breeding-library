@@ -3,6 +3,7 @@
 import { ReactNode, useState } from 'react';
 
 import { DashboardBottomDock } from '@/components/dashboard/dashboard-bottom-dock';
+import { ForcePasswordResetDialog } from '@/components/dashboard/force-password-reset-dialog';
 import { DashboardSidebar } from '@/components/dashboard/dashboard-sidebar';
 import { DashboardTopTabs } from '@/components/dashboard/dashboard-top-tabs';
 import { DashboardTopbar } from '@/components/dashboard/dashboard-topbar';
@@ -10,9 +11,10 @@ import { DashboardTopbar } from '@/components/dashboard/dashboard-topbar';
 type DashboardShellProps = {
   children: ReactNode;
   currentUserEmail: string;
+  mustChangePassword: boolean;
 };
 
-export function DashboardShell({ children, currentUserEmail }: DashboardShellProps) {
+export function DashboardShell({ children, currentUserEmail, mustChangePassword }: DashboardShellProps) {
   const [collapsed, setCollapsed] = useState(false);
 
   function handleToggleSidebar() {
@@ -28,6 +30,7 @@ export function DashboardShell({ children, currentUserEmail }: DashboardShellPro
         <main className="content">{children}</main>
       </div>
       <DashboardBottomDock />
+      <ForcePasswordResetDialog currentUserEmail={currentUserEmail} open={mustChangePassword} />
     </div>
   );
 }

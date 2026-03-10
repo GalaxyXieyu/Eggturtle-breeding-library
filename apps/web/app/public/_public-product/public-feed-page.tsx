@@ -350,6 +350,7 @@ export default function PublicFeedPage({
     () => series.find((item) => item.id === seriesId) || null,
     [series, seriesId],
   );
+  const activeFilterCount = Number(Boolean(seriesId)) + Number(sex !== 'all') + Number(status !== 'all');
 
   const brandPrimary = resolvedPresentation.theme.brandPrimary;
   const brandSecondary = resolvedPresentation.theme.brandSecondary;
@@ -359,7 +360,6 @@ export default function PublicFeedPage({
   const contactWechatId = resolvedPresentation.contact.showWechatBlock
     ? resolvedPresentation.contact.wechatId
     : null;
-  const activeButtonShadow = `0 6px 20px ${hexToRgba(brandPrimary, 0.22)}`;
   const permalink =
     typeof window !== 'undefined' && window.location?.origin
       ? `${window.location.origin}/public/s/${shareToken}`
@@ -371,26 +371,14 @@ export default function PublicFeedPage({
     return (
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="text-xs font-medium text-neutral-600">系列</div>
+          <div className="text-xs font-medium text-neutral-600 dark:text-neutral-300">系列</div>
           <div className="flex flex-wrap gap-2">
             {series.map((item) => (
               <button
                 key={item.id}
                 type="button"
                 onClick={() => setSeriesId(item.id)}
-                className={buildFilterPillClass(seriesId === item.id, {
-                  activeClassName: 'font-semibold text-white',
-                })}
-                style={
-                  seriesId === item.id
-                    ? {
-                        borderColor: brandPrimary,
-                        backgroundColor: brandPrimary,
-                        color: '#ffffff',
-                        boxShadow: activeButtonShadow,
-                      }
-                    : undefined
-                }
+                className={buildFilterPillClass(seriesId === item.id)}
               >
                 {item.name}
               </button>
@@ -399,7 +387,7 @@ export default function PublicFeedPage({
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="text-xs font-medium text-neutral-600">性别</div>
+          <div className="text-xs font-medium text-neutral-600 dark:text-neutral-300">性别</div>
           <div className="flex gap-2">
             {[
               { key: 'all' as const, label: '全部' },
@@ -410,19 +398,7 @@ export default function PublicFeedPage({
                 key={item.key}
                 type="button"
                 onClick={() => setSex(item.key)}
-                className={buildFilterPillClass(sex === item.key, {
-                  activeClassName: 'font-semibold text-white',
-                })}
-                style={
-                  sex === item.key
-                    ? {
-                        borderColor: brandPrimary,
-                        backgroundColor: brandPrimary,
-                        color: '#ffffff',
-                        boxShadow: activeButtonShadow,
-                      }
-                    : undefined
-                }
+                className={buildFilterPillClass(sex === item.key)}
               >
                 {item.label}
               </button>
@@ -431,7 +407,7 @@ export default function PublicFeedPage({
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="text-xs font-medium text-neutral-600">状态</div>
+          <div className="text-xs font-medium text-neutral-600 dark:text-neutral-300">状态</div>
           <div className="flex gap-2">
             {[
               { key: 'all' as const, label: '全部' },
@@ -442,19 +418,7 @@ export default function PublicFeedPage({
                 key={item.key}
                 type="button"
                 onClick={() => setStatus(item.key)}
-                className={buildFilterPillClass(status === item.key, {
-                  activeClassName: 'font-semibold text-white',
-                })}
-                style={
-                  status === item.key
-                    ? {
-                        borderColor: brandPrimary,
-                        backgroundColor: brandPrimary,
-                        color: '#ffffff',
-                        boxShadow: activeButtonShadow,
-                      }
-                    : undefined
-                }
+                className={buildFilterPillClass(status === item.key)}
               >
                 {item.label}
               </button>
@@ -578,7 +542,7 @@ export default function PublicFeedPage({
             onClick={() => setIsMobileFilterModalOpen(false)}
           >
             <div
-              className="mx-auto w-[min(92vw,38rem)] max-h-[86vh] overflow-y-auto rounded-3xl border border-neutral-200 bg-white p-4 shadow-2xl dark:border-white/10 dark:bg-neutral-900"
+              className="mx-auto w-[min(92vw,38rem)] max-h-[86vh] overflow-y-auto rounded-3xl border border-neutral-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,245,236,0.95))] p-4 shadow-2xl dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(23,23,23,0.98),rgba(10,10,10,0.96))]"
               onClick={(event) => event.stopPropagation()}
             >
               <div className="mb-3 flex items-start justify-between gap-3">
@@ -589,6 +553,9 @@ export default function PublicFeedPage({
                   <p className="text-xs text-neutral-600 dark:text-neutral-400">
                     选择条件后会实时更新列表。
                   </p>
+                </div>
+                <div className={buildFilterPillClass(activeFilterCount > 0, { className: 'shrink-0 text-[11px]' })}>
+                  {activeFilterCount > 0 ? `已选 ${activeFilterCount} 项` : '全部结果'}
                 </div>
                 <button
                   type="button"

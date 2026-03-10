@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
-import { requestCodeRequestSchema, requestCodeResponseSchema } from '@eggturtle/shared/auth';
+import { requestSmsCodeRequestSchema, requestSmsCodeResponseSchema } from '@eggturtle/shared/auth';
 
 import { getAdminApiBaseUrl } from '@/lib/server-session';
 
 export async function POST(request: Request) {
   try {
-    const payload = requestCodeRequestSchema.parse(await request.json());
+    const payload = requestSmsCodeRequestSchema.parse(await request.json());
 
-    const upstreamResponse = await fetch(`${getAdminApiBaseUrl()}/auth/request-code`, {
+    const upstreamResponse = await fetch(`${getAdminApiBaseUrl()}/auth/request-sms-code`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -22,13 +22,13 @@ export async function POST(request: Request) {
     if (!upstreamResponse.ok) {
       return NextResponse.json(
         {
-          message: pickErrorMessage(body, `Request failed with status ${upstreamResponse.status}`)
+          message: pickErrorMessage(body, `请求失败（${upstreamResponse.status}）`)
         },
         { status: upstreamResponse.status }
       );
     }
 
-    return NextResponse.json(requestCodeResponseSchema.parse(body));
+    return NextResponse.json(requestSmsCodeResponseSchema.parse(body));
   } catch {
     return NextResponse.json(
       {

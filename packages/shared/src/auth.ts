@@ -47,6 +47,7 @@ export const authUserSchema = z.object({
   email: z.string().email(),
   account: authNullableAccountSchema,
   name: z.string().nullable(),
+  isSuperAdmin: z.boolean(),
 });
 
 export const requestCodeRequestSchema = z.object({

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { verifyCodeRequestSchema, verifyCodeResponseSchema } from '@eggturtle/shared/auth';
+import { phoneLoginRequestSchema, phoneLoginResponseSchema } from '@eggturtle/shared/auth';
 
 import {
   applySessionCookie,
@@ -10,9 +10,8 @@ import {
 
 export async function POST(request: Request) {
   try {
-    const payload = verifyCodeRequestSchema.parse(await request.json());
-
-    const upstreamResponse = await fetch(`${getAdminApiBaseUrl()}/auth/verify-code`, {
+    const payload = phoneLoginRequestSchema.parse(await request.json());
+    const upstreamResponse = await fetch(`${getAdminApiBaseUrl()}/auth/phone-login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -28,14 +27,14 @@ export async function POST(request: Request) {
       return withClearedSessionCookie(
         NextResponse.json(
           {
-            message: pickErrorMessage(body, `Request failed with status ${upstreamResponse.status}`)
+            message: pickErrorMessage(body, `请求失败（${upstreamResponse.status}）`)
           },
           { status: upstreamResponse.status }
         )
       );
     }
 
-    const { accessToken } = verifyCodeResponseSchema.parse(body);
+    const { accessToken } = phoneLoginResponseSchema.parse(body);
     const session = await resolveSessionFromToken(accessToken);
 
     if (!session || !session.user.isSuperAdmin) {

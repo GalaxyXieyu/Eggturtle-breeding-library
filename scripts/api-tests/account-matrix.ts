@@ -383,7 +383,7 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
     } else if (superAdminCheck.status !== 200) {
       ctx.log.warn('account-matrix.super-admin.warn', {
         status: superAdminCheck.status,
-        hint: 'Enable SUPER_ADMIN_ENABLED and SUPER_ADMIN_EMAILS for positive assertions.',
+        hint: 'Mark the target user as isSuperAdmin=true for positive assertions.',
       });
     } else {
       checks += 1;

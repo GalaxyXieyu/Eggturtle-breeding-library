@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { Copy, Gift, Sparkles } from 'lucide-react';
+import { Copy, Sparkles } from 'lucide-react';
 
 import { copyTextWithFallback } from '@/lib/browser-share';
 import { formatApiError } from '@/lib/error-utils';
@@ -128,13 +128,14 @@ export default function ReferralPromoCard({
             好友后续每次续费，你再得 30 天；每人每月最多 60 天。奖励直充 PRO，到期时间顺延。
           </p>
         </div>
-        <span
-          className={`inline-flex shrink-0 items-center justify-center rounded-full bg-neutral-900 text-[#FFD400] ${
-            compact ? 'h-8 w-8' : 'h-9 w-9'
+        <Link
+          href={`/app/${tenantSlug}/account?tab=referral`}
+          className={`inline-flex shrink-0 items-center justify-center rounded-full border border-neutral-900 bg-white font-semibold text-neutral-900 transition hover:bg-neutral-50 ${
+            compact ? 'min-h-7 px-2.5 py-1 text-[11px]' : 'min-h-8 px-3 py-1.5 text-xs'
           }`}
         >
-          <Gift size={compact ? 14 : 16} />
-        </span>
+          去邀请中心
+        </Link>
       </div>
 
       <div className={`grid ${compact ? 'mt-1.5 gap-1.5' : 'mt-3 gap-2'} ${compact ? 'grid-cols-2' : 'grid-cols-1 sm:grid-cols-3'}`}>
@@ -164,28 +165,6 @@ export default function ReferralPromoCard({
             </p>
           </div>
         ) : null}
-      </div>
-
-      <div className={`flex flex-wrap ${compact ? 'mt-1.5 gap-1.5' : 'mt-3 gap-2'}`}>
-        <button
-          type="button"
-          onClick={() => void handleCopy()}
-          disabled={!overview || !shareUrl}
-          className={`inline-flex items-center justify-center gap-2 rounded-full bg-neutral-900 font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-60 ${
-            compact ? 'min-h-8 px-2.5 py-1 text-[11px]' : 'min-h-10 px-4 py-2 text-sm'
-          }`}
-        >
-          <Copy size={compact ? 13 : 14} />
-          复制邀请链接
-        </button>
-        <Link
-          href={`/app/${tenantSlug}/account?tab=referral`}
-          className={`inline-flex items-center justify-center rounded-full border border-neutral-900 bg-white font-semibold text-neutral-900 transition hover:bg-neutral-50 ${
-            compact ? 'min-h-8 px-2.5 py-1 text-[11px]' : 'min-h-10 px-4 py-2 text-sm'
-          }`}
-        >
-          去邀请中心
-        </Link>
       </div>
 
       {notice ? (

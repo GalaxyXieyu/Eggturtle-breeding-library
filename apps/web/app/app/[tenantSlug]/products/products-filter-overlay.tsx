@@ -55,6 +55,8 @@ export default function ProductsFilterOverlay({
     return null;
   }
 
+  const activeFilterCount = Number(Boolean(searchInput.trim())) + Number(Boolean(sexFilter)) + Number(Boolean(statusFilter)) + Number(Boolean(seriesFilterId));
+
   const renderSexPills = () => {
     return SEX_FILTER_OPTIONS.map((item) => {
       const selected = sexFilter === item.value;
@@ -120,7 +122,7 @@ export default function ProductsFilterOverlay({
   const panelBody = (
     <div className="grid gap-3">
       <div className="grid gap-1.5">
-        <p className="text-xs font-semibold text-neutral-600">关键词</p>
+        <p className="text-xs font-semibold text-neutral-600 dark:text-neutral-300">关键词</p>
         <Input
           type="text"
           placeholder="按编号 / 名称 / 描述搜索"
@@ -131,17 +133,17 @@ export default function ProductsFilterOverlay({
       </div>
 
       <div className="grid gap-1.5">
-        <p className="text-xs font-medium text-neutral-600">性别</p>
+        <p className="text-xs font-medium text-neutral-600 dark:text-neutral-300">性别</p>
         <div className="flex flex-wrap gap-2">{renderSexPills()}</div>
       </div>
 
       <div className="grid gap-1.5">
-        <p className="text-xs font-medium text-neutral-600">状态</p>
+        <p className="text-xs font-medium text-neutral-600 dark:text-neutral-300">状态</p>
         <div className="flex flex-wrap gap-2">{renderStatusPills()}</div>
       </div>
 
       <div className="grid gap-1.5">
-        <p className="text-xs font-medium text-neutral-600">系列</p>
+        <p className="text-xs font-medium text-neutral-600 dark:text-neutral-300">系列</p>
         <div className="flex flex-wrap gap-2">{renderSeriesPills()}</div>
         {hasMoreSeriesOptions ? (
           <NativeSelect
@@ -163,8 +165,8 @@ export default function ProductsFilterOverlay({
         ) : null}
       </div>
 
-      <div className="flex items-center justify-between gap-2 border-t border-neutral-200 pt-2">
-        <span className="text-xs text-neutral-500">点选即应用，输入关键词会在 200ms 后同步列表。</span>
+      <div className="flex items-center justify-between gap-2 border-t border-neutral-200 pt-2 dark:border-white/10">
+        <span className="text-xs text-neutral-500 dark:text-neutral-400">点选即应用，输入关键词会在 200ms 后同步列表。</span>
         <div className="flex gap-2">
           <Button type="button" size="sm" variant="secondary" onClick={onReset}>
             清空
@@ -187,7 +189,7 @@ export default function ProductsFilterOverlay({
         onClick={onClose}
       >
         <div
-          className="mx-auto w-[min(92vw,38rem)] max-h-[86vh] overflow-y-auto rounded-3xl border border-neutral-200 bg-white p-4 shadow-2xl dark:border-white/10 dark:bg-neutral-900"
+          className="mx-auto w-[min(92vw,38rem)] max-h-[86vh] overflow-y-auto rounded-3xl border border-neutral-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,245,236,0.95))] p-4 shadow-2xl dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(23,23,23,0.98),rgba(10,10,10,0.96))]"
           data-products-filter-root="true"
           onClick={(event) => event.stopPropagation()}
         >
@@ -195,6 +197,9 @@ export default function ProductsFilterOverlay({
             <div>
               <p className="text-base font-semibold text-neutral-900 dark:text-neutral-100">筛选宠物</p>
               <p className="text-xs text-neutral-600 dark:text-neutral-400">选择条件后会实时更新列表。</p>
+            </div>
+            <div className={buildFilterPillClass(activeFilterCount > 0, { className: 'shrink-0 text-[11px]' })}>
+              {activeFilterCount > 0 ? `已选 ${activeFilterCount} 项` : '全部结果'}
             </div>
           </div>
           {panelBody}
@@ -204,7 +209,7 @@ export default function ProductsFilterOverlay({
   }
 
   const placementClass =
-    'fixed left-1/2 z-40 w-[min(96vw,620px)] -translate-x-1/2 max-h-[min(80vh,560px)] overflow-y-auto overscroll-contain rounded-2xl border border-neutral-200 bg-white/95 p-3 shadow-[0_18px_40px_rgba(15,23,42,0.16)] backdrop-blur';
+    'fixed left-1/2 z-40 w-[min(96vw,620px)] -translate-x-1/2 max-h-[min(80vh,560px)] overflow-y-auto overscroll-contain rounded-2xl border border-neutral-200 bg-white/95 p-3 shadow-[0_18px_40px_rgba(15,23,42,0.16)] backdrop-blur dark:border-white/10 dark:bg-neutral-900/95';
 
   const placementStyle: CSSProperties | undefined =
     typeof window === 'undefined'

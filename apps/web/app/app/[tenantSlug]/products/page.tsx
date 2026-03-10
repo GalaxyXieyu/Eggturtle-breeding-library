@@ -140,6 +140,18 @@ function parseProductsPersistedState(raw: string | null): ProductsPagePersistedS
   }
 }
 
+function doesPersistedStateMatchQuery(
+  state: ProductsPagePersistedState,
+  query: Pick<ProductsListQuery, 'search' | 'sex' | 'seriesId' | 'status'>,
+) {
+  return (
+    state.searchInput.trim() === query.search &&
+    state.sexFilter.trim() === query.sex &&
+    state.seriesFilterId.trim() === query.seriesId &&
+    state.statusFilter.trim() === query.status
+  );
+}
+
 export default function TenantProductsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -180,6 +192,8 @@ export default function TenantProductsPage() {
   const [seriesFilterId, setSeriesFilterId] = useState(listQuery.seriesId);
   const [statusFilter, setStatusFilter] = useState(listQuery.status);
   const [hasHydratedState, setHasHydratedState] = useState(false);
+  const isInternalUpdateRef = useRef(false);
+  const restoredPersistedStateRef = useRef(false);
   const stateStorageKey = useMemo(
     () => buildProductsStateKey(tenantSlug, filterQueryKey),
     [tenantSlug, filterQueryKey]
@@ -256,10 +270,15 @@ export default function TenantProductsPage() {
     total: 0,
     totalPages: 1,
   });
+  const isDraftQuerySyncedWithUrl =
+    searchInput.trim() === listQuery.search &&
+    sexFilter.trim() === listQuery.sex &&
+    seriesFilterId.trim() === listQuery.seriesId &&
+    statusFilter.trim() === listQuery.status;
 
   const persistProductsState = useCallback(
     (scrollY: number) => {
-      if (typeof window === 'undefined') {
+      if (typeof window === 'undefined' || !isDraftQuerySyncedWithUrl) {
         return;
       }
 
@@ -281,14 +300,39 @@ export default function TenantProductsPage() {
         // Ignore storage quota and private mode write errors.
       }
     },
-    [searchInput, sexFilter, seriesFilterId, statusFilter, items, nextPage, hasMore, stateStorageKey]
+    [
+      hasMore,
+      isDraftQuerySyncedWithUrl,
+      items,
+      nextPage,
+      searchInput,
+      seriesFilterId,
+      sexFilter,
+      stateStorageKey,
+      statusFilter,
+    ]
   );
 
   useEffect(() => {
-    setSearchInput(listQuery.search);
-    setSexFilter(listQuery.sex);
-    setSeriesFilterId(listQuery.seriesId);
-    setStatusFilter(listQuery.status);
+    // Skip if this is an internal update (triggered by user action)
+    if (isInternalUpdateRef.current) {
+      isInternalUpdateRef.current = false;
+      return;
+    }
+
+    // Only update state if URL actually changed (e.g., browser back/forward)
+    if (searchInput !== listQuery.search) {
+      setSearchInput(listQuery.search);
+    }
+    if (sexFilter !== listQuery.sex) {
+      setSexFilter(listQuery.sex);
+    }
+    if (seriesFilterId !== listQuery.seriesId) {
+      setSeriesFilterId(listQuery.seriesId);
+    }
+    if (statusFilter !== listQuery.status) {
+      setStatusFilter(listQuery.status);
+    }
   }, [listQuery]);
 
   useEffect(() => {
@@ -606,13 +650,14 @@ export default function TenantProductsPage() {
 
   // Restore persisted state on mount
   useEffect(() => {
-    if (typeof window === 'undefined' || !tenantReady) {
+    if (typeof window === 'undefined' || !tenantReady || hasHydratedState) {
       return;
     }
 
-    const parsed = parseProductsPersistedState(window.sessionStorage.getItem(stateStorageKey));
+    let parsed = parseProductsPersistedState(window.sessionStorage.getItem(stateStorageKey));
     const dirtyAt = readProductsPageDirtyAt(tenantSlug);
     if (dirtyAt && (!parsed || dirtyAt > parsed.savedAt)) {
+      restoredPersistedStateRef.current = false;
       try {
         window.sessionStorage.removeItem(stateStorageKey);
       } catch {
@@ -621,10 +666,22 @@ export default function TenantProductsPage() {
       setHasHydratedState(true);
       return;
     }
+    if (parsed && !doesPersistedStateMatchQuery(parsed, listQuery)) {
+      restoredPersistedStateRef.current = false;
+      try {
+        window.sessionStorage.removeItem(stateStorageKey);
+      } catch {
+        // Ignore storage errors.
+      }
+      parsed = null;
+    }
     if (!parsed || Date.now() - parsed.savedAt > PRODUCTS_PAGE_STATE_TTL_MS) {
+      restoredPersistedStateRef.current = false;
       setHasHydratedState(true);
       return;
     }
+
+    restoredPersistedStateRef.current = true;
 
     // Restore filter states
     setSearchInput(parsed.searchInput);
@@ -652,17 +709,15 @@ export default function TenantProductsPage() {
     });
 
     setHasHydratedState(true);
-  }, [stateStorageKey, tenantReady, tenantSlug]);
+  }, [hasHydratedState, listQuery, stateStorageKey, tenantReady, tenantSlug]);
 
   useEffect(() => {
     if (!tenantReady || !hasHydratedState) {
       return;
     }
 
-    // Skip loading if we just restored from persisted state
-    const parsed = parseProductsPersistedState(window.sessionStorage.getItem(stateStorageKey));
-    if (parsed && Date.now() - parsed.savedAt <= PRODUCTS_PAGE_STATE_TTL_MS && items.length > 0) {
-      // State was restored, just load series options and share preview
+    if (restoredPersistedStateRef.current) {
+      restoredPersistedStateRef.current = false;
       void (async () => {
         try {
           await Promise.all([loadSeriesOptions(), loadSharePreview()]);
@@ -689,7 +744,7 @@ export default function TenantProductsPage() {
     return () => {
       isCancelled = true;
     };
-  }, [listQuery, loadProducts, loadSeriesOptions, loadSharePreview, tenantReady, hasHydratedState, stateStorageKey, items.length]);
+  }, [hasHydratedState, listQuery, loadProducts, loadSeriesOptions, loadSharePreview, tenantReady]);
 
   useEffect(() => {
     if (!tenantReady || !hasHydratedState || typeof window === 'undefined') {
@@ -846,6 +901,7 @@ export default function TenantProductsPage() {
       setError(null);
       setMessage(null);
       setContinueEditProductId(null);
+      isInternalUpdateRef.current = true;
       replaceListQuery(nextQuery);
     }, 200);
 

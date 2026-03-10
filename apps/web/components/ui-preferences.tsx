@@ -87,7 +87,7 @@ export function UiPreferencesProvider({ children }: { children: ReactNode }) {
     window.localStorage.setItem(STORAGE_KEYS.locale, locale);
     window.localStorage.setItem(STORAGE_KEYS.theme, theme);
     applyDocumentPreferences(locale, theme);
-  }, [hydrated, locale, theme]);
+  }, [locale, theme]);
 
   const setLocale = useCallback((nextLocale: UiLocale) => {
     setLocaleState(nextLocale);

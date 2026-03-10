@@ -11,8 +11,6 @@ import {
 } from '@/components/dashboard/nav-config';
 import { usePlatformBranding } from '@/lib/branding-client';
 
-const webSuperAdminEnabled = process.env.NEXT_PUBLIC_SUPER_ADMIN_ENABLED === 'true';
-
 type DashboardSidebarProps = {
   collapsed: boolean;
 };
@@ -23,14 +21,14 @@ const SIDEBAR_COPY = {
     navAriaLabel: '后台主导航',
     brandTitle: '选育溯源档案 平台后台',
     brandSubtitle: '跨用户运维控制台',
-    hint: '后台权限由服务端会话 + 白名单双重校验。'
+    hint: '后台权限由服务端会话与超级管理员权限双重校验。'
   },
   en: {
     asideAriaLabel: 'Admin navigation',
     navAriaLabel: 'Admin primary navigation',
     brandTitle: 'Breeding Traceability Record Admin Console',
     brandSubtitle: 'Cross-tenant operations control',
-    hint: 'Access control is enforced by session validation and allowlist checks.'
+    hint: 'Access control is enforced by session validation and super-admin permissions.'
   }
 } as const;
 
@@ -89,7 +87,7 @@ export function DashboardSidebar({ collapsed }: DashboardSidebarProps) {
       </nav>
 
       <div className="sidebar-footer">
-        <p className={`sidebar-hint${webSuperAdminEnabled ? ' enabled' : ''}`}>{copy.hint}</p>
+        <p className="sidebar-hint enabled">{copy.hint}</p>
       </div>
     </aside>
   );

@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 
-import { isSuperAdminEmailAllowlisted } from '@/lib/admin-auth';
 import {
   clearSessionCookie,
   getSessionToken,
@@ -16,7 +15,7 @@ export async function GET() {
 
   const session = await resolveSessionFromToken(token);
 
-  if (!session || !isSuperAdminEmailAllowlisted(session.user.email)) {
+  if (!session || !session.user.isSuperAdmin) {
     const response = NextResponse.json({ message: '未登录' }, { status: 401 });
     clearSessionCookie(response);
     return response;

@@ -10,7 +10,9 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
-    "prisma:seed": "prisma db seed"
+    "prisma:seed": "prisma db seed",
+    "super-admin:bootstrap": "ts-node --project tsconfig.json ../../scripts/seed/bootstrap_super_admin.ts",
+    "super-admin:set": "ts-node --project tsconfig.json ../../scripts/seed/set_super_admin.ts"
   },
   "dependencies": {
     "@alicloud/dypnsapi20170525": "^2.0.0",

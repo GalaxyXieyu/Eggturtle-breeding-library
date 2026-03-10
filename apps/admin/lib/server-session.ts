@@ -1,6 +1,11 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { meResponseSchema, type MeResponse } from '@eggturtle/shared';
+import {
+  meResponseSchema,
+  meProfileResponseSchema,
+  type MeResponse,
+  type MeProfileResponse
+} from '@eggturtle/shared';
 
 import { ADMIN_SESSION_COOKIE_NAME, DEFAULT_ADMIN_API_BASE_URL } from '@/lib/session-constants';
 
@@ -55,4 +60,21 @@ export async function resolveSessionFromToken(token: string): Promise<MeResponse
 
   const payload = await response.json();
   return meResponseSchema.parse(payload);
+}
+
+export async function resolveProfileFromToken(token: string): Promise<MeProfileResponse['profile'] | null> {
+  const response = await fetch(`${getAdminApiBaseUrl()}/me/profile`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    cache: 'no-store'
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const payload = await response.json();
+  return meProfileResponseSchema.parse(payload).profile;
 }

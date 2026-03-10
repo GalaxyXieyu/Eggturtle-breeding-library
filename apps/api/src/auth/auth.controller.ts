@@ -28,17 +28,21 @@ export class AuthController {
   constructor(private readonly authIdentityService: AuthIdentityService) {}
 
   @Post('request-code')
-  async requestCode(@Body() body: unknown) {
+  async requestCode(@Body() body: unknown, @Headers('x-eggturtle-auth-surface') surface?: string) {
     const payload = parseOrThrow(requestCodeRequestSchema, body);
-    const response = await this.authIdentityService.requestCode(payload.email);
+    const response = await this.authIdentityService.requestCode(payload.email, surface);
 
     return requestCodeResponseSchema.parse(response);
   }
 
   @Post('request-sms-code')
-  async requestSmsCode(@Body() body: unknown) {
+  async requestSmsCode(@Body() body: unknown, @Headers('x-eggturtle-auth-surface') surface?: string) {
     const payload = parseOrThrow(requestSmsCodeRequestSchema, body);
-    const response = await this.authIdentityService.requestSmsCode(payload.phoneNumber, payload.purpose);
+    const response = await this.authIdentityService.requestSmsCode(
+      payload.phoneNumber,
+      payload.purpose,
+      surface
+    );
 
     return requestSmsCodeResponseSchema.parse(response);
   }

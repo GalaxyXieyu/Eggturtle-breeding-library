@@ -214,7 +214,7 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
 
     ctx.log.warn('referrals.super-admin.warn', {
       status: firstPaymentResponse.status,
-      hint: 'Enable SUPER_ADMIN_ENABLED and include email in SUPER_ADMIN_EMAILS for full referral settlement checks.',
+      hint: 'Mark the settlement operator as isSuperAdmin=true for full referral settlement checks.',
     });
 
     return {

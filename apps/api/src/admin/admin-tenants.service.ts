@@ -676,6 +676,7 @@ export class AdminTenantsService {
         email: user.email,
         account: this.resolveUserAccount(user),
         name: user.name,
+        isSuperAdmin: user.isSuperAdmin,
         createdAt: user.createdAt.toISOString()
       }))
     };
@@ -747,7 +748,8 @@ export class AdminTenantsService {
           id: member.user.id,
           email: member.user.email,
           account: this.resolveUserAccount(member.user),
-          name: member.user.name
+          name: member.user.name,
+          isSuperAdmin: member.user.isSuperAdmin
         }
       }))
     };
@@ -772,7 +774,13 @@ export class AdminTenantsService {
     }
 
     let result: {
-      user: { id: string; email: string; account: string | null; name: string | null };
+      user: {
+        id: string;
+        email: string;
+        account: string | null;
+        name: string | null;
+        isSuperAdmin: boolean;
+      };
       membership: { role: TenantMemberRole; createdAt: Date };
       created: boolean;
       previousRole: TenantMemberRole | null;
@@ -882,7 +890,8 @@ export class AdminTenantsService {
         id: result.user.id,
         email: result.user.email,
         account: this.resolveUserAccount(result.user),
-        name: result.user.name
+        name: result.user.name,
+        isSuperAdmin: result.user.isSuperAdmin
       },
       role: result.membership.role,
       joinedAt: result.membership.createdAt.toISOString(),

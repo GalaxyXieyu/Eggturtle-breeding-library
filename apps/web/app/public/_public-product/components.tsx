@@ -195,7 +195,7 @@ export function SeriesIntroCard({
               aria-controls={descriptionPanelId}
               aria-label={isCollapsed ? `展开 ${series.name} 系列介绍` : `收起 ${series.name} 系列介绍`}
               onClick={() => setIsCollapsed((current) => !current)}
-              className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/18 bg-white/12 px-3 py-2 text-xs font-semibold text-white shadow-[0_10px_24px_rgba(0,0,0,0.18)] backdrop-blur-md [touch-action:manipulation] transition hover:border-white/28 hover:bg-white/18 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black/35"
+              className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/25 bg-white/20 px-3 py-2 text-xs font-semibold text-white shadow-[0_10px_24px_rgba(0,0,0,0.18)] backdrop-blur-md [touch-action:manipulation] transition hover:border-white/35 hover:bg-white/28 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black/35"
             >
               <span className="hidden sm:inline">{isCollapsed ? '展开介绍' : '收起介绍'}</span>
               <span className="sm:hidden">{isCollapsed ? '展开' : '收起'}</span>

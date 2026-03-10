@@ -3,6 +3,7 @@ import { randomBytes, scryptSync } from 'node:crypto';
 
 const prisma = new PrismaClient();
 
+const DEFAULT_SUPER_ADMIN_ACCOUNT = 'admin';
 const DEFAULT_SUPER_ADMIN_EMAIL = 'admin@local.test';
 const DEFAULT_SUPER_ADMIN_PASSWORD = 'Siri@2026';
 
@@ -17,6 +18,7 @@ async function main() {
   const ownerEmail = 'owner@eggturtle.local';
   const tenantSlug = 'eggturtle-demo';
   const now = new Date();
+  const shouldSeedBootstrapAdmin = process.env.NODE_ENV !== 'production';
 
   const owner = await prisma.user.upsert({
     where: { email: ownerEmail },
@@ -51,28 +53,49 @@ async function main() {
     }
   });
 
-  const superAdmin = await prisma.user.upsert({
-    where: { email: DEFAULT_SUPER_ADMIN_EMAIL },
-    update: {
-      name: 'Platform Admin',
-      passwordHash: hashPassword(DEFAULT_SUPER_ADMIN_PASSWORD),
-      passwordUpdatedAt: now
-    },
-    create: {
-      email: DEFAULT_SUPER_ADMIN_EMAIL,
-      name: 'Platform Admin',
-      passwordHash: hashPassword(DEFAULT_SUPER_ADMIN_PASSWORD),
-      passwordUpdatedAt: now
-    }
-  });
+  let superAdmin:
+    | {
+        account: string | null;
+        email: string;
+      }
+    | null = null;
+  let superAdminPassword: string | null = null;
+
+  if (shouldSeedBootstrapAdmin) {
+    const existingSuperAdmin = await prisma.user.findUnique({
+      where: { email: DEFAULT_SUPER_ADMIN_EMAIL },
+      select: { id: true }
+    });
+
+    superAdmin = await prisma.user.upsert({
+      where: { email: DEFAULT_SUPER_ADMIN_EMAIL },
+      update: {
+        account: DEFAULT_SUPER_ADMIN_ACCOUNT,
+        isSuperAdmin: true,
+        name: 'Platform Admin'
+      },
+      create: {
+        email: DEFAULT_SUPER_ADMIN_EMAIL,
+        account: DEFAULT_SUPER_ADMIN_ACCOUNT,
+        isSuperAdmin: true,
+        name: 'Platform Admin',
+        passwordHash: hashPassword(DEFAULT_SUPER_ADMIN_PASSWORD),
+        passwordUpdatedAt: null
+      }
+    });
+
+    superAdminPassword = existingSuperAdmin ? '(unchanged)' : DEFAULT_SUPER_ADMIN_PASSWORD;
+  }
 
   console.info('Seed complete:', {
     ownerEmail,
     tenantSlug,
     ownerId: owner.id,
     tenantId: tenant.id,
-    superAdminEmail: superAdmin.email,
-    superAdminPassword: DEFAULT_SUPER_ADMIN_PASSWORD
+    bootstrapAdminSeeded: shouldSeedBootstrapAdmin,
+    superAdminAccount: superAdmin?.account ?? null,
+    superAdminEmail: superAdmin?.email ?? null,
+    superAdminPassword
   });
 }
 

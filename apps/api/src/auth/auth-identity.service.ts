@@ -39,13 +39,14 @@ export class AuthIdentityService {
     private readonly authSharedService: AuthSharedService,
   ) {}
 
-  async requestCode(email: string): Promise<RequestCodeResponse> {
+  async requestCode(email: string, surface?: string): Promise<RequestCodeResponse> {
     const user = await this.prisma.user.findUnique({
       where: {
         email,
       },
       select: {
         id: true,
+        isSuperAdmin: true,
       },
     });
 
@@ -55,6 +56,8 @@ export class AuthIdentityService {
         errorCode: ErrorCode.Unauthorized,
       });
     }
+
+    this.authSharedService.assertAdminSurfaceAccess(user, surface);
 
     const code = this.authSharedService.generateCode();
     const salt = randomBytes(16).toString('hex');
@@ -90,6 +93,7 @@ export class AuthIdentityService {
   async requestSmsCode(
     phoneNumber: string,
     purpose: SmsCodePurpose = 'register',
+    surface?: string,
   ): Promise<RequestSmsCodeResponse> {
     const { shadowEmail, user } = await this.authSharedService.loadPhoneIdentity(this.prisma, phoneNumber);
 
@@ -105,6 +109,10 @@ export class AuthIdentityService {
         message: 'Phone number is already registered.',
         errorCode: ErrorCode.InvalidRequestPayload,
       });
+    }
+
+    if (purpose === 'login' && user) {
+      this.authSharedService.assertAdminSurfaceAccess(user, surface);
     }
 
     const code = this.authSharedService.generateCode();
@@ -227,6 +235,8 @@ export class AuthIdentityService {
         });
       }
 
+      this.authSharedService.assertAdminSurfaceAccess(existingUser, surface);
+
       if (!password) {
         return existingUser;
       }
@@ -257,12 +267,7 @@ export class AuthIdentityService {
 
     return {
       accessToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        account: this.authSharedService.resolveUserAccount(user),
-        name: user.name,
-      },
+      user: this.authSharedService.toAuthUser(user),
     };
   }
 
@@ -331,6 +336,8 @@ export class AuthIdentityService {
       this.authSharedService.throwInvalidCredentials();
     }
 
+    this.authSharedService.assertAdminSurfaceAccess(user, surface);
+
     const tenantId = await this.authSharedService.resolveDefaultTenantId(user.id);
     const accessToken = this.authSharedService.issueAccessToken(
       {
@@ -346,12 +353,7 @@ export class AuthIdentityService {
 
     return {
       accessToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        account: this.authSharedService.resolveUserAccount(user),
-        name: user.name,
-      },
+      user: this.authSharedService.toAuthUser(user),
     };
   }
 
@@ -374,6 +376,8 @@ export class AuthIdentityService {
             errorCode: ErrorCode.Unauthorized,
           });
         }
+
+        this.authSharedService.assertAdminSurfaceAccess(user, surface);
 
         if (!boundPhone) {
           const existingBinding = await tx.userPhoneBinding.findUnique({
@@ -475,12 +479,7 @@ export class AuthIdentityService {
 
         return {
           accessToken,
-          user: {
-            id: user.id,
-            email: user.email,
-            account: this.authSharedService.resolveUserAccount(user),
-            name: user.name,
-          },
+          user: this.authSharedService.toAuthUser(user),
           tenant: {
             id: membership.tenant.id,
             slug: membership.tenant.slug,
@@ -725,12 +724,7 @@ export class AuthIdentityService {
 
         return {
           accessToken,
-          user: {
-            id: user.id,
-            email: user.email,
-            account: this.authSharedService.resolveUserAccount(user),
-            name: user.name,
-          },
+          user: this.authSharedService.toAuthUser(user),
           tenant: {
             id: membership.tenant.id,
             slug: membership.tenant.slug,
