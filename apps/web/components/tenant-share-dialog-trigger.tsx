@@ -199,6 +199,8 @@ export default function TenantShareDialogTrigger({
   );
 
   useEffect(() => {
+    mountedRef.current = true;
+
     return () => {
       mountedRef.current = false;
       cancelShareRequest();

@@ -122,6 +122,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
     ENABLE_FLOATING_SHARE_BUTTON &&
     pathname !== `/app/${tenantSlug}` &&
     pathname !== `/app/${tenantSlug}/products` &&
+    pathname !== `/app/${tenantSlug}/share-presentation` &&
     !pathname?.endsWith('/account') &&
     !pathname?.endsWith('/certificates') &&
     !/^\/app\/[^/]+\/(?:products|breeders)\/[^/]+$/.test(pathname);

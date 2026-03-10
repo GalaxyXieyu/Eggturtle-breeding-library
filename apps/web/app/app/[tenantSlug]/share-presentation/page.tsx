@@ -1,7 +1,15 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  ChangeEvent,
+  FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
   getTenantSharePresentationResponseSchema,
@@ -10,30 +18,39 @@ import {
   updateTenantSharePresentationResponseSchema,
   type TenantSharePresentation,
 } from '@eggturtle/shared';
-import { Share2 } from 'lucide-react';
-
 import {
-  apiRequest,
-  resolveAuthenticatedAssetUrl,
-} from '@/lib/api-client';
+  Check,
+  ImagePlus,
+  Images,
+  MessageCircleMore,
+  PenLine,
+  RefreshCcw,
+  Share2,
+} from 'lucide-react';
+
+import ShareCoverCropDialog from './share-cover-crop-dialog';
+import { apiRequest, resolveAuthenticatedAssetUrl } from '@/lib/api-client';
 import { formatApiError } from '@/lib/error-utils';
 import { ensureTenantRouteSession } from '@/lib/tenant-route-session';
 import { uploadSingleFileWithAuth } from '@/lib/upload-client';
 import TenantShareDialogTrigger from '@/components/tenant-share-dialog-trigger';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+  MobileSettingsCard as SettingsCard,
+  MobileSettingsEditorPanel as EditorPanel,
+  MobileSettingsHeader,
+  MobileSettingRow as SettingRow,
+} from '@/components/ui/mobile-settings';
 import { ImageUploadDropzone } from '@/components/ui/image-upload-dropzone';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 
 const DEFAULT_HERO_IMAGE = '/images/mg_04.jpg';
+const FORM_ID = 'share-presentation-form';
+
+type EditorKey = 'title' | 'subtitle' | 'contact' | 'cover' | 'carousel' | null;
 
 type FormState = {
   feedTitle: string;
@@ -47,9 +64,21 @@ type FormState = {
   wechatId: string;
 };
 
-type ThemeColorOption = {
-  label: string;
-  value: string;
+type PreviewState = {
+  feedTitle: string;
+  feedSubtitle: string;
+  brandPrimary: string;
+  brandSecondary: string;
+  heroImages: string[];
+  showWechatBlock: boolean;
+  wechatQrImageUrl: string | null;
+  wechatId: string | null;
+};
+
+type CropSource = {
+  fileName: string;
+  revokeOnClose: boolean;
+  url: string;
 };
 
 const DEFAULT_FORM: FormState = {
@@ -64,24 +93,6 @@ const DEFAULT_FORM: FormState = {
   wechatId: '',
 };
 
-const PRIMARY_COLOR_OPTIONS: ThemeColorOption[] = [
-  { label: '金黄', value: '#FFD400' },
-  { label: '橙金', value: '#F59E0B' },
-  { label: '珊瑚', value: '#FB7185' },
-  { label: '青蓝', value: '#06B6D4' },
-  { label: '翠绿', value: '#22C55E' },
-  { label: '紫罗兰', value: '#8B5CF6' },
-];
-
-const SECONDARY_COLOR_OPTIONS: ThemeColorOption[] = [
-  { label: '石墨', value: '#1f2937' },
-  { label: '深蓝灰', value: '#334155' },
-  { label: '午夜蓝', value: '#172554' },
-  { label: '深墨绿', value: '#14532d' },
-  { label: '深酒红', value: '#4c0519' },
-  { label: '深棕', value: '#3f2a18' },
-];
-
 export default function SharePresentationPage() {
   const router = useRouter();
   const params = useParams<{ tenantSlug: string }>();
@@ -95,22 +106,39 @@ export default function SharePresentationPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
-  const primaryColorOptions = useMemo(() => PRIMARY_COLOR_OPTIONS, []);
-  const secondaryColorOptions = useMemo(() => SECONDARY_COLOR_OPTIONS, []);
+  const [savedForm, setSavedForm] = useState<FormState | null>(null);
+  const [cropSource, setCropSource] = useState<CropSource | null>(null);
+  const [cropUploading, setCropUploading] = useState(false);
+  const [activeEditor, setActiveEditor] = useState<EditorKey>(null);
+
   const heroImageUrls = useMemo(
     () => normalizeHeroImageList(form.heroImagesText, form.previewImageUrl),
     [form.heroImagesText, form.previewImageUrl],
   );
   const maxHeroImages = normalizeNullableString(form.previewImageUrl) ? 9 : 10;
-  const isUploadingAsset = uploadingPreviewImage || uploadingHeroImages || uploadingWechatImage;
+  const isUploadingAsset =
+    uploadingPreviewImage || uploadingHeroImages || uploadingWechatImage || cropUploading;
+  const hasUnsavedChanges = useMemo(() => {
+    if (!savedForm) {
+      return false;
+    }
+
+    return JSON.stringify(form) !== JSON.stringify(savedForm);
+  }, [form, savedForm]);
+
+  const applyPresentation = useCallback((presentation: TenantSharePresentation) => {
+    const nextForm = toFormState(presentation);
+    setForm(nextForm);
+    setSavedForm(nextForm);
+  }, []);
 
   const loadPresentation = useCallback(async () => {
     const response = await apiRequest('/tenant-share-presentation', {
       responseSchema: getTenantSharePresentationResponseSchema,
     });
 
-    setForm(toFormState(response.presentation));
-  }, []);
+    applyPresentation(response.presentation);
+  }, [applyPresentation]);
 
   useEffect(() => {
     let cancelled = false;
@@ -136,7 +164,6 @@ export default function SharePresentationPage() {
         await loadPresentation();
 
         if (!cancelled) {
-          setError(null);
           setLoading(false);
         }
       } catch (requestError) {
@@ -152,8 +179,7 @@ export default function SharePresentationPage() {
     };
   }, [loadPresentation, router, tenantSlug]);
 
-
-  const preview = useMemo(() => {
+  const preview = useMemo<PreviewState>(() => {
     const heroImages = buildHeroImages(form.previewImageUrl, form.heroImagesText);
 
     return {
@@ -168,6 +194,23 @@ export default function SharePresentationPage() {
       wechatId: normalizeNullableString(form.wechatId),
     };
   }, [form, tenantSlug]);
+
+  const closeCropDialog = useCallback(() => {
+    setCropSource((current) => {
+      if (current?.revokeOnClose) {
+        URL.revokeObjectURL(current.url);
+      }
+      return null;
+    });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (cropSource?.revokeOnClose) {
+        URL.revokeObjectURL(cropSource.url);
+      }
+    };
+  }, [cropSource]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -196,7 +239,8 @@ export default function SharePresentationPage() {
         responseSchema: updateTenantSharePresentationResponseSchema,
       });
 
-      setForm(toFormState(response.presentation));
+      applyPresentation(response.presentation);
+      setActiveEditor(null);
       setMessage('已保存，公开分享页刷新后立即生效。');
     } catch (requestError) {
       setError(formatApiError(requestError));
@@ -205,34 +249,78 @@ export default function SharePresentationPage() {
     }
   }
 
+  function toggleEditor(nextEditor: Exclude<EditorKey, null>) {
+    setActiveEditor((current) => (current === nextEditor ? null : nextEditor));
+    setMessage(null);
+    setError(null);
+  }
+
+  function openCropDialogFromFile(file: File) {
+    const objectUrl = URL.createObjectURL(file);
+    setCropSource({
+      fileName: file.name || 'share-cover.jpg',
+      revokeOnClose: true,
+      url: objectUrl,
+    });
+  }
+
   async function handleUploadPreviewImage(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
+    event.target.value = '';
+
     if (!file) {
       return;
     }
 
+    setError(null);
+    setMessage(null);
+    openCropDialogFromFile(file);
+  }
+
+  async function handleConfirmCrop(payload: { blob: Blob; fileName: string }) {
+    setCropUploading(true);
     setUploadingPreviewImage(true);
     setError(null);
     setMessage(null);
 
     try {
-      const uploaded = await uploadSharePresentationImage(file);
+      const cropFile = new File([payload.blob], ensureJpegFileName(payload.fileName), {
+        type: payload.blob.type || 'image/jpeg',
+      });
+      const uploaded = await uploadSharePresentationImage(cropFile);
       setForm((prev) => ({
         ...prev,
         previewImageUrl: uploaded.url,
         heroImagesText: normalizeHeroImageList(prev.heroImagesText, uploaded.url).join('\n'),
       }));
-      setMessage('封面图上传成功。');
+      setMessage('封面图已裁切并上传。');
+      closeCropDialog();
     } catch (requestError) {
       setError(formatApiError(requestError));
     } finally {
+      setCropUploading(false);
       setUploadingPreviewImage(false);
-      event.target.value = '';
     }
+  }
+
+  function handleRecropCurrentPreview() {
+    if (!form.previewImageUrl) {
+      return;
+    }
+
+    setError(null);
+    setMessage(null);
+    setCropSource({
+      fileName: 'share-cover.jpg',
+      revokeOnClose: false,
+      url: resolveAuthenticatedAssetUrl(form.previewImageUrl),
+    });
   }
 
   async function handleUploadHeroImages(event: ChangeEvent<HTMLInputElement>) {
     const files = event.target.files ? Array.from(event.target.files) : [];
+    event.target.value = '';
+
     if (files.length === 0) {
       return;
     }
@@ -267,9 +355,7 @@ export default function SharePresentationPage() {
       }));
 
       if (files.length > uploadQueue.length) {
-        setMessage(
-          `已上传 ${uploadQueue.length} 张，超出上限的 ${files.length - uploadQueue.length} 张已忽略。`,
-        );
+        setMessage(`已上传 ${uploadQueue.length} 张，超出上限的图片已忽略。`);
       } else {
         setMessage(`已上传 ${uploadQueue.length} 张轮播图。`);
       }
@@ -277,12 +363,13 @@ export default function SharePresentationPage() {
       setError(formatApiError(requestError));
     } finally {
       setUploadingHeroImages(false);
-      event.target.value = '';
     }
   }
 
   async function handleUploadWechatImage(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
+    event.target.value = '';
+
     if (!file) {
       return;
     }
@@ -302,156 +389,331 @@ export default function SharePresentationPage() {
       setError(formatApiError(requestError));
     } finally {
       setUploadingWechatImage(false);
-      event.target.value = '';
     }
   }
 
+  function handleRestoreSaved() {
+    if (!savedForm) {
+      return;
+    }
+
+    setForm(savedForm);
+    setActiveEditor(null);
+    setError(null);
+    setMessage('已恢复为当前已保存配置。');
+  }
+
+  const contactSummary = form.showWechatBlock
+    ? `已开启${preview.wechatId ? ` · ${preview.wechatId}` : ''}${preview.wechatQrImageUrl ? ' · 已上传二维码' : ''}`
+    : '已关闭';
+  const coverSummary = form.previewImageUrl ? '已设置封面图' : '未单独设置，当前走默认头图';
+  const coverDetail = form.previewImageUrl
+    ? '点击后可重新上传、重新裁切或移除。'
+    : heroImageUrls[0]
+      ? '当前公开页会使用轮播图第一张作为头图。'
+      : '当前公开页会使用系统默认头图。';
+  const carouselSummary =
+    heroImageUrls.length > 0 ? `已上传 ${heroImageUrls.length} 张` : '未上传轮播图';
+
   return (
-    <main className="space-y-4 pb-8 sm:space-y-6">
-      {loading ? (
-        <Card className="rounded-3xl border-neutral-200/90 bg-white p-6">
-          <CardContent className="p-0 text-sm text-neutral-600">正在加载分享展示...</CardContent>
-        </Card>
-      ) : null}
+    <>
+      <main className="relative mx-auto w-full max-w-3xl overflow-x-hidden px-4 pb-[calc(56px+max(24px,env(safe-area-inset-bottom))+7rem)] pt-3 sm:px-5 sm:pb-28 sm:pt-4">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-48 bg-[radial-gradient(circle_at_top_right,rgba(255,212,0,0.18),transparent_36%),radial-gradient(circle_at_top_left,rgba(255,255,255,0.92),transparent_34%)]" />
+        <form id={FORM_ID} className="relative space-y-3" onSubmit={handleSubmit}>
+          <MobileSettingsHeader
+            eyebrow="Share Settings"
+            title="分享配置"
+            description="先看当前效果，再点某一项进去修改。"
+          />
 
-      {error ? (
-        <Card className="rounded-3xl border-red-200 bg-red-50 p-6">
-          <CardContent className="p-0 text-sm font-semibold text-red-700">{error}</CardContent>
-        </Card>
-      ) : null}
+          {error ? (
+            <StatusBanner tone="error">{error}</StatusBanner>
+          ) : message ? (
+            <StatusBanner tone="success">{message}</StatusBanner>
+          ) : null}
 
-      {!loading ? (
-        <div className="space-y-4">
-          <Card
-            id="share-link"
-            className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all"
-          >
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-2xl">
-                <Share2 size={18} />
-                打开分享弹窗
-              </CardTitle>
-              <CardDescription>公开图鉴分享统一走弹窗：先预览，再复制链接或扫码分享。</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3 text-sm text-neutral-700">
-                非详情入口默认打开公开瀑布流；需要分享具体种龟时，仍从详情页进入详情分享弹窗。
-              </p>
-              <TenantShareDialogTrigger
-                intent="feed"
-                title="公开图鉴分享"
-                subtitle="扫码查看公开瀑布流，或复制链接直接转发。"
-                previewImageUrl={normalizeNullableString(form.previewImageUrl)}
-                posterImageUrls={preview.heroImages.map((item) => resolveAuthenticatedAssetUrl(item))}
-                trigger={({ onClick, pending }) => (
-                  <Button variant="primary" disabled={pending} onClick={onClick}>
-                    {pending ? '正在准备分享弹窗...' : '打开分享弹窗'}
-                  </Button>
-                )}
-              />
-            </CardContent>
-          </Card>
+          {loading ? (
+            <LoadingCard />
+          ) : (
+            <>
+              <SharePreviewHeroCard preview={preview}>
+                <TenantShareDialogTrigger
+                  intent="feed"
+                  title={preview.feedTitle}
+                  subtitle={preview.feedSubtitle}
+                  previewImageUrl={preview.heroImages[0] ?? null}
+                  posterImageUrls={preview.heroImages}
+                  trigger={({ onClick, pending }) => (
+                    <Button
+                      type="button"
+                      variant="primary"
+                      className="h-9 rounded-full px-3.5 text-[13px] shadow-[0_6px_16px_rgba(15,23,42,0.14)]"
+                      disabled={pending}
+                      onClick={onClick}
+                    >
+                      <Share2 size={15} />
+                      {pending ? '正在准备…' : '预览分享'}
+                    </Button>
+                  )}
+                />
+              </SharePreviewHeroCard>
 
-          <div className="grid gap-4 xl:grid-cols-[minmax(360px,1fr)_minmax(320px,420px)]">
-            <Card className="rounded-3xl border-neutral-200/90 bg-white">
-              <CardHeader>
-                <CardTitle>配置表单</CardTitle>
-                <CardDescription>保存后直接生效，不需要重新发布。</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form className="space-y-4" onSubmit={handleSubmit}>
-                  <div className="space-y-2">
-                    <Label htmlFor="feed-title">分享标题</Label>
-                    <Input
-                      id="feed-title"
-                      value={form.feedTitle}
-                      placeholder="留空将使用默认标题"
-                      onChange={(event) =>
-                        setForm((prev) => ({ ...prev, feedTitle: event.target.value }))
-                      }
-                    />
-                  </div>
+              <SettingsCard>
+                <SettingRow
+                  active={activeEditor === 'title'}
+                  icon={<PenLine size={16} />}
+                  label="分享标题"
+                  summary={preview.feedTitle}
+                  detail={form.feedTitle.trim() ? '当前使用自定义标题' : '当前使用默认标题'}
+                  onClick={() => toggleEditor('title')}
+                />
+                {activeEditor === 'title' ? (
+                  <EditorPanel onClose={() => setActiveEditor(null)}>
+                    <div className="space-y-2">
+                      <Label htmlFor="feed-title">分享标题</Label>
+                      <Input
+                        id="feed-title"
+                        value={form.feedTitle}
+                        placeholder="留空将继续使用默认标题"
+                        onChange={(event) =>
+                          setForm((prev) => ({ ...prev, feedTitle: event.target.value }))
+                        }
+                      />
+                    </div>
+                  </EditorPanel>
+                ) : null}
 
-                  <div className="space-y-2">
-                    <Label htmlFor="feed-subtitle">分享副标题</Label>
-                    <Textarea
-                      id="feed-subtitle"
-                      rows={2}
-                      value={form.feedSubtitle}
-                      placeholder="留空将使用默认副标题"
-                      onChange={(event) =>
-                        setForm((prev) => ({ ...prev, feedSubtitle: event.target.value }))
-                      }
-                    />
-                  </div>
+                <SettingRow
+                  active={activeEditor === 'subtitle'}
+                  icon={<PenLine size={16} />}
+                  label="分享副标题"
+                  summary={preview.feedSubtitle}
+                  detail={form.feedSubtitle.trim() ? '当前使用自定义副标题' : '当前使用默认副标题'}
+                  onClick={() => toggleEditor('subtitle')}
+                />
+                {activeEditor === 'subtitle' ? (
+                  <EditorPanel onClose={() => setActiveEditor(null)}>
+                    <div className="space-y-2">
+                      <Label htmlFor="feed-subtitle">分享副标题</Label>
+                      <Textarea
+                        id="feed-subtitle"
+                        rows={4}
+                        value={form.feedSubtitle}
+                        placeholder="留空将继续使用默认副标题"
+                        onChange={(event) =>
+                          setForm((prev) => ({ ...prev, feedSubtitle: event.target.value }))
+                        }
+                      />
+                    </div>
+                  </EditorPanel>
+                ) : null}
+              </SettingsCard>
 
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <ThemeColorPicker
-                      label="主题主色"
-                      value={form.brandPrimary}
-                      fallback="#FFD400"
-                      options={primaryColorOptions}
-                      onChange={(nextColor) =>
-                        setForm((prev) => ({ ...prev, brandPrimary: nextColor }))
-                      }
-                    />
-                    <ThemeColorPicker
-                      label="主题辅色"
-                      value={form.brandSecondary}
-                      fallback="#1f2937"
-                      options={secondaryColorOptions}
-                      onChange={(nextColor) =>
-                        setForm((prev) => ({ ...prev, brandSecondary: nextColor }))
-                      }
-                    />
-                  </div>
+              <SettingsCard>
+                <SettingRow
+                  active={activeEditor === 'contact'}
+                  icon={<MessageCircleMore size={16} />}
+                  label="联系方式"
+                  summary={contactSummary}
+                  detail={
+                    form.showWechatBlock ? '点击修改开关、二维码和微信号' : '点击开启并配置联系方式'
+                  }
+                  onClick={() => toggleEditor('contact')}
+                  leading={
+                    preview.wechatQrImageUrl ? (
+                      <img
+                        src={resolveAuthenticatedAssetUrl(preview.wechatQrImageUrl)}
+                        alt="联系方式二维码缩略图"
+                        className="h-8 w-8 rounded-lg border border-neutral-200 bg-white object-cover p-0.5"
+                      />
+                    ) : undefined
+                  }
+                />
+                {activeEditor === 'contact' ? (
+                  <EditorPanel onClose={() => setActiveEditor(null)}>
+                    <label className="flex items-start gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3">
+                      <input
+                        type="checkbox"
+                        className="mt-1 h-4 w-4 rounded border-neutral-300"
+                        checked={form.showWechatBlock}
+                        onChange={(event) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            showWechatBlock: event.target.checked,
+                          }))
+                        }
+                      />
+                      <span>
+                        <span className="block text-sm font-medium text-neutral-900">
+                          显示联系方式模块
+                        </span>
+                        <span className="mt-1 block text-xs text-neutral-500">
+                          关闭时不会清空内容，只是不在公开页展示。
+                        </span>
+                      </span>
+                    </label>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="preview-image-upload">预览封面图（将作为轮播第一张）</Label>
-                    <div className="space-y-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+                    <div className="space-y-3">
+                      <Label htmlFor="wechat-qr-upload">微信二维码</Label>
+                      <div className="space-y-3 rounded-2xl border border-neutral-200 bg-white p-3">
+                        <ImageUploadDropzone
+                          inputId="wechat-qr-upload"
+                          disabled={saving || isUploadingAsset}
+                          onChange={handleUploadWechatImage}
+                          actionText={
+                            uploadingWechatImage
+                              ? '上传中…'
+                              : form.wechatQrImageUrl
+                                ? '重新上传二维码'
+                                : '上传二维码'
+                          }
+                          title={
+                            form.wechatQrImageUrl ? '点击替换当前二维码' : '点击上传微信二维码'
+                          }
+                          description="建议上传清晰、对比度高的二维码图片。"
+                        />
+                        {form.wechatQrImageUrl ? (
+                          <AssetPreviewMini
+                            alt="微信二维码预览"
+                            imageUrl={form.wechatQrImageUrl}
+                            label="当前二维码"
+                            trailing={
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                disabled={saving || isUploadingAsset}
+                                onClick={() =>
+                                  setForm((prev) => ({ ...prev, wechatQrImageUrl: '' }))
+                                }
+                              >
+                                移除
+                              </Button>
+                            }
+                          />
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="wechat-id">微信号</Label>
+                      <Input
+                        id="wechat-id"
+                        value={form.wechatId}
+                        placeholder="可选，便于用户手动添加"
+                        onChange={(event) =>
+                          setForm((prev) => ({ ...prev, wechatId: event.target.value }))
+                        }
+                      />
+                    </div>
+                  </EditorPanel>
+                ) : null}
+              </SettingsCard>
+
+              <SettingsCard>
+                <SettingRow
+                  active={activeEditor === 'cover'}
+                  icon={<ImagePlus size={16} />}
+                  label="封面图"
+                  summary={coverSummary}
+                  detail={coverDetail}
+                  onClick={() => toggleEditor('cover')}
+                  leading={
+                    form.previewImageUrl ? (
+                      <img
+                        src={resolveAuthenticatedAssetUrl(form.previewImageUrl)}
+                        alt="封面图缩略图"
+                        className="h-8 w-8 rounded-lg border border-neutral-200 object-cover"
+                      />
+                    ) : undefined
+                  }
+                />
+                {activeEditor === 'cover' ? (
+                  <EditorPanel onClose={() => setActiveEditor(null)}>
+                    <div className="space-y-3 rounded-2xl border border-neutral-200 bg-white p-3">
                       <ImageUploadDropzone
                         inputId="preview-image-upload"
                         disabled={saving || isUploadingAsset}
                         onChange={handleUploadPreviewImage}
                         actionText={
-                          uploadingPreviewImage
-                            ? '上传中...'
+                          uploadingPreviewImage || cropUploading
+                            ? '处理中…'
                             : form.previewImageUrl
                               ? '重新上传封面图'
                               : '上传封面图'
                         }
                         title={form.previewImageUrl ? '点击替换当前封面图' : '点击上传封面图'}
-                        description="建议上传横图，系统会自动作为轮播第一张。"
+                        description="上传后会先进入 16:10 裁切，再保存成最终封面。"
                       />
-
                       {form.previewImageUrl ? (
-                        <UploadedAssetPreview
-                          imageUrl={form.previewImageUrl}
+                        <AssetPreviewMini
                           alt="封面图预览"
+                          imageUrl={form.previewImageUrl}
                           label="当前封面图"
-                          removeDisabled={saving || isUploadingAsset}
-                          onRemove={() =>
-                            setForm((prev) => ({
-                              ...prev,
-                              previewImageUrl: '',
-                              heroImagesText: normalizeHeroImageList(
-                                prev.heroImagesText,
-                                '',
-                              ).join('\n'),
-                            }))
+                          detail="封面图支持裁切；轮播图只做补充展示。"
+                          trailing={
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                disabled={saving || isUploadingAsset}
+                                onClick={handleRecropCurrentPreview}
+                              >
+                                重新裁切
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                disabled={saving || isUploadingAsset}
+                                onClick={() =>
+                                  setForm((prev) => ({
+                                    ...prev,
+                                    previewImageUrl: '',
+                                    heroImagesText: normalizeHeroImageList(
+                                      prev.heroImagesText,
+                                      '',
+                                    ).join('\n'),
+                                  }))
+                                }
+                              >
+                                移除封面
+                              </Button>
+                            </div>
                           }
                         />
                       ) : (
                         <p className="text-xs text-neutral-500">
-                          未设置封面图时，将使用轮播图第一张作为封面。
+                          未设置封面时，将使用轮播第一张或默认图。
                         </p>
                       )}
                     </div>
-                  </div>
+                  </EditorPanel>
+                ) : null}
 
-                  <div className="space-y-2">
-                    <Label htmlFor="hero-images-upload">顶部轮播图</Label>
-                    <div className="space-y-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+                <SettingRow
+                  active={activeEditor === 'carousel'}
+                  icon={<Images size={16} />}
+                  label="顶部轮播图"
+                  summary={carouselSummary}
+                  detail="点击修改轮播图；封面图之外的图片都在这里管理。"
+                  onClick={() => toggleEditor('carousel')}
+                  leading={
+                    heroImageUrls[0] ? (
+                      <div className="flex items-center gap-1">
+                        {heroImageUrls.slice(0, 2).map((imageUrl, index) => (
+                          <img
+                            key={`${imageUrl}-${index}`}
+                            src={resolveAuthenticatedAssetUrl(imageUrl)}
+                            alt={`轮播图缩略图 ${index + 1}`}
+                            className="h-8 w-8 rounded-lg border border-neutral-200 object-cover"
+                          />
+                        ))}
+                      </div>
+                    ) : undefined
+                  }
+                />
+                {activeEditor === 'carousel' ? (
+                  <EditorPanel onClose={() => setActiveEditor(null)}>
+                    <div className="space-y-3 rounded-2xl border border-neutral-200 bg-white p-3">
                       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-600">
                         <span>支持多图上传，按上传顺序展示。</span>
                         <span>
@@ -467,7 +729,7 @@ export default function SharePresentationPage() {
                         onChange={handleUploadHeroImages}
                         actionText={
                           uploadingHeroImages
-                            ? '上传中...'
+                            ? '上传中…'
                             : heroImageUrls.length > 0
                               ? '继续上传轮播图'
                               : '上传轮播图'
@@ -477,25 +739,18 @@ export default function SharePresentationPage() {
                             ? `已上传 ${heroImageUrls.length} 张，可继续添加`
                             : '点击选择轮播图（支持多选）'
                         }
-                        description="支持多图上传，按上传顺序展示。"
+                        description="轮播图不裁切，建议直接上传横图。"
                       />
-
                       {heroImageUrls.length > 0 ? (
-                        <div className="grid gap-2 sm:grid-cols-2">
+                        <div className="space-y-2">
                           {heroImageUrls.map((imageUrl, index) => (
-                            <div
+                            <AssetPreviewMini
                               key={`${imageUrl}-${index}`}
-                              className="overflow-hidden rounded-xl border border-neutral-200 bg-white"
-                            >
-                              <img
-                                src={resolveAuthenticatedAssetUrl(imageUrl)}
-                                alt={`轮播图 ${index + 1}`}
-                                className="h-28 w-full object-cover"
-                              />
-                              <div className="flex items-center justify-between gap-2 px-2.5 py-2">
-                                <p className="truncate text-xs text-neutral-600">
-                                  第 {index + 1} 张
-                                </p>
+                              alt={`轮播图 ${index + 1}`}
+                              imageUrl={imageUrl}
+                              label={`轮播图 ${index + 1}`}
+                              detail="公开页里会排在封面图之后展示。"
+                              trailing={
                                 <Button
                                   type="button"
                                   variant="secondary"
@@ -514,311 +769,158 @@ export default function SharePresentationPage() {
                                 >
                                   删除
                                 </Button>
-                              </div>
-                            </div>
+                              }
+                            />
                           ))}
                         </div>
                       ) : (
                         <p className="text-xs text-neutral-500">暂未上传轮播图。</p>
                       )}
                     </div>
-                  </div>
+                  </EditorPanel>
+                ) : null}
+              </SettingsCard>
+            </>
+          )}
+        </form>
+      </main>
 
-                  <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
-                    <label className="flex items-start gap-3">
-                      <input
-                        type="checkbox"
-                        className="mt-1 h-4 w-4 rounded border-neutral-300"
-                        checked={form.showWechatBlock}
-                        onChange={(event) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            showWechatBlock: event.target.checked,
-                          }))
-                        }
-                      />
-                      <span>
-                        <span className="block text-sm font-medium text-neutral-900">
-                          显示微信联系方式模块
-                        </span>
-                        <span className="block text-xs text-neutral-600">
-                          开启后公开 feed/detail 都会展示联系方式卡片。
-                        </span>
-                      </span>
-                    </label>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="wechat-qr-upload">微信二维码图片</Label>
-                    <div className="space-y-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
-                      <ImageUploadDropzone
-                        inputId="wechat-qr-upload"
-                        disabled={saving || isUploadingAsset}
-                        onChange={handleUploadWechatImage}
-                        actionText={
-                          uploadingWechatImage
-                            ? '上传中...'
-                            : form.wechatQrImageUrl
-                              ? '重新上传二维码'
-                              : '上传二维码'
-                        }
-                        title={form.wechatQrImageUrl ? '点击替换当前二维码' : '点击上传微信二维码'}
-                        description="建议上传清晰、对比度高的二维码图片。"
-                      />
-
-                      {form.wechatQrImageUrl ? (
-                        <UploadedAssetPreview
-                          imageUrl={form.wechatQrImageUrl}
-                          alt="微信二维码预览"
-                          label="当前二维码"
-                          removeDisabled={saving || isUploadingAsset}
-                          onRemove={() => setForm((prev) => ({ ...prev, wechatQrImageUrl: '' }))}
-                        />
-                      ) : (
-                        <p className="text-xs text-neutral-500">
-                          未上传时公开页不会展示二维码图片。
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="wechat-id">微信号</Label>
-                    <Input
-                      id="wechat-id"
-                      value={form.wechatId}
-                      placeholder="可选，便于用户手动添加"
-                      onChange={(event) =>
-                        setForm((prev) => ({ ...prev, wechatId: event.target.value }))
-                      }
-                    />
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    <Button type="submit" disabled={saving || isUploadingAsset}>
-                      {saving ? '保存中...' : '保存并立即生效'}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      disabled={saving || isUploadingAsset}
-                      onClick={() => {
-                        setForm(DEFAULT_FORM);
-                        setMessage(null);
-                        setError(null);
-                      }}
-                    >
-                      清空表单
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-3xl border-neutral-200/90 bg-white">
-              <CardHeader>
-                <CardTitle>实时预览</CardTitle>
-                <CardDescription>这里是公开页的简化预览。</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-900 shadow-[0_10px_24px_rgba(0,0,0,0.16)]">
-                  <div className="relative h-44">
-                    <img
-                      src={resolveAuthenticatedAssetUrl(preview.heroImages[0])}
-                      alt="分享封面预览"
-                      className="h-full w-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-black/50" />
-                    <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
-                      <p className="text-xs uppercase tracking-[0.22em] text-white/75">preview</p>
-                      <h3 className="mt-1 text-xl font-semibold">{preview.feedTitle}</h3>
-                      <p className="mt-1 text-sm text-white/85">{preview.feedSubtitle}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-2xl border border-neutral-200 p-3">
-                    <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">Primary</p>
-                    <div
-                      className="mt-2 h-10 rounded-xl"
-                      style={{ backgroundColor: preview.brandPrimary }}
-                    />
-                  </div>
-                  <div className="rounded-2xl border border-neutral-200 p-3">
-                    <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">Secondary</p>
-                    <div
-                      className="mt-2 h-10 rounded-xl"
-                      style={{ backgroundColor: preview.brandSecondary }}
-                    />
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
-                  <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">
-                    主题应用预览
-                  </p>
-                  <div className="mt-3 flex items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-white p-3">
-                    <span
-                      className="rounded-full px-2.5 py-1 text-xs font-semibold"
-                      style={{
-                        backgroundColor: preview.brandPrimary,
-                        color: getContrastTextColor(preview.brandPrimary),
-                      }}
-                    >
-                      主题标签
-                    </span>
-                    <span
-                      className="rounded-lg px-3 py-1.5 text-xs font-semibold"
-                      style={{
-                        backgroundColor: preview.brandSecondary,
-                        color: getContrastTextColor(preview.brandSecondary),
-                      }}
-                    >
-                      示例按钮
-                    </span>
-                  </div>
-                </div>
-
-                {preview.showWechatBlock ? (
-                  <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
-                    <p className="text-xs uppercase tracking-[0.22em] text-neutral-500">
-                      Wechat Contact
-                    </p>
-                    <div className="mt-3 flex items-start gap-3">
-                      {preview.wechatQrImageUrl ? (
-                        <img
-                          src={resolveAuthenticatedAssetUrl(preview.wechatQrImageUrl)}
-                          alt="微信二维码预览"
-                          className="h-20 w-20 rounded-xl border border-neutral-200 bg-white object-cover p-1"
-                        />
-                      ) : null}
-                      <div className="text-sm text-neutral-700">
-                        {preview.wechatId ? (
-                          <p>
-                            微信号：
-                            <span className="font-mono font-medium">{preview.wechatId}</span>
-                          </p>
-                        ) : (
-                          <p>未填写微信号</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 p-3 text-sm text-neutral-500">
-                    微信联系方式模块当前为关闭状态。
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+      {hasUnsavedChanges && !loading ? (
+        <div className="fixed inset-x-0 bottom-[calc(56px+max(24px,env(safe-area-inset-bottom))+12px)] z-40 px-4 sm:bottom-6 sm:px-6">
+          <div className="mx-auto flex w-full max-w-3xl items-center gap-2 rounded-3xl border border-neutral-200 bg-white/96 p-2 shadow-[0_18px_36px_rgba(15,23,42,0.14)] backdrop-blur">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1 rounded-2xl"
+              disabled={!savedForm || saving || isUploadingAsset}
+              onClick={handleRestoreSaved}
+            >
+              <RefreshCcw size={16} />
+              恢复
+            </Button>
+            <Button
+              type="submit"
+              form={FORM_ID}
+              variant="primary"
+              className="flex-[1.2] rounded-2xl"
+              disabled={saving || isUploadingAsset}
+            >
+              <Check size={16} />
+              {saving ? '保存中…' : '保存并生效'}
+            </Button>
           </div>
         </div>
       ) : null}
 
-      {message ? (
-        <Card className="rounded-3xl border-emerald-200 bg-emerald-50 p-4">
-          <CardContent className="p-0 text-sm font-medium text-emerald-700">{message}</CardContent>
-        </Card>
-      ) : null}
-    </main>
+      <ShareCoverCropDialog
+        open={Boolean(cropSource)}
+        sourceName={cropSource?.fileName}
+        sourceUrl={cropSource?.url ?? null}
+        confirming={cropUploading}
+        onClose={closeCropDialog}
+        onConfirm={handleConfirmCrop}
+      />
+    </>
   );
 }
 
-type ThemeColorPickerProps = {
-  label: string;
-  value: string;
-  fallback: string;
-  options: ThemeColorOption[];
-  onChange: (color: string) => void;
+type SharePreviewHeroCardProps = {
+  children?: ReactNode;
+  preview: PreviewState;
 };
 
-function ThemeColorPicker({
-  label,
-  value,
-  fallback,
-  options,
-  onChange,
-}: ThemeColorPickerProps) {
-  const resolvedColor = normalizeColor(value) ?? fallback;
-
+function SharePreviewHeroCard({ children, preview }: SharePreviewHeroCardProps) {
   return (
-    <div className="space-y-2">
-      <Label>{label}</Label>
-      <div className="grid grid-cols-3 gap-2">
-        {options.map((option) => {
-          const active = option.value.toLowerCase() === resolvedColor.toLowerCase();
-
-          return (
-            <button
-              key={`${label}-${option.value}`}
-              type="button"
-              aria-pressed={active}
-              className={`rounded-xl border px-2 py-2 text-left transition ${
-                active
-                  ? 'border-amber-400 bg-amber-200 shadow-[0_10px_24px_rgba(245,158,11,0.22)]'
-                  : 'bg-white hover:border-neutral-400'
-              }`}
-              style={{
-                color: '#111827',
-                borderColor: active ? '#FBBF24' : '#e5e7eb',
-              }}
-              onClick={() => onChange(option.value)}
-            >
-              <span className="flex items-center gap-2">
-                <span
-                  className="h-5 w-5 rounded-full border border-black/10"
-                  style={{ backgroundColor: option.value }}
-                />
-                <span className="truncate text-xs font-semibold text-neutral-800">
-                  {option.label}
-                </span>
-              </span>
-            </button>
-          );
-        })}
-      </div>
-      <div className="flex items-center justify-end gap-1.5 rounded-xl border border-neutral-200 bg-neutral-50 px-2.5 py-2 text-xs text-neutral-600">
-        <span
-          className="h-4 w-4 rounded-full border border-black/10"
-          style={{ backgroundColor: resolvedColor }}
+    <Card className="overflow-hidden rounded-[30px] border border-white/70 bg-white/78 p-2 shadow-[0_18px_40px_rgba(15,23,42,0.10)] backdrop-blur-xl">
+      <div className="relative aspect-[16/10] overflow-hidden rounded-[24px] bg-neutral-900 ring-1 ring-black/5">
+        <img
+          src={resolveAuthenticatedAssetUrl(preview.heroImages[0] ?? DEFAULT_HERO_IMAGE)}
+          alt="分享封面预览"
+          className="h-full w-full object-cover"
         />
-        当前已选
+        <div className="absolute inset-0 bg-gradient-to-b from-black/18 via-black/22 to-black/62" />
+        <div
+          className="absolute inset-0"
+          style={{
+            background: `linear-gradient(135deg, ${hexToRgba(preview.brandSecondary, 0.18)}, transparent 60%)`,
+          }}
+        />
+        <div className="absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top_right,rgba(255,212,0,0.18),transparent_42%)]" />
+        <div className="absolute left-3 top-3 inline-flex rounded-full border border-white/15 bg-black/28 px-2.5 py-1 text-[10px] font-semibold tracking-[0.18em] text-white/90 backdrop-blur-sm">
+          所见所得预览
+        </div>
+        <div className="absolute right-3 top-3">{children}</div>
+        <div className="absolute inset-x-0 bottom-0 p-4 text-white">
+          <p className="text-[10px] uppercase tracking-[0.24em] text-white/68">share preview</p>
+          <h2 className="mt-1.5 text-pretty text-[26px] font-semibold leading-tight drop-shadow-sm sm:text-[30px]">
+            {preview.feedTitle}
+          </h2>
+          <p className="mt-1 max-w-[82%] text-[13px] leading-snug text-white/82 sm:text-sm">
+            {preview.feedSubtitle}
+          </p>
+        </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
-type UploadedAssetPreviewProps = {
-  imageUrl: string;
+type AssetPreviewMiniProps = {
   alt: string;
+  detail?: string;
+  imageUrl: string;
   label: string;
-  removeDisabled: boolean;
-  onRemove: () => void;
+  trailing?: ReactNode;
 };
 
-function UploadedAssetPreview({
-  imageUrl,
-  alt,
-  label,
-  removeDisabled,
-  onRemove,
-}: UploadedAssetPreviewProps) {
+function AssetPreviewMini({ alt, detail, imageUrl, label, trailing }: AssetPreviewMiniProps) {
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-neutral-200 bg-white p-2.5">
+    <div className="flex items-start gap-2.5 rounded-xl border border-neutral-200 bg-neutral-50/90 p-2.5">
       <img
         src={resolveAuthenticatedAssetUrl(imageUrl)}
         alt={alt}
-        className="h-16 w-16 rounded-lg border border-neutral-200 object-cover"
+        className="h-12 w-12 rounded-lg border border-neutral-200 bg-white object-cover"
       />
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-medium text-neutral-800">{label}</p>
-        <p className="truncate font-mono text-[11px] text-neutral-500">{imageUrl}</p>
+        <p className="text-[13px] font-medium text-neutral-900">{label}</p>
+        <p className="mt-0.5 truncate font-mono text-[10px] text-neutral-500">{imageUrl}</p>
+        {detail ? <p className="mt-1 text-[11px] text-neutral-500">{detail}</p> : null}
       </div>
-      <Button type="button" variant="secondary" disabled={removeDisabled} onClick={onRemove}>
-        移除
-      </Button>
+      {trailing ? <div className="shrink-0">{trailing}</div> : null}
     </div>
+  );
+}
+
+type StatusBannerProps = {
+  children: ReactNode;
+  tone: 'error' | 'success';
+};
+
+function StatusBanner({ children, tone }: StatusBannerProps) {
+  return (
+    <div
+      aria-live="polite"
+      role="status"
+      className={`rounded-2xl border px-4 py-3 text-sm font-medium shadow-[0_8px_22px_rgba(15,23,42,0.05)] backdrop-blur-sm ${
+        tone === 'error'
+          ? 'border-red-200/80 bg-red-50/90 text-red-700'
+          : 'border-emerald-200/80 bg-emerald-50/90 text-emerald-700'
+      }`}
+    >
+      {children}
+    </div>
+  );
+}
+
+function LoadingCard() {
+  return (
+    <Card className="rounded-[24px] border border-black/[0.05] bg-white/86 shadow-[0_12px_28px_rgba(15,23,42,0.06)] backdrop-blur-xl">
+      <CardContent className="space-y-3 p-5">
+        <div className="h-[220px] animate-pulse rounded-[24px] bg-gradient-to-br from-stone-100 to-neutral-100" />
+        <div className="h-20 animate-pulse rounded-[20px] bg-gradient-to-r from-neutral-100 to-stone-100" />
+        <div className="h-20 animate-pulse rounded-[20px] bg-gradient-to-r from-neutral-100 to-stone-100" />
+        <div className="h-20 animate-pulse rounded-[20px] bg-gradient-to-r from-neutral-100 to-stone-100" />
+      </CardContent>
+    </Card>
   );
 }
 
@@ -851,7 +953,7 @@ function buildHeroImages(previewImageUrl: string, heroImagesText: string): strin
 
 function normalizeHeroImageList(heroImagesText: string, previewImageUrl: string): string[] {
   const previewImage = normalizeNullableString(previewImageUrl);
-  const maxHeroImages = previewImage ? 9 : 10;
+  const maxImages = previewImage ? 9 : 10;
   const deduped = new Set<string>();
 
   for (const imageUrl of splitLines(heroImagesText)) {
@@ -862,7 +964,7 @@ function normalizeHeroImageList(heroImagesText: string, previewImageUrl: string)
     deduped.add(imageUrl);
   }
 
-  return [...deduped].slice(0, maxHeroImages);
+  return [...deduped].slice(0, maxImages);
 }
 
 function splitLines(value: string): string[] {
@@ -892,6 +994,28 @@ function normalizeColor(value: string): string | null {
   return normalized;
 }
 
+function hexToRgba(hex: string, alpha: number): string {
+  const normalized = hex.replace('#', '');
+  const value =
+    normalized.length === 3
+      ? normalized
+          .split('')
+          .map((char) => `${char}${char}`)
+          .join('')
+      : normalized;
+
+  const red = Number.parseInt(value.slice(0, 2), 16);
+  const green = Number.parseInt(value.slice(2, 4), 16);
+  const blue = Number.parseInt(value.slice(4, 6), 16);
+
+  return `rgba(${Number.isNaN(red) ? 255 : red}, ${Number.isNaN(green) ? 212 : green}, ${Number.isNaN(blue) ? 0 : blue}, ${alpha})`;
+}
+
+function ensureJpegFileName(value: string): string {
+  const normalized = value.trim().replace(/\.[^./]+$/, '');
+  return `${normalized || 'share-cover'}.jpg`;
+}
+
 async function uploadSharePresentationImage(file: File) {
   const parsed = await uploadSingleFileWithAuth(
     '/tenant-share-presentation/images',
@@ -899,22 +1023,4 @@ async function uploadSharePresentationImage(file: File) {
     uploadTenantSharePresentationImageResponseSchema,
   );
   return parsed.asset;
-}
-
-function getContrastTextColor(color: string): '#111827' | '#ffffff' {
-  const normalized = normalizeColor(color);
-  if (!normalized) {
-    return '#111827';
-  }
-
-  const hex =
-    normalized.length === 4
-      ? `#${normalized[1]}${normalized[1]}${normalized[2]}${normalized[2]}${normalized[3]}${normalized[3]}`
-      : normalized;
-  const red = Number.parseInt(hex.slice(1, 3), 16);
-  const green = Number.parseInt(hex.slice(3, 5), 16);
-  const blue = Number.parseInt(hex.slice(5, 7), 16);
-  const brightness = (red * 299 + green * 587 + blue * 114) / 1000;
-
-  return brightness >= 150 ? '#111827' : '#ffffff';
 }

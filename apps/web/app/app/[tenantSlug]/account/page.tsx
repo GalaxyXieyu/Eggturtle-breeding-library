@@ -18,19 +18,9 @@ import {
   updateMyPasswordRequestSchema,
   updateMyPasswordResponseSchema,
 } from '@eggturtle/shared';
-import { KeyRound, LogOut, UserRound } from 'lucide-react';
-
-import { Button } from '@/components/ui/button';
+import AccountProfileOverview from '@/app/app/[tenantSlug]/account/account-profile-overview';
 import { AccountSectionNav } from '@/components/account-section-nav';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Card } from '@/components/ui/card';
 import { apiRequest, clearAccessToken } from '@/lib/api-client';
 import { formatApiError } from '@/lib/error-utils';
 import { ensureTenantRouteSession } from '@/lib/tenant-route-session';
@@ -40,7 +30,6 @@ import {
   EMPTY_SETUP_REQUIREMENTS,
   SECURITY_QUESTION_OPTIONS,
   describeLoginAccount,
-  formatDate,
   formatLoginAccount,
   getSetupChecklistItems,
   getSetupSubmitLabel,
@@ -85,7 +74,6 @@ export default function AccountPage() {
   const [oldPhoneCodeCooldown, setOldPhoneCodeCooldown] = useState(0);
   const [securityQuestionDraft, setSecurityQuestionDraft] = useState('');
   const [securityAnswerDraft, setSecurityAnswerDraft] = useState('');
-
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const needsSetup = searchParams.get('setup') === '1';
@@ -585,237 +573,52 @@ export default function AccountPage() {
       ) : null}
 
       {!loading && activeTab === 'profile' ? (
-        <section className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-          <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-2xl">
-                <UserRound size={18} />
-                个人资料
-              </CardTitle>
-              <CardDescription>
-                显示名称用于页面展示；登录账号与绑定手机号分开展示，避免混淆。
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-2">
-                <Label htmlFor="account-login-id">登录账号</Label>
-                <Input id="account-login-id" value={loginAccountValue} disabled />
-                <p className="text-xs text-neutral-500">{loginAccountHint}</p>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="account-name">显示名称 / 昵称</Label>
-                <Input
-                  id="account-name"
-                  value={nameDraft}
-                  placeholder="例如：Siri 的龟舍"
-                  onChange={(event) => setNameDraft(event.target.value)}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="account-phone">绑定手机号</Label>
-                <Input
-                  id="account-phone"
-                  value={phoneDraft}
-                  inputMode="numeric"
-                  maxLength={11}
-                  placeholder="请输入 11 位手机号"
-                  onChange={(event) =>
-                    setPhoneDraft(event.target.value.replace(/\D/g, '').slice(0, 11))
-                  }
-                />
-                <p className="text-xs text-neutral-500">
-                  当前绑定：{boundPhoneNumber ? maskPhoneNumber(boundPhoneNumber) : '未绑定'}
-                </p>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="account-phone-code">短信验证码</Label>
-                <Input
-                  id="account-phone-code"
-                  value={phoneCodeDraft}
-                  inputMode="numeric"
-                  maxLength={6}
-                  placeholder="请输入 6 位验证码"
-                  onChange={(event) =>
-                    setPhoneCodeDraft(event.target.value.replace(/\D/g, '').slice(0, 6))
-                  }
-                />
-              </div>
-              {isReplacingBoundPhone ? (
-                <div className="grid gap-2">
-                  <Label htmlFor="account-old-phone-code">原手机号验证码</Label>
-                  <Input
-                    id="account-old-phone-code"
-                    value={oldPhoneCodeDraft}
-                    inputMode="numeric"
-                    maxLength={6}
-                    placeholder="请输入原手机号收到的 6 位验证码"
-                    onChange={(event) =>
-                      setOldPhoneCodeDraft(event.target.value.replace(/\D/g, '').slice(0, 6))
-                    }
-                  />
-                  <p className="text-xs text-neutral-500">
-                    正在更换绑定，需验证原手机号：
-                    {boundPhoneNumber ? maskPhoneNumber(boundPhoneNumber) : '-'}
-                  </p>
-                </div>
-              ) : null}
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="secondary"
-                  disabled={sendingPhoneCode || phoneCodeCooldown > 0}
-                  onClick={() => void handleSendPhoneCode()}
-                >
-                  {sendingPhoneCode
-                    ? '发送中…'
-                    : phoneCodeCooldown > 0
-                      ? `${phoneCodeCooldown}s 后重发`
-                      : '发送验证码'}
-                </Button>
-                {isReplacingBoundPhone ? (
-                  <Button
-                    variant="secondary"
-                    disabled={sendingOldPhoneCode || oldPhoneCodeCooldown > 0 || !boundPhoneNumber}
-                    onClick={() => void handleSendOldPhoneCode()}
-                  >
-                    {sendingOldPhoneCode
-                      ? '发送中…'
-                      : oldPhoneCodeCooldown > 0
-                        ? `${oldPhoneCodeCooldown}s 后重发`
-                        : '发送原号验证码'}
-                  </Button>
-                ) : null}
-                <Button
-                  variant="secondary"
-                  disabled={savingPhoneBinding}
-                  onClick={() => void handleBindPhone()}
-                >
-                  {savingPhoneBinding ? '绑定中…' : '绑定手机号'}
-                </Button>
-              </div>
-              <div className="grid gap-1 text-xs text-neutral-500">
-                <p>账号创建时间：{formatDate(profile?.createdAt)}</p>
-                <p>最近改密时间：{formatDate(profile?.passwordUpdatedAt)}</p>
-              </div>
-              <Button
-                variant="primary"
-                disabled={savingProfile}
-                onClick={() => void handleSaveProfile()}
-              >
-                {savingProfile ? '保存中…' : '保存资料'}
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-2xl">
-                <KeyRound size={18} />
-                修改密码
-              </CardTitle>
-              <CardDescription>
-                首次设置可直接填写新密码；已有密码需先输入当前密码。
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-2">
-                <Label htmlFor="current-password">当前密码</Label>
-                <Input
-                  id="current-password"
-                  type="password"
-                  value={currentPassword}
-                  placeholder="已有密码时必填"
-                  onChange={(event) => setCurrentPassword(event.target.value)}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="new-password">新密码</Label>
-                <Input
-                  id="new-password"
-                  type="password"
-                  value={newPassword}
-                  placeholder="至少 8 位"
-                  onChange={(event) => setNewPassword(event.target.value)}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="confirm-password">确认新密码</Label>
-                <Input
-                  id="confirm-password"
-                  type="password"
-                  value={confirmPassword}
-                  placeholder="再次输入新密码"
-                  onChange={(event) => setConfirmPassword(event.target.value)}
-                />
-              </div>
-              <Button
-                variant="secondary"
-                disabled={savingPassword}
-                onClick={() => void handleChangePassword()}
-              >
-                {savingPassword ? '更新中…' : '更新密码'}
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-2xl">
-                <KeyRound size={18} />
-                密保信息
-              </CardTitle>
-              <CardDescription>
-                用于手机号不可用时找回账号，建议设置易记但不易猜的问答。
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-2">
-                <Label htmlFor="security-question-select">密保问题</Label>
-                <select
-                  id="security-question-select"
-                  className="h-10 rounded-md border border-neutral-300 bg-white px-3 text-sm text-neutral-900"
-                  value={selectedSecurityQuestion}
-                  onChange={(event) => {
-                    const nextValue = event.target.value;
-                    setSecurityQuestionDraft(
-                      nextValue === CUSTOM_SECURITY_QUESTION_VALUE ? '' : nextValue,
-                    );
-                  }}
-                >
-                  {SECURITY_QUESTION_OPTIONS.map((item) => (
-                    <option key={`security-option-${item}`} value={item}>
-                      {item}
-                    </option>
-                  ))}
-                  <option value={CUSTOM_SECURITY_QUESTION_VALUE}>自定义问题</option>
-                </select>
-                {selectedSecurityQuestion === CUSTOM_SECURITY_QUESTION_VALUE ? (
-                  <Input
-                    id="security-question-custom"
-                    value={securityQuestionDraft}
-                    placeholder="请输入自定义密保问题"
-                    onChange={(event) => setSecurityQuestionDraft(event.target.value)}
-                  />
-                ) : null}
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="security-answer">密保答案</Label>
-                <Input
-                  id="security-answer"
-                  value={securityAnswerDraft}
-                  placeholder="至少 2 个字符"
-                  onChange={(event) => setSecurityAnswerDraft(event.target.value)}
-                />
-              </div>
-              <Button
-                variant="secondary"
-                disabled={savingSecurity}
-                onClick={() => void handleSaveSecurityProfile()}
-              >
-                {savingSecurity ? '保存中…' : '保存密保'}
-              </Button>
-            </CardContent>
-          </Card>
-        </section>
+        <AccountProfileOverview
+          loginAccountValue={loginAccountValue}
+          loginAccountHint={loginAccountHint}
+          profileCreatedAt={profile?.createdAt}
+          passwordUpdatedAt={profile?.passwordUpdatedAt}
+          nameDraft={nameDraft}
+          onNameDraftChange={setNameDraft}
+          savingProfile={savingProfile}
+          onSaveProfile={() => void handleSaveProfile()}
+          boundPhoneNumber={boundPhoneNumber}
+          phoneDraft={phoneDraft}
+          onPhoneDraftChange={setPhoneDraft}
+          phoneCodeDraft={phoneCodeDraft}
+          onPhoneCodeDraftChange={setPhoneCodeDraft}
+          phoneCodeCooldown={phoneCodeCooldown}
+          sendingPhoneCode={sendingPhoneCode}
+          onSendPhoneCode={() => void handleSendPhoneCode()}
+          isReplacingBoundPhone={isReplacingBoundPhone}
+          oldPhoneCodeDraft={oldPhoneCodeDraft}
+          onOldPhoneCodeDraftChange={setOldPhoneCodeDraft}
+          oldPhoneCodeCooldown={oldPhoneCodeCooldown}
+          sendingOldPhoneCode={sendingOldPhoneCode}
+          onSendOldPhoneCode={() => void handleSendOldPhoneCode()}
+          savingPhoneBinding={savingPhoneBinding}
+          onBindPhone={() => void handleBindPhone()}
+          currentPassword={currentPassword}
+          onCurrentPasswordChange={setCurrentPassword}
+          newPassword={newPassword}
+          onNewPasswordChange={setNewPassword}
+          confirmPassword={confirmPassword}
+          onConfirmPasswordChange={setConfirmPassword}
+          savingPassword={savingPassword}
+          onSavePassword={() => void handleChangePassword()}
+          selectedSecurityQuestion={selectedSecurityQuestion}
+          securityQuestionOptions={[...SECURITY_QUESTION_OPTIONS]}
+          securityQuestionDraft={securityQuestionDraft}
+          onSelectedSecurityQuestionChange={(value) => {
+            setSecurityQuestionDraft(value === CUSTOM_SECURITY_QUESTION_VALUE ? '' : value);
+          }}
+          onSecurityQuestionDraftChange={setSecurityQuestionDraft}
+          securityAnswerDraft={securityAnswerDraft}
+          onSecurityAnswerDraftChange={setSecurityAnswerDraft}
+          savingSecurity={savingSecurity}
+          onSaveSecurity={() => void handleSaveSecurityProfile()}
+          onLogout={handleLogout}
+        />
       ) : null}
 
       {!loading && activeTab === 'subscription' ? (
@@ -832,19 +635,6 @@ export default function AccountPage() {
       {error ? (
         <Card className="rounded-2xl border-red-200 bg-red-50 p-4">
           <p className="text-sm font-semibold text-red-700">{error}</p>
-        </Card>
-      ) : null}
-
-      {!loading && activeTab === 'profile' ? (
-        <Card className="rounded-2xl border-neutral-200/90 bg-white p-2 lg:hidden">
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-neutral-700 hover:text-neutral-900"
-            onClick={handleLogout}
-          >
-            <LogOut size={16} />
-            <span>退出登录</span>
-          </Button>
         </Card>
       ) : null}
     </main>
