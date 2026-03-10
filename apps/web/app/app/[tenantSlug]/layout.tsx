@@ -92,7 +92,7 @@ const SHELL_COPY = {
     createShare: 'Open unified share dialog',
     openSharePage: 'Open share dialog',
     logout: 'Sign out',
-    defaultTenant: 'Eggturtle Workspace',
+    defaultTenant: 'Breeding Traceability Record',
     quickSharePending: 'Preparing share dialog...',
     quickShareSuccess: 'Share dialog opened',
     quickShareMissingTenant: 'Tenant context is not ready yet.',

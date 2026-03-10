@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Eggturtle SaaS 本地开发管理脚本
+# Breeding Traceability Record 本地开发管理脚本
 # 用法: ./dev.sh [start|stop|status|help]
 
 set -u
@@ -428,7 +428,7 @@ ensure_local_generated_assets_schema() {
 }
 
 start_all() {
-  print_header "启动 Eggturtle SaaS 开发环境"
+  print_header "启动 Breeding Traceability Record 开发环境"
   local api_started=0
   local web_started=0
   local admin_started=0
@@ -483,14 +483,14 @@ start_all() {
 }
 
 stop_all() {
-  print_header "停止 Eggturtle SaaS 服务"
+  print_header "停止 Breeding Traceability Record 服务"
   stop_service "Admin" "$ADMIN_PID_FILE" "$ADMIN_PROCESS_MARKER"
   stop_service "Web" "$WEB_PID_FILE" "$WEB_PROCESS_MARKER"
   stop_service "API" "$API_PID_FILE" "$API_PROCESS_MARKER"
 }
 
 show_status() {
-  print_header "Eggturtle SaaS 服务状态"
+  print_header "Breeding Traceability Record 服务状态"
   show_service_status "API" "$API_PID_FILE" "$API_STATUS_URL" "$API_PROCESS_MARKER"
   show_service_status "Web" "$WEB_PID_FILE" "$WEB_STATUS_URL" "$WEB_PROCESS_MARKER"
   show_service_status "Admin" "$ADMIN_PID_FILE" "$ADMIN_STATUS_URL" "$ADMIN_PROCESS_MARKER"
@@ -514,7 +514,7 @@ start_with_restart() {
 
 show_help() {
   cat <<'USAGE'
-Eggturtle SaaS 本地开发管理脚本
+Breeding Traceability Record 本地开发管理脚本
 
 用法:
   ./dev.sh start

@@ -5,7 +5,12 @@
   position: relative;
   overflow: clip;
   background:
-    linear-gradient(118deg, rgba(5, 8, 13, 0.92) 0%, rgba(8, 13, 20, 0.82) 42%, rgba(11, 15, 24, 0.9) 100%),
+    linear-gradient(
+      118deg,
+      rgba(5, 8, 13, 0.92) 0%,
+      rgba(8, 13, 20, 0.82) 42%,
+      rgba(11, 15, 24, 0.9) 100%
+    ),
     radial-gradient(circle at 12% 8%, rgba(255, 212, 0, 0.2) 0%, rgba(255, 212, 0, 0) 40%),
     url('/images/login-hero.webp');
   background-size: cover;
@@ -14,11 +19,16 @@
 }
 
 .page::before {
-  content: "";
+  content: '';
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(180deg, rgba(3, 6, 11, 0.22) 0%, rgba(3, 6, 11, 0.6) 70%, rgba(3, 6, 11, 0.84) 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(3, 6, 11, 0.22) 0%,
+    rgba(3, 6, 11, 0.6) 70%,
+    rgba(3, 6, 11, 0.84) 100%
+  );
 }
 
 .container {
@@ -47,32 +57,47 @@
 .logoGroup {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+}
+
+.logoCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .logoMark {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   background: linear-gradient(145deg, #f9d85a 0%, #efba14 100%);
   color: #1a1410;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
-  box-shadow: 0 8px 20px rgba(255, 212, 0, 0.28);
+  letter-spacing: 0.16em;
+  text-indent: 0.16em;
+  box-shadow:
+    0 8px 20px rgba(255, 212, 0, 0.28),
+    0 0 0 1px rgba(255, 247, 214, 0.32) inset;
 }
 
 .logoName {
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1.2;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: 0.02em;
   color: #fffef9;
+  text-wrap: balance;
 }
 
 .logoSub {
-  font-size: 11px;
+  font-size: 10px;
+  line-height: 1.3;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
   color: rgba(255, 250, 236, 0.74);
 }
 
@@ -87,12 +112,17 @@
   font-weight: 600;
   background: rgba(255, 255, 255, 0.1);
   color: rgba(255, 250, 235, 0.95);
-  transition: all 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
 }
 
 .navLogin:hover {
   border-color: rgba(255, 212, 0, 0.6);
   background: rgba(255, 212, 0, 0.16);
+  transform: translateY(-1px);
 }
 
 .main {
@@ -154,6 +184,46 @@
     0 0 0 1px rgba(255, 244, 200, 0.42) inset;
 }
 
+.brandPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 212, 0, 0.06) 100%);
+  box-shadow:
+    0 18px 36px -28px rgba(255, 212, 0, 0.48),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+}
+
+.brandEyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255, 232, 162, 0.84);
+}
+
+.brandTitle {
+  font-family: var(--font-display), serif;
+  font-size: clamp(34px, 4.8vw, 56px);
+  line-height: 0.98;
+  letter-spacing: -0.04em;
+  text-wrap: balance;
+  background: linear-gradient(135deg, #fffef8 0%, #ffe28b 42%, #f4be14 100%);
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.brandDescription {
+  max-width: 48ch;
+  color: rgba(241, 245, 255, 0.82);
+  font-size: 13px;
+  line-height: 1.68;
+}
+
 .heroCopy h1 {
   font-size: clamp(36px, 5.4vw, 62px);
   line-height: 0.98;
@@ -161,6 +231,7 @@
   flex-direction: column;
   gap: 4px;
   letter-spacing: -0.04em;
+  text-wrap: balance;
 }
 
 .heroCopy h1 span {
@@ -168,7 +239,7 @@
 }
 
 .subtitle {
-  max-width: 62ch;
+  max-width: 58ch;
   color: rgba(241, 245, 255, 0.9);
   font-size: 15px;
   line-height: 1.68;
@@ -191,7 +262,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease;
 }
 
 .primaryAction {
@@ -325,6 +401,7 @@
 .sectionHead h2 {
   font-size: clamp(24px, 3vw, 36px);
   line-height: 1.06;
+  text-wrap: balance;
 }
 
 .featureGrid {
@@ -431,6 +508,7 @@
   font-size: clamp(30px, 3.8vw, 46px);
   line-height: 1.06;
   letter-spacing: -0.03em;
+  text-wrap: balance;
 }
 
 .cta p {
@@ -467,13 +545,23 @@
 :global(:root[data-theme='light']) .page {
   color: #0f172a;
   background:
-    linear-gradient(118deg, rgba(246, 250, 255, 0.96) 0%, rgba(242, 248, 255, 0.92) 42%, rgba(236, 244, 255, 0.95) 100%),
+    linear-gradient(
+      118deg,
+      rgba(246, 250, 255, 0.96) 0%,
+      rgba(242, 248, 255, 0.92) 42%,
+      rgba(236, 244, 255, 0.95) 100%
+    ),
     radial-gradient(circle at 12% 8%, rgba(255, 212, 0, 0.2) 0%, rgba(255, 212, 0, 0) 40%),
     url('/images/login-hero.webp');
 }
 
 :global(:root[data-theme='light']) .page::before {
-  background: linear-gradient(180deg, rgba(250, 252, 255, 0.08) 0%, rgba(242, 247, 255, 0.32) 70%, rgba(232, 241, 255, 0.54) 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(250, 252, 255, 0.08) 0%,
+    rgba(242, 247, 255, 0.32) 70%,
+    rgba(232, 241, 255, 0.54) 100%
+  );
 }
 
 :global(:root[data-theme='light']) .navbar {
@@ -487,6 +575,25 @@
 
 :global(:root[data-theme='light']) .logoSub {
   color: rgba(15, 23, 42, 0.72);
+}
+
+:global(:root[data-theme='light']) .brandPanel {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.84) 0%, rgba(255, 236, 179, 0.34) 100%);
+}
+
+:global(:root[data-theme='light']) .brandEyebrow {
+  color: rgba(120, 53, 15, 0.8);
+}
+
+:global(:root[data-theme='light']) .brandTitle {
+  background: linear-gradient(135deg, #0f172a 0%, #7c4a03 48%, #d09a16 100%);
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+:global(:root[data-theme='light']) .brandDescription {
+  color: rgba(30, 41, 59, 0.88);
 }
 
 :global(:root[data-theme='light']) .navLogin {
@@ -601,10 +708,33 @@
     gap: 14px;
   }
 
+  .logoGroup {
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .logoMark {
+    width: 38px;
+    height: 38px;
+  }
+
+  .logoSub {
+    letter-spacing: 0.12em;
+  }
+
   .heroCopy,
   .features,
   .cta {
     padding: 14px;
+  }
+
+  .brandPanel {
+    padding: 14px;
+    gap: 6px;
+  }
+
+  .brandTitle {
+    font-size: clamp(30px, 10vw, 40px);
   }
 
   .heroImageWrap {

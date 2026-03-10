@@ -135,7 +135,7 @@ async function main() {
   const email = process.env.BOOTSTRAP_OWNER_EMAIL;
   const password = process.env.BOOTSTRAP_OWNER_PASSWORD;
   const tenantSlug = process.env.BOOTSTRAP_TENANT_SLUG || 'eggturtle-demo';
-  const tenantName = process.env.BOOTSTRAP_TENANT_NAME || 'Eggturtle Demo Tenant';
+  const tenantName = process.env.BOOTSTRAP_TENANT_NAME || 'Breeding Traceability Record Demo Tenant';
   const pepper = process.env.AUTH_PASSWORD_PEPPER || process.env.AUTH_CODE_PEPPER || '';
 
   const tenant = await prisma.tenant.upsert({

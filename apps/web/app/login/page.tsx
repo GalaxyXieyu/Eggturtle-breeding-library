@@ -12,11 +12,7 @@ import {
   requestSmsCodeResponseSchema,
 } from '@eggturtle/shared/auth';
 
-import {
-  UiPreferenceControls,
-  type UiLocale,
-  useUiPreferences,
-} from '@/components/ui-preferences';
+import { UiPreferenceControls, type UiLocale, useUiPreferences } from '@/components/ui-preferences';
 import { apiRequest, getAccessToken, setAccessToken } from '@/lib/api-client';
 import { formatApiError } from '@/lib/error-utils';
 import { resolvePostAuthRedirect } from '@/lib/post-auth-redirect';
@@ -27,6 +23,7 @@ type SmsFlow = 'login' | 'register';
 
 type LoginCopy = {
   title: string;
+  brandEyebrow: string;
   subtitle: string;
   loginTitle: string;
   registerTitle: string;
@@ -83,7 +80,8 @@ const ACCOUNT_PATTERN = /^[a-zA-Z][a-zA-Z0-9_-]{2,30}[a-zA-Z0-9]$/;
 const COPY: Record<UiLocale, LoginCopy> = {
   zh: {
     title: '选育溯源档案',
-    subtitle: '用数据驱动选育优化，提升繁育决策效率。',
+    brandEyebrow: 'Breeding Traceability Record',
+    subtitle: '让每一条选育、配对、产蛋与孵化记录，都沉淀为可查、可验、可复盘的繁育档案。',
     loginTitle: '登录用户端',
     registerTitle: '注册并开始',
     showcaseItemAuth: '支持账号 / 手机号密码登录',
@@ -117,7 +115,8 @@ const COPY: Record<UiLocale, LoginCopy> = {
     devCode: '开发验证码',
     phoneInvalid: '请输入正确的 11 位手机号。',
     codeInvalid: '请输入 6 位验证码。',
-    accountInvalid: '账号需 4-32 位、以字母开头、以字母或数字结尾，仅支持字母、数字、下划线、连字符。',
+    accountInvalid:
+      '账号需 4-32 位、以字母开头、以字母或数字结尾，仅支持字母、数字、下划线、连字符。',
     emailLoginNotSupported: '当前不支持邮箱登录，请使用账号或手机号。',
     confirmPasswordMismatch: '两次输入的密码不一致，请重新确认。',
     requestCode: '发送验证码',
@@ -135,8 +134,9 @@ const COPY: Record<UiLocale, LoginCopy> = {
     unknownError: '请求失败，请稍后重试。',
   },
   en: {
-    title: 'Eggturtle Breeding Library',
-    subtitle: 'Data-driven breeding optimization for faster and more reliable decisions.',
+    title: 'Breeding Traceability Record',
+    brandEyebrow: '选育溯源档案',
+    subtitle: 'A trusted workspace for breeder records, pairing timelines, and hatch traceability.',
     loginTitle: 'Sign in to Workspace',
     registerTitle: 'Create your workspace',
     showcaseItemAuth: 'Password login with account or phone',
@@ -207,6 +207,7 @@ function LoginPageSkeleton() {
         <section className="login-showcase">
           <div className="login-showcase-glow" aria-hidden />
           <div className="login-brand-copy">
+            <p className="login-brand-eyebrow">Breeding Traceability Record</p>
             <h1>选育溯源档案</h1>
             <p className="muted">正在准备登录体验…</p>
           </div>
@@ -389,7 +390,9 @@ function LoginPageContent() {
     return compact.replace(/^\+?86/, '');
   }
 
-  function resolvePasswordLoginIdentifier(rawValue: string): { ok: true; login: string } | { ok: false; message: string } {
+  function resolvePasswordLoginIdentifier(
+    rawValue: string,
+  ): { ok: true; login: string } | { ok: false; message: string } {
     const compact = rawValue.trim().replace(/\s+/g, '');
     if (!compact) {
       return { ok: false, message: copy.accountInvalid };
@@ -462,7 +465,10 @@ function LoginPageContent() {
     }
 
     try {
-      const payload = requestSmsCodeRequestSchema.parse({ phoneNumber: normalizedPhoneNumber, purpose: flow });
+      const payload = requestSmsCodeRequestSchema.parse({
+        phoneNumber: normalizedPhoneNumber,
+        purpose: flow,
+      });
       const response = await apiRequest('/auth/request-sms-code', {
         method: 'POST',
         auth: false,
@@ -647,6 +653,7 @@ function LoginPageContent() {
         <section className="login-showcase">
           <div className="login-showcase-glow" aria-hidden />
           <div className="login-brand-copy">
+            <p className="login-brand-eyebrow">{copy.brandEyebrow}</p>
             <h1>{copy.title}</h1>
             <p className="muted">{copy.subtitle}</p>
           </div>

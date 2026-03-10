@@ -1,4 +1,4 @@
-# TurtleAlbum UI Style Guide
+# Breeding Traceability Record UI Style Guide
 
 本文件定义了整个系统的 UI 设计语言，作为所有新页面开发的参考依据。
 
@@ -759,7 +759,7 @@ CDN 引入清单：
 **文档结构**：
 - `<!DOCTYPE html>`，`<html lang="zh-CN">`
 - `meta charset="UTF-8"`，`meta name="viewport" content="width=device-width, initial-scale=1.0"`
-- `title` 建议 `TurtleAlbum - Dashboard`
+- `title` 建议 `Breeding Traceability Record - Dashboard`
 
 **依赖引入**：
 - Tailwind：`https://cdn.tailwindcss.com`

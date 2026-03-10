@@ -99,7 +99,7 @@ const COPY: Record<UiLocale, LoginCopy> = {
     unknownError: '未知错误'
   },
   en: {
-    productTitle: 'Eggturtle',
+    productTitle: 'Breeding Traceability Record',
     productSubtitle: 'Data-driven breeding optimization for higher quality and faster decisions.',
     showcaseEyebrow: 'Admin Console',
     showcaseSecurity: 'Super admin allowlist enforcement',

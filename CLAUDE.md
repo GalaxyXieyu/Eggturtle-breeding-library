@@ -1,4 +1,4 @@
-# TurtleAlbum Breeding Library - Claude 项目配置
+# Breeding Traceability Record - Claude 项目配置
 
 更新日期: 2026-03-07
 

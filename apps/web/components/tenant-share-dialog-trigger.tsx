@@ -749,7 +749,7 @@ async function generateGenericSharePoster(payload: SharePosterPayload): Promise<
   // Footer text with refined styling
   ctx.fillStyle = '#999999';
   ctx.font = '600 22px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
-  ctx.fillText('Eggturtle Breeding Library', heroX, accentBarY + 55);
+  ctx.fillText('Breeding Traceability Record', heroX, accentBarY + 55);
 
   return canvas.toDataURL('image/png');
 }
@@ -958,7 +958,7 @@ async function generateDetailSharePoster(payload: SharePosterPayload): Promise<s
 
   ctx.fillStyle = '#0f172a';
   ctx.font = '500 20px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
-  ctx.fillText('Eggturtle Breeding Library', panelX + 34, panelY + panelHeight - 24);
+  ctx.fillText('Breeding Traceability Record', panelX + 34, panelY + panelHeight - 24);
 
   return canvas.toDataURL('image/png');
 }

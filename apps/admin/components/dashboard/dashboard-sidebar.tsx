@@ -27,7 +27,7 @@ const SIDEBAR_COPY = {
   en: {
     asideAriaLabel: 'Admin navigation',
     navAriaLabel: 'Admin primary navigation',
-    brandTitle: 'Eggturtle Admin Console',
+    brandTitle: 'Breeding Traceability Record Admin Console',
     brandSubtitle: 'Cross-tenant operations control',
     hint: 'Access control is enforced by session validation and allowlist checks.'
   }

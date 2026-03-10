@@ -20,19 +20,19 @@ async function main() {
 
   const owner = await prisma.user.upsert({
     where: { email: ownerEmail },
-    update: { name: 'Eggturtle Owner' },
+    update: { name: 'Breeding Traceability Record Owner' },
     create: {
       email: ownerEmail,
-      name: 'Eggturtle Owner'
+      name: 'Breeding Traceability Record Owner'
     }
   });
 
   const tenant = await prisma.tenant.upsert({
     where: { slug: tenantSlug },
-    update: { name: 'Eggturtle Demo Tenant' },
+    update: { name: 'Breeding Traceability Record Demo Tenant' },
     create: {
       slug: tenantSlug,
-      name: 'Eggturtle Demo Tenant'
+      name: 'Breeding Traceability Record Demo Tenant'
     }
   });
 

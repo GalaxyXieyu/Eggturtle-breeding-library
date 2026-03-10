@@ -1,4 +1,4 @@
-# Eggturtle Breeding Library
+# Breeding Traceability Record
 
 多用户 SaaS 产品系统（Node.js/TypeScript Monorepo）。
 
