@@ -173,7 +173,7 @@ export class AdminTenantsService {
     });
 
     return {
-      tenants: tenants.map((tenant) => this.toAdminTenantSummary(tenant, insightMap.get(tenant.id)?.autoTags ?? []))
+      tenants: tenants.map((tenant) => insightMap.get(tenant.id)?.tenant ?? this.toAdminTenantSummary(tenant))
     };
   }
 
@@ -205,7 +205,7 @@ export class AdminTenantsService {
     });
 
     return {
-      tenant: this.toAdminTenantSummary(tenant, insightMap.get(tenant.id)?.autoTags ?? [])
+      tenant: insightMap.get(tenant.id)?.tenant ?? this.toAdminTenantSummary(tenant)
     };
   }
 
@@ -634,6 +634,9 @@ export class AdminTenantsService {
           slug: tenant.slug,
           name: tenant.name,
           createdAt: tenant.createdAt.toISOString(),
+          lastLoginAt: null,
+          lastBusinessActivityAt: null,
+          lastActiveAt: null,
           memberCount: 0,
           owner: null,
           subscription: null,
@@ -1068,7 +1071,6 @@ export class AdminTenantsService {
     const snapshots = new Map<string, TenantInsightSnapshot>();
     for (const tenant of tenants) {
       const usage = usageMap.get(tenant.id) ?? this.createEmptyUsageSnapshot(tenant, now);
-      const baseTenant = this.toAdminTenantSummary(tenant, []);
       const loginSummary = loginTotalMap.get(tenant.id);
       const recentBusiness = recentBusinessMap.get(tenant.id) ?? [];
       const activeDayKeys = new Set(recentBusiness.map((item) => this.toDateKey(item.createdAt)));
@@ -1086,6 +1088,10 @@ export class AdminTenantsService {
         totalShares: usage.usage.shares.used,
         uploads30d
       };
+      const baseTenant = this.toAdminTenantSummary(tenant, [], {
+        lastLoginAt: loginMetrics.lastLoginAt,
+        lastBusinessActivityAt: businessMetrics.lastBusinessActivityAt
+      });
       const autoTags = this.buildAutoTags({
         tenant: baseTenant,
         loginMetrics,
@@ -1436,7 +1442,11 @@ export class AdminTenantsService {
 
   private toAdminTenantSummary(
     tenant: TenantDirectoryRow,
-    autoTags: AdminTenantAutoTag[] = []
+    autoTags: AdminTenantAutoTag[] = [],
+    activity: {
+      lastLoginAt?: string | null;
+      lastBusinessActivityAt?: string | null;
+    } = {}
   ): GetAdminTenantResponse['tenant'] {
     const ownerMembership = tenant.members[0];
     const owner = ownerMembership
@@ -1463,17 +1473,34 @@ export class AdminTenantsService {
           status: 'ACTIVE' as const,
           expiresAt: null
         };
+    const lastLoginAt = activity.lastLoginAt ?? null;
+    const lastBusinessActivityAt = activity.lastBusinessActivityAt ?? null;
 
     return {
       id: tenant.id,
       slug: tenant.slug,
       name: tenant.name,
       createdAt: tenant.createdAt.toISOString(),
+      lastLoginAt,
+      lastBusinessActivityAt,
+      lastActiveAt: this.resolveLastActiveAt(lastLoginAt, lastBusinessActivityAt),
       memberCount: tenant._count.members,
       owner,
       subscription,
       autoTags
     };
+  }
+
+  private resolveLastActiveAt(lastLoginAt: string | null, lastBusinessActivityAt: string | null) {
+    if (!lastLoginAt) {
+      return lastBusinessActivityAt;
+    }
+
+    if (!lastBusinessActivityAt) {
+      return lastLoginAt;
+    }
+
+    return Date.parse(lastLoginAt) >= Date.parse(lastBusinessActivityAt) ? lastLoginAt : lastBusinessActivityAt;
   }
 
   private buildAutoTags(input: {

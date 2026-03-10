@@ -22,11 +22,16 @@ export function DashboardNavIconGlyph({ icon }: DashboardNavIconProps) {
     )
   }
 
-  if (icon === 'records') {
+  if (icon === 'settings') {
     return (
       <svg viewBox="0 0 16 16" width="14" height="14">
-        <path d="M4 2.8h6l2 2v8.4H4z" fill="none" stroke="currentColor" strokeWidth="1.2" />
-        <path d="M10 2.8v2h2M5.3 7h5.4M5.3 9.4h5.4M5.3 11.8h3.6" fill="none" stroke="currentColor" strokeWidth="1.2" />
+        <path
+          d="M8 3.2a.9.9 0 0 1 .9-.9h.5a.9.9 0 0 1 .9.9v.6c.4.1.8.3 1.1.6l.5-.3a.9.9 0 0 1 1.2.3l.2.4a.9.9 0 0 1-.3 1.2l-.5.3c.1.4.1.8 0 1.2l.5.3a.9.9 0 0 1 .3 1.2l-.2.4a.9.9 0 0 1-1.2.3l-.5-.3c-.3.3-.7.5-1.1.6v.6a.9.9 0 0 1-.9.9h-.5a.9.9 0 0 1-.9-.9v-.6a3.6 3.6 0 0 1-1.1-.6l-.5.3a.9.9 0 0 1-1.2-.3l-.2-.4a.9.9 0 0 1 .3-1.2l.5-.3a3.6 3.6 0 0 1 0-1.2l-.5-.3a.9.9 0 0 1-.3-1.2l.2-.4a.9.9 0 0 1 1.2-.3l.5.3c.3-.3.7-.5 1.1-.6z"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.1"
+        />
+        <circle cx="8" cy="8" r="1.8" fill="none" stroke="currentColor" strokeWidth="1.1" />
       </svg>
     )
   }

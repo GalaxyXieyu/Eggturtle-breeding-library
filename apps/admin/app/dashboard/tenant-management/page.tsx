@@ -60,9 +60,10 @@ const COPY = {
     notes: '登录统计自接入后累计，不回填历史登录。',
     viewDetail: '打开完整详情',
     openActivation: '直达激活码',
-    createdAt: '创建时间',
+    createdAt: '注册时间',
+    lastActiveAt: '最后活跃',
     ownerMissing: '无 Owner',
-    listTitle: '治理列表',
+    listTitle: '用户列表',
     listDesc: '只保留治理判断所需最小信息，选中后在右侧查看洞察摘要。',
     summaryTitle: '运营摘要',
     summaryDesc: '8 个紧凑指标 + 最近记录 + 成员权限简版。',
@@ -106,9 +107,10 @@ const COPY = {
     notes: 'Login metrics accumulate from the new tracking rollout onward.',
     viewDetail: 'Open Full Detail',
     openActivation: 'Jump to Activation Code',
-    createdAt: 'Created At',
+    createdAt: 'Registered',
+    lastActiveAt: 'Last Active',
     ownerMissing: 'No owner',
-    listTitle: 'Governance List',
+    listTitle: 'Tenant List',
     listDesc: 'Keep only the minimum signal on the left, inspect the selected tenant on the right.',
     summaryTitle: 'Operator Summary',
     summaryDesc: '8 compact metrics, recent activity, member summary, and quick actions.',
@@ -379,9 +381,14 @@ export default function DashboardTenantManagementPage() {
                   onClick={() => handleTenantSelect(tenant.id)}
                 >
                   <div className="tenant-governance-item-top">
-                    <div className="stack row-tight">
+                    <div className="stack row-tight tenant-governance-item-copy">
                       <strong>{tenant.name}</strong>
-                      <span className="mono">{tenant.slug}</span>
+                      <div className="tenant-governance-subline">
+                        <span className="mono">{tenant.slug}</span>
+                        <p className="tenant-governance-owner" title={ownerLabel}>
+                          {ownerLabel}
+                        </p>
+                      </div>
                     </div>
                     <div className="inline-actions">
                       <AdminBadge tone={toPlanTone(tenant.subscription?.plan ?? 'FREE')}>
@@ -392,7 +399,20 @@ export default function DashboardTenantManagementPage() {
                       </AdminBadge>
                     </div>
                   </div>
-                  <p className="tenant-governance-owner">{ownerLabel}</p>
+                  <div className="tenant-governance-meta">
+                    <div className="tenant-governance-stat">
+                      <span className="tenant-governance-stat-label">{copy.createdAt}</span>
+                      <strong className="tenant-governance-stat-value">
+                        {formatCompactDateTime(tenant.createdAt, locale)}
+                      </strong>
+                    </div>
+                    <div className="tenant-governance-stat">
+                      <span className="tenant-governance-stat-label">{copy.lastActiveAt}</span>
+                      <strong className="tenant-governance-stat-value">
+                        {formatCompactDateTime(tenant.lastActiveAt, locale)}
+                      </strong>
+                    </div>
+                  </div>
                   <div className="governance-tag-row">
                     {tenant.autoTags.slice(0, 2).map((tag) => (
                       <AdminBadge key={tag.key} tone={tag.tone}>
@@ -608,6 +628,28 @@ function formatDateTimeCell(value: string | null) {
   }
 
   return formatDateTime(value)
+}
+
+function formatCompactDateTime(value: string | null, locale: 'zh' | 'en') {
+  if (!value) {
+    return locale === 'zh' ? '暂无' : 'No activity'
+  }
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+
+  const now = new Date()
+  const showYear = date.getFullYear() !== now.getFullYear()
+
+  return new Intl.DateTimeFormat(locale === 'zh' ? 'zh-CN' : 'en-US', {
+    ...(showYear ? { year: '2-digit' } : {}),
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(date)
 }
 
 function formatUtilization(value: number | null) {

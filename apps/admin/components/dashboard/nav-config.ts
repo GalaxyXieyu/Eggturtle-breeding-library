@@ -3,7 +3,7 @@ export type DashboardLocaleText = {
   en: string
 }
 
-export type DashboardNavIcon = 'overview' | 'tenantManagement' | 'records'
+export type DashboardNavIcon = 'overview' | 'tenantManagement' | 'settings'
 
 export type DashboardNavItem = {
   href: string
@@ -53,16 +53,16 @@ export const dashboardNavGroups: DashboardNavGroup[] = [
     ]
   },
   {
-    id: 'records',
-    title: { zh: '记录', en: 'Records' },
+    id: 'settings',
+    title: { zh: '设置', en: 'Settings' },
     items: [
       {
         href: '/dashboard/audit-logs',
-        icon: 'records',
-        label: { zh: '记录', en: 'Records' },
+        icon: 'settings',
+        label: { zh: '设置', en: 'Settings' },
         description: {
-          zh: '平台治理日志与操作追踪。',
-          en: 'Platform governance logs and audit trail.'
+          zh: '平台设置与治理日志入口。',
+          en: 'Platform settings and audit-log entry.'
         },
         matchStrategy: 'prefix'
       }

@@ -116,6 +116,9 @@ export const adminTenantBusinessMetricsSchema = z.object({
 
 export const adminTenantSchema = tenantSchema.extend({
   createdAt: z.string().datetime(),
+  lastLoginAt: z.string().datetime().nullable(),
+  lastBusinessActivityAt: z.string().datetime().nullable(),
+  lastActiveAt: z.string().datetime().nullable(),
   memberCount: z.number().int().nonnegative(),
   owner: adminTenantOwnerSchema.nullable().optional(),
   subscription: adminTenantSubscriptionSummarySchema.nullable().optional(),

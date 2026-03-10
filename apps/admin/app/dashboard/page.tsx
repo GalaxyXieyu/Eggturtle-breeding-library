@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   listAdminTenantsResponseSchema,
   listSuperAdminAuditLogsResponseSchema,
@@ -38,6 +38,8 @@ type OverviewState = {
   revenueOverview: AdminRevenueOverviewResponse | null;
   usageOverview: AdminUsageOverviewResponse | null;
 };
+
+type MobileOverviewSection = 'trend' | 'revenue' | 'usage' | 'records';
 
 const COPY = {
   zh: {
@@ -142,6 +144,8 @@ export default function DashboardOverviewPage() {
     revenueOverview: null,
     usageOverview: null
   });
+  const [activeMobileSection, setActiveMobileSection] = useState<MobileOverviewSection>('trend');
+  const detailSectionsRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -217,9 +221,46 @@ export default function DashboardOverviewPage() {
     return Math.max(...values, 1);
   }, [state.activityOverview]);
 
+  const mobileSectionTabs = useMemo(
+    () => [
+      { key: 'trend' as const, label: copy.trendTitle },
+      { key: 'revenue' as const, label: copy.revenueTitle },
+      { key: 'usage' as const, label: copy.usageTitle },
+      { key: 'records' as const, label: copy.recordsTitle }
+    ],
+    [copy]
+  );
+
+  function handleMobileSectionChange(nextSection: MobileOverviewSection) {
+    setActiveMobileSection(nextSection);
+    requestAnimationFrame(() => {
+      detailSectionsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
+
   return (
     <section className="page admin-page">
       <AdminPageHeader eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
+
+      <nav
+        className="data-overview-section-nav"
+        aria-label={locale === 'zh' ? '数据二级导航' : 'Data secondary navigation'}
+      >
+        <div className="data-overview-section-nav-list" role="tablist">
+          {mobileSectionTabs.map((section) => (
+            <button
+              key={section.key}
+              type="button"
+              role="tab"
+              className={`data-overview-section-tab${activeMobileSection === section.key ? ' active' : ''}`}
+              aria-selected={activeMobileSection === section.key}
+              onClick={() => handleMobileSectionChange(section.key)}
+            >
+              {section.label}
+            </button>
+          ))}
+        </div>
+      </nav>
 
       <div className="admin-metrics-grid">
         <AdminMetricCard
@@ -256,8 +297,8 @@ export default function DashboardOverviewPage() {
         />
       </div>
 
-      <div className="data-overview-grid">
-        <AdminPanel className="stack">
+      <div ref={detailSectionsRef} className="data-overview-grid">
+        <AdminPanel className={`stack data-overview-panel${activeMobileSection === 'trend' ? ' is-active' : ''}`}>
           <div className="admin-section-head">
             <h3>{copy.trendTitle}</h3>
             <p>{copy.trendDesc}</p>
@@ -296,7 +337,7 @@ export default function DashboardOverviewPage() {
           </div>
         </AdminPanel>
 
-        <AdminPanel className="stack">
+        <AdminPanel className={`stack data-overview-panel${activeMobileSection === 'revenue' ? ' is-active' : ''}`}>
           <div className="admin-section-head">
             <h3>{copy.revenueTitle}</h3>
             <p>{copy.revenueDesc}</p>
@@ -333,7 +374,7 @@ export default function DashboardOverviewPage() {
           </div>
         </AdminPanel>
 
-        <AdminPanel className="stack">
+        <AdminPanel className={`stack data-overview-panel${activeMobileSection === 'usage' ? ' is-active' : ''}`}>
           <div className="admin-section-head">
             <h3>{copy.usageTitle}</h3>
             <p>{copy.usageDesc}</p>
@@ -370,7 +411,7 @@ export default function DashboardOverviewPage() {
                   </div>
                   <div className="stack row-tight data-overview-end">
                     <span>{formatBytes(tenant.usage.storageBytes.usedBytes)}</span>
-                    <span className="muted">{formatPercent(tenant.usage.storageBytes.utilization)}</span>
+                    <span className="muted">{formatUtilizationPercent(tenant.usage.storageBytes.utilization)}</span>
                   </div>
                 </div>
               ))}
@@ -378,7 +419,7 @@ export default function DashboardOverviewPage() {
           </div>
         </AdminPanel>
 
-        <AdminPanel className="stack data-overview-span-full">
+        <AdminPanel className={`stack data-overview-panel data-overview-span-full${activeMobileSection === 'records' ? ' is-active' : ''}`}>
           <div className="admin-section-head">
             <h3>{copy.recordsTitle}</h3>
             <p>{copy.recordsDesc}</p>
@@ -386,36 +427,63 @@ export default function DashboardOverviewPage() {
 
           {state.logs.length === 0 ? <p className="muted">{copy.noAudit}</p> : null}
           {state.logs.length > 0 ? (
-            <AdminTableFrame>
-              <thead>
-                <tr>
-                  <th>{copy.action}</th>
-                  <th>{copy.actor}</th>
-                  <th>{copy.tenant}</th>
-                  <th>{copy.time}</th>
-                </tr>
-              </thead>
-              <tbody>
+            <>
+              <div className="data-record-list">
                 {state.logs.map((log) => (
-                  <tr key={log.id}>
-                    <td>{formatAuditActionLabel(log.action)}</td>
-                    <td>
+                  <article key={`mobile-${log.id}`} className="data-record-item">
+                    <div className="data-record-head">
+                      <strong>{formatAuditActionLabel(log.action)}</strong>
+                      <span className="data-record-time">{formatDateTime(log.createdAt)}</span>
+                    </div>
+                    <div className="data-record-grid">
                       <div className="stack row-tight">
+                        <span className="data-record-label">{copy.actor}</span>
                         <span>{log.actorUserEmail ?? '-'}</span>
                         <span className="mono">{log.actorUserId}</span>
                       </div>
-                    </td>
-                    <td>
                       <div className="stack row-tight">
+                        <span className="data-record-label">{copy.tenant}</span>
                         <span>{log.targetTenantSlug ?? '-'}</span>
                         <span className="mono">{log.targetTenantId ?? '-'}</span>
                       </div>
-                    </td>
-                    <td>{formatDateTime(log.createdAt)}</td>
-                  </tr>
+                    </div>
+                  </article>
                 ))}
-              </tbody>
-            </AdminTableFrame>
+              </div>
+
+              <div className="data-record-desktop-table">
+                <AdminTableFrame>
+                  <thead>
+                    <tr>
+                      <th>{copy.action}</th>
+                      <th>{copy.actor}</th>
+                      <th>{copy.tenant}</th>
+                      <th>{copy.time}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {state.logs.map((log) => (
+                      <tr key={log.id}>
+                        <td>{formatAuditActionLabel(log.action)}</td>
+                        <td>
+                          <div className="stack row-tight">
+                            <span>{log.actorUserEmail ?? '-'}</span>
+                            <span className="mono">{log.actorUserId}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="stack row-tight">
+                            <span>{log.targetTenantSlug ?? '-'}</span>
+                            <span className="mono">{log.targetTenantId ?? '-'}</span>
+                          </div>
+                        </td>
+                        <td>{formatDateTime(log.createdAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </AdminTableFrame>
+              </div>
+            </>
           ) : null}
         </AdminPanel>
       </div>
@@ -450,6 +518,19 @@ function formatPercent(value: number | null) {
   }
 
   return `${Math.round(value * 100)}%`;
+}
+
+function formatUtilizationPercent(value: number | null) {
+  if (value === null) {
+    return '-';
+  }
+
+  const percent = Math.round(value * 100);
+  if (percent > 9999) {
+    return '9999%+';
+  }
+
+  return `${percent}%`;
 }
 
 function formatBytes(bytes: string | null) {
