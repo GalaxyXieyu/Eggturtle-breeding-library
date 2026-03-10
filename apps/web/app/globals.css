@@ -304,6 +304,62 @@ button,
   gap: 2px;
 }
 
+.public-floating-pref {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px;
+  border-radius: 999px;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.18);
+}
+
+.public-floating-pref .ui-pref-controls {
+  gap: 2px;
+}
+
+.public-floating-pref .ui-pref-icon-btn {
+  box-shadow: none;
+}
+
+:root[data-theme='light'] .public-floating-pref {
+  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+:root[data-theme='light'] .public-floating-pref .ui-pref-icon-btn {
+  color: rgba(51, 65, 85, 0.72);
+  background: transparent;
+}
+
+:root[data-theme='light'] .public-floating-pref .ui-pref-icon-btn:hover:not(:disabled) {
+  background: rgba(15, 23, 42, 0.08);
+  color: rgba(15, 23, 42, 0.9);
+}
+
+:root[data-theme='light'] .public-floating-pref .ui-pref-icon-btn:active:not(:disabled) {
+  background: rgba(15, 23, 42, 0.12);
+}
+
+:root[data-theme='dark'] .public-floating-pref {
+  background: rgba(15, 23, 42, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+}
+
+:root[data-theme='dark'] .public-floating-pref .ui-pref-icon-btn {
+  color: rgba(255, 255, 255, 0.72);
+  background: transparent;
+}
+
+:root[data-theme='dark'] .public-floating-pref .ui-pref-icon-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.92);
+}
+
+:root[data-theme='dark'] .public-floating-pref .ui-pref-icon-btn:active:not(:disabled) {
+  background: rgba(255, 255, 255, 0.16);
+}
+
 :root[data-theme='dark'] .tenant-sidebar-pref {
   background: linear-gradient(145deg, rgba(28, 40, 58, 0.68) 0%, rgba(16, 24, 37, 0.58) 100%);
 }

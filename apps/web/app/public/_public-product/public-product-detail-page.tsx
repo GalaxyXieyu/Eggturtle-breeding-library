@@ -10,7 +10,13 @@ import PublicFloatingActions from '@/app/public/_shared/public-floating-actions'
 import { appendPublicShareQuery } from '@/app/public/_shared/public-share-api';
 import { withPublicImageMaxEdge } from '@/app/public/_shared/public-image';
 
-import type { Breeder, BreederEventItem, FamilyTree, MaleMateLoadItem, Series } from '@/app/public/_public-product/types';
+import type {
+  Breeder,
+  BreederEventItem,
+  FamilyTree,
+  MaleMateLoadItem,
+  Series,
+} from '@/app/public/_public-product/types';
 import {
   BreederCarousel,
   BreederEventTimeline,
@@ -18,7 +24,7 @@ import {
   DemoHint,
   FamilyTreeSection,
   MaleMateLoadCard,
-  ShareContactCard
+  ShareContactCard,
 } from '@/app/public/_public-product/components';
 import { resolvePublicSharePresentation } from '@/app/public/_public-product/presentation';
 
@@ -54,7 +60,7 @@ export default function PublicProductDetailPage({
   shareQuery,
   breederId,
   homeHref,
-  presentation
+  presentation,
 }: Props) {
   const isNotFound = !breeder;
   const resolvedHomeHref = withDemo(homeHref ?? `/public/s/${shareToken}`, demo, shareQuery);
@@ -64,7 +70,9 @@ export default function PublicProductDetailPage({
   const contactQrImageUrl = resolvedPresentation.contact.showWechatBlock
     ? withPublicImageMaxEdge(resolvedPresentation.contact.wechatQrImageUrl, 480)
     : null;
-  const contactWechatId = resolvedPresentation.contact.showWechatBlock ? resolvedPresentation.contact.wechatId : null;
+  const contactWechatId = resolvedPresentation.contact.showWechatBlock
+    ? resolvedPresentation.contact.wechatId
+    : null;
   const shareCardHeroImageUrl =
     withPublicImageMaxEdge(breeder?.images[0]?.url, 960) ??
     withPublicImageMaxEdge(resolvedPresentation.hero.images[0], 960) ??
@@ -78,17 +86,22 @@ export default function PublicProductDetailPage({
   return (
     <div className="min-h-screen bg-gradient-to-br from-stone-100 via-white to-amber-50/40 text-black dark:from-neutral-950 dark:via-neutral-950 dark:to-neutral-900/40 dark:text-neutral-100">
       <div className="w-full px-0 pb-[calc(env(safe-area-inset-bottom)+94px)] pt-[env(safe-area-inset-top)] sm:px-0 lg:px-0 2xl:px-0">
-        <div className="fixed right-3 top-[calc(env(safe-area-inset-top)+10px)] z-50 rounded-full border border-black/5 bg-white/80 p-1 shadow backdrop-blur-sm dark:border-white/10 dark:bg-neutral-900/70">
+        <div className="public-floating-pref fixed right-3 top-[calc(env(safe-area-inset-top)+10px)] z-50">
           <UiPreferenceControls />
         </div>
         <div className="px-3 sm:px-4 lg:px-5 2xl:px-6">
           <DemoHint demo={demo} />
           <section className="mb-3 rounded-2xl border border-[#FFD400]/50 bg-[#FFFBE7]/90 px-4 py-3 text-xs text-neutral-700 shadow-[0_4px_16px_rgba(255,212,0,0.16)] dark:border-[#FFD400]/35 dark:bg-[#2b2410]/70 dark:text-[#ffe8a6]">
             想把这套图鉴开成自己的？
-            <Link href={onboardingHref} className="ml-2 font-semibold text-neutral-900 underline decoration-[#FFD400]/80 underline-offset-2 dark:text-[#FFD400]">
+            <Link
+              href={onboardingHref}
+              className="ml-2 font-semibold text-neutral-900 underline decoration-[#FFD400]/80 underline-offset-2 dark:text-[#FFD400]"
+            >
               去“我的”看免费开通权益
             </Link>
-            <span className="mt-1 block text-xs text-neutral-600 dark:text-[#ffdf94]">免费版可先管理 10 只，后续升级不影响已发布内容。</span>
+            <span className="mt-1 block text-xs text-neutral-600 dark:text-[#ffdf94]">
+              免费版可先管理 10 只，后续升级不影响已发布内容。
+            </span>
           </section>
         </div>
 
@@ -96,31 +109,45 @@ export default function PublicProductDetailPage({
           <div className="px-3 sm:px-4 lg:px-5 2xl:px-6">
             <div className="space-y-4 rounded-3xl border border-black/5 bg-white/85 p-5 shadow-[0_12px_36px_rgba(0,0,0,0.08)] backdrop-blur sm:p-6 dark:border-white/10 dark:bg-neutral-900/75">
               <div>
-                <div className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">该详情不存在或已迁移</div>
+                <div className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+                  该详情不存在或已迁移
+                </div>
                 <div className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
                   当前 ID：<span className="font-mono text-xs sm:text-sm">{breederId}</span>
                 </div>
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <Link href={resolvedHomeHref} className="rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm text-neutral-800 transition hover:border-neutral-400 hover:shadow-sm dark:border-white/15 dark:bg-neutral-900/70 dark:text-neutral-100 dark:hover:border-white/25">
+                <Link
+                  href={resolvedHomeHref}
+                  className="rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm text-neutral-800 transition hover:border-neutral-400 hover:shadow-sm dark:border-white/15 dark:bg-neutral-900/70 dark:text-neutral-100 dark:hover:border-white/25"
+                >
                   返回首页
                 </Link>
               </div>
 
               {fallbackBreeders.length > 0 ? (
                 <div>
-                  <div className="mb-2 text-sm font-medium text-neutral-800 dark:text-neutral-200">你可以先看这些记录：</div>
+                  <div className="mb-2 text-sm font-medium text-neutral-800 dark:text-neutral-200">
+                    你可以先看这些记录：
+                  </div>
                   <div className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3">
                     {fallbackBreeders.map((item) => (
                       <Link
                         key={item.id}
-                        href={withDemo(`/public/s/${shareToken}/products/${item.id}`, demo, shareQuery)}
+                        href={withDemo(
+                          `/public/s/${shareToken}/products/${item.id}`,
+                          demo,
+                          shareQuery,
+                        )}
                         className="group overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_30px_rgba(0,0,0,0.12)] dark:border-white/10 dark:bg-neutral-900/80"
                       >
                         <div className="relative aspect-[4/5] bg-neutral-100">
                           <img
-                            src={withPublicImageMaxEdge(item.images[0]?.url, 320) ?? '/images/mg_01.jpg'}
+                            src={
+                              withPublicImageMaxEdge(item.images[0]?.url, 320) ??
+                              '/images/mg_01.jpg'
+                            }
                             alt={item.code}
                             className="h-full w-full object-cover"
                             loading="lazy"
@@ -129,8 +156,12 @@ export default function PublicProductDetailPage({
                           />
                         </div>
                         <div className="p-2.5">
-                          <div className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{item.code}</div>
-                          <div className="text-xs text-neutral-500 dark:text-neutral-400">{item.name}</div>
+                          <div className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                            {item.code}
+                          </div>
+                          <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                            {item.name}
+                          </div>
                         </div>
                       </Link>
                     ))}
@@ -158,8 +189,14 @@ export default function PublicProductDetailPage({
                   <div className="p-5 sm:p-6">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="truncate text-2xl font-semibold tracking-tight text-neutral-900 sm:text-3xl dark:text-neutral-100">{breeder.name}</div>
-                        {breeder.code !== breeder.name ? <div className="mt-1 text-sm text-neutral-500 sm:text-base dark:text-neutral-400">{breeder.code}</div> : null}
+                        <div className="truncate text-2xl font-semibold tracking-tight text-neutral-900 sm:text-3xl dark:text-neutral-100">
+                          {breeder.name}
+                        </div>
+                        {breeder.code !== breeder.name ? (
+                          <div className="mt-1 text-sm text-neutral-500 sm:text-base dark:text-neutral-400">
+                            {breeder.code}
+                          </div>
+                        ) : null}
                       </div>
                       {typeof breeder.offspringUnitPrice === 'number' ? (
                         <div
@@ -174,7 +211,9 @@ export default function PublicProductDetailPage({
                     <div className="mt-4 flex w-full flex-nowrap items-center gap-2">
                       <ParentPill label="父本" code={breeder.sireCode} />
                       <ParentPill label="母本" code={breeder.damCode} />
-                      {breeder.sex === 'female' && breeder.currentMateCode ? <ParentPill label="当前配偶" code={breeder.currentMateCode} /> : null}
+                      {breeder.sex === 'female' && breeder.currentMateCode ? (
+                        <ParentPill label="当前配偶" code={breeder.currentMateCode} />
+                      ) : null}
                     </div>
 
                     {breeder.sex === 'female' ? <BreederStatusSummary breeder={breeder} /> : null}
@@ -184,10 +223,12 @@ export default function PublicProductDetailPage({
                         className="mt-4 rounded-2xl border p-3"
                         style={{
                           borderColor: `${brandPrimary}66`,
-                          background: `linear-gradient(135deg, ${brandPrimary}22, #fff8d6)`
+                          background: `linear-gradient(135deg, ${brandPrimary}22, #fff8d6)`,
                         }}
                       >
-                        <div className="whitespace-pre-wrap text-sm leading-relaxed text-amber-900">{breeder.description}</div>
+                        <div className="whitespace-pre-wrap text-sm leading-relaxed text-amber-900">
+                          {breeder.description}
+                        </div>
                       </div>
                     ) : null}
                   </div>
@@ -195,9 +236,23 @@ export default function PublicProductDetailPage({
               </div>
             </div>
 
-            {breeder.sex === 'female' ? <BreederEventTimeline events={events} breeder={breeder} /> : null}
-            {breeder.sex === 'male' ? <MaleMateLoadCard items={maleMateLoad} demo={demo} shareToken={shareToken} shareQuery={shareQuery} /> : null}
-            <FamilyTreeSection familyTree={familyTree} demo={demo} shareToken={shareToken} shareQuery={shareQuery} />
+            {breeder.sex === 'female' ? (
+              <BreederEventTimeline events={events} breeder={breeder} />
+            ) : null}
+            {breeder.sex === 'male' ? (
+              <MaleMateLoadCard
+                items={maleMateLoad}
+                demo={demo}
+                shareToken={shareToken}
+                shareQuery={shareQuery}
+              />
+            ) : null}
+            <FamilyTreeSection
+              familyTree={familyTree}
+              demo={demo}
+              shareToken={shareToken}
+              shareQuery={shareQuery}
+            />
 
             <div className="px-3 pt-4 sm:px-4 lg:px-5 2xl:px-6">
               <ShareContactCard presentation={resolvedPresentation} />

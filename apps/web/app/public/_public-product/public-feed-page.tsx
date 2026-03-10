@@ -6,10 +6,7 @@ import type { PublicSharePresentation } from '@eggturtle/shared';
 import { Search, X } from 'lucide-react';
 
 import { buildFilterPillClass } from '@/components/filter-pill';
-import {
-  FloatingActionButton,
-  modalCloseButtonClass,
-} from '@/components/ui/floating-actions';
+import { FloatingActionButton, modalCloseButtonClass } from '@/components/ui/floating-actions';
 import { UiPreferenceControls } from '@/components/ui-preferences';
 import PublicBottomDock from '@/app/public/_shared/public-bottom-dock';
 import PublicFloatingActions from '@/app/public/_shared/public-floating-actions';
@@ -68,7 +65,10 @@ function parsePublicFeedPersistedState(raw: string | null): PublicFeedPersistedS
       typeof parsed.savedAt !== 'number' ||
       typeof parsed.seriesId !== 'string' ||
       (parsed.sex !== 'all' && parsed.sex !== 'male' && parsed.sex !== 'female') ||
-      (parsed.status !== 'all' && parsed.status !== 'normal' && parsed.status !== 'need_mating' && parsed.status !== 'warning') ||
+      (parsed.status !== 'all' &&
+        parsed.status !== 'normal' &&
+        parsed.status !== 'need_mating' &&
+        parsed.status !== 'warning') ||
       typeof parsed.visibleCount !== 'number' ||
       typeof parsed.scrollY !== 'number'
     ) {
@@ -81,7 +81,7 @@ function parsePublicFeedPersistedState(raw: string | null): PublicFeedPersistedS
       sex: parsed.sex,
       status: parsed.status,
       visibleCount: parsed.visibleCount,
-      scrollY: parsed.scrollY
+      scrollY: parsed.scrollY,
     };
   } catch {
     return null;
@@ -113,14 +113,16 @@ export default function PublicFeedPage({
   const [hasHydratedFeedState, setHasHydratedFeedState] = useState(false);
   const stateStorageKey = useMemo(
     () => buildPublicFeedStateKey(shareToken, shareQuery),
-    [shareToken, shareQuery]
+    [shareToken, shareQuery],
   );
 
   const resolvedPresentation = resolvePublicSharePresentation(presentation);
   const heroImages = useMemo(
     () =>
-      resolvedPresentation.hero.images.map((imageUrl) => withPublicImageMaxEdge(imageUrl, 960) ?? imageUrl),
-    [resolvedPresentation.hero.images]
+      resolvedPresentation.hero.images.map(
+        (imageUrl) => withPublicImageMaxEdge(imageUrl, 960) ?? imageUrl,
+      ),
+    [resolvedPresentation.hero.images],
   );
   const heroSignature = useMemo(() => heroImages.join('|'), [heroImages]);
   const [heroIndex, setHeroIndex] = useState(0);
@@ -168,7 +170,7 @@ export default function PublicFeedPage({
         sex,
         status,
         visibleCount,
-        scrollY: Math.max(0, Math.floor(scrollY))
+        scrollY: Math.max(0, Math.floor(scrollY)),
       };
 
       try {
@@ -177,7 +179,7 @@ export default function PublicFeedPage({
         // Ignore storage quota and private mode write errors.
       }
     },
-    [seriesId, sex, status, stateStorageKey, visibleCount]
+    [seriesId, sex, status, stateStorageKey, visibleCount],
   );
 
   useEffect(() => {
@@ -266,14 +268,16 @@ export default function PublicFeedPage({
   }, [breeders, seriesId, sex, status]);
   const visibleList = useMemo(
     () => list.slice(0, Math.min(visibleCount, list.length)),
-    [list, visibleCount]
+    [list, visibleCount],
   );
   const hasMoreList = visibleList.length < list.length;
 
   useEffect(() => {
     if (preserveVisibleCountOnFirstListSyncRef.current) {
       preserveVisibleCountOnFirstListSyncRef.current = false;
-      setVisibleCount((current) => Math.min(Math.max(current, INITIAL_VISIBLE_BREEDERS), list.length));
+      setVisibleCount((current) =>
+        Math.min(Math.max(current, INITIAL_VISIBLE_BREEDERS), list.length),
+      );
       return;
     }
 
@@ -333,7 +337,7 @@ export default function PublicFeedPage({
 
         setVisibleCount((current) => Math.min(current + VISIBLE_BREEDERS_CHUNK, list.length));
       },
-      { rootMargin: LOAD_MORE_ROOT_MARGIN }
+      { rootMargin: LOAD_MORE_ROOT_MARGIN },
     );
 
     observer.observe(target);
@@ -489,7 +493,7 @@ export default function PublicFeedPage({
               }}
             />
             <div className="absolute inset-0">
-              <div className="absolute right-3 top-3 z-30 rounded-full border border-white/15 bg-black/35 p-1 backdrop-blur-sm">
+              <div className="public-floating-pref absolute right-3 top-3 z-30">
                 <UiPreferenceControls />
               </div>
               <div className="flex h-full flex-col justify-end p-5 lg:p-8">
@@ -635,14 +639,16 @@ export default function PublicFeedPage({
                   className="rounded-full border border-neutral-300 bg-white px-4 py-1.5 text-xs font-semibold text-neutral-700 transition hover:border-neutral-400 hover:bg-neutral-50"
                   onClick={() =>
                     setVisibleCount((current) =>
-                      Math.min(current + VISIBLE_BREEDERS_CHUNK, list.length)
+                      Math.min(current + VISIBLE_BREEDERS_CHUNK, list.length),
                     )
                   }
                 >
                   继续加载
                 </button>
               ) : null}
-              {hasMoreList ? <div ref={loadMoreSentinelRef} className="h-px w-full" aria-hidden /> : null}
+              {hasMoreList ? (
+                <div ref={loadMoreSentinelRef} className="h-px w-full" aria-hidden />
+              ) : null}
             </div>
           </>
         )}
