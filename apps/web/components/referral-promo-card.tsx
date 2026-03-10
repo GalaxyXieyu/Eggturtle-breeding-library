@@ -2,11 +2,10 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { Copy, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
-import { copyTextWithFallback } from '@/lib/browser-share';
 import { formatApiError } from '@/lib/error-utils';
-import { fetchMyReferralOverview, resolveReferralShareUrl } from '@/lib/referral-client';
+import { fetchMyReferralOverview } from '@/lib/referral-client';
 
 type ReferralPromoCardProps = {
   tenantSlug: string;
@@ -64,7 +63,6 @@ export default function ReferralPromoCard({
     };
   }, [notice]);
 
-  const shareUrl = useMemo(() => resolveReferralShareUrl(overview), [overview]);
   const projectedExpiry = useMemo(() => {
     if (!currentExpiresAt || !overview) {
       return null;
@@ -82,20 +80,6 @@ export default function ReferralPromoCard({
 
     return projected.toLocaleDateString();
   }, [currentExpiresAt, overview]);
-
-  async function handleCopy() {
-    if (!shareUrl) {
-      return;
-    }
-
-    const copied = await copyTextWithFallback(shareUrl);
-    if (copied) {
-      setNotice('邀请链接已复制。邀请好友首付，双方各得 7 天。');
-      return;
-    }
-
-    setError('复制失败，请稍后再试。');
-  }
 
   const compact = variant === 'share';
 
