@@ -1998,9 +1998,9 @@ textarea:focus {
   .login-showcase {
     width: 100%;
     max-width: 760px;
-    min-height: 220px;
-    padding: clamp(24px, 4vw, 36px) clamp(20px, 4vw, 34px);
-    border-radius: 28px;
+    min-height: 160px;
+    padding: clamp(20px, 3.5vw, 28px) clamp(18px, 3.5vw, 28px);
+    border-radius: 24px;
     border: 1px solid rgba(255, 255, 255, 0.24);
     background:
       linear-gradient(140deg, rgba(6, 10, 16, 0.34) 0%, rgba(8, 12, 18, 0.76) 100%),
@@ -2045,7 +2045,15 @@ textarea:focus {
   .login-card {
     justify-self: center;
     max-width: 620px;
-    padding: clamp(22px, 3.6vw, 32px);
+    padding: clamp(20px, 3.2vw, 28px);
+  }
+
+  .login-form-stack {
+    gap: 14px;
+  }
+
+  .login-panel {
+    gap: 12px;
   }
 
   .login-inline-actions {

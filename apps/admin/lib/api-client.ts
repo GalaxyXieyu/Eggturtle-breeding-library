@@ -166,6 +166,11 @@ export async function apiRequest<RequestPayload = never, ResponsePayload = unkno
   const shouldUseAuth = options.auth ?? true;
   const headers = new Headers(options.headers ?? {});
 
+  // Set admin surface header for authentication
+  if (path.includes('/auth/')) {
+    headers.set('x-eggturtle-auth-surface', 'admin');
+  }
+
   let parsedBody: RequestPayload | undefined;
 
   if (typeof options.body !== 'undefined') {

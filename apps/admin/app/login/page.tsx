@@ -363,11 +363,6 @@ export default function LoginPage() {
             <h1 className="login-product-title">{copy.productTitle}</h1>
             <p className="login-product-subtitle">{copy.productSubtitle}</p>
           </div>
-          <div className="login-showcase-chips">
-            <span>{copy.showcaseSecurity}</span>
-            <span>{copy.showcaseOperations}</span>
-            <span>{copy.showcaseInsights}</span>
-          </div>
         </section>
 
         <section className="stack login-card" aria-live={checkingSession ? 'polite' : undefined}>

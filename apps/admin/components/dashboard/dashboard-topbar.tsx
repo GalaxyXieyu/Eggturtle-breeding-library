@@ -102,6 +102,9 @@ export function DashboardTopbar({
     try {
       await fetch('/api/auth/session', {
         method: 'DELETE',
+        headers: {
+          'x-eggturtle-auth-surface': 'admin'
+        },
         cache: 'no-store'
       });
     } finally {
