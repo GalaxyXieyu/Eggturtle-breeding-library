@@ -4,7 +4,11 @@ import { ErrorCode } from '@eggturtle/shared';
 import { AuthAccessService } from './auth-access.service';
 import type { AuthenticatedRequest } from './auth.types';
 
-const PRODUCT_IMAGE_CONTENT_PATH_PATTERN = /^\/products\/[^/]+\/images\/[^/]+\/content$/;
+const QUERY_TOKEN_ASSET_PATH_PATTERNS = [
+  /^\/products\/[^/]+\/images\/[^/]+\/content$/,
+  /^\/products\/[^/]+\/certificates\/[^/]+\/content$/,
+  /^\/products\/[^/]+\/couple-photos\/[^/]+\/content$/
+];
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -39,7 +43,7 @@ export class AuthGuard implements CanActivate {
       return null;
     }
 
-    if (!PRODUCT_IMAGE_CONTENT_PATH_PATTERN.test(request.path ?? '')) {
+    if (!QUERY_TOKEN_ASSET_PATH_PATTERNS.some((pattern) => pattern.test(request.path ?? ''))) {
       return null;
     }
 

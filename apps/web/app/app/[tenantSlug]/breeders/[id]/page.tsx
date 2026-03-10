@@ -37,6 +37,7 @@ import {
   buildEventDetailLabel,
 } from '@/lib/breeder-utils';
 import ProductDrawer, { type ProductSeriesOption } from '@/components/product-drawer';
+import CouplePhotoPreviewDialog from '@/components/couple-photo-preview-dialog';
 import { Card } from '@/components/ui/card';
 import TenantFloatingShareButton from '@/components/tenant-floating-share-button';
 import { useCertificateData, useCertificateStudio } from '@/components/certificate-studio';
@@ -139,6 +140,7 @@ export default function BreederDetailPage() {
   const [eventExpanded, setEventExpanded] = useState(true);
   const [, setGeneratingCouplePhoto] = useState(false);
   const [quickActionError, setQuickActionError] = useState<string | null>(null);
+  const [couplePhotoPreviewPath, setCouplePhotoPreviewPath] = useState<string | null>(null);
   const [isAssetDrawerOpen, setIsAssetDrawerOpen] = useState(false);
   const [assetDrawerSection, setAssetDrawerSection] = useState<DrawerSection>('certificate');
   const [assetDrawerMode, setAssetDrawerMode] = useState<DrawerMode>('quick');
@@ -155,6 +157,10 @@ export default function BreederDetailPage() {
     soldAt: buildLocalDateTimeValue(new Date()),
   }));
   const currentBreeder = data.breeder;
+  const couplePhotoPreviewUrl = useMemo(
+    () => (couplePhotoPreviewPath ? resolveImageUrl(couplePhotoPreviewPath) : null),
+    [couplePhotoPreviewPath],
+  );
 
   const loadGeneratedAssets = useCallback(async (targetProductId: string) => {
     const [
@@ -575,11 +581,7 @@ export default function BreederDetailPage() {
   }, []);
 
   const openCouplePhotoPreview = useCallback((contentPath: string) => {
-    const target = resolveImageUrl(contentPath);
-    const popup = window.open(target, '_blank', 'noopener');
-    if (!popup) {
-      window.location.href = target;
-    }
+    setCouplePhotoPreviewPath(contentPath);
   }, []);
 
   const handleGenerateCouplePhoto = useCallback(
@@ -731,6 +733,15 @@ export default function BreederDetailPage() {
           className="lg:hidden"
         />
       ) : null}
+
+      <CouplePhotoPreviewDialog
+        open={Boolean(couplePhotoPreviewPath)}
+        imageUrl={couplePhotoPreviewUrl}
+        title={`${currentBreeder?.name?.trim() || currentBreeder?.code || '当前种龟'}夫妻图`}
+        subtitle="生成成功后直接在弹窗里预览，不再跳到空白新页面。"
+        downloadFileName={currentBreeder?.name?.trim() || currentBreeder?.code || '当前种龟'}
+        onClose={() => setCouplePhotoPreviewPath(null)}
+      />
 
       <ProductDrawer
         mode="edit"
