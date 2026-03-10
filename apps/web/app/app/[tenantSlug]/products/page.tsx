@@ -1197,7 +1197,7 @@ export default function TenantProductsPage() {
                   type="button"
                   size="icon"
                   variant="default"
-                  className="h-11 w-11 rounded-full border border-black/10 bg-neutral-900 text-white shadow-[0_14px_30px_rgba(0,0,0,0.18)] backdrop-blur transition hover:scale-[1.05] hover:bg-neutral-800 [&_svg]:text-white"
+                  className="h-11 w-11 rounded-full border border-black/10 bg-neutral-900 text-white shadow-[0_14px_30px_rgba(0,0,0,0.18)] backdrop-blur transition hover:scale-[1.05] hover:bg-neutral-800 dark:border-white/10"
                   aria-label="打开筛选"
                   onClick={(event) => openFilterPopover(event, 'above', { toggle: true })}
                 >

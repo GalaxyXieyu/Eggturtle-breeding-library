@@ -419,7 +419,7 @@ export function BreederCarousel({
                     查看系列说明
                   </button>
                 ) : null}
-                <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-neutral-900 dark:bg-neutral-100 dark:text-neutral-900">
+                <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-neutral-900 dark:bg-neutral-800 dark:text-white">
                   {formatSex(breeder.sex, { emptyLabel: '-', unknownLabel: '-' })}
                 </span>
                 {series?.name ? (

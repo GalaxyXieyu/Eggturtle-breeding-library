@@ -75,34 +75,34 @@ function buildRoute(
 
 function DashboardLoadingState() {
   return (
-    <section className="relative flex min-h-[calc(100vh-8rem)] items-center justify-center overflow-hidden rounded-[2rem] border border-stone-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(248,246,241,0.92))] px-5 py-12 shadow-[0_24px_80px_rgba(28,25,23,0.08)] sm:min-h-[460px] sm:px-8">
+    <section className="relative flex min-h-[calc(100vh-8rem)] items-center justify-center overflow-hidden rounded-[2rem] border border-stone-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(248,246,241,0.92))] px-5 py-12 shadow-[0_24px_80px_rgba(28,25,23,0.08)] dark:border-neutral-700/50 dark:bg-[linear-gradient(180deg,rgba(16,26,40,0.96),rgba(11,17,24,0.92))] dark:shadow-[0_24px_80px_rgba(0,0,0,0.4)] sm:min-h-[460px] sm:px-8">
       <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]">
-        <div className="absolute left-1/2 top-1/2 h-52 w-52 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-200/35 blur-3xl dashboard-loading-orb dashboard-loading-orb-delay" />
-        <div className="absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/70 bg-white/25 backdrop-blur-3xl" />
-        <div className="absolute inset-x-6 top-6 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-70" />
+        <div className="absolute left-1/2 top-1/2 h-52 w-52 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-200/35 blur-3xl dashboard-loading-orb dashboard-loading-orb-delay dark:bg-[#FFD400]/20" />
+        <div className="absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/70 bg-white/25 backdrop-blur-3xl dark:border-neutral-700/50 dark:bg-neutral-800/25" />
+        <div className="absolute inset-x-6 top-6 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-70 dark:via-neutral-600" />
       </div>
 
       <div className="relative z-10 mx-auto flex w-full max-w-[22rem] flex-col items-center text-center">
-        <div className="dashboard-loading-float relative mb-7 flex h-24 w-24 items-center justify-center rounded-[30px] border border-white/80 bg-white/75 shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-2xl">
-          <div className="absolute inset-[10px] rounded-[24px] border border-stone-200/70 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.98),rgba(245,244,240,0.88))]" />
+        <div className="dashboard-loading-float relative mb-7 flex h-24 w-24 items-center justify-center rounded-[30px] border border-white/80 bg-white/75 shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-2xl dark:border-neutral-700/60 dark:bg-neutral-800/75 dark:shadow-[0_18px_50px_rgba(0,0,0,0.4)]">
+          <div className="absolute inset-[10px] rounded-[24px] border border-stone-200/70 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.98),rgba(245,244,240,0.88))] dark:border-neutral-700/50 dark:bg-[radial-gradient(circle_at_top,rgba(38,38,38,0.98),rgba(23,23,23,0.88))]" />
           <div className="relative flex items-end gap-1.5">
-            <span className="dashboard-loading-bar h-7 w-2.5 rounded-full bg-stone-900/80" />
-            <span className="dashboard-loading-bar dashboard-loading-bar-delay-1 h-11 w-2.5 rounded-full bg-amber-400/95" />
-            <span className="dashboard-loading-bar dashboard-loading-bar-delay-2 h-8 w-2.5 rounded-full bg-stone-500/75" />
+            <span className="dashboard-loading-bar h-7 w-2.5 rounded-full bg-stone-900/80 dark:bg-neutral-300/80" />
+            <span className="dashboard-loading-bar dashboard-loading-bar-delay-1 h-11 w-2.5 rounded-full bg-amber-400/95 dark:bg-[#FFD400]/95" />
+            <span className="dashboard-loading-bar dashboard-loading-bar-delay-2 h-8 w-2.5 rounded-full bg-stone-500/75 dark:bg-neutral-400/75" />
           </div>
         </div>
 
         <div className="space-y-2">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-stone-400">Dashboard</p>
-          <h2 className="text-xl font-semibold tracking-tight text-stone-950 sm:text-2xl">正在同步你的仪表盘</h2>
-          <p className="mx-auto max-w-xs text-sm leading-6 text-stone-500">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-stone-400 dark:text-neutral-500">Dashboard</p>
+          <h2 className="text-xl font-semibold tracking-tight text-stone-950 sm:text-2xl dark:text-neutral-100">正在同步你的仪表盘</h2>
+          <p className="mx-auto max-w-xs text-sm leading-6 text-stone-500 dark:text-neutral-400">
             稍等片刻，系统正在整理今日数据与分享动态。
           </p>
         </div>
 
-        <div className="mt-7 flex items-center gap-2 rounded-full border border-stone-200/80 bg-white/70 px-3 py-2 text-[11px] font-medium tracking-[0.18em] text-stone-500 shadow-sm backdrop-blur-xl">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 dashboard-loading-dot" />
-          <span className="h-1.5 w-1.5 rounded-full bg-stone-300 dashboard-loading-dot dashboard-loading-dot-delay" />
+        <div className="mt-7 flex items-center gap-2 rounded-full border border-stone-200/80 bg-white/70 px-3 py-2 text-[11px] font-medium tracking-[0.18em] text-stone-500 shadow-sm backdrop-blur-xl dark:border-neutral-700/50 dark:bg-neutral-800/70 dark:text-neutral-400">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 dashboard-loading-dot dark:bg-emerald-400" />
+          <span className="h-1.5 w-1.5 rounded-full bg-stone-300 dashboard-loading-dot dashboard-loading-dot-delay dark:bg-neutral-600" />
           <span>数据载入中</span>
         </div>
       </div>
@@ -402,7 +402,7 @@ export default function TenantAppPage() {
                     使用同一套视图切换时间窗口，快速对比趋势变化。
                   </CardDescription>
                 </div>
-                <div className="hidden shrink-0 items-center gap-1 rounded-2xl border border-neutral-200/90 bg-gradient-to-b from-white to-neutral-100/85 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_1px_2px_rgba(15,23,42,0.08)] sm:flex">
+                <div className="hidden shrink-0 items-center gap-1 rounded-2xl border border-neutral-200/90 bg-gradient-to-b from-white to-neutral-100/85 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_1px_2px_rgba(15,23,42,0.08)] dark:border-neutral-700/50 dark:from-neutral-800 dark:to-neutral-900/85 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_1px_2px_rgba(0,0,0,0.3)] sm:flex">
                   {WINDOW_OPTIONS.map((item) => (
                     <button
                       key={item.key}
@@ -410,8 +410,8 @@ export default function TenantAppPage() {
                       aria-pressed={activeWindow === item.key}
                       className={`rounded-xl border px-3.5 py-1.5 text-sm font-semibold leading-none transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD400]/80 focus-visible:ring-offset-1 ${
                         activeWindow === item.key
-                          ? 'border-neutral-900 bg-neutral-900 text-white shadow-[0_6px_14px_rgba(15,23,42,0.28)]'
-                          : 'border-transparent bg-transparent text-neutral-700 hover:border-neutral-300 hover:bg-white hover:text-neutral-900'
+                          ? 'border-neutral-900 bg-neutral-900 text-white shadow-[0_6px_14px_rgba(15,23,42,0.28)] dark:border-[#FFD400]/30 dark:bg-[#FFD400] dark:text-black dark:shadow-[0_6px_14px_rgba(255,212,0,0.3)]'
+                          : 'border-transparent bg-transparent text-neutral-700 hover:border-neutral-300 hover:bg-white hover:text-neutral-900 dark:text-neutral-300 dark:hover:border-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-white'
                       }`}
                       onClick={() => setActiveWindow(item.key)}
                     >
@@ -420,7 +420,7 @@ export default function TenantAppPage() {
                   ))}
                 </div>
               </div>
-              <div className="mt-4 rounded-2xl border border-neutral-200 bg-neutral-50/85 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] sm:hidden">
+              <div className="mt-4 rounded-2xl border border-neutral-200 bg-neutral-50/85 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] dark:border-neutral-700/50 dark:bg-neutral-800/85 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] sm:hidden">
                 <div className="grid grid-cols-3 gap-1">
                   {WINDOW_OPTIONS.map((item) => (
                     <button
@@ -429,8 +429,8 @@ export default function TenantAppPage() {
                       aria-pressed={activeWindow === item.key}
                       className={`rounded-xl px-2 py-2 text-xs font-semibold leading-none transition ${
                         activeWindow === item.key
-                          ? 'bg-neutral-900 text-white shadow-[0_8px_16px_rgba(15,23,42,0.25)]'
-                          : 'bg-transparent text-neutral-700 hover:bg-white hover:text-neutral-900'
+                          ? 'bg-neutral-900 text-white shadow-[0_8px_16px_rgba(15,23,42,0.25)] dark:bg-[#FFD400] dark:text-black dark:shadow-[0_8px_16px_rgba(255,212,0,0.3)]'
+                          : 'bg-transparent text-neutral-700 hover:bg-white hover:text-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-700 dark:hover:text-white'
                       }`}
                       onClick={() => setActiveWindow(item.key)}
                     >
@@ -438,7 +438,7 @@ export default function TenantAppPage() {
                     </button>
                   ))}
                 </div>
-                <p className="mt-2 px-2 text-[11px] text-neutral-600">
+                <p className="mt-2 px-2 text-[11px] text-neutral-600 dark:text-neutral-400">
                   当前窗口：产蛋 {overview.eggs.totalEggCount} · 配对 {overview.matings.eventCount}{' '}
                   · 访问 UV {overview.share.uv}
                 </p>

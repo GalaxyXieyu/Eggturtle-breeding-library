@@ -55,7 +55,7 @@ export function PetSexBadge({
   return (
     <span
       className={cn(
-        'rounded-full bg-white/90 px-2.5 py-1 text-xs text-black dark:bg-neutral-100 dark:text-neutral-900',
+        'rounded-full bg-white/90 px-2.5 py-1 text-xs text-black dark:bg-neutral-800 dark:text-white',
         className,
       )}
     >
@@ -110,12 +110,12 @@ export function PetTimelineChips({
       )}
     >
       {lastEggAt ? (
-        <span className="rounded-full bg-amber-50 px-2 py-0.5 ring-1 ring-amber-200/60 dark:bg-amber-500/12 dark:ring-amber-400/20">
+        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-900 ring-1 ring-amber-200/60 dark:bg-amber-900/90 dark:text-amber-50 dark:ring-amber-700/40">
           产蛋 {formatShortDate(lastEggAt)}
         </span>
       ) : null}
       {lastMatingAt ? (
-        <span className="rounded-full bg-emerald-50 px-2 py-0.5 ring-1 ring-emerald-200/60 dark:bg-emerald-500/12 dark:ring-emerald-400/20">
+        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-900 ring-1 ring-emerald-200/60 dark:bg-emerald-900/90 dark:text-emerald-50 dark:ring-emerald-700/40">
           交配 {formatShortDate(lastMatingAt)}
         </span>
       ) : null}
