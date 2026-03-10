@@ -2,10 +2,18 @@ import type {
   PublicShareDetail,
   PublicShareDetailEvent,
   PublicShareFeedItem,
-  PublicShareResponse
+  PublicShareResponse,
 } from '@eggturtle/shared';
 
-import type { Breeder, BreederEventItem, FamilyTree, MaleMateLoadItem, Series, Sex } from '@/app/public/_public-product/types';
+import type {
+  Breeder,
+  BreederEventItem,
+  FamilyTree,
+  FamilyTreeMateNode,
+  MaleMateLoadItem,
+  Series,
+  Sex,
+} from '@/app/public/_public-product/types';
 
 type TenantFeedShare = PublicShareResponse;
 type TenantFeedDetail = NonNullable<TenantFeedShare['product']>;
@@ -13,13 +21,16 @@ type TenantFeedDetail = NonNullable<TenantFeedShare['product']>;
 const NO_SERIES_ID = '__no_series__';
 const NO_SERIES_NAME = '未分组';
 
-export function mapTenantFeedToLegacy(data: TenantFeedShare): { series: Series[]; breeders: Breeder[] } {
+export function mapTenantFeedToLegacy(data: TenantFeedShare): {
+  series: Series[];
+  breeders: Breeder[];
+} {
   const breeders = data.items.map((item) => mapFeedItemToBreeder(item));
   const series = buildSeriesFromItems(data.items);
 
   return {
     series,
-    breeders
+    breeders,
   };
 }
 
@@ -28,7 +39,7 @@ export function mapPublicProductToLegacyBreeder(product: TenantFeedDetail): Bree
     id: image.id,
     url: image.url,
     alt: product.name || product.code,
-    type: image.isMain ? 'main' : 'gallery'
+    type: image.isMain ? 'main' : 'gallery',
   }));
 
   return {
@@ -42,7 +53,7 @@ export function mapPublicProductToLegacyBreeder(product: TenantFeedDetail): Bree
     sireCode: product.sireCode || undefined,
     damCode: product.damCode || undefined,
     currentMateCode: product.mateCode || undefined,
-    images: images.length > 0 ? images : [{ url: '/images/mg_01.jpg', type: 'main' }]
+    images: images.length > 0 ? images : [{ url: '/images/mg_01.jpg', type: 'main' }],
   };
 }
 
@@ -58,7 +69,7 @@ export function mapPublicShareDetail(data: TenantFeedShare): {
     return {
       events: [],
       familyTree: null,
-      maleMateLoad: []
+      maleMateLoad: [],
     };
   }
 
@@ -74,8 +85,8 @@ export function mapPublicShareDetail(data: TenantFeedShare): {
       lastMatingWithThisMaleAt: item.lastMatingWithThisMaleAt,
       daysSinceEgg: typeof item.daysSinceEgg === 'number' ? item.daysSinceEgg : undefined,
       status: item.status,
-      excludeFromBreeding: item.excludeFromBreeding
-    }))
+      excludeFromBreeding: item.excludeFromBreeding,
+    })),
   };
 }
 
@@ -94,7 +105,7 @@ function mapFeedItemToBreeder(item: PublicShareFeedItem): Breeder {
     lastMatingAt: item.lastMatingAt ?? undefined,
     daysSinceEgg: typeof item.daysSinceEgg === 'number' ? item.daysSinceEgg : undefined,
     offspringUnitPrice: item.offspringUnitPrice ?? undefined,
-    images: [{ id: `${item.id}-cover`, url: cover, alt: item.name || item.code, type: 'main' }]
+    images: [{ id: `${item.id}-cover`, url: cover, alt: item.name || item.code, type: 'main' }],
   };
 }
 
@@ -108,12 +119,13 @@ function buildSeriesFromItems(items: PublicShareFeedItem[]): Series[] {
     }
 
     const code = item.seriesCode?.trim() || undefined;
-    const name = item.seriesName?.trim() || code || (id === NO_SERIES_ID ? NO_SERIES_NAME : '未命名系列');
+    const name =
+      item.seriesName?.trim() || code || (id === NO_SERIES_ID ? NO_SERIES_NAME : '未命名系列');
 
     byId.set(id, {
       id,
       code,
-      name
+      name,
     });
   }
 
@@ -154,7 +166,7 @@ function mapDetailEvent(event: PublicShareDetailEvent): BreederEventItem {
     eggCount: typeof event.eggCount === 'number' ? event.eggCount : null,
     note: event.note ?? null,
     oldMateCode: event.oldMateCode ?? null,
-    newMateCode: event.newMateCode ?? null
+    newMateCode: event.newMateCode ?? null,
   };
 }
 
@@ -170,7 +182,7 @@ function buildCoverImageLookup(items: PublicShareFeedItem[]): Map<string, string
 
 function mapDetailFamilyTree(
   detail: PublicShareDetail,
-  coverImageByProductId: Map<string, string | undefined>
+  coverImageByProductId: Map<string, string | undefined>,
 ): FamilyTree | null {
   const tree = detail.familyTree;
   if (!tree) {
@@ -181,47 +193,88 @@ function mapDetailFamilyTree(
 
   return {
     current: self,
-    currentMate: tree.mate ? { id: tree.mate.id, code: tree.mate.code } : null,
+    currentMate: tree.mate ? toFamilyTreeMateNode(tree.mate, coverImageByProductId) : null,
+    mates: resolveFamilyTreeMates(tree, coverImageByProductId),
     ancestors: {
       father: toFamilyTreeNodeOrUndefined(tree.sire, coverImageByProductId),
       mother: toFamilyTreeNodeOrUndefined(tree.dam, coverImageByProductId),
       paternalGrandfather: undefined,
       paternalGrandmother: undefined,
       maternalGrandfather: undefined,
-      maternalGrandmother: undefined
+      maternalGrandmother: undefined,
     },
     offspring: tree.children.map((item) => toFamilyTreeNode(item, coverImageByProductId)),
-    siblings: []
+    siblings: [],
+    limitations: tree.limitations,
   };
 }
 
-function toFamilyTreeNode(node: {
-  id: string;
-  code: string;
-  name: string | null;
-  sex: string | null;
-  coverImageUrl?: string | null;
-}, coverImageByProductId: Map<string, string | undefined>) {
+function resolveFamilyTreeMates(
+  tree: NonNullable<PublicShareDetail['familyTree']>,
+  coverImageByProductId: Map<string, string | undefined>,
+): FamilyTreeMateNode[] {
+  if (tree.mates.length > 0) {
+    return tree.mates.map((mate) => toFamilyTreeMateNode(mate, coverImageByProductId));
+  }
+
+  if (tree.mate) {
+    return [toFamilyTreeMateNode(tree.mate, coverImageByProductId)];
+  }
+
+  return [];
+}
+
+function toFamilyTreeMateNode(
+  node: {
+    id: string;
+    code: string;
+    name: string | null;
+    sex: string | null;
+    coverImageUrl?: string | null;
+    needMatingStatus?: 'normal' | 'need_mating' | 'warning' | null;
+    lastEggAt?: string | null;
+    lastMatingAt?: string | null;
+    daysSinceEgg?: number | null;
+  },
+  coverImageByProductId: Map<string, string | undefined>,
+): FamilyTreeMateNode {
+  return {
+    ...toFamilyTreeNode(node, coverImageByProductId),
+    needMatingStatus: node.needMatingStatus ?? undefined,
+    lastEggAt: node.lastEggAt ?? undefined,
+    lastMatingAt: node.lastMatingAt ?? undefined,
+    daysSinceEgg: typeof node.daysSinceEgg === 'number' ? node.daysSinceEgg : undefined,
+  };
+}
+
+function toFamilyTreeNode(
+  node: {
+    id: string;
+    code: string;
+    name: string | null;
+    sex: string | null;
+    coverImageUrl?: string | null;
+  },
+  coverImageByProductId: Map<string, string | undefined>,
+) {
   return {
     id: node.id,
     code: node.code,
     name: node.name ?? node.code,
     sex: normalizeSex(node.sex),
-    thumbnailUrl: node.coverImageUrl ?? coverImageByProductId.get(node.id)
+    thumbnailUrl: node.coverImageUrl ?? coverImageByProductId.get(node.id),
   };
 }
 
 function toFamilyTreeNodeOrUndefined(
-  node:
-    | {
-        id: string;
-        code: string;
-        name: string | null;
-        sex: string | null;
-        coverImageUrl?: string | null;
-      }
-    | null,
-  coverImageByProductId: Map<string, string | undefined>
+  node: {
+    id: string;
+    code: string;
+    name: string | null;
+    sex: string | null;
+    coverImageUrl?: string | null;
+  } | null,
+  coverImageByProductId: Map<string, string | undefined>,
 ): ReturnType<typeof toFamilyTreeNode> | undefined {
   if (!node) {
     return undefined;

@@ -6,7 +6,13 @@ import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEventHandler, MouseEventHandler, ReactNode } from 'react';
 
 import { cn } from '@/lib/utils';
-import { type PetNeedMatingStatus, PetPriceBadge, PetSexBadge, PetStatusBadge, PetTimelineChips } from '@/components/pet/pet-card-badges';
+import {
+  type PetNeedMatingStatus,
+  PetPriceBadge,
+  PetSexBadge,
+  PetStatusBadge,
+  PetTimelineChips,
+} from '@/components/pet/pet-card-badges';
 
 type BasePetCardProps = {
   code: string;
@@ -50,7 +56,9 @@ type PetCardActionProps = BasePetCardProps & {
 
 export type PetCardProps = PetCardLinkProps | PetCardActionProps;
 
-const PUBLIC_ASSET_BASE_URL = (process.env.NEXT_PUBLIC_PUBLIC_ASSET_BASE_URL ?? '').trim().replace(/\/+$/, '');
+const PUBLIC_ASSET_BASE_URL = (process.env.NEXT_PUBLIC_PUBLIC_ASSET_BASE_URL ?? '')
+  .trim()
+  .replace(/\/+$/, '');
 
 function stripPublicAssetBase(url: string): string | null {
   if (!PUBLIC_ASSET_BASE_URL) {
@@ -91,7 +99,7 @@ export default function PetCard(props: PetCardProps) {
     topRightSlot,
     className,
     variant = 'tenant',
-    ariaLabel
+    ariaLabel,
   } = props;
   const resolvedCover = coverImageUrl || coverFallbackImageUrl || null;
   const [imageSrc, setImageSrc] = useState(resolvedCover);
@@ -131,9 +139,9 @@ export default function PetCard(props: PetCardProps) {
   }, [imageSrc]);
 
   const rootClassName = cn(
-    'group overflow-hidden rounded-2xl border border-neutral-200/90 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)] transition hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-[0_12px_34px_rgba(0,0,0,0.14)]',
+    'group overflow-hidden rounded-2xl border border-neutral-200/90 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)] transition hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-[0_12px_34px_rgba(0,0,0,0.14)] dark:border-white/10 dark:bg-neutral-900/85 dark:hover:border-white/20 dark:hover:shadow-[0_16px_36px_rgba(0,0,0,0.4)]',
     variant === 'tenant' ? 'cursor-pointer' : 'active:scale-[0.995]',
-    className
+    className,
   );
   const resolvedImageLoading = imageLoading ?? 'lazy';
   const imageFetchPriority = resolvedImageLoading === 'eager' ? 'high' : 'low';
@@ -169,7 +177,7 @@ export default function PetCard(props: PetCardProps) {
 
   const content = (
     <>
-      <div className="relative aspect-square bg-neutral-100">
+      <div className="relative aspect-square bg-neutral-100 dark:bg-neutral-950/90">
         {hasRenderableImage ? (
           <>
             {!imageLoaded ? (
@@ -197,12 +205,18 @@ export default function PetCard(props: PetCardProps) {
             />
           </>
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-neutral-200 via-neutral-100 to-neutral-200 text-xs text-neutral-600">
-            <span className="rounded-full bg-white/85 px-3 py-1 shadow-sm">{emptyCoverLabel}</span>
+          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-neutral-200 via-neutral-100 to-neutral-200 text-xs text-neutral-600 dark:from-neutral-900 dark:via-neutral-800 dark:to-neutral-700 dark:text-neutral-300">
+            <span className="rounded-full bg-white/85 px-3 py-1 shadow-sm dark:bg-neutral-800/90 dark:text-neutral-100">
+              {emptyCoverLabel}
+            </span>
           </div>
         )}
         <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/30 to-transparent" />
-        <PetStatusBadge status={needMatingStatus} daysSinceEgg={daysSinceEgg} className="absolute left-2 top-2" />
+        <PetStatusBadge
+          status={needMatingStatus}
+          daysSinceEgg={daysSinceEgg}
+          className="absolute left-2 top-2"
+        />
         <PetSexBadge
           sex={sex}
           emptyLabel={sexEmptyLabel}
@@ -214,7 +228,7 @@ export default function PetCard(props: PetCardProps) {
 
       <div className="p-3 lg:p-4">
         <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0 text-sm font-semibold tracking-wide text-neutral-900 sm:text-base lg:text-lg">
+          <div className="min-w-0 text-sm font-semibold tracking-wide text-neutral-900 sm:text-base lg:text-lg dark:text-neutral-100">
             {code}
           </div>
           <PetPriceBadge price={offspringUnitPrice} />
@@ -223,15 +237,23 @@ export default function PetCard(props: PetCardProps) {
         <PetTimelineChips lastEggAt={lastEggAt} lastMatingAt={lastMatingAt} />
 
         {description ? (
-          <div className="mt-2 rounded-xl bg-neutral-100/80 px-2.5 py-1.5 text-xs leading-relaxed text-neutral-700 sm:text-sm">
+          <div className="mt-2 rounded-xl bg-neutral-100/80 px-2.5 py-1.5 text-xs leading-relaxed text-neutral-700 sm:text-sm dark:bg-neutral-800/80 dark:text-neutral-200">
             <span className="line-clamp-2">{description}</span>
           </div>
         ) : null}
 
         {sireCode || damCode ? (
-          <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-neutral-700">
-            {sireCode ? <span className="rounded-full bg-neutral-100 px-2 py-0.5">父系 {sireCode}</span> : null}
-            {damCode ? <span className="rounded-full bg-neutral-100 px-2 py-0.5">母系 {damCode}</span> : null}
+          <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-neutral-700 dark:text-neutral-200">
+            {sireCode ? (
+              <span className="rounded-full bg-neutral-100 px-2 py-0.5 dark:bg-neutral-800/85">
+                父系 {sireCode}
+              </span>
+            ) : null}
+            {damCode ? (
+              <span className="rounded-full bg-neutral-100 px-2 py-0.5 dark:bg-neutral-800/85">
+                母系 {damCode}
+              </span>
+            ) : null}
           </div>
         ) : null}
       </div>

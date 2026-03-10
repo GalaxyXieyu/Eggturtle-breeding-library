@@ -167,34 +167,180 @@ const eventsByBreeder: Record<string, BreederEventItem[]> = {
 
 const familyTreeByBreeder: Record<string, FamilyTree> = {
   'b-f-001': {
-    current: { id: 'b-f-001', code: 'GH-F01', name: '果核母 01', sex: 'female', thumbnailUrl: '/images/mg_01.jpg' },
-    currentMate: { id: 'b-m-002', code: 'GH-M02' },
+    current: {
+      id: 'b-f-001',
+      code: 'GH-F01',
+      name: '果核母 01',
+      sex: 'female',
+      thumbnailUrl: '/images/mg_01.jpg',
+    },
+    currentMate: {
+      id: 'b-m-002',
+      code: 'GH-M02',
+      name: '果核公 02',
+      sex: 'male',
+      thumbnailUrl: '/images/mg_03.jpg',
+    },
+    mates: [
+      {
+        id: 'b-m-002',
+        code: 'GH-M02',
+        name: '果核公 02',
+        sex: 'male',
+        thumbnailUrl: '/images/mg_03.jpg',
+      },
+    ],
     ancestors: {
-      father: { id: 'b-m-088', code: 'GH-M88', name: '果核公 88', sex: 'male', thumbnailUrl: '/images/mg_03.jpg' },
-      mother: { id: 'b-f-066', code: 'GH-F66', name: '果核母 66', sex: 'female', thumbnailUrl: '/images/mg_04.jpg' },
-      paternalGrandfather: { id: 'b-m-018', code: 'GH-M18', name: '果核公 18', sex: 'male', thumbnailUrl: '/images/mg_03.jpg' },
-      paternalGrandmother: { id: 'b-f-017', code: 'GH-F17', name: '果核母 17', sex: 'female', thumbnailUrl: '/images/mg_05.jpg' },
-      maternalGrandfather: { id: 'b-m-011', code: 'GH-M11', name: '果核公 11', sex: 'male', thumbnailUrl: '/images/mg_02.jpg' },
-      maternalGrandmother: { id: 'b-f-010', code: 'GH-F10', name: '果核母 10', sex: 'female', thumbnailUrl: '/images/mg_01.jpg' },
+      father: {
+        id: 'b-m-088',
+        code: 'GH-M88',
+        name: '果核公 88',
+        sex: 'male',
+        thumbnailUrl: '/images/mg_03.jpg',
+      },
+      mother: {
+        id: 'b-f-066',
+        code: 'GH-F66',
+        name: '果核母 66',
+        sex: 'female',
+        thumbnailUrl: '/images/mg_04.jpg',
+      },
+      paternalGrandfather: {
+        id: 'b-m-018',
+        code: 'GH-M18',
+        name: '果核公 18',
+        sex: 'male',
+        thumbnailUrl: '/images/mg_03.jpg',
+      },
+      paternalGrandmother: {
+        id: 'b-f-017',
+        code: 'GH-F17',
+        name: '果核母 17',
+        sex: 'female',
+        thumbnailUrl: '/images/mg_05.jpg',
+      },
+      maternalGrandfather: {
+        id: 'b-m-011',
+        code: 'GH-M11',
+        name: '果核公 11',
+        sex: 'male',
+        thumbnailUrl: '/images/mg_02.jpg',
+      },
+      maternalGrandmother: {
+        id: 'b-f-010',
+        code: 'GH-F10',
+        name: '果核母 10',
+        sex: 'female',
+        thumbnailUrl: '/images/mg_01.jpg',
+      },
     },
     offspring: [
-      { id: 'c-001', code: 'GH-C01', name: '子代 01', sex: 'female', thumbnailUrl: '/images/mg_05.jpg' },
-      { id: 'c-002', code: 'GH-C02', name: '子代 02', sex: 'male', thumbnailUrl: '/images/mg_02.jpg' },
+      {
+        id: 'c-001',
+        code: 'GH-C01',
+        name: '子代 01',
+        sex: 'female',
+        thumbnailUrl: '/images/mg_05.jpg',
+      },
+      {
+        id: 'c-002',
+        code: 'GH-C02',
+        name: '子代 02',
+        sex: 'male',
+        thumbnailUrl: '/images/mg_02.jpg',
+      },
     ],
-    siblings: [{ id: 'sib-001', code: 'GH-F03', name: '同窝 03', sex: 'female', thumbnailUrl: '/images/mg_04.jpg' }],
+    siblings: [
+      {
+        id: 'sib-001',
+        code: 'GH-F03',
+        name: '同窝 03',
+        sex: 'female',
+        thumbnailUrl: '/images/mg_04.jpg',
+      },
+    ],
+    limitations: '当前家族谱系展示自己、直属父母、当前配偶与直系子代。',
   },
   'b-f-002': {
-    current: { id: 'b-f-002', code: 'GH-F02', name: '果核母 02', sex: 'female', thumbnailUrl: '/images/mg_04.jpg' },
-    currentMate: { id: 'b-m-002', code: 'GH-M02' },
+    current: {
+      id: 'b-f-002',
+      code: 'GH-F02',
+      name: '果核母 02',
+      sex: 'female',
+      thumbnailUrl: '/images/mg_04.jpg',
+    },
+    currentMate: {
+      id: 'b-m-002',
+      code: 'GH-M02',
+      name: '果核公 02',
+      sex: 'male',
+      thumbnailUrl: '/images/mg_03.jpg',
+    },
+    mates: [
+      {
+        id: 'b-m-002',
+        code: 'GH-M02',
+        name: '果核公 02',
+        sex: 'male',
+        thumbnailUrl: '/images/mg_03.jpg',
+      },
+    ],
     ancestors: {},
     offspring: [],
     siblings: [],
+    limitations: '当前家族谱系展示自己、直属父母、当前配偶与直系子代。',
   },
   'b-m-002': {
-    current: { id: 'b-m-002', code: 'GH-M02', name: '果核公 02', sex: 'male', thumbnailUrl: '/images/mg_03.jpg' },
+    current: {
+      id: 'b-m-002',
+      code: 'GH-M02',
+      name: '果核公 02',
+      sex: 'male',
+      thumbnailUrl: '/images/mg_03.jpg',
+    },
     ancestors: {},
-    offspring: [{ id: 'c-003', code: 'GH-C03', name: '子代 03', sex: 'female', thumbnailUrl: '/images/mg_01.jpg' }],
+    currentMate: {
+      id: 'b-f-002',
+      code: 'GH-F02',
+      name: '果核母 02',
+      sex: 'female',
+      thumbnailUrl: '/images/mg_04.jpg',
+    },
+    mates: [
+      {
+        id: 'b-f-002',
+        code: 'GH-F02',
+        name: '果核母 02',
+        sex: 'female',
+        thumbnailUrl: '/images/mg_04.jpg',
+        lastEggAt: '2026-01-20',
+        lastMatingAt: '2026-01-01',
+        daysSinceEgg: 40,
+        needMatingStatus: 'warning',
+      },
+      {
+        id: 'b-f-001',
+        code: 'GH-F01',
+        name: '果核母 01',
+        sex: 'female',
+        thumbnailUrl: '/images/mg_01.jpg',
+        lastEggAt: '2026-02-10',
+        lastMatingAt: '2026-01-28',
+        daysSinceEgg: 20,
+        needMatingStatus: 'need_mating',
+      },
+    ],
+    offspring: [
+      {
+        id: 'c-003',
+        code: 'GH-C03',
+        name: '子代 03',
+        sex: 'female',
+        thumbnailUrl: '/images/mg_01.jpg',
+      },
+    ],
     siblings: [],
+    limitations: '当前家族谱系展示自己、直属父母、关联母龟与直系子代。',
   },
 };
 
@@ -259,7 +405,10 @@ export function getMaleMateLoad(id: string) {
   return maleMateLoadByBreeder[id] || [];
 }
 
-export function getNeedMatingStatus(lastEggAt?: string | null, lastMatingAt?: string | null): {
+export function getNeedMatingStatus(
+  lastEggAt?: string | null,
+  lastMatingAt?: string | null,
+): {
   status: NeedMatingStatus;
   daysSinceEgg: number | null;
 } {
@@ -269,7 +418,10 @@ export function getNeedMatingStatus(lastEggAt?: string | null, lastMatingAt?: st
 
   const eggDate = new Date(lastEggAt);
   const now = new Date();
-  const daysSinceEgg = Math.max(0, Math.floor((now.getTime() - eggDate.getTime()) / (1000 * 60 * 60 * 24)));
+  const daysSinceEgg = Math.max(
+    0,
+    Math.floor((now.getTime() - eggDate.getTime()) / (1000 * 60 * 60 * 24)),
+  );
 
   if (!lastMatingAt || new Date(lastMatingAt).getTime() < eggDate.getTime()) {
     if (daysSinceEgg >= 28) return { status: 'warning', daysSinceEgg };

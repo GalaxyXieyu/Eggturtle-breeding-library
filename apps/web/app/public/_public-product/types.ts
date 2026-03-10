@@ -67,9 +67,17 @@ export type FamilyTreeNode = {
   siblings?: FamilyTreeNode[];
 };
 
+export type FamilyTreeMateNode = FamilyTreeNode & {
+  needMatingStatus?: NeedMatingStatus;
+  lastEggAt?: string | null;
+  lastMatingAt?: string | null;
+  daysSinceEgg?: number;
+};
+
 export type FamilyTree = {
   current: FamilyTreeNode;
-  currentMate?: { id: string; code: string } | null;
+  currentMate?: FamilyTreeMateNode | null;
+  mates: FamilyTreeMateNode[];
   ancestors: {
     father?: FamilyTreeNode;
     mother?: FamilyTreeNode;
@@ -80,4 +88,5 @@ export type FamilyTree = {
   };
   offspring: FamilyTreeNode[];
   siblings: FamilyTreeNode[];
+  limitations?: string;
 };

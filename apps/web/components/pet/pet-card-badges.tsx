@@ -6,7 +6,7 @@ export type PetNeedMatingStatus = 'normal' | 'need_mating' | 'warning';
 export function PetStatusBadge({
   status,
   daysSinceEgg,
-  className
+  className,
 }: {
   status?: PetNeedMatingStatus | null;
   daysSinceEgg?: number | null;
@@ -17,7 +17,7 @@ export function PetStatusBadge({
       <span
         className={cn(
           'rounded-full bg-[#FFD400]/90 px-2.5 py-1 text-xs font-medium text-black ring-1 ring-black/10',
-          className
+          className,
         )}
       >
         待配{typeof daysSinceEgg === 'number' ? ` 第${daysSinceEgg}天` : ''}
@@ -30,7 +30,7 @@ export function PetStatusBadge({
       <span
         className={cn(
           'rounded-full bg-red-600/90 px-2.5 py-1 text-xs font-medium text-white ring-1 ring-black/10',
-          className
+          className,
         )}
       >
         ⚠️逾期未交配{typeof daysSinceEgg === 'number' ? ` 第${daysSinceEgg}天` : ''}
@@ -45,7 +45,7 @@ export function PetSexBadge({
   sex,
   emptyLabel = '未知',
   unknownLabel = emptyLabel,
-  className
+  className,
 }: {
   sex?: string | null;
   emptyLabel?: string;
@@ -53,7 +53,12 @@ export function PetSexBadge({
   className?: string;
 }) {
   return (
-    <span className={cn('rounded-full bg-white/90 px-2.5 py-1 text-xs text-black', className)}>
+    <span
+      className={cn(
+        'rounded-full bg-white/90 px-2.5 py-1 text-xs text-black dark:bg-neutral-100 dark:text-neutral-900',
+        className,
+      )}
+    >
       {formatSex(sex, { emptyLabel, unknownLabel })}
     </span>
   );
@@ -62,7 +67,7 @@ export function PetSexBadge({
 export function PetPriceBadge({
   price,
   label = '子代 ¥',
-  className
+  className,
 }: {
   price?: number | null;
   label?: string;
@@ -76,7 +81,7 @@ export function PetPriceBadge({
     <span
       className={cn(
         'shrink-0 rounded-full bg-neutral-900 px-2 py-0.5 text-[11px] font-semibold leading-5 text-[#FFD400] ring-1 ring-white/10 sm:text-xs',
-        className
+        className,
       )}
     >
       {label} {formatPrice(price)}
@@ -87,7 +92,7 @@ export function PetPriceBadge({
 export function PetTimelineChips({
   lastEggAt,
   lastMatingAt,
-  className
+  className,
 }: {
   lastEggAt?: string | null;
   lastMatingAt?: string | null;
@@ -98,14 +103,19 @@ export function PetTimelineChips({
   }
 
   return (
-    <div className={cn('mt-2 flex flex-wrap gap-1.5 text-[11px] text-neutral-700', className)}>
+    <div
+      className={cn(
+        'mt-2 flex flex-wrap gap-1.5 text-[11px] text-neutral-700 dark:text-neutral-200',
+        className,
+      )}
+    >
       {lastEggAt ? (
-        <span className="rounded-full bg-amber-50 px-2 py-0.5 ring-1 ring-amber-200/60">
+        <span className="rounded-full bg-amber-50 px-2 py-0.5 ring-1 ring-amber-200/60 dark:bg-amber-500/12 dark:ring-amber-400/20">
           产蛋 {formatShortDate(lastEggAt)}
         </span>
       ) : null}
       {lastMatingAt ? (
-        <span className="rounded-full bg-emerald-50 px-2 py-0.5 ring-1 ring-emerald-200/60">
+        <span className="rounded-full bg-emerald-50 px-2 py-0.5 ring-1 ring-emerald-200/60 dark:bg-emerald-500/12 dark:ring-emerald-400/20">
           交配 {formatShortDate(lastMatingAt)}
         </span>
       ) : null}
