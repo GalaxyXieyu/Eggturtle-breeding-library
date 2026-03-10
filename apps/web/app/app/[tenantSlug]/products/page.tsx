@@ -21,6 +21,7 @@ import { Plus, Search } from 'lucide-react';
 
 import { apiRequest, resolveAuthenticatedAssetUrl } from '@/lib/api-client';
 import { formatApiError } from '@/lib/error-utils';
+import { clearProductsPageDirty, readProductsPageDirtyAt } from '@/lib/products-page-cache';
 import { ensureTenantRouteSession } from '@/lib/tenant-route-session';
 import ProductDrawer, {
   type ProductSeriesOption,
@@ -470,8 +471,9 @@ export default function TenantProductsPage() {
       setNextPage(response.page + 1);
       setError(null);
       setLoading(false);
+      clearProductsPageDirty(tenantSlug);
     },
-    [loadProductsPage],
+    [loadProductsPage, tenantSlug],
   );
 
   const loadMoreProducts = useCallback(async () => {
@@ -609,6 +611,16 @@ export default function TenantProductsPage() {
     }
 
     const parsed = parseProductsPersistedState(window.sessionStorage.getItem(stateStorageKey));
+    const dirtyAt = readProductsPageDirtyAt(tenantSlug);
+    if (dirtyAt && (!parsed || dirtyAt > parsed.savedAt)) {
+      try {
+        window.sessionStorage.removeItem(stateStorageKey);
+      } catch {
+        // Ignore storage errors.
+      }
+      setHasHydratedState(true);
+      return;
+    }
     if (!parsed || Date.now() - parsed.savedAt > PRODUCTS_PAGE_STATE_TTL_MS) {
       setHasHydratedState(true);
       return;
@@ -640,7 +652,7 @@ export default function TenantProductsPage() {
     });
 
     setHasHydratedState(true);
-  }, [stateStorageKey, tenantReady]);
+  }, [stateStorageKey, tenantReady, tenantSlug]);
 
   useEffect(() => {
     if (!tenantReady || !hasHydratedState) {
@@ -678,6 +690,41 @@ export default function TenantProductsPage() {
       isCancelled = true;
     };
   }, [listQuery, loadProducts, loadSeriesOptions, loadSharePreview, tenantReady, hasHydratedState, stateStorageKey, items.length]);
+
+  useEffect(() => {
+    if (!tenantReady || !hasHydratedState || typeof window === 'undefined') {
+      return;
+    }
+
+    const maybeRefreshFromDirty = () => {
+      if (loading || isLoadingMore) {
+        return;
+      }
+
+      const dirtyAt = readProductsPageDirtyAt(tenantSlug);
+      if (!dirtyAt) {
+        return;
+      }
+
+      void loadProducts(listQuery);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        maybeRefreshFromDirty();
+      }
+    };
+
+    window.addEventListener('pageshow', maybeRefreshFromDirty);
+    window.addEventListener('focus', maybeRefreshFromDirty);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('pageshow', maybeRefreshFromDirty);
+      window.removeEventListener('focus', maybeRefreshFromDirty);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [hasHydratedState, isLoadingMore, listQuery, loadProducts, loading, tenantReady, tenantSlug]);
 
   useEffect(() => {
     if (!tenantReady || loading || isLoadingMore || !hasMore) {
@@ -1199,13 +1246,16 @@ export default function TenantProductsPage() {
           setIsEditDrawerOpen(false);
           setEditingProductId(null);
         }}
-        onSaved={(nextProduct) => {
+        onSaved={(nextProduct, createdEvent) => {
           setItems((currentItems) =>
             currentItems.map((item) => (item.id === nextProduct.id ? nextProduct : item)),
           );
           setMessage(`已保存 ${nextProduct.code}。`);
           setError(null);
           setContinueEditProductId(null);
+          if (createdEvent) {
+            void loadProducts(listQuery);
+          }
         }}
       />
 

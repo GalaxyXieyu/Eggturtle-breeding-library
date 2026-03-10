@@ -26,6 +26,7 @@ import {
 
 import { apiRequest } from '@/lib/api-client';
 import { formatApiError } from '@/lib/error-utils';
+import { markProductsPageDirty } from '@/lib/products-page-cache';
 import { uploadSingleFileWithAuth } from '@/lib/upload-client';
 import ProductEditImageWorkbench from '@/components/product-drawer/edit-image-workbench';
 import { createDemoDrawerImages } from '@/components/product-drawer/image-utils';
@@ -410,6 +411,7 @@ export default function ProductEditDrawer({
         const createdDemoEvent = eventPayload
           ? toDemoProductEvent(currentProduct.id, currentProduct.tenantId, eventPayload)
           : undefined;
+        markProductsPageDirty(tenantSlug);
         onSaved(nextProduct, createdDemoEvent);
         onClose();
         return;
@@ -421,6 +423,7 @@ export default function ProductEditDrawer({
         requestSchema: updateProductRequestSchema,
         responseSchema: getProductResponseSchema
       });
+      markProductsPageDirty(tenantSlug);
 
       let createdEvent: ProductEvent | undefined;
       if (eventPayload) {
