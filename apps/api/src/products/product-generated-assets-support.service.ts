@@ -227,9 +227,15 @@ export class ProductGeneratedAssetsSupportService {
     return this.findMainImageKey(tenantId, product.id)
   }
 
-  async resolveSeriesName(tenantId: string, seriesId: string | null): Promise<string | null> {
+  async resolveSeriesSummary(
+    tenantId: string,
+    seriesId: string | null
+  ): Promise<{ name: string | null; description: string | null }> {
     if (!seriesId) {
-      return null
+      return {
+        name: null,
+        description: null
+      }
     }
 
     const series = await this.prisma.series.findFirst({
@@ -238,11 +244,20 @@ export class ProductGeneratedAssetsSupportService {
         tenantId
       },
       select: {
-        name: true
+        name: true,
+        description: true
       }
     })
 
-    return series?.name ?? null
+    return {
+      name: series?.name ?? null,
+      description: series?.description?.trim() || null
+    }
+  }
+
+  async resolveSeriesName(tenantId: string, seriesId: string | null): Promise<string | null> {
+    const summary = await this.resolveSeriesSummary(tenantId, seriesId)
+    return summary.name
   }
 
   async resolveCurrentMateCode(tenantId: string, product: PrismaProduct): Promise<string | null> {

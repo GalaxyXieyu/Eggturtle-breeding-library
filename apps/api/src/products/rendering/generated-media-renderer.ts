@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 
 import sharp from 'sharp';
 
@@ -38,7 +40,38 @@ type CouplePhotoRenderInput = {
   style: CouplePhotoStyleInput;
   femaleImage?: Buffer | null;
   maleImage?: Buffer | null;
+  backgroundImage?: Buffer | null;
 };
+
+let couplePhotoBackgroundCache: Buffer | null | undefined;
+
+async function loadDefaultCouplePhotoBackground(): Promise<Buffer | null> {
+  if (couplePhotoBackgroundCache !== undefined) {
+    return couplePhotoBackgroundCache;
+  }
+
+  const candidates = [
+    resolve(process.cwd(), 'apps/api/src/products/rendering/assets/couple-photo-background.png'),
+    resolve(process.cwd(), 'src/products/rendering/assets/couple-photo-background.png'),
+    resolve(__dirname, 'assets/couple-photo-background.png'),
+    resolve(process.cwd(), 'apps/api/src/products/rendering/assets/certificate-background.png'),
+    resolve(process.cwd(), 'src/products/rendering/assets/certificate-background.png'),
+    resolve(__dirname, 'assets/certificate-background.png')
+  ];
+
+  for (const candidate of candidates) {
+    try {
+      const buffer = await readFile(candidate);
+      couplePhotoBackgroundCache = buffer;
+      return buffer;
+    } catch {
+      continue;
+    }
+  }
+
+  couplePhotoBackgroundCache = null;
+  return null;
+}
 
 async function buildImageLayer(image: Buffer | null | undefined, slot: SlotRect) {
   if (!image) {
@@ -333,13 +366,21 @@ export async function renderCouplePhotoPng(input: CouplePhotoRenderInput): Promi
   const styleSvg = Buffer.from(buildCouplePhotoStyleSvg(input.style));
   const qrPayload = `couple:${input.style.femaleCode}:${input.style.maleCode}:${input.style.generatedAtLabel}`;
 
-  const [femaleLayer, maleLayer, qrBuffer] = await Promise.all([
+  const [backgroundImage, femaleLayer, maleLayer, qrBuffer] = await Promise.all([
+    input.backgroundImage !== undefined ? Promise.resolve(input.backgroundImage) : loadDefaultCouplePhotoBackground(),
     buildImageLayer(input.femaleImage, COUPLE_PHOTO_SLOTS.female),
     buildImageLayer(input.maleImage, COUPLE_PHOTO_SLOTS.male),
     createQrBuffer(qrPayload, COUPLE_PHOTO_SLOTS.qr.width)
   ]);
 
+  const backgroundLayer = await buildCanvasBackgroundLayer(
+    backgroundImage,
+    COUPLE_PHOTO_CANVAS.width,
+    COUPLE_PHOTO_CANVAS.height
+  );
+
   const composites: Array<sharp.OverlayOptions | null> = [
+    backgroundLayer,
     { input: styleSvg, top: 0, left: 0 },
     femaleLayer,
     maleLayer,
@@ -355,7 +396,7 @@ export async function renderCouplePhotoPng(input: CouplePhotoRenderInput): Promi
       width: COUPLE_PHOTO_CANVAS.width,
       height: COUPLE_PHOTO_CANVAS.height,
       channels: 4,
-      background: '#1f2b35'
+      background: '#f6f0e4'
     }
   })
     .composite(composites.filter((item): item is sharp.OverlayOptions => Boolean(item)))

@@ -26,6 +26,7 @@ type CouplePhotoContext = {
   femaleProduct: PrismaProduct
   maleProduct: PrismaProduct
   seriesName: string | null
+  seriesDescription: string | null
   femaleImageKey: string | null
   maleImageKey: string | null
 }
@@ -84,11 +85,12 @@ export class ProductCouplePhotosService {
         style: {
           femaleCode: context.femaleProduct.code,
           maleCode: context.maleProduct.code,
-          lineLabel: context.seriesName ? `系别：${context.seriesName}` : '系别：未设置',
+          seriesName: context.seriesName ?? '未设置系列',
+          seriesDescription: context.seriesDescription ?? '暂无系列介绍',
           priceLabel:
             context.femaleProduct.offspringUnitPrice !== null
-              ? `种苗参考价：¥${context.femaleProduct.offspringUnitPrice.toFixed(2)}`
-              : '种苗参考价：未设置',
+              ? `¥${context.femaleProduct.offspringUnitPrice.toFixed(2)}`
+              : '未设置',
           generatedAtLabel: `生成时间：${this.generatedAssetsSupportService.formatDateTime(generatedAt)}`,
           watermarkText: this.generatedAssetsSupportService.buildWatermarkText(context.tenantName)
         },
@@ -287,8 +289,8 @@ export class ProductCouplePhotosService {
       throw new BadRequestException(`配偶编码 ${mateCode} 对应的不是公种龟。`)
     }
 
-    const [seriesName, femaleImageKey, maleImageKey] = await Promise.all([
-      this.generatedAssetsSupportService.resolveSeriesName(tenantId, femaleProduct.seriesId),
+    const [seriesSummary, femaleImageKey, maleImageKey] = await Promise.all([
+      this.generatedAssetsSupportService.resolveSeriesSummary(tenantId, femaleProduct.seriesId),
       this.generatedAssetsSupportService.findMainImageKey(tenantId, femaleProduct.id),
       this.generatedAssetsSupportService.findMainImageKey(tenantId, maleProduct.id)
     ])
@@ -298,7 +300,8 @@ export class ProductCouplePhotosService {
       tenantName: tenant.name,
       femaleProduct,
       maleProduct,
-      seriesName,
+      seriesName: seriesSummary.name,
+      seriesDescription: seriesSummary.description,
       femaleImageKey,
       maleImageKey
     }
