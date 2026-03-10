@@ -11,6 +11,8 @@ import { ADMIN_SESSION_COOKIE_NAME, DEFAULT_ADMIN_API_BASE_URL } from '@/lib/ses
 
 export { ADMIN_SESSION_COOKIE_NAME } from '@/lib/session-constants';
 
+const LEGACY_ADMIN_SESSION_COOKIE_NAME = 'eggturtle.admin.session';
+
 export function getAdminApiBaseUrl() {
   return (
     process.env.ADMIN_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_ADMIN_API_BASE_URL
@@ -31,11 +33,25 @@ export function applySessionCookie(response: NextResponse, token: string) {
     path: '/',
     maxAge: 60 * 60 * 24 * 7
   });
+  clearLegacySessionCookie(response);
 }
 
 export function clearSessionCookie(response: NextResponse) {
   response.cookies.set({
     name: ADMIN_SESSION_COOKIE_NAME,
+    value: '',
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    expires: new Date(0)
+  });
+  clearLegacySessionCookie(response);
+}
+
+function clearLegacySessionCookie(response: NextResponse) {
+  response.cookies.set({
+    name: LEGACY_ADMIN_SESSION_COOKIE_NAME,
     value: '',
     httpOnly: true,
     sameSite: 'lax',
