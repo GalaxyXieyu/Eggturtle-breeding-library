@@ -421,7 +421,6 @@ export default function SharePresentationPage() {
         <div className="pointer-events-none absolute inset-x-0 top-0 h-48 bg-[radial-gradient(circle_at_top_right,rgba(255,212,0,0.18),transparent_36%),radial-gradient(circle_at_top_left,rgba(255,255,255,0.92),transparent_34%)]" />
         <form id={FORM_ID} className="relative space-y-3" onSubmit={handleSubmit}>
           <MobileSettingsHeader
-            eyebrow="Share Settings"
             title="分享配置"
             description="先看当前效果，再点某一项进去修改。"
           />
@@ -846,9 +845,6 @@ function SharePreviewHeroCard({ children, preview }: SharePreviewHeroCardProps) 
           }}
         />
         <div className="absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top_right,rgba(255,212,0,0.18),transparent_42%)]" />
-        <div className="absolute left-3 top-3 inline-flex rounded-full border border-white/15 bg-black/28 px-2.5 py-1 text-[10px] font-semibold tracking-[0.18em] text-white/90 backdrop-blur-sm">
-          所见所得预览
-        </div>
         <div className="absolute right-3 top-3">{children}</div>
         <div className="absolute inset-x-0 bottom-0 p-4 text-white">
           <p className="text-[10px] uppercase tracking-[0.24em] text-white/68">share preview</p>

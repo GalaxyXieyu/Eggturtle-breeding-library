@@ -135,7 +135,6 @@ export default function AccountProfileOverview({
       <div className="pointer-events-none absolute inset-x-0 top-0 h-48 bg-[radial-gradient(circle_at_top_right,rgba(255,212,0,0.16),transparent_36%),radial-gradient(circle_at_top_left,rgba(255,255,255,0.9),transparent_34%)]" />
       <MobileSettingsHeader
         className="relative"
-        eyebrow="Profile Settings"
         title="我的资料"
         titleAs="h2"
         description="先看当前信息，再点某一项进去修改。"
