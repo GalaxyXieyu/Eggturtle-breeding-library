@@ -4,7 +4,6 @@
 import Link from 'next/link';
 import type { PublicSharePresentation } from '@eggturtle/shared';
 
-import { UiPreferenceControls } from '@/components/ui-preferences';
 import PublicBottomDock from '@/app/public/_shared/public-bottom-dock';
 import PublicFloatingActions from '@/app/public/_shared/public-floating-actions';
 import { appendPublicShareQuery } from '@/app/public/_shared/public-share-api';
@@ -84,11 +83,8 @@ export default function PublicProductDetailPage({
   const onboardingHref = appendPublicShareQuery(`/public/s/${shareToken}/me#free-plan`, shareQuery);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-stone-100 via-white to-amber-50/40 text-black dark:from-neutral-950 dark:via-neutral-950 dark:to-neutral-900/40 dark:text-neutral-100">
+    <div className="public-bg-page public-text-primary min-h-screen">
       <div className="w-full px-0 pb-[calc(env(safe-area-inset-bottom)+94px)] pt-[env(safe-area-inset-top)] sm:px-0 lg:px-0 2xl:px-0">
-        <div className="public-floating-pref fixed right-3 top-[calc(env(safe-area-inset-top)+10px)] z-50">
-          <UiPreferenceControls />
-        </div>
         <div className="px-3 sm:px-4 lg:px-5 2xl:px-6">
           <DemoHint demo={demo} />
           <section className="mb-3 rounded-2xl border border-[#FFD400]/50 bg-[#FFFBE7]/90 px-4 py-3 text-xs text-neutral-700 shadow-[0_4px_16px_rgba(255,212,0,0.16)] dark:border-[#FFD400]/35 dark:bg-[#2b2410]/70 dark:text-[#ffe8a6]">

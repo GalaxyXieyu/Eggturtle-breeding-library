@@ -1,10 +1,15 @@
 import {
   Injectable,
-  NotImplementedException,
   ServiceUnavailableException,
-  type HttpException
 } from '@nestjs/common';
-import { ErrorCode } from '@eggturtle/shared';
+import {
+  ErrorCode,
+  type SettleReferralPaidEventRequest,
+  type SettleReferralPaidEventResponse,
+  settleReferralPaidEventRequestSchema,
+} from '@eggturtle/shared';
+
+import { ReferralsService } from '../referrals/referrals.service';
 
 type PaymentProvider = 'alipay' | 'wechat';
 
@@ -28,6 +33,7 @@ type WebhookHandleResult = {
   accepted: boolean;
   provider: PaymentProvider;
   message: string;
+  settlement?: SettleReferralPaidEventResponse | null;
 };
 
 const PROVIDER_CONFIG: Record<
@@ -63,6 +69,8 @@ const PROVIDER_CONFIG: Record<
 
 @Injectable()
 export class PaymentsService {
+  constructor(private readonly referralsService: ReferralsService) {}
+
   getReadiness(): PaymentReadiness {
     const featureEnabled = this.isTrue('PAYMENT_FEATURE_ENABLED');
     const providers = {
@@ -80,16 +88,29 @@ export class PaymentsService {
     };
   }
 
-  handleWechatWebhook(body: unknown): WebhookHandleResult {
-    void body;
+  async handleWechatWebhook(body: unknown): Promise<WebhookHandleResult> {
     this.ensureProviderEnabled('wechat');
-    throw this.notImplemented('wechat');
+    return this.handleReferralWebhook('wechat', body);
   }
 
-  handleAlipayWebhook(body: unknown): WebhookHandleResult {
-    void body;
+  async handleAlipayWebhook(body: unknown): Promise<WebhookHandleResult> {
     this.ensureProviderEnabled('alipay');
-    throw this.notImplemented('alipay');
+    return this.handleReferralWebhook('alipay', body);
+  }
+
+  async settleReferralPaidEvent(
+    payload: SettleReferralPaidEventRequest,
+    actorUserId?: string | null,
+  ): Promise<SettleReferralPaidEventResponse> {
+    return this.referralsService.awardReferralForPaidOrder({
+      actorUserId,
+      userId: payload.userId,
+      tenantId: payload.tenantId,
+      provider: payload.provider,
+      orderId: payload.orderId,
+      paymentId: payload.paymentId ?? null,
+      paidAt: payload.paidAt ? new Date(payload.paidAt) : undefined,
+    });
   }
 
   private getProviderReadiness(provider: PaymentProvider): ProviderReadiness {
@@ -138,11 +159,30 @@ export class PaymentsService {
     }
   }
 
-  private notImplemented(provider: PaymentProvider): HttpException {
-    return new NotImplementedException({
-      message: `Payment provider '${provider}' webhook integration is scaffolded but not enabled for business flow yet.`,
-      errorCode: ErrorCode.ApiUnavailable
+  private async handleReferralWebhook(
+    provider: PaymentProvider,
+    body: unknown
+  ): Promise<WebhookHandleResult> {
+    const parsed = settleReferralPaidEventRequestSchema.parse({
+      ...(typeof body === 'object' && body ? body : {}),
+      provider,
     });
+
+    const settlement = await this.referralsService.awardReferralForPaidOrder({
+      userId: parsed.userId,
+      tenantId: parsed.tenantId,
+      provider: parsed.provider,
+      orderId: parsed.orderId,
+      paymentId: parsed.paymentId ?? null,
+      paidAt: parsed.paidAt ? new Date(parsed.paidAt) : undefined,
+    });
+
+    return {
+      accepted: true,
+      provider,
+      message: `Accepted ${provider} webhook for referral settlement.`,
+      settlement,
+    };
   }
 
   private isTrue(name: string): boolean {

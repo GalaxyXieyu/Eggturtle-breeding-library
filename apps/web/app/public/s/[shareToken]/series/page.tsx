@@ -89,24 +89,24 @@ export default async function PublicShareSeriesPage({
   const contactWechatId = presentation.contact.showWechatBlock ? presentation.contact.wechatId : null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-stone-100 via-white to-amber-50/40 text-black dark:from-neutral-950 dark:via-neutral-950 dark:to-neutral-900/40 dark:text-neutral-100">
+    <div className="public-bg-page public-text-primary min-h-screen">
       <main className="mx-auto w-full max-w-4xl px-4 pb-[calc(env(safe-area-inset-bottom)+94px)] pt-[calc(env(safe-area-inset-top)+14px)] sm:px-5">
-        <header className="rounded-3xl border border-black/10 bg-white/92 p-5 shadow-[0_14px_32px_rgba(0,0,0,0.08)] backdrop-blur dark:border-white/10 dark:bg-neutral-900/75">
-          <p className="text-xs uppercase tracking-[0.28em] text-neutral-500 dark:text-neutral-400">Series</p>
-          <h1 className="mt-2 text-2xl font-semibold text-neutral-900 dark:text-neutral-100">按系列浏览宠物</h1>
-          <p className="mt-2 text-sm leading-relaxed text-neutral-600 dark:text-neutral-300">
+        <header className="public-bg-card public-border-default rounded-3xl border p-5 shadow-[0_14px_32px_rgba(0,0,0,0.08)] backdrop-blur">
+          <p className="public-text-subtle text-xs uppercase tracking-[0.28em]">Series</p>
+          <h1 className="public-text-primary mt-2 text-2xl font-semibold">按系列浏览宠物</h1>
+          <p className="public-text-muted mt-2 text-sm leading-relaxed">
             共 {legacyData.series.length} 个系列，点击系列即可回到宠物页并带上筛选条件。
           </p>
           <Link
             href={petsAllHref}
-            className="mt-3 inline-flex rounded-full border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 transition hover:border-neutral-400 hover:text-neutral-900 dark:border-white/20 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:border-white/35"
+            className="public-btn-secondary mt-3"
           >
             查看全部宠物
           </Link>
         </header>
 
         {legacyData.series.length === 0 ? (
-          <section className="mt-4 rounded-3xl border border-black/10 bg-white/92 p-5 text-sm text-neutral-600 shadow-[0_10px_24px_rgba(0,0,0,0.06)] dark:border-white/10 dark:bg-neutral-900/75 dark:text-neutral-300">
+          <section className="public-bg-card public-border-default public-text-muted mt-4 rounded-3xl border p-5 text-sm shadow-[0_10px_24px_rgba(0,0,0,0.06)]">
             当前分享还没有可浏览的系列。
           </section>
         ) : (
@@ -119,7 +119,7 @@ export default async function PublicShareSeriesPage({
               return (
                 <article
                   key={series.id}
-                  className={`group overflow-hidden rounded-2xl border border-neutral-200/90 bg-gradient-to-b from-white via-white to-neutral-50 shadow-[0_12px_24px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(15,23,42,0.12)] dark:border-white/10 dark:bg-[#0f1623] ${
+                  className={`public-border-subtle group overflow-hidden rounded-2xl border bg-gradient-to-b from-white via-white to-neutral-50 shadow-[0_12px_24px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(15,23,42,0.12)] dark:from-neutral-900/75 dark:via-neutral-900/75 dark:to-neutral-900/60 ${
                     isActive ? 'ring-2 ring-[#FFD400]/65' : ''
                   }`}
                 >
@@ -136,15 +136,15 @@ export default async function PublicShareSeriesPage({
                     <div className="absolute bottom-3 left-4 rounded-full bg-black/55 px-2.5 py-1 text-xs text-white">系列封面</div>
                   </div>
 
-                  <div className="bg-white/95 p-4 dark:bg-[#0f1623]">
+                  <div className="bg-white/95 p-4 dark:bg-neutral-900/75">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="truncate text-[15px] font-semibold tracking-tight text-neutral-950 dark:text-neutral-50">{series.name}</p>
-                        <p className="truncate text-sm text-neutral-600 dark:text-neutral-300">{series.code || '系列'}</p>
+                        <p className="public-text-primary truncate text-[15px] font-semibold tracking-tight">{series.name}</p>
+                        <p className="public-text-muted truncate text-sm">{series.code || '系列'}</p>
                       </div>
-                      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">在库 {seriesCounts.get(series.id) ?? 0}</span>
+                      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-800/50 dark:bg-emerald-950/50 dark:text-emerald-300">在库 {seriesCounts.get(series.id) ?? 0}</span>
                     </div>
-                    <p className="mt-2 line-clamp-2 min-h-10 text-sm leading-relaxed text-neutral-700 dark:text-neutral-200">{series.description || '暂无描述'}</p>
+                    <p className="public-text-secondary mt-2 line-clamp-2 min-h-10 text-sm leading-relaxed">{series.description || '暂无描述'}</p>
                     <div className="mt-3 flex items-center justify-end">
                       <Link
                         href={petsHref}

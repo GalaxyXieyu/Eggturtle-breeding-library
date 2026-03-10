@@ -4,7 +4,7 @@ import Link from 'next/link';
 
 import { cn } from '@/lib/utils';
 
-type AccountSectionNavActive = 'profile' | 'subscription' | 'certificates';
+type AccountSectionNavActive = 'profile' | 'subscription' | 'referral' | 'certificates';
 
 type AccountSectionNavProps = {
   active: AccountSectionNavActive;
@@ -21,6 +21,11 @@ const NAV_ITEMS: Array<{ key: AccountSectionNavActive; label: string; href: (ten
     key: 'subscription',
     label: '订阅',
     href: (tenantSlug) => `/app/${tenantSlug}/account?tab=subscription`,
+  },
+  {
+    key: 'referral',
+    label: '邀请',
+    href: (tenantSlug) => `/app/${tenantSlug}/account?tab=referral`,
   },
   {
     key: 'certificates',

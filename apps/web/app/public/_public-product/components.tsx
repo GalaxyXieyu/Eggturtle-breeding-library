@@ -59,7 +59,7 @@ function statusBadge(status: NeedMatingStatus, daysSinceEgg?: number | null) {
 
 export function PublicEmptyState({ message }: { message: string }) {
   return (
-    <div className="rounded-xl border border-neutral-200 p-6 text-sm text-neutral-600 dark:border-white/10 dark:bg-neutral-900/70 dark:text-neutral-300">
+    <div className="public-border-subtle public-bg-card public-text-muted rounded-xl border p-6 text-sm">
       {message}
     </div>
   );
@@ -97,14 +97,14 @@ export function ShareContactCard({
 
   return (
     <section
-      className={`rounded-3xl border border-black/5 bg-white/90 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.08)] sm:p-5 dark:border-white/10 dark:bg-neutral-900/75 ${className ?? ''}`}
+      className={`public-bg-card public-border-default rounded-3xl border p-4 shadow-[0_12px_30px_rgba(0,0,0,0.08)] sm:p-5 ${className ?? ''}`}
     >
       <div className="flex flex-wrap items-start gap-4">
         {contactQrImageUrl ? (
           <PublicImageWithRetry
             src={contactQrImageUrl}
             alt="微信二维码"
-            className="h-28 w-28 rounded-2xl border border-neutral-200 bg-white object-cover p-1 dark:border-white/10 dark:bg-neutral-950"
+            className="public-border-subtle public-bg-card-alt h-28 w-28 rounded-2xl border object-cover p-1"
             loading="lazy"
             decoding="async"
             fetchPriority="low"
@@ -112,16 +112,16 @@ export function ShareContactCard({
         ) : null}
 
         <div className="min-w-0 space-y-1">
-          <p className="text-xs uppercase tracking-[0.26em] text-neutral-500 dark:text-neutral-400">
+          <p className="public-text-subtle text-xs uppercase tracking-[0.26em]">
             Contact
           </p>
-          <p className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">微信联系</p>
+          <p className="public-text-primary text-lg font-semibold">微信联系</p>
           {wechatId ? (
-            <p className="text-sm text-neutral-700 dark:text-neutral-200">
+            <p className="public-text-secondary text-sm">
               微信号：<span className="font-mono font-medium">{wechatId}</span>
             </p>
           ) : (
-            <p className="text-sm text-neutral-600 dark:text-neutral-300">请扫码添加微信咨询。</p>
+            <p className="public-text-muted text-sm">请扫码添加微信咨询。</p>
           )}
         </div>
       </div>
@@ -315,12 +315,12 @@ export function BreederCarousel({
   }
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-black/5 bg-white shadow-[0_14px_38px_rgba(0,0,0,0.14)] dark:border-white/10 dark:bg-neutral-900/80 dark:shadow-[0_22px_46px_rgba(0,0,0,0.45)]">
+    <div className="public-border-default public-bg-card-alt overflow-hidden rounded-3xl border shadow-[0_14px_38px_rgba(0,0,0,0.14)] dark:shadow-[0_22px_46px_rgba(0,0,0,0.45)]">
       <div className="relative aspect-[4/5] bg-neutral-100 dark:bg-neutral-950/90">
         <button
           type="button"
           onClick={handleBack}
-          className="absolute left-3 top-3 z-10 flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-2 text-sm text-neutral-800 shadow-lg backdrop-blur-sm transition hover:bg-white hover:shadow-xl dark:bg-neutral-900/85 dark:text-neutral-100 dark:hover:bg-neutral-900"
+          className="public-btn-secondary absolute left-3 top-3 z-10 flex items-center gap-1.5"
         >
           返回
         </button>
@@ -389,7 +389,7 @@ export function BreederCarousel({
                   type="button"
                   onClick={() => setCurrentImageIndex((idx) => Math.max(0, idx - 1))}
                   disabled={currentImageIndex === 0}
-                  className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 dark:bg-neutral-900/80 dark:text-neutral-100 dark:hover:bg-neutral-900"
+                  className="public-carousel-btn left-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   ‹
                 </button>
@@ -399,7 +399,7 @@ export function BreederCarousel({
                     setCurrentImageIndex((idx) => Math.min(breeder.images.length - 1, idx + 1))
                   }
                   disabled={currentImageIndex === breeder.images.length - 1}
-                  className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 dark:bg-neutral-900/80 dark:text-neutral-100 dark:hover:bg-neutral-900"
+                  className="public-carousel-btn right-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   ›
                 </button>
@@ -437,7 +437,7 @@ export function BreederCarousel({
       </div>
 
       {effectiveSlide === (hasSeriesIntro ? 1 : 0) && breeder.images.length > 1 ? (
-        <div className="border-t border-black/5 bg-white/90 px-4 py-3 dark:border-white/10 dark:bg-neutral-900/70">
+        <div className="public-border-default public-bg-card border-t px-4 py-3">
           <div className="flex gap-2 overflow-x-auto pb-1">
             {breeder.images.map((img, index) => (
               <button
@@ -465,12 +465,12 @@ export function BreederCarousel({
 
 export function BreederStatusSummary({ breeder }: { breeder: Breeder }) {
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-medium text-neutral-700 dark:text-neutral-200">
+    <div className="public-text-secondary mt-3 flex flex-wrap items-center gap-2 text-xs font-medium">
       {statusBadge(breeder.needMatingStatus || 'normal', breeder.daysSinceEgg)}
-      <span className="text-neutral-500 dark:text-neutral-400">最近产蛋</span>
+      <span className="public-text-subtle">最近产蛋</span>
       <span className="font-mono">{formatShortDate(breeder.lastEggAt)}</span>
       <span className="text-neutral-300 dark:text-neutral-600">·</span>
-      <span className="text-neutral-500 dark:text-neutral-400">最近交配</span>
+      <span className="public-text-subtle">最近交配</span>
       <span className="font-mono">{formatShortDate(breeder.lastMatingAt)}</span>
     </div>
   );
@@ -535,10 +535,10 @@ export function BreederEventTimeline({
     <div className="mt-8 px-3 sm:px-4 lg:px-5 2xl:px-6">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
-          <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">种龟事件</h2>
+          <h2 className="public-text-primary text-lg font-semibold">种龟事件</h2>
           {statusBadge(breeder.needMatingStatus || 'normal', breeder.daysSinceEgg)}
         </div>
-        <div className="flex flex-col items-end gap-1 text-xs text-neutral-600 sm:flex-row sm:items-center sm:gap-2 dark:text-neutral-300">
+        <div className="public-text-muted flex flex-col items-end gap-1 text-xs sm:flex-row sm:items-center sm:gap-2">
           <span>最近产蛋 {formatShortDate(breeder.lastEggAt)}</span>
           <span className="hidden text-neutral-300 sm:inline dark:text-neutral-600">·</span>
           <span>最近交配 {formatShortDate(breeder.lastMatingAt)}</span>
@@ -546,7 +546,7 @@ export function BreederEventTimeline({
       </div>
 
       <div className="relative mb-4">
-        <div className="overflow-x-auto rounded-2xl border border-black/5 bg-white p-3 shadow-[0_6px_18px_rgba(0,0,0,0.05)] dark:border-white/10 dark:bg-neutral-900/75">
+        <div className="public-border-default public-bg-card overflow-x-auto rounded-2xl border p-3 shadow-[0_6px_18px_rgba(0,0,0,0.05)]">
           {filtered.length === 0 ? (
             <div className="text-sm text-neutral-500">暂无事件</div>
           ) : (
@@ -555,13 +555,13 @@ export function BreederEventTimeline({
                 <button
                   key={event.id}
                   type="button"
-                  className="group flex w-[14vw] min-w-[54px] max-w-[92px] shrink-0 flex-col items-center gap-1 rounded-xl border border-neutral-200 bg-white px-1.5 py-2 shadow-sm transition hover:bg-neutral-50 dark:border-white/10 dark:bg-neutral-950/40 dark:hover:bg-neutral-950/55"
+                  className="public-border-subtle public-bg-card-alt group flex w-[14vw] min-w-[54px] max-w-[92px] shrink-0 flex-col items-center gap-1 rounded-xl border px-1.5 py-2 shadow-sm transition hover:bg-neutral-50 dark:hover:bg-neutral-950/55"
                 >
                   <span className="text-sm leading-none">{eventIcon(event.eventType)}</span>
-                  <span className="text-[10px] font-semibold leading-tight text-neutral-900 dark:text-neutral-100">
+                  <span className="public-text-primary text-[10px] font-semibold leading-tight">
                     {formatShortDate(event.eventDate)}
                   </span>
-                  <span className="text-[10px] font-semibold leading-tight text-neutral-700 dark:text-neutral-300">
+                  <span className="public-text-secondary text-[10px] font-semibold leading-tight">
                     {eventLabel(event)}
                   </span>
                 </button>
@@ -582,27 +582,27 @@ export function BreederEventTimeline({
             key={item.key}
             type="button"
             onClick={() => setFilter(item.key)}
-            className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+            className={
               filter === item.key
-                ? 'border-neutral-900 bg-neutral-900 text-white dark:border-white/15 dark:bg-neutral-50 dark:text-neutral-950'
-                : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 dark:border-white/10 dark:bg-neutral-950/30 dark:text-neutral-200 dark:hover:border-white/20'
-            }`}
+                ? 'public-btn-filter-active'
+                : 'public-btn-filter-inactive'
+            }
           >
             {item.title}
           </button>
         ))}
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-black/5 bg-white shadow-[0_8px_24px_rgba(0,0,0,0.06)] dark:border-white/10 dark:bg-neutral-900/75">
-        <div className="border-b bg-neutral-50 px-4 py-3 dark:border-white/10 dark:bg-neutral-950/35">
+      <div className="public-border-default public-bg-card-alt overflow-hidden rounded-2xl border shadow-[0_8px_24px_rgba(0,0,0,0.06)]">
+        <div className="public-border-default public-bg-panel border-b px-4 py-3">
           <div className="flex items-center justify-between gap-3">
-            <div className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">
+            <div className="public-text-secondary text-xs font-semibold">
               记录（已加载 {filtered.length} 条）
             </div>
             <button
               type="button"
               onClick={() => setIsExpanded((current) => !current)}
-              className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-semibold text-neutral-700 hover:border-neutral-300 dark:border-white/10 dark:bg-neutral-950/30 dark:text-neutral-200 dark:hover:border-white/20"
+              className="public-btn-filter-inactive"
             >
               {isExpanded ? '收起' : '展开'}
             </button>
@@ -623,17 +623,17 @@ export function BreederEventTimeline({
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-sm leading-none">{eventIcon(event.eventType)}</span>
-                          <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                          <span className="public-text-primary text-sm font-semibold">
                             {eventLabel(event)}
                           </span>
-                          <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                          <span className="public-text-subtle text-xs font-medium">
                             {formatShortDate(event.eventDate)}
                           </span>
                         </div>
                         {/* Public pages should not leak internal meta fields (maleCode/eggCount/mate codes)
                           that may be duplicated into legacy event notes. Keep only sanitized user remarks. */}
                         {note ? (
-                          <div className="mt-2 whitespace-pre-wrap text-sm text-neutral-600 dark:text-neutral-300">
+                          <div className="public-text-muted mt-2 whitespace-pre-wrap text-sm">
                             {note}
                           </div>
                         ) : null}

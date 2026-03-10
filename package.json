@@ -19,7 +19,8 @@
     "api-tests": "pnpm --filter @eggturtle/api exec ts-node --project tsconfig.json ../../scripts/api-tests/run.ts",
     "api-tests:gate": "pnpm api-tests -- --only auth,products,series,breeders,images,featured,shares,admin,subscription --clear-token-cache",
     "api-tests:matrix": "pnpm api-tests -- --only account-matrix",
-    "api-tests:subscription": "pnpm api-tests -- --only subscription"
+    "api-tests:subscription": "pnpm api-tests -- --only subscription",
+    "api-tests:referrals": "pnpm api-tests -- --only referrals"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^7.18.0",

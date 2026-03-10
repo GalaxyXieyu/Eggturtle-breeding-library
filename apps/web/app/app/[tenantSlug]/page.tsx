@@ -23,6 +23,7 @@ import {
 import { apiRequest } from '@/lib/api-client';
 import { formatApiError } from '@/lib/error-utils';
 import { ensureTenantRouteSession } from '@/lib/tenant-route-session';
+import ReferralFirstVisitModal from '@/components/referral-first-visit-modal';
 import TenantShareDialogTrigger from '@/components/tenant-share-dialog-trigger';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -664,6 +665,8 @@ export default function TenantAppPage() {
           </Card>
         </div>
       ) : null}
+
+      {!loading && !error ? <ReferralFirstVisitModal tenantSlug={tenantSlug} /> : null}
 
     </main>
   );

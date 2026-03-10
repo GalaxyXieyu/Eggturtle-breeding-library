@@ -47,6 +47,46 @@ export class TenantSubscriptionsService {
     return this.toApiSubscription(resolved);
   }
 
+  async grantProRewardDays(
+    tenantId: string,
+    rewardDays: number,
+    db?: Prisma.TransactionClient
+  ): Promise<TenantSubscription> {
+    if (!Number.isInteger(rewardDays) || rewardDays <= 0) {
+      throw new BadRequestException({
+        message: 'rewardDays must be a positive integer.',
+        errorCode: ErrorCode.InvalidRequestPayload
+      });
+    }
+
+    const client = db ?? this.prisma;
+    const existing = await client.tenantSubscription.findUnique({
+      where: {
+        tenantId
+      },
+      select: {
+        expiresAt: true
+      }
+    });
+    const now = new Date();
+    const expiresAt = this.resolveRedeemExpiresAt(now, existing?.expiresAt ?? null, rewardDays);
+
+    return this.upsertSubscription(
+      tenantId,
+      {
+        plan: TenantSubscriptionPlan.PRO,
+        startsAt: now.toISOString(),
+        expiresAt: expiresAt?.toISOString() ?? null,
+        disabledAt: null,
+        disabledReason: null,
+        maxImages: null,
+        maxStorageBytes: null,
+        maxShares: null
+      },
+      client
+    );
+  }
+
   async upsertSubscription(
     tenantId: string,
     payload: UpdateTenantSubscriptionRequest,

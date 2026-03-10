@@ -15,6 +15,7 @@ export type ModuleName =
   | 'shares'
   | 'admin'
   | 'subscription'
+  | 'referrals'
   | 'account-matrix';
 
 export type LogLevel = 'info' | 'ok' | 'warn' | 'error';
@@ -246,7 +247,7 @@ export function printUsage(): void {
     '  --confirm-writes            Execute write scenarios (safe mode is dry-run)',
     '  --json                      Emit JSONL logs',
     '  --clear-token-cache         Delete local auth token cache before run',
-    '  --only <list>               Comma-separated modules: auth,products,series,breeders,images,featured,shares,admin,subscription,account-matrix',
+    '  --only <list>               Comma-separated modules: auth,products,series,breeders,images,featured,shares,admin,subscription,referrals,account-matrix',
     '  --tenant-id <id>            Existing tenant ID for tenant-scoped modules',
     '  --tenant-slug <slug>        Tenant slug when auto-creating tenant',
     '  --tenant-name <name>        Tenant name when auto-creating tenant',
@@ -255,7 +256,7 @@ export function printUsage(): void {
     '  --admin-email <email>       Account-matrix ADMIN email',
     '  --editor-email <email>      Account-matrix EDITOR email',
     '  --viewer-email <email>      Account-matrix VIEWER email',
-    '  --super-admin-email <email> super-admin email for admin/subscription/account-matrix checks',
+    '  --super-admin-email <email> super-admin email for admin/subscription/referrals/account-matrix checks',
     '  --provision                 Account-matrix: create tenant + memberships via /admin/*',
     '  --require-super-admin-pass  Fail if super-admin positive checks are not 2xx',
     '  -h, --help                  Show help',
@@ -345,6 +346,7 @@ export function parseOnlyModules(value: string | undefined): ModuleName[] | null
     'shares',
     'admin',
     'subscription',
+    'referrals',
     'account-matrix',
   ]);
 
@@ -603,6 +605,33 @@ export async function requestCode(ctx: TestContext, email: string): Promise<{ de
   if (typeof devCode !== 'string' || devCode.length === 0) {
     throw new ApiTestError(
       'devCode missing from request-code response. Ensure AUTH_DEV_CODE_ENABLED=true in development.',
+    );
+  }
+
+  return { devCode };
+}
+
+export async function requestSmsCode(
+  ctx: TestContext,
+  phoneNumber: string,
+  purpose: 'register' | 'login' | 'binding' | 'replace' = 'register',
+): Promise<{ devCode: string }> {
+  const response = await ctx.request({
+    method: 'POST',
+    path: '/auth/request-sms-code',
+    json: { phoneNumber, purpose },
+  });
+
+  assertStatus(response, 201, 'auth.request-sms-code');
+  const payload = asObject(response.body, 'auth.request-sms-code response');
+  ensureKeys(payload, ['ok', 'expiresAt'], 'auth.request-sms-code');
+  readBoolean(payload, 'ok', 'auth.request-sms-code.ok');
+  readString(payload, 'expiresAt', 'auth.request-sms-code.expiresAt');
+
+  const devCode = payload.devCode;
+  if (typeof devCode !== 'string' || devCode.length === 0) {
+    throw new ApiTestError(
+      'devCode missing from request-sms-code response. Ensure AUTH_DEV_CODE_ENABLED=true in development.',
     );
   }
 

@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import ReferralPromoCard from '@/components/referral-promo-card';
 import { buildInteractivePillClass } from '@/components/ui/pill';
 import { ApiError, apiRequest, getAccessToken } from '@/lib/api-client';
 import { switchTenantBySlug } from '@/lib/tenant-session';
@@ -280,6 +281,10 @@ export default function SubscriptionPage() {
         <Card className="rounded-3xl border-neutral-200/90 bg-white p-6">
           <p className="text-sm text-neutral-600">正在加载套餐信息...</p>
         </Card>
+      ) : null}
+
+      {!loading ? (
+        <ReferralPromoCard tenantSlug={tenantSlug} currentExpiresAt={subscription?.expiresAt ?? null} />
       ) : null}
 
       {!loading ? (

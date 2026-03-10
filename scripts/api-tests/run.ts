@@ -17,6 +17,7 @@ import {
   printUsage,
 } from './lib';
 import { productsModule } from './products';
+import { referralsModule } from './referrals';
 import { seriesModule } from './series';
 import { sharesModule } from './shares';
 import { subscriptionModule } from './subscription';
@@ -31,6 +32,7 @@ const allModules: TestModule[] = [
   sharesModule,
   adminModule,
   subscriptionModule,
+  referralsModule,
   accountMatrixModule,
 ];
 
@@ -44,6 +46,7 @@ const defaultModuleOrder: TestModule[] = [
   sharesModule,
   adminModule,
   subscriptionModule,
+  referralsModule,
 ];
 
 async function main(): Promise<void> {

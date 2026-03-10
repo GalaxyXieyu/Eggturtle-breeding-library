@@ -21,6 +21,7 @@ import {
 } from '@/lib/tenant-share';
 import { cn } from '@/lib/utils';
 import { modalCloseButtonClass } from '@/components/ui/floating-actions';
+import ReferralPromoCard from '@/components/referral-promo-card';
 
 type TenantShareDialogTriggerProps = {
   intent?: TenantShareIntent;
@@ -416,7 +417,7 @@ export default function TenantShareDialogTrigger({
     const copied = await copyTextWithFallback(link);
     if (copied) {
       setError(null);
-      setNotice('已复制分享链接。');
+      setNotice('已复制分享链接。邀请好友首付，双方各得 7 天。');
       return;
     }
 
@@ -446,7 +447,7 @@ export default function TenantShareDialogTrigger({
       anchor.click();
       anchor.remove();
       setError(null);
-      setNotice('海报已开始下载。');
+      setNotice('海报已开始下载。邀请好友首付，双方各得 7 天。');
     } catch {
       setError('保存失败，请长按海报图片手动保存。');
     }
@@ -484,65 +485,68 @@ export default function TenantShareDialogTrigger({
             >
               <div
                 className={cn(
-                  'relative flex max-h-[min(94dvh,920px)] w-full max-w-none flex-col overflow-hidden rounded-t-[32px] border border-neutral-200 bg-white p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] text-neutral-900 shadow-2xl sm:max-h-[min(88vh,920px)] sm:max-w-[min(88vw,36rem)] sm:rounded-[32px] sm:p-5',
+                  'relative flex max-h-[min(94dvh,920px)] w-full max-w-none flex-col overflow-hidden rounded-t-[32px] border border-neutral-200 bg-white p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-0 text-neutral-900 shadow-2xl sm:max-h-[min(88vh,920px)] sm:max-w-[min(88vw,36rem)] sm:rounded-[32px] sm:p-5 sm:pt-0',
                   className,
                 )}
                 onClick={(event) => event.stopPropagation()}
               >
-                <div className="relative z-10 mb-3 flex items-start justify-between gap-3 sm:mb-4">
-                  <div className="min-w-0 space-y-1.5">
-                    <p className="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-neutral-600 sm:text-[11px]">
-                      <Share2 size={12} />
-                      分享
-                    </p>
-                    <p
-                      id={titleId}
-                      className="line-clamp-1 text-lg font-bold tracking-tight sm:text-xl"
+                <div className="z-20 -mx-4 mb-3 border-b border-neutral-200/80 bg-white/95 px-4 pb-3 pt-3 backdrop-blur sm:-mx-5 sm:mb-4 sm:px-5 sm:pb-4 sm:pt-5">
+                  <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-neutral-200 sm:hidden" />
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 space-y-1.5 pr-2">
+                      <p className="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-neutral-600 sm:text-[11px]">
+                        <Share2 size={12} aria-hidden="true" />
+                        分享
+                      </p>
+                      <p
+                        id={titleId}
+                        className="line-clamp-1 text-pretty text-lg font-bold tracking-tight sm:line-clamp-2 sm:text-xl"
+                      >
+                        {cardTitle}
+                      </p>
+                      <p className="line-clamp-2 text-xs leading-relaxed text-neutral-500 sm:text-sm">
+                        {cardSubtitle}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      aria-label="关闭分享弹窗"
+                      className={cn(modalCloseButtonClass, 'self-start')}
+                      onClick={handleClose}
                     >
-                      {cardTitle}
-                    </p>
-                    <p className="line-clamp-2 text-xs leading-relaxed text-neutral-500 sm:text-sm">
-                      {cardSubtitle}
-                    </p>
+                      <X size={18} strokeWidth={2.5} aria-hidden="true" />
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    aria-label="关闭分享弹窗"
-                    className={modalCloseButtonClass}
-                    onClick={handleClose}
-                  >
-                    <X size={18} strokeWidth={2.5} />
-                  </button>
                 </div>
 
-                <div className="relative z-10 flex min-h-0 flex-1 items-center justify-center py-2 sm:py-3">
-                  <div className="flex h-full min-h-[min(62dvh,32rem)] w-full items-center justify-center overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-50 p-3 sm:min-h-[min(72vh,42rem)] sm:rounded-3xl sm:p-4">
+                <div className="relative z-10 flex flex-none justify-center py-1 sm:py-2">
+                  <div className="flex w-full items-center justify-center overflow-hidden rounded-2xl border border-neutral-200 bg-gradient-to-b from-neutral-50 to-white p-2.5 sm:rounded-3xl sm:p-4">
                     {pending ? (
-                      <div className="mx-auto flex aspect-[9/16] w-full max-w-[min(84vw,19rem)] min-h-[17.5rem] flex-col items-center justify-center gap-4 rounded-2xl bg-white text-sm text-neutral-600 shadow-sm sm:max-w-[19rem]">
+                      <div className="mx-auto flex aspect-[9/16] h-[min(36dvh,14rem)] max-h-[14rem] w-auto max-w-full flex-col items-center justify-center gap-3 rounded-[24px] border border-neutral-200 bg-white px-4 text-center text-sm text-neutral-600 shadow-sm sm:h-[min(66vh,38rem)] sm:max-h-[38rem] sm:gap-4 sm:rounded-[28px] sm:px-6">
                         <span className="inline-flex h-12 w-12 animate-pulse items-center justify-center rounded-full bg-neutral-900 text-[#FFD400]">
-                          <Share2 size={18} />
+                          <Share2 size={18} aria-hidden="true" />
                         </span>
-                        正在生成分享链接...
+                        正在生成分享链接…
                       </div>
                     ) : posterPending ? (
-                      <div className="mx-auto flex aspect-[9/16] w-full max-w-[min(84vw,19rem)] min-h-[17.5rem] flex-col items-center justify-center gap-4 rounded-2xl bg-white text-sm text-neutral-600 shadow-sm sm:max-w-[19rem]">
+                      <div className="mx-auto flex aspect-[9/16] h-[min(36dvh,14rem)] max-h-[14rem] w-auto max-w-full flex-col items-center justify-center gap-3 rounded-[24px] border border-neutral-200 bg-white px-4 text-center text-sm text-neutral-600 shadow-sm sm:h-[min(66vh,38rem)] sm:max-h-[38rem] sm:gap-4 sm:rounded-[28px] sm:px-6">
                         <span className="inline-flex h-12 w-12 animate-pulse items-center justify-center rounded-full bg-neutral-900 text-[#FFD400]">
-                          <QrCode size={20} />
+                          <QrCode size={20} aria-hidden="true" />
                         </span>
-                        正在渲染分享海报...
+                        正在渲染分享海报…
                       </div>
                     ) : posterDataUrl ? (
-                      <div className="mx-auto flex aspect-[9/16] w-full max-w-[min(84vw,19rem)] items-center justify-center rounded-2xl bg-neutral-900 p-1 shadow-xl sm:max-w-[19rem]">
+                      <div className="mx-auto flex aspect-[9/16] h-[min(36dvh,14rem)] max-h-[14rem] w-auto max-w-full items-center justify-center rounded-[24px] border border-neutral-200 bg-white p-1 shadow-xl sm:h-[min(66vh,38rem)] sm:max-h-[38rem] sm:rounded-[28px] sm:p-1.5">
                         <img
                           src={posterDataUrl}
                           alt="分享卡片预览"
-                          className="h-full w-full rounded-xl object-contain"
+                          className="h-full w-full rounded-[22px] object-contain"
                         />
                       </div>
                     ) : (
-                      <div className="mx-auto flex aspect-[9/16] w-full max-w-[min(84vw,19rem)] min-h-[17.5rem] flex-col items-center justify-center gap-4 rounded-2xl bg-white px-6 text-center text-sm text-neutral-500 shadow-sm sm:max-w-[19rem]">
+                      <div className="mx-auto flex aspect-[9/16] h-[min(36dvh,14rem)] max-h-[14rem] w-auto max-w-full flex-col items-center justify-center gap-3 rounded-[24px] border border-neutral-200 bg-white px-4 text-center text-sm text-neutral-500 shadow-sm sm:h-[min(66vh,38rem)] sm:max-h-[38rem] sm:gap-4 sm:rounded-[28px] sm:px-6">
                         <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 text-neutral-400">
-                          <QrCode size={24} />
+                          <QrCode size={24} aria-hidden="true" />
                         </span>
                         暂无卡片预览
                       </div>
@@ -550,12 +554,12 @@ export default function TenantShareDialogTrigger({
                   </div>
                 </div>
 
-                <div className="relative z-10 mt-3 grid grid-cols-1 gap-2.5 sm:mt-4 sm:grid-cols-2">
+                <div className="relative z-10 mt-2 grid grid-cols-2 gap-2 sm:mt-4 sm:gap-2.5">
                   <button
                     type="button"
                     onClick={handleSaveImage}
                     disabled={!posterDataUrl || posterPending}
-                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-neutral-900 px-4 text-sm font-semibold text-white shadow-lg transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-neutral-900 px-3 text-sm font-semibold text-white shadow-lg transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <Download size={16} />
                     保存图片
@@ -564,12 +568,18 @@ export default function TenantShareDialogTrigger({
                     type="button"
                     onClick={() => void handleCopyLink()}
                     disabled={!link}
-                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border-2 border-neutral-900 bg-white px-4 text-sm font-semibold text-neutral-900 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border-2 border-neutral-900 bg-white px-3 text-sm font-semibold text-neutral-900 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <Copy size={16} />
                     复制链接
                   </button>
                 </div>
+
+                {tenantSlug ? (
+                  <div className="relative z-10 mt-2 sm:mt-4">
+                    <ReferralPromoCard tenantSlug={tenantSlug} variant="share" />
+                  </div>
+                ) : null}
               </div>
             </div>
           ) : null}

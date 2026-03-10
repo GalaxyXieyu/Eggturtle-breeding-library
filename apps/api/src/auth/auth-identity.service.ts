@@ -28,6 +28,9 @@ import { SmsVerificationService } from './sms-verification.service';
 
 type SmsCodePurpose = 'register' | 'login' | 'binding' | 'replace';
 
+const REFERRAL_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const REFERRAL_CODE_LENGTH = 8;
+
 @Injectable()
 export class AuthIdentityService {
   constructor(
@@ -623,6 +626,7 @@ export class AuthIdentityService {
               email: accountEmail,
               account: payload.account,
               name: user.name,
+              referralCode: user.referralCode ?? (await this.generateUniqueReferralCode(tx)),
               passwordHash,
               passwordUpdatedAt: now,
             },
@@ -633,6 +637,7 @@ export class AuthIdentityService {
               email: accountEmail,
               account: payload.account,
               name: null,
+              referralCode: await this.generateUniqueReferralCode(tx),
               passwordHash,
               passwordUpdatedAt: now,
             },
@@ -766,6 +771,40 @@ export class AuthIdentityService {
     }
 
     return 'unknown';
+  }
+
+  private async generateUniqueReferralCode(db: Prisma.TransactionClient): Promise<string> {
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const referralCode = this.generateReferralCode();
+      const existing = await db.user.findUnique({
+        where: {
+          referralCode,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (!existing) {
+        return referralCode;
+      }
+    }
+
+    throw new ConflictException({
+      message: 'Failed to generate a unique referral code.',
+      errorCode: ErrorCode.InvalidRequestPayload,
+    });
+  }
+
+  private generateReferralCode(): string {
+    const bytes = randomBytes(REFERRAL_CODE_LENGTH);
+    let value = '';
+
+    for (let index = 0; index < REFERRAL_CODE_LENGTH; index += 1) {
+      value += REFERRAL_CODE_ALPHABET[bytes[index] % REFERRAL_CODE_ALPHABET.length];
+    }
+
+    return value;
   }
 
   private async recordLoginEvent(

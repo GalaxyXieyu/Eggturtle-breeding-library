@@ -41,6 +41,7 @@ import {
   type SetupRequirements,
 } from '@/app/app/[tenantSlug]/account/account-page-utils';
 import SubscriptionPageContent from '@/app/app/[tenantSlug]/subscription/page';
+import ReferralPanel from '@/app/app/[tenantSlug]/account/referral-panel';
 
 export default function AccountPage() {
   const router = useRouter();
@@ -625,6 +626,10 @@ export default function AccountPage() {
         <section className="rounded-3xl border border-neutral-200/90 bg-white p-2">
           <SubscriptionPageContent />
         </section>
+      ) : null}
+
+      {!loading && activeTab === 'referral' ? (
+        <ReferralPanel tenantSlug={tenantSlug} />
       ) : null}
 
       {message ? (

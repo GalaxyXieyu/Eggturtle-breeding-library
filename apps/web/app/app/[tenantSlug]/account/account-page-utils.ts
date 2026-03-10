@@ -2,7 +2,7 @@ import type { MeProfile } from '@eggturtle/shared';
 
 import { formatApiError } from '@/lib/error-utils';
 
-export type AccountTab = 'profile' | 'subscription';
+export type AccountTab = 'profile' | 'subscription' | 'referral';
 
 export type SetupRequirements = {
   needsDisplayName: boolean;
@@ -125,6 +125,9 @@ export function toBusinessSetupError(error: unknown) {
 export function normalizeAccountTab(value: string | null): AccountTab {
   if (value === 'subscription') {
     return 'subscription';
+  }
+  if (value === 'referral') {
+    return 'referral';
   }
 
   return 'profile';

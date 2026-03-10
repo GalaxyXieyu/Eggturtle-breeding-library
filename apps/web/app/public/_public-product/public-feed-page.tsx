@@ -7,7 +7,6 @@ import { Search, X } from 'lucide-react';
 
 import { buildFilterPillClass } from '@/components/filter-pill';
 import { FloatingActionButton, modalCloseButtonClass } from '@/components/ui/floating-actions';
-import { UiPreferenceControls } from '@/components/ui-preferences';
 import PublicBottomDock from '@/app/public/_shared/public-bottom-dock';
 import PublicFloatingActions from '@/app/public/_shared/public-floating-actions';
 import { withPublicImageMaxEdge } from '@/app/public/_shared/public-image';
@@ -493,9 +492,6 @@ export default function PublicFeedPage({
               }}
             />
             <div className="absolute inset-0">
-              <div className="public-floating-pref absolute right-3 top-3 z-30">
-                <UiPreferenceControls />
-              </div>
               <div className="flex h-full flex-col justify-end p-5 lg:p-8">
                 <div className="text-xs uppercase tracking-widest text-white/70">public share</div>
                 <h1 className="mt-2 text-[26px] font-semibold leading-tight text-white drop-shadow-sm lg:text-[34px]">
@@ -512,7 +508,7 @@ export default function PublicFeedPage({
                 <button
                   type="button"
                   aria-label="上一张"
-                  className="absolute left-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/90 px-2.5 py-1.5 text-sm font-semibold text-neutral-900 shadow hover:bg-white"
+                  className="public-carousel-btn left-3"
                   onClick={() =>
                     setHeroIndex((index) => (index - 1 + heroImages.length) % heroImages.length)
                   }
@@ -522,7 +518,7 @@ export default function PublicFeedPage({
                 <button
                   type="button"
                   aria-label="下一张"
-                  className="absolute right-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/90 px-2.5 py-1.5 text-sm font-semibold text-neutral-900 shadow hover:bg-white"
+                  className="public-carousel-btn right-3"
                   onClick={() => setHeroIndex((index) => (index + 1) % heroImages.length)}
                 >
                   ›
@@ -636,7 +632,7 @@ export default function PublicFeedPage({
               {hasMoreList ? (
                 <button
                   type="button"
-                  className="rounded-full border border-neutral-300 bg-white px-4 py-1.5 text-xs font-semibold text-neutral-700 transition hover:border-neutral-400 hover:bg-neutral-50"
+                  className="public-btn-primary"
                   onClick={() =>
                     setVisibleCount((current) =>
                       Math.min(current + VISIBLE_BREEDERS_CHUNK, list.length),

@@ -17,6 +17,12 @@ import { apiRequest, getAccessToken, setAccessToken } from '@/lib/api-client';
 import { usePlatformBranding } from '@/lib/branding-client';
 import { formatApiError } from '@/lib/error-utils';
 import { resolvePostAuthRedirect } from '@/lib/post-auth-redirect';
+import {
+  bindReferralCode,
+  clearPendingReferralCode,
+  getPendingReferralCode,
+  stashPendingReferralCode,
+} from '@/lib/referral-client';
 
 type EntryView = 'login' | 'register';
 type LoginMode = 'password' | 'code';
@@ -281,6 +287,11 @@ function LoginPageContent() {
   useEffect(() => {
     setHydrated(true);
 
+    const referralCode = searchParams.get('ref');
+    if (referralCode) {
+      stashPendingReferralCode(referralCode);
+    }
+
     if (typeof window === 'undefined') {
       return;
     }
@@ -288,7 +299,7 @@ function LoginPageContent() {
     if (getAccessToken()) {
       router.replace(resolvePostAuthRedirect('/app', window.location.search));
     }
-  }, [router]);
+  }, [router, searchParams]);
 
   useEffect(() => {
     if (loginSmsCooldown <= 0 && registerSmsCooldown <= 0) {
@@ -642,6 +653,19 @@ function LoginPageContent() {
       });
 
       setAccessToken(response.accessToken);
+
+      const pendingReferralCode = searchParams.get('ref')
+        ? stashPendingReferralCode(searchParams.get('ref'))
+        : getPendingReferralCode();
+      if (pendingReferralCode) {
+        try {
+          await bindReferralCode(pendingReferralCode, 'share_link');
+          clearPendingReferralCode();
+        } catch (bindError) {
+          console.warn('[Referral] Auto bind after register failed:', bindError);
+        }
+      }
+
       router.replace(
         getPostAuthRedirect(`/app/${response.tenant.slug}/account?setup=1`, {
           allowedTenantSlug: response.tenant.slug,

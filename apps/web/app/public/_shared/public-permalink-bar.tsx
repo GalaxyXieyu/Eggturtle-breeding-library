@@ -37,18 +37,18 @@ export default function PublicPermalinkBar({ shareToken, className }: Props) {
 
   return (
     <>
-      <div className={`rounded-2xl border border-black/5 bg-white/90 p-3 shadow-[0_8px_20px_rgba(0,0,0,0.06)] dark:border-white/10 dark:bg-neutral-900/70 ${className ?? ''}`}>
+      <div className={`public-bg-card public-border-default rounded-2xl border p-3 shadow-[0_8px_20px_rgba(0,0,0,0.06)] ${className ?? ''}`}>
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">永久链接</p>
-            <p className="truncate font-mono text-sm text-neutral-800 dark:text-neutral-100" title={maskedPath}>
+            <p className="public-text-subtle text-[11px] font-semibold uppercase tracking-wide">永久链接</p>
+            <p className="public-text-primary truncate font-mono text-sm" title={maskedPath}>
               {maskedPath}
             </p>
           </div>
           <button
             type="button"
             onClick={handleCopy}
-            className="shrink-0 rounded-full border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 transition hover:border-neutral-400 hover:bg-neutral-900 hover:text-white hover:shadow-sm dark:border-white/20 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800"
+            className="public-btn-secondary shrink-0"
           >
             复制永久链接
           </button>
