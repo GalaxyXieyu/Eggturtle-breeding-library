@@ -292,7 +292,7 @@ export default function DashboardOverviewPage() {
         <AdminMetricCard
           label={copy.recentOps}
           value={state.logs.length}
-          meta={<AdminActionLink href="/dashboard/audit-logs">{copy.viewRecords}</AdminActionLink>}
+          meta={<AdminActionLink href="/dashboard/settings/audit-logs">{copy.viewRecords}</AdminActionLink>}
         />
       </div>
 

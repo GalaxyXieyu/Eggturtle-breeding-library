@@ -31,6 +31,7 @@ import type {
 import { randomUUID } from 'node:crypto'
 
 import { AuditLogsService } from '../audit-logs/audit-logs.service'
+import { BrandingService } from '../branding/branding.service'
 import { PrismaService } from '../prisma.service'
 
 import { ProductGeneratedAssetsSupportService, type StoredContentResult } from './product-generated-assets-support.service'
@@ -58,6 +59,7 @@ export class ProductCertificatesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditLogsService: AuditLogsService,
+    private readonly brandingService: BrandingService,
     private readonly generatedAssetsSupportService: ProductGeneratedAssetsSupportService,
     private readonly productSaleBatchesService: ProductSaleBatchesService
   ) {}
@@ -778,14 +780,21 @@ export class ProductCertificatesService {
     buyerName?: string
     buyerAccountId?: string
   }): Promise<Buffer> {
-    const [subjectImage, sireImage, damImage, issuer] = await Promise.all([
+    const [subjectImage, sireImage, damImage, issuer, platformBranding] = await Promise.all([
       this.generatedAssetsSupportService.loadManagedImageBuffer(input.context.tenantId, input.context.subjectImageKey),
       this.generatedAssetsSupportService.loadManagedImageBuffer(input.context.tenantId, input.context.sireImageKey),
       this.generatedAssetsSupportService.loadManagedImageBuffer(input.context.tenantId, input.context.damImageKey),
-      this.resolveIssuerInfo(input.actorUserId)
+      this.resolveIssuerInfo(input.actorUserId),
+      this.brandingService.getPlatformBranding()
     ])
+    const certificateBranding = this.brandingService.buildCertificateBranding(platformBranding)
 
     const style = {
+      brandTitleZh: certificateBranding.titleZh,
+      brandTitleEn: certificateBranding.titleEn,
+      brandEyebrowZh: certificateBranding.eyebrowZh,
+      brandEyebrowEn: certificateBranding.eyebrowEn,
+      verificationStatementZh: certificateBranding.verificationStatementZh,
       certNo: input.certNo,
       issuedOnText: this.generatedAssetsSupportService.formatDateYmd(input.issuedAt),
       issuedOnChineseText: this.generatedAssetsSupportService.formatDateChinese(input.issuedAt),

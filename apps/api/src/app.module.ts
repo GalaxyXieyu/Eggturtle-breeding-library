@@ -9,10 +9,12 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { HealthController } from './health.controller';
 import { PaymentsModule } from './payments/payments.module';
 import { PrismaModule } from './prisma.module';
+import { BrandingModule } from './branding/branding.module';
 import { ProductsModule } from './products/products.module';
 import { SeriesModule } from './series/series.module';
 import { SharesModule } from './shares/shares.module';
 import { TenantsModule } from './tenants/tenants.module';
+import { ReferralsModule } from './referrals/referrals.module';
 import { TenantSharePresentationModule } from './tenant-share-presentation/tenant-share-presentation.module';
 
 @Module({
@@ -21,6 +23,7 @@ import { TenantSharePresentationModule } from './tenant-share-presentation/tenan
     AuthModule,
     TenantsModule,
     PaymentsModule,
+    BrandingModule,
     AiAssistantModule,
     ProductsModule,
     SeriesModule,
@@ -28,6 +31,7 @@ import { TenantSharePresentationModule } from './tenant-share-presentation/tenan
     DashboardModule,
     AuditLogsModule,
     SharesModule,
+    ReferralsModule,
     TenantSharePresentationModule,
     AdminModule
   ],

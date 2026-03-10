@@ -1,30 +1,23 @@
-import { Inter, Playfair_Display } from 'next/font/google';
+import type { Metadata } from 'next';
 
 import '../../../packages/shared/styles/ui-foundation.css';
 import './globals.css';
 import { UiPreferencesProvider } from '@/components/ui-preferences';
+import { getPlatformBrandingServer } from '@/lib/branding-server';
 
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
-  display: 'swap'
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const branding = await getPlatformBrandingServer();
 
-const playfairDisplay = Playfair_Display({
-  subsets: ['latin'],
-  variable: '--font-playfair',
-  display: 'swap'
-});
-
-export const metadata = {
-  title: '选育溯源档案 平台后台',
-  description: '选育溯源档案平台超级管理员后台'
-};
+  return {
+    title: branding.adminTitle.zh,
+    description: branding.adminSubtitle.zh,
+  };
+}
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="zh-CN">
-      <body className={`${inter.variable} ${playfairDisplay.variable}`}>
+      <body>
         <UiPreferencesProvider>{children}</UiPreferencesProvider>
       </body>
     </html>

@@ -9,6 +9,7 @@ import {
   dashboardNavGroups,
   type DashboardNavItem
 } from '@/components/dashboard/nav-config';
+import { usePlatformBranding } from '@/lib/branding-client';
 
 const webSuperAdminEnabled = process.env.NEXT_PUBLIC_SUPER_ADMIN_ENABLED === 'true';
 
@@ -36,12 +37,24 @@ const SIDEBAR_COPY = {
 export function DashboardSidebar({ collapsed }: DashboardSidebarProps) {
   const pathname = usePathname();
   const { locale } = useUiPreferences();
-  const copy = SIDEBAR_COPY[locale];
+  const branding = usePlatformBranding();
+  const brandMark =
+    branding.appName.en
+      .split(/\s+/)
+      .map((word) => word[0] ?? '')
+      .join('')
+      .slice(0, 3)
+      .toUpperCase() || 'BTR';
+  const copy = {
+    ...SIDEBAR_COPY[locale],
+    brandTitle: branding.adminTitle[locale],
+    brandSubtitle: branding.adminSubtitle[locale],
+  };
 
   return (
     <aside className="dashboard-sidebar" aria-label={copy.asideAriaLabel}>
       <div className="sidebar-brand">
-        <span className="sidebar-brand-logo">ET</span>
+        <span className="sidebar-brand-logo">{brandMark}</span>
         <div className="sidebar-brand-copy">
           <strong>{copy.brandTitle}</strong>
           <span>{copy.brandSubtitle}</span>

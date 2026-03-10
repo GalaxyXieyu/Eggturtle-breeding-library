@@ -44,7 +44,7 @@ const tabs: Array<{
     matchItems: managementItems
   },
   {
-    href: '/dashboard/audit-logs',
+    href: '/dashboard/settings/platform-branding',
     icon: 'settings',
     labelKey: 'settingsLabel',
     matchItems: settingsItems

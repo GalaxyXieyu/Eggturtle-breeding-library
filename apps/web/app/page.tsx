@@ -5,6 +5,7 @@ import Link from 'next/link';
 
 import { useUiPreferences } from '@/components/ui-preferences';
 import styles from '@/app/page.module.css';
+import { usePlatformBranding } from '@/lib/branding-client';
 
 type HomeCopy = {
   navLogin: string;
@@ -165,6 +166,10 @@ const COPY: Record<'zh' | 'en', HomeCopy> = {
 export default function HomePage() {
   const { locale } = useUiPreferences();
   const copy = COPY[locale];
+  const branding = usePlatformBranding();
+  const brandTitle = branding.appName[locale];
+  const brandEyebrow = branding.appEyebrow[locale];
+  const brandDescription = branding.appDescription[locale];
 
   return (
     <div className={styles.page}>
@@ -173,8 +178,8 @@ export default function HomePage() {
           <div className={styles.logoGroup}>
             <span className={styles.logoMark}>BTR</span>
             <div className={styles.logoCopy}>
-              <p className={styles.logoName}>选育溯源档案</p>
-              <p className={styles.logoSub}>Breeding Traceability Record</p>
+              <p className={styles.logoName}>{branding.appName.zh}</p>
+              <p className={styles.logoSub}>{branding.appName.en}</p>
             </div>
           </div>
           <Link href="/login" className={styles.navLogin}>
@@ -188,9 +193,9 @@ export default function HomePage() {
           <div className={styles.heroCopy}>
             <p className={styles.kicker}>{copy.heroKicker}</p>
             <div className={styles.brandPanel}>
-              <p className={styles.brandEyebrow}>{copy.brandEyebrow}</p>
-              <p className={styles.brandTitle}>{copy.brandTitle}</p>
-              <p className={styles.brandDescription}>{copy.brandDescription}</p>
+              <p className={styles.brandEyebrow}>{brandEyebrow}</p>
+              <p className={styles.brandTitle}>{brandTitle}</p>
+              <p className={styles.brandDescription}>{brandDescription}</p>
             </div>
             <h1>
               {copy.heroTitleLine1}
@@ -299,7 +304,7 @@ export default function HomePage() {
 
       <footer className={styles.footer}>
         <div className={styles.container}>
-          <p>© 2026 Breeding Traceability Record. All rights reserved.</p>
+          <p>© 2026 {branding.appName.en}. All rights reserved.</p>
           <div className={styles.footerLinks}>
             <Link href="/login">{copy.footerLogin}</Link>
             <a href="#features">{copy.footerFeatures}</a>

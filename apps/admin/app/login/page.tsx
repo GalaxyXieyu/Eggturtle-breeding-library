@@ -10,6 +10,7 @@ import {
 } from '@eggturtle/shared';
 
 import { UiPreferenceControls, type UiLocale, useUiPreferences } from '@/components/ui-preferences';
+import { usePlatformBranding } from '@/lib/branding-client';
 import { apiRequest } from '@/lib/api-client';
 import { formatUnknownError } from '@/lib/formatters';
 
@@ -176,7 +177,12 @@ function resolveAdminLoginIdentifier(value: string, copy: LoginCopy) {
 export default function LoginPage() {
   const router = useRouter();
   const { locale } = useUiPreferences();
-  const copy = COPY[locale];
+  const branding = usePlatformBranding();
+  const copy = {
+    ...COPY[locale],
+    productTitle: branding.appName[locale],
+    productSubtitle: branding.appDescription[locale],
+  };
 
   const [redirectTo, setRedirectTo] = useState('/dashboard');
   const [mode, setMode] = useState<LoginMode>('password');

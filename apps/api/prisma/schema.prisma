@@ -25,6 +25,7 @@ model User {
   email               String               @unique @db.VarChar(255)
   account             String?              @unique @db.VarChar(32)
   name                String?              @db.VarChar(120)
+  referralCode        String?              @unique @map("referral_code") @db.VarChar(32)
   passwordHash        String?              @map("password_hash") @db.VarChar(255)
   passwordUpdatedAt   DateTime?            @map("password_updated_at")
   createdAt           DateTime             @default(now()) @map("created_at")
@@ -39,7 +40,67 @@ model User {
   generatedProductCouplePhotos ProductCouplePhoto[] @relation("ProductCouplePhotoGenerator")
   superAdminAuditLogs SuperAdminAuditLog[] @relation("SuperAdminAuditLogActor")
 
+  referralBindingAsInvitee      ReferralBinding? @relation("ReferralBindingInvitee")
+  referralBindingsAsReferrer    ReferralBinding[] @relation("ReferralBindingReferrer")
+  createdReferralRewards        ReferralReward[] @relation("ReferralRewardCreator")
+  referralRewardsAsReferrer     ReferralReward[] @relation("ReferralRewardReferrer")
+  referralRewardsAsInvitee      ReferralReward[] @relation("ReferralRewardInvitee")
+
   @@map("users")
+}
+
+model ReferralBinding {
+  id             String   @id @default(cuid())
+  referrerUserId String   @map("referrer_user_id")
+  inviteeUserId  String   @unique @map("invitee_user_id")
+  referralCode   String   @map("referral_code") @db.VarChar(32)
+  source         String   @default("share_link") @db.VarChar(32)
+  boundAt        DateTime @default(now()) @map("bound_at")
+
+  referrerUser User @relation("ReferralBindingReferrer", fields: [referrerUserId], references: [id], onDelete: Cascade)
+  inviteeUser  User @relation("ReferralBindingInvitee", fields: [inviteeUserId], references: [id], onDelete: Cascade)
+
+  @@index([referrerUserId], map: "referral_bindings_referrer_user_id_idx")
+  @@index([referralCode], map: "referral_bindings_referral_code_idx")
+  @@map("referral_bindings")
+}
+
+enum ReferralRewardStatus {
+  PENDING
+  AWARDED
+  SKIPPED
+}
+
+enum ReferralRewardTriggerType {
+  FIRST_PAYMENT
+  RENEWAL
+}
+
+model ReferralReward {
+  id                 String                    @id @default(cuid())
+  status             ReferralRewardStatus      @default(PENDING)
+  triggerType        ReferralRewardTriggerType @map("trigger_type")
+  statusReason       String?                   @map("status_reason") @db.VarChar(120)
+  referrerUserId     String                    @map("referrer_user_id")
+  inviteeUserId      String                    @map("invitee_user_id")
+  paymentProvider    String?                   @map("payment_provider") @db.VarChar(32)
+  paymentId          String?                   @map("payment_id") @db.VarChar(80)
+  orderId            String?                   @map("order_id") @db.VarChar(80)
+  rewardDaysReferrer Int                       @default(0) @map("reward_days_referrer")
+  rewardDaysInvitee  Int                       @default(0) @map("reward_days_invitee")
+  awardedAt          DateTime?                 @map("awarded_at")
+  createdAt          DateTime                  @default(now()) @map("created_at")
+  createdByUserId    String?                   @map("created_by_user_id")
+
+  createdByUser User? @relation("ReferralRewardCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  referrerUser  User  @relation("ReferralRewardReferrer", fields: [referrerUserId], references: [id], onDelete: Cascade)
+  inviteeUser   User  @relation("ReferralRewardInvitee", fields: [inviteeUserId], references: [id], onDelete: Cascade)
+
+  @@unique([paymentId], map: "referral_rewards_payment_id_key")
+  @@unique([orderId], map: "referral_rewards_order_id_key")
+  @@index([inviteeUserId], map: "referral_rewards_invitee_user_id_idx")
+  @@index([referrerUserId], map: "referral_rewards_referrer_user_id_idx")
+  @@map("referral_rewards")
 }
 
 model UserSecurityProfile {
@@ -94,6 +155,7 @@ model Tenant {
   featuredProducts    FeaturedProduct[]
   shares              PublicShare[]
   sharePresentationConfig TenantSharePresentationConfig?
+  brandingOverride    TenantBrandingOverride?
   productCertificates ProductCertificate[]
   certificateQuotaMonthly TenantCertificateQuotaMonthly[]
   productCouplePhotos ProductCouplePhoto[]
@@ -106,6 +168,30 @@ model Tenant {
   subscription        TenantSubscription?
 
   @@map("tenants")
+}
+
+model PlatformBrandingConfig {
+  id                         String   @id @default("default")
+  appNameZh                  String   @default("选育溯源档案") @map("app_name_zh") @db.VarChar(160)
+  appNameEn                  String   @default("Breeding Traceability Record") @map("app_name_en") @db.VarChar(160)
+  appEyebrowZh               String   @default("Breeding Traceability Record") @map("app_eyebrow_zh") @db.VarChar(160)
+  appEyebrowEn               String   @default("选育溯源档案") @map("app_eyebrow_en") @db.VarChar(160)
+  appDescriptionZh           String   @default("让每一条选育、配对、产蛋与孵化记录，都沉淀为可查、可验、可复盘的繁育档案。") @map("app_description_zh") @db.VarChar(280)
+  appDescriptionEn           String   @default("A trusted workspace for breeder records, pairing timelines, and hatch traceability.") @map("app_description_en") @db.VarChar(280)
+  adminTitleZh               String   @default("选育溯源档案 平台后台") @map("admin_title_zh") @db.VarChar(160)
+  adminTitleEn               String   @default("Breeding Traceability Record Admin Console") @map("admin_title_en") @db.VarChar(160)
+  adminSubtitleZh            String   @default("跨用户运维控制台") @map("admin_subtitle_zh") @db.VarChar(280)
+  adminSubtitleEn            String   @default("Cross-tenant operations control") @map("admin_subtitle_en") @db.VarChar(280)
+  defaultTenantNameZh        String   @default("选育溯源档案") @map("default_tenant_name_zh") @db.VarChar(160)
+  defaultTenantNameEn        String   @default("Breeding Traceability Record") @map("default_tenant_name_en") @db.VarChar(160)
+  publicCatalogTitleSuffixZh String   @default("公开图鉴") @map("public_catalog_title_suffix_zh") @db.VarChar(160)
+  publicCatalogTitleSuffixEn String   @default("Public Catalog") @map("public_catalog_title_suffix_en") @db.VarChar(160)
+  publicCatalogSubtitleSuffixZh String @default("在库产品展示") @map("public_catalog_subtitle_suffix_zh") @db.VarChar(280)
+  publicCatalogSubtitleSuffixEn String @default("Catalog showcase") @map("public_catalog_subtitle_suffix_en") @db.VarChar(280)
+  createdAt                  DateTime @default(now()) @map("created_at")
+  updatedAt                  DateTime @updatedAt @map("updated_at")
+
+  @@map("platform_branding_configs")
 }
 
 model TenantSubscription {
@@ -518,6 +604,20 @@ model TenantSharePresentationConfig {
 
   @@index([tenantId], map: "tenant_share_presentation_configs_tenant_id_idx")
   @@map("tenant_share_presentation_configs")
+}
+
+model TenantBrandingOverride {
+  id             String   @id @default(cuid())
+  tenantId       String   @unique @map("tenant_id")
+  displayName    String?  @map("display_name") @db.VarChar(120)
+  publicTitle    String?  @map("public_title") @db.VarChar(120)
+  publicSubtitle String?  @map("public_subtitle") @db.VarChar(240)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId], map: "tenant_branding_overrides_tenant_id_idx")
+  @@map("tenant_branding_overrides")
 }
 
 model AuditLog {

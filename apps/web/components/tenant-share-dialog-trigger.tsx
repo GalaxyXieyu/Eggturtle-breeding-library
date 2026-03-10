@@ -4,11 +4,13 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { useParams } from 'next/navigation';
 import { Copy, Download, QrCode, Share2, X } from 'lucide-react';
 import QRCode from 'qrcode';
 
 import { copyTextWithFallback } from '@/lib/browser-share';
 import { resolveAuthenticatedAssetUrl } from '@/lib/api-client';
+import { useResolvedTenantBranding } from '@/lib/branding-client';
 import { formatApiError } from '@/lib/error-utils';
 import {
   createTenantFeedShareLink,
@@ -43,6 +45,9 @@ export default function TenantShareDialogTrigger({
   missingTenantMessage = '当前用户上下文未就绪，暂时无法生成分享链接。',
   className,
 }: TenantShareDialogTriggerProps) {
+  const params = useParams<{ tenantSlug: string }>();
+  const tenantSlug = params.tenantSlug ?? '';
+  const tenantBranding = useResolvedTenantBranding(tenantSlug);
   const intentKey = useMemo(() => getTenantShareIntentKey(intent), [intent]);
   const normalizedIntent = useMemo<TenantShareIntent>(() => {
     if (intentKey === 'feed' || intentKey === 'series') {
@@ -69,10 +74,30 @@ export default function TenantShareDialogTrigger({
   const mountedRef = useRef(true);
   const titleId = useId();
 
-  const cardTitle = useMemo(() => title?.trim() || intentCopy.title, [intentCopy.title, title]);
+  const cardTitle = useMemo(() => {
+    if (title?.trim()) {
+      return title.trim();
+    }
+
+    if (intentKey === 'feed') {
+      return tenantBranding.resolved.publicTitle;
+    }
+
+    return intentCopy.title;
+  }, [intentCopy.title, intentKey, tenantBranding.resolved.publicTitle, title]);
   const cardSubtitle = useMemo(
-    () => subtitle?.trim() || intentCopy.subtitle,
-    [intentCopy.subtitle, subtitle],
+    () => {
+      if (subtitle?.trim()) {
+        return subtitle.trim();
+      }
+
+      if (intentKey === 'feed') {
+        return tenantBranding.resolved.publicSubtitle;
+      }
+
+      return intentCopy.subtitle;
+    },
+    [intentCopy.subtitle, intentKey, subtitle, tenantBranding.resolved.publicSubtitle],
   );
   const normalizedPreviewImageUrl = useMemo(
     () => (previewImageUrl?.trim() ? resolveAuthenticatedAssetUrl(previewImageUrl) : null),
@@ -90,6 +115,8 @@ export default function TenantShareDialogTrigger({
       ),
     [posterImageUrls],
   );
+  const platformAppNameZh = tenantBranding.platform.appName.zh;
+  const platformAppNameEn = tenantBranding.platform.appName.en;
 
   const resolvedPosterVariant = useMemo<TenantSharePosterVariant>(() => {
     if (posterVariant) {
@@ -296,6 +323,8 @@ export default function TenantShareDialogTrigger({
       title: cardTitle,
       subtitle: cardSubtitle,
       qrDataUrl,
+      brandTitleZh: platformAppNameZh,
+      brandTitleEn: platformAppNameEn,
       previewImageUrl: normalizedPreviewImageUrl,
       posterImageUrls: normalizedPosterImageUrls,
       variant: resolvedPosterVariant,
@@ -359,6 +388,8 @@ export default function TenantShareDialogTrigger({
     cardTitle,
     normalizedPosterImageUrls,
     open,
+    platformAppNameEn,
+    platformAppNameZh,
     normalizedPreviewImageUrl,
     qrDataUrl,
     resolvedPosterVariant,
@@ -591,6 +622,8 @@ type SharePosterPayload = {
   title: string;
   subtitle: string;
   qrDataUrl: string;
+  brandTitleZh: string;
+  brandTitleEn: string;
   previewImageUrl?: string | null;
   posterImageUrls?: string[];
   variant: TenantSharePosterVariant;
@@ -749,7 +782,7 @@ async function generateGenericSharePoster(payload: SharePosterPayload): Promise<
   // Footer text with refined styling
   ctx.fillStyle = '#999999';
   ctx.font = '600 22px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
-  ctx.fillText('Breeding Traceability Record', heroX, accentBarY + 55);
+  ctx.fillText(payload.brandTitleEn, heroX, accentBarY + 55);
 
   return canvas.toDataURL('image/png');
 }
@@ -786,10 +819,10 @@ async function generateDetailSharePoster(payload: SharePosterPayload): Promise<s
       const heroImage = await loadImage(payload.previewImageUrl);
       drawCoverImage(ctx, heroImage, imageX, imageY, imageWidth, imageHeight, 44);
     } catch {
-      drawHeroFallback(ctx, imageX, imageY, imageWidth, imageHeight);
+      drawHeroFallback(ctx, imageX, imageY, imageWidth, imageHeight, payload);
     }
   } else {
-    drawHeroFallback(ctx, imageX, imageY, imageWidth, imageHeight);
+    drawHeroFallback(ctx, imageX, imageY, imageWidth, imageHeight, payload);
   }
 
   const imageOverlay = ctx.createLinearGradient(
@@ -958,7 +991,7 @@ async function generateDetailSharePoster(payload: SharePosterPayload): Promise<s
 
   ctx.fillStyle = '#0f172a';
   ctx.font = '500 20px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
-  ctx.fillText('Breeding Traceability Record', panelX + 34, panelY + panelHeight - 24);
+  ctx.fillText(payload.brandTitleEn, panelX + 34, panelY + panelHeight - 24);
 
   return canvas.toDataURL('image/png');
 }
@@ -979,7 +1012,7 @@ async function drawGenericPosterHero(
 
   if (imageUrls.length === 0) {
     console.log('[Poster] No images, using fallback');
-    drawHeroFallback(ctx, x, y, width, height);
+    drawHeroFallback(ctx, x, y, width, height, payload);
     return;
   }
 
@@ -989,7 +1022,7 @@ async function drawGenericPosterHero(
 
   if (images.length === 0) {
     console.log('[Poster] All images failed to load, using fallback');
-    drawHeroFallback(ctx, x, y, width, height);
+    drawHeroFallback(ctx, x, y, width, height, payload);
     return;
   }
 
@@ -1246,6 +1279,7 @@ function drawHeroFallback(
   y: number,
   width: number,
   height: number,
+  payload: Pick<SharePosterPayload, 'brandTitleZh'>,
 ) {
   const heroGradient = ctx.createLinearGradient(x, y, x + width, y + height);
   heroGradient.addColorStop(0, '#1f2937');
@@ -1288,7 +1322,7 @@ function drawHeroFallback(
 
   ctx.fillStyle = 'rgba(255,255,255,0.96)';
   ctx.font = '700 56px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
-  ctx.fillText('选育溯源档案', x + 38, y + height - 174);
+  ctx.fillText(payload.brandTitleZh, x + 38, y + height - 174);
   ctx.font = '500 28px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.84)';
   ctx.fillText('暂无主图，也可直接分享入口', x + 38, y + height - 124);

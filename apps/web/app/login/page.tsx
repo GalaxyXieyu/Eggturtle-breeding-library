@@ -14,6 +14,7 @@ import {
 
 import { UiPreferenceControls, type UiLocale, useUiPreferences } from '@/components/ui-preferences';
 import { apiRequest, getAccessToken, setAccessToken } from '@/lib/api-client';
+import { usePlatformBranding } from '@/lib/branding-client';
 import { formatApiError } from '@/lib/error-utils';
 import { resolvePostAuthRedirect } from '@/lib/post-auth-redirect';
 
@@ -201,14 +202,16 @@ export default function LoginPage() {
 }
 
 function LoginPageSkeleton() {
+  const branding = usePlatformBranding();
+
   return (
     <main className="auth-shell auth-shell-login">
       <section className="login-layout">
         <section className="login-showcase">
           <div className="login-showcase-glow" aria-hidden />
           <div className="login-brand-copy">
-            <p className="login-brand-eyebrow">Breeding Traceability Record</p>
-            <h1>选育溯源档案</h1>
+            <p className="login-brand-eyebrow">{branding.appEyebrow.zh}</p>
+            <h1>{branding.appName.zh}</h1>
             <p className="muted">正在准备登录体验…</p>
           </div>
         </section>
@@ -234,7 +237,13 @@ function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { locale } = useUiPreferences();
-  const copy = COPY[locale];
+  const branding = usePlatformBranding();
+  const copy = {
+    ...COPY[locale],
+    title: branding.appName[locale],
+    brandEyebrow: branding.appEyebrow[locale],
+    subtitle: branding.appDescription[locale],
+  };
   const entryView: EntryView = searchParams.get('view') === 'register' ? 'register' : 'login';
 
   const [loginMode, setLoginMode] = useState<LoginMode>('password');

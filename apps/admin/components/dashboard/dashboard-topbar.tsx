@@ -222,7 +222,7 @@ function resolveSectionLabel(firstSegment: string, locale: UiLocale) {
     return locale === 'zh' ? '用户' : 'Users';
   }
 
-  if (firstSegment === 'audit-logs') {
+  if (firstSegment === 'settings' || firstSegment === 'audit-logs') {
     return locale === 'zh' ? '设置' : 'Settings';
   }
 
@@ -234,7 +234,10 @@ function resolveSegmentLabel(segment: string, locale: UiLocale) {
     'tenant-management': { zh: '用户', en: 'Users' },
     tenants: { zh: '用户详情', en: 'Tenant Detail' },
     memberships: { zh: '成员权限', en: 'Member Access' },
-    'audit-logs': { zh: '设置', en: 'Settings' },
+    settings: { zh: '设置', en: 'Settings' },
+    'platform-branding': { zh: '平台品牌', en: 'Platform Branding' },
+    'tenant-branding': { zh: '租户品牌', en: 'Tenant Branding' },
+    'audit-logs': { zh: '审计记录', en: 'Audit Logs' },
     analytics: { zh: '活跃度', en: 'Activity' },
     usage: { zh: '用量', en: 'Usage' },
     billing: { zh: '营收', en: 'Revenue' },

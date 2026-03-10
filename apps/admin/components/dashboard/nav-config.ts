@@ -57,7 +57,7 @@ export const dashboardNavGroups: DashboardNavGroup[] = [
     title: { zh: '设置', en: 'Settings' },
     items: [
       {
-        href: '/dashboard/audit-logs',
+        href: '/dashboard/settings/platform-branding',
         icon: 'settings',
         label: { zh: '设置', en: 'Settings' },
         description: {

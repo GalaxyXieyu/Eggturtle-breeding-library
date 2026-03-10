@@ -301,6 +301,36 @@ export type {
   StoragePutObjectResponse,
 } from './storage';
 export {
+  DEFAULT_PLATFORM_BRANDING,
+  DEFAULT_TENANT_BRANDING_OVERRIDE,
+  getAdminTenantBrandingResponseSchema,
+  getPlatformBrandingResponseSchema,
+  getResolvedPlatformBrandingResponseSchema,
+  getResolvedTenantBrandingResponseSchema,
+  platformBrandingConfigSchema,
+  resolvedPlatformBrandingSchema,
+  resolvedTenantBrandingSchema,
+  tenantBrandingOverrideSchema,
+  updateAdminTenantBrandingRequestSchema,
+  updateAdminTenantBrandingResponseSchema,
+  updatePlatformBrandingRequestSchema,
+  updatePlatformBrandingResponseSchema,
+} from './branding';
+export type {
+  GetAdminTenantBrandingResponse,
+  GetPlatformBrandingResponse,
+  GetResolvedPlatformBrandingResponse,
+  GetResolvedTenantBrandingResponse,
+  PlatformBrandingConfig,
+  ResolvedPlatformBranding,
+  ResolvedTenantBranding,
+  TenantBrandingOverride,
+  UpdateAdminTenantBrandingRequest,
+  UpdateAdminTenantBrandingResponse,
+  UpdatePlatformBrandingRequest,
+  UpdatePlatformBrandingResponse,
+} from './branding';
+export {
   createShareRequestSchema,
   createShareResponseSchema,
   getTenantSharePresentationResponseSchema,
@@ -442,6 +472,34 @@ export type {
   TurtleAnalysisRequest,
   TurtleAnalysisResponse,
 } from './ai';
+export {
+  bindReferralRequestSchema,
+  bindReferralResponseSchema,
+  myReferralOverviewResponseSchema,
+  publicReferralLandingResponseSchema,
+  referralBindingSchema,
+  referralBindingSourceSchema,
+  referralProgramRulesSchema,
+  referralRewardSchema,
+  referralRewardStatusSchema,
+  referralRewardTriggerTypeSchema,
+  settleReferralPaidEventRequestSchema,
+  settleReferralPaidEventResponseSchema,
+} from './referral';
+export type {
+  BindReferralRequest,
+  BindReferralResponse,
+  MyReferralOverviewResponse,
+  PublicReferralLandingResponse,
+  ReferralBinding,
+  ReferralBindingSource,
+  ReferralProgramRules,
+  ReferralReward,
+  ReferralRewardStatus,
+  ReferralRewardTriggerType,
+  SettleReferralPaidEventRequest,
+  SettleReferralPaidEventResponse,
+} from './referral';
 export {
   SuperAdminAuditAction,
   adminTenantAutoTagKeySchema,

@@ -8,7 +8,7 @@ import { useUiPreferences } from '@/components/ui-preferences'
 const TAB_ITEMS = [
   { href: '/dashboard', match: 'exact', label: { zh: '数据', en: 'Data' } },
   { href: '/dashboard/tenant-management', match: 'prefix', label: { zh: '用户', en: 'Users' } },
-  { href: '/dashboard/audit-logs', match: 'prefix', label: { zh: '记录', en: 'Records' } }
+  { href: '/dashboard/settings/platform-branding', match: 'prefix', label: { zh: '设置', en: 'Settings' } }
 ] as const
 
 export function DashboardTopTabs() {

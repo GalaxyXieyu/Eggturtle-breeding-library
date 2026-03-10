@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { AuthModule } from '../auth/auth.module';
+import { BrandingModule } from '../branding/branding.module';
 import { PrismaModule } from '../prisma.module';
 import { StorageModule } from '../storage/storage.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
@@ -10,7 +11,7 @@ import { TenantSharePresentationPublicController } from './tenant-share-presenta
 import { TenantSharePresentationService } from './tenant-share-presentation.service';
 
 @Module({
-  imports: [PrismaModule, AuthModule, SubscriptionsModule, StorageModule],
+  imports: [PrismaModule, AuthModule, SubscriptionsModule, StorageModule, BrandingModule],
   controllers: [TenantSharePresentationController, TenantSharePresentationPublicController],
   providers: [TenantSharePresentationService],
   exports: [TenantSharePresentationService]

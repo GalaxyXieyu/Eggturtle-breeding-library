@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import TenantFloatingShareButton from '@/components/tenant-floating-share-button';
 import type { TenantShareIntent } from '@/lib/tenant-share';
 import { apiRequest, clearAccessToken } from '@/lib/api-client';
+import { useResolvedTenantBranding } from '@/lib/branding-client';
 import { ensureTenantRouteSession } from '@/lib/tenant-route-session';
 import { formatTenantDisplayName } from '@/lib/tenant-display';
 import { cn } from '@/lib/utils';
@@ -113,9 +114,14 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
   const [setupCheckReady, setSetupCheckReady] = useState(false);
   const { locale } = useUiPreferences();
   const copy = SHELL_COPY[locale];
+  const tenantBranding = useResolvedTenantBranding(tenantSlug);
   const displayTenantName = useMemo(
-    () => formatTenantDisplayName(tenantSlug, copy.defaultTenant),
-    [tenantSlug, copy.defaultTenant],
+    () =>
+      formatTenantDisplayName(
+        tenantBranding.resolved.displayName || tenantSlug,
+        tenantBranding.platform.defaultTenantName[locale] || copy.defaultTenant,
+      ),
+    [copy.defaultTenant, locale, tenantBranding.platform.defaultTenantName, tenantBranding.resolved.displayName, tenantSlug],
   );
 
   const shouldRenderLayoutFloatingShare =

@@ -5,6 +5,7 @@ import type { Product, ProductFamilyTree } from '@eggturtle/shared';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { usePlatformBranding } from '@/lib/branding-client';
 
 type CertificateForm = {
   certNo: string;
@@ -33,6 +34,7 @@ const CANVAS_HEIGHT = 1536;
 
 export function TurtleCertificateGenerator({ breeder, tree }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const branding = usePlatformBranding();
   const [templateDataUrl, setTemplateDataUrl] = useState<string>('');
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [renderError, setRenderError] = useState<string | null>(null);
@@ -102,9 +104,9 @@ export function TurtleCertificateGenerator({ breeder, tree }: Props) {
       drawQrPlaceholder(ctx);
     }
 
-    drawCertificateText(ctx, form);
+    drawCertificateText(ctx, form, branding);
     setRenderError(null);
-  }, [form, qrDataUrl, templateDataUrl]);
+  }, [branding, form, qrDataUrl, templateDataUrl]);
 
   useEffect(() => {
     void redraw();
@@ -320,11 +322,15 @@ function drawQrPlaceholder(ctx: CanvasRenderingContext2D) {
   ctx.restore();
 }
 
-function drawCertificateText(ctx: CanvasRenderingContext2D, form: CertificateForm) {
-  drawCenter(ctx, '选育溯源档案', 120, 62, true);
-  drawCenter(ctx, 'TURTLE BREEDING ARCHIVE', 168, 36, false);
-  drawCenter(ctx, '选育溯源档案', 218, 38, true);
-  drawCenter(ctx, 'BREEDING TRACEABILITY RECORD', 256, 26, false);
+function drawCertificateText(
+  ctx: CanvasRenderingContext2D,
+  form: CertificateForm,
+  branding: ReturnType<typeof usePlatformBranding>,
+) {
+  drawCenter(ctx, branding.appName.zh, 120, 62, true);
+  drawCenter(ctx, branding.appEyebrow.zh, 168, 36, false);
+  drawCenter(ctx, branding.appName.zh, 218, 38, true);
+  drawCenter(ctx, branding.appName.en, 256, 26, false);
 
   drawCenter(ctx, form.certNo, 355, 46, true);
   drawCenter(ctx, `Issued on ${form.issuedOn}`, 402, 28, false);
@@ -341,7 +347,7 @@ function drawCertificateText(ctx: CanvasRenderingContext2D, form: CertificateFor
   drawKV(ctx, "外祖父 (Dam's Sire)", form.damSireCode, 550, 900);
   drawKV(ctx, "外祖母 (Dam's Dam)", form.damDamCode, 550, 980);
 
-  drawCenter(ctx, '本证书内容由选育溯源档案生成，扫码可查验档案真实性。', 1390, 24, false);
+  drawCenter(ctx, `本证书内容由${branding.appName.zh}生成，扫码可查验档案真实性。`, 1390, 24, false);
 
   ctx.save();
   ctx.fillStyle = '#574a31';

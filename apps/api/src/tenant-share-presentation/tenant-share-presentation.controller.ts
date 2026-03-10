@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  ForbiddenException,
   Get,
   Post,
   Put,
@@ -13,9 +14,7 @@ import {
 import {
   ErrorCode,
   getTenantSharePresentationResponseSchema,
-  uploadTenantSharePresentationImageResponseSchema,
-  updateTenantSharePresentationRequestSchema,
-  updateTenantSharePresentationResponseSchema
+  updateTenantSharePresentationRequestSchema
 } from '@eggturtle/shared';
 import { FileInterceptor } from '@nestjs/platform-express';
 
@@ -53,17 +52,10 @@ export class TenantSharePresentationController {
   @Put()
   @RequireTenantRole('EDITOR')
   async updateTenantPresentation(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
-    const tenantId = this.requireTenantId(request.tenantId);
-    const payload = parseOrThrow(updateTenantSharePresentationRequestSchema, body);
+    parseOrThrow(updateTenantSharePresentationRequestSchema, body);
+    this.requireTenantId(request.tenantId);
 
-    const presentation = await this.tenantSharePresentationService.upsertTenantTemplate(
-      tenantId,
-      payload.presentation
-    );
-
-    return updateTenantSharePresentationResponseSchema.parse({
-      presentation
-    });
+    throw new ForbiddenException('Share presentation editing moved to admin settings > tenant branding.');
   }
 
   @Post('images')
@@ -80,15 +72,14 @@ export class TenantSharePresentationController {
     @Req() request: AuthenticatedRequest,
     @UploadedFile() file: UploadedBinaryFile | undefined
   ) {
-    const tenantId = this.requireTenantId(request.tenantId);
-    const actorUserId = this.requireUserId(request.user?.id);
+    this.requireTenantId(request.tenantId);
+    this.requireUserId(request.user?.id);
 
     if (!file || !file.buffer || file.buffer.length === 0) {
       throw new BadRequestException('A single image file is required in form field "file".');
     }
 
-    const asset = await this.tenantSharePresentationService.uploadImage(tenantId, actorUserId, file);
-    return uploadTenantSharePresentationImageResponseSchema.parse({ asset });
+    throw new ForbiddenException('Share presentation editing moved to admin settings > tenant branding.');
   }
 
   private requireTenantId(tenantId?: string): string {

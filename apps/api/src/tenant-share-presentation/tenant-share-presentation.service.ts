@@ -14,6 +14,7 @@ import path from 'node:path';
 import { PrismaService } from '../prisma.service';
 import { STORAGE_PROVIDER_TOKEN } from '../storage/storage.constants';
 import type { StorageProvider } from '../storage/storage.provider';
+import { BrandingService } from '../branding/branding.service';
 
 type UploadedBinaryFile = {
   originalname: string;
@@ -37,6 +38,7 @@ const DEFAULT_WECHAT_BLOCK_VISIBLE = false;
 export class TenantSharePresentationService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly brandingService: BrandingService,
     @Inject(STORAGE_PROVIDER_TOKEN) private readonly storageProvider: StorageProvider
   ) {}
 
@@ -148,9 +150,12 @@ export class TenantSharePresentationService {
   }): Promise<PublicSharePresentation> {
     const template = await this.getTenantTemplate(input.tenantId);
     const override = this.parseOverride(input.overrideRaw);
-
-    const defaultFeedTitle = `${input.tenantName} · 公开图鉴`;
-    const defaultFeedSubtitle = `${input.tenantName} 在库产品展示`;
+    const defaultBranding = await this.brandingService.resolveTenantPublicCopy({
+      tenantId: input.tenantId,
+      tenantName: input.tenantName
+    });
+    const defaultFeedTitle = defaultBranding.publicTitle;
+    const defaultFeedSubtitle = defaultBranding.publicSubtitle;
 
     const feedTitle = this.resolveTextField({
       override,

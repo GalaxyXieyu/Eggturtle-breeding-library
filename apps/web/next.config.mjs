@@ -24,6 +24,7 @@ const nextConfig = {
       { source: '/breeders/:path*', destination: `${internalApiBaseUrl}/breeders/:path*` },
       { source: '/dashboard/:path*', destination: `${internalApiBaseUrl}/dashboard/:path*` },
       { source: '/featured-products/:path*', destination: `${internalApiBaseUrl}/featured-products/:path*` },
+      { source: '/branding/:path*', destination: `${internalApiBaseUrl}/branding/:path*` },
       { source: '/ai-assistant/:path*', destination: `${internalApiBaseUrl}/ai-assistant/:path*` },
       { source: '/tenant-share-presentation/:path*', destination: `${internalApiBaseUrl}/tenant-share-presentation/:path*` },
       { source: '/shares/:path*', destination: `${internalApiBaseUrl}/shares/:path*` },

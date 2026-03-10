@@ -93,6 +93,11 @@ const DEBUG_BOXES: DebugBox[] = [
 ];
 
 export type CertificateStyleInput = {
+  brandTitleZh: string;
+  brandTitleEn: string;
+  brandEyebrowZh: string;
+  brandEyebrowEn: string;
+  verificationStatementZh: string;
   certNo: string;
   issuedOnText: string;
   issuedOnChineseText: string;
@@ -326,8 +331,8 @@ export function buildCertificateStyleSvg(input: CertificateStyleInput): string {
   ${
     useExternalBackground
       ? ''
-      : `<text x="${w / 2}" y="126" text-anchor="middle" font-size="64" font-weight="700" fill="#22170f" class="font-title">选育溯源档案</text>
-  <text x="${w / 2}" y="172" text-anchor="middle" font-size="22" fill="#3d2f21" letter-spacing="1.1" class="font-code">EGG TURTLE BREEDING REGISTRY</text>`
+      : `<text x="${w / 2}" y="126" text-anchor="middle" font-size="64" font-weight="700" fill="#22170f" class="font-title">${esc(input.brandTitleZh)}</text>
+  <text x="${w / 2}" y="172" text-anchor="middle" font-size="22" fill="#3d2f21" letter-spacing="1.1" class="font-code">${esc(input.brandEyebrowZh || input.brandTitleEn)}</text>`
   }
 
   <text x="${w / 2}" y="${certNoY}" text-anchor="middle" font-size="${certNoFontSize}" font-weight="700" fill="#2c2118" class="font-code">${esc(input.certNo)}</text>
@@ -373,7 +378,7 @@ export function buildCertificateStyleSvg(input: CertificateStyleInput): string {
   <g transform="translate(${STAMP_CENTER.x},${STAMP_CENTER.y})">
     <circle cx="0" cy="0" r="82" fill="none" stroke="#8f2f28" stroke-width="7.6"/>
     <circle cx="0" cy="0" r="61" fill="none" stroke="#8f2f28" stroke-width="3.3"/>
-    <text x="0" y="-10" text-anchor="middle" font-size="22" font-weight="700" fill="#8f2f28" class="font-title">选育溯源档案</text>
+    <text x="0" y="-10" text-anchor="middle" font-size="22" font-weight="700" fill="#8f2f28" class="font-title">${esc(input.brandTitleZh)}</text>
     <text x="0" y="34" text-anchor="middle" font-size="40" font-weight="700" fill="#8f2f28" class="font-title">认证</text>
   </g>
 
@@ -383,7 +388,7 @@ export function buildCertificateStyleSvg(input: CertificateStyleInput): string {
   <text x="${w / 2}" y="${sellerInfoY + 24}" text-anchor="middle" font-size="18" fill="#4f3f2d" class="font-code">账号ID: ${esc(input.sellerAccountId)}</text>
 
   <line x1="${PAGE_LAYOUT.content.x + 28}" y1="${FOOTER.lineY}" x2="${PAGE_LAYOUT.content.x + PAGE_LAYOUT.content.width - 28}" y2="${FOOTER.lineY}" stroke="#c7b294" stroke-width="1.2"/>
-  <text x="${w / 2}" y="${FOOTER.watermarkY}" text-anchor="middle" font-size="21" fill="#4d3c2b" class="font-label">${esc(input.watermarkText)}</text>
+  <text x="${w / 2}" y="${FOOTER.watermarkY}" text-anchor="middle" font-size="21" fill="#4d3c2b" class="font-label">${esc(input.verificationStatementZh)}</text>
   <text x="${w / 2}" y="${FOOTER.verifyY}" text-anchor="middle" font-size="19" fill="#5f4d38" class="font-code">Verify ID: ${esc(input.verifyId)}</text>
 </svg>`;
 }

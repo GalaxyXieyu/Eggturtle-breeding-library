@@ -1,8 +1,10 @@
 import '../../../packages/shared/styles/ui-foundation.css';
 import './globals.css';
+import type { Metadata } from 'next';
 import { Inter, Playfair_Display } from 'next/font/google';
 
 import { UiPreferencesProvider } from '@/components/ui-preferences';
+import { getPlatformBrandingServer } from '@/lib/branding-server';
 
 const fontSans = Inter({
   subsets: ['latin'],
@@ -16,10 +18,14 @@ const fontDisplay = Playfair_Display({
   display: 'swap',
 });
 
-export const metadata = {
-  title: '选育溯源档案 | Breeding Traceability Record',
-  description: 'Breeding Traceability Record 多用户选育与溯源管理平台',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const branding = await getPlatformBrandingServer();
+
+  return {
+    title: `${branding.appName.zh} | ${branding.appName.en}`,
+    description: branding.appDescription.zh,
+  };
+}
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
