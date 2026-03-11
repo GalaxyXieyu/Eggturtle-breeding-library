@@ -170,10 +170,6 @@ export default function BreederDetailPage() {
     const joiner = couplePhotoPreviewPath.includes('?') ? '&' : '?';
     return resolveImageUrl(`${couplePhotoPreviewPath}${joiner}maxEdge=960`);
   }, [couplePhotoPreviewPath]);
-  const couplePhotoDownloadUrl = useMemo(
-    () => (couplePhotoPreviewPath ? resolveImageUrl(couplePhotoPreviewPath) : null),
-    [couplePhotoPreviewPath],
-  );
 
   const loadGeneratedAssets = useCallback(async (targetProductId: string) => {
     const [
@@ -793,7 +789,6 @@ export default function BreederDetailPage() {
       <CouplePhotoPreviewDialog
         open={isCouplePhotoPreviewOpen}
         imageUrl={couplePhotoPreviewUrl}
-        downloadUrl={couplePhotoDownloadUrl}
         loading={generatingCouplePhoto && !couplePhotoPreviewPath}
         title={`${currentBreeder?.name?.trim() || currentBreeder?.code || '当前种龟'}夫妻图`}
         subtitle={
@@ -801,7 +796,6 @@ export default function BreederDetailPage() {
             ? '正在生成夫妻图，完成后会自动显示预览。'
             : '生成成功后直接在弹窗里预览，不再跳到空白新页面。'
         }
-        downloadFileName={currentBreeder?.name?.trim() || currentBreeder?.code || '当前种龟'}
         onClose={() => {
           setIsCouplePhotoPreviewOpen(false);
           setCouplePhotoPreviewPath(null);

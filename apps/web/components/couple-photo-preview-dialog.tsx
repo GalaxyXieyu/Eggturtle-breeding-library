@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Download, HeartHandshake, Loader2, X } from 'lucide-react';
+import { HeartHandshake, Loader2, X } from 'lucide-react';
 
 import { modalCloseButtonClass } from '@/components/ui/floating-actions';
 import { cn } from '@/lib/utils';
@@ -10,42 +10,28 @@ import { cn } from '@/lib/utils';
 type CouplePhotoPreviewDialogProps = {
   open: boolean;
   imageUrl?: string | null;
-  downloadUrl?: string | null;
   loading?: boolean;
   title: string;
   subtitle?: string;
   className?: string;
-  downloadFileName?: string;
   onClose: () => void;
 };
-
-function sanitizeFileName(value: string) {
-  return value.replace(/[\\/:*?"<>|]/g, '-').trim() || 'couple-photo';
-}
 
 export default function CouplePhotoPreviewDialog({
   open,
   imageUrl,
-  downloadUrl,
   loading = false,
   title,
   subtitle,
   className,
-  downloadFileName,
   onClose,
 }: CouplePhotoPreviewDialogProps) {
   const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
-  const [downloading, setDownloading] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [saveHint, setSaveHint] = useState<string | null>(null);
   const titleId = useId();
 
   const resolvedSubtitle =
-    subtitle?.trim() || '生成成功后会在这里预览夫妻图，可直接保存图片发给客户。';
-  const resolvedFileName = useMemo(
-    () => `${sanitizeFileName(downloadFileName?.trim() || title)}-夫妻图.png`,
-    [downloadFileName, title],
-  );
+    subtitle?.trim() || '建议在手机端长按图片保存到相册，分享给客户更稳定。';
 
   useEffect(() => {
     setPortalRoot(document.body);
@@ -71,110 +57,6 @@ export default function CouplePhotoPreviewDialog({
   useEffect(() => {
     setImageLoaded(false);
   }, [imageUrl]);
-
-  useEffect(() => {
-    if (!open) {
-      setSaveHint(null);
-    }
-  }, [open]);
-
-  const openUrlInNewTab = useCallback((targetUrl: string) => {
-    const popup = window.open(targetUrl, '_blank', 'noopener,noreferrer');
-    if (popup) {
-      return;
-    }
-
-    const link = document.createElement('a');
-    link.href = targetUrl;
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }, []);
-
-  const triggerDirectDownload = useCallback((targetUrl: string, fileName: string) => {
-    const link = document.createElement('a');
-    link.href = targetUrl;
-    link.download = fileName;
-    link.rel = 'noopener noreferrer';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }, []);
-
-  const handleSaveImage = useCallback(async () => {
-    const targetUrl = downloadUrl || imageUrl;
-    if (!targetUrl || downloading) {
-      return;
-    }
-
-    setDownloading(true);
-    setSaveHint(null);
-    try {
-      const userAgent = typeof navigator === 'undefined' ? '' : navigator.userAgent;
-      const isAndroid = /Android/i.test(userAgent);
-      const isAppleSafari =
-        /Safari/i.test(userAgent) &&
-        !/Chrome|CriOS|EdgiOS|Edg|OPR|FxiOS|Firefox/i.test(userAgent) &&
-        /Mac|iPhone|iPad|iPod/i.test(userAgent);
-      const canUseSystemShare =
-        typeof navigator !== 'undefined' &&
-        typeof navigator.share === 'function' &&
-        typeof navigator.canShare === 'function' &&
-        typeof File !== 'undefined';
-
-      if (isAndroid) {
-        openUrlInNewTab(targetUrl);
-        setSaveHint('安卓已打开图片页，请长按图片后选择“下载图片”或“保存到相册”。');
-        return;
-      }
-
-      if (isAppleSafari && !canUseSystemShare) {
-        openUrlInNewTab(targetUrl);
-        setSaveHint('Safari 已打开新页面，请长按图片后选择“添加到照片”。');
-        return;
-      }
-
-      if (!canUseSystemShare) {
-        triggerDirectDownload(targetUrl, resolvedFileName);
-        setSaveHint('已开始下载图片。');
-        return;
-      }
-
-      const response = await fetch(targetUrl);
-      if (!response.ok) {
-        throw new Error('download failed');
-      }
-
-      const blob = await response.blob();
-
-      if (canUseSystemShare) {
-        const file = new File([blob], resolvedFileName, { type: blob.type || 'image/png' });
-        if (navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            files: [file],
-            title: resolvedFileName,
-          });
-          setSaveHint('已打开系统分享面板，可选择“存储图像”保存。');
-          return;
-        }
-      }
-
-      if (isAppleSafari) {
-        openUrlInNewTab(targetUrl);
-        setSaveHint('Safari 已打开新页面，请长按图片后选择“添加到照片”。');
-        return;
-      }
-      triggerDirectDownload(targetUrl, resolvedFileName);
-      setSaveHint('已开始下载图片。');
-    } catch {
-      openUrlInNewTab(targetUrl);
-      setSaveHint('下载失败，已改为打开图片页面，请手动保存。');
-    } finally {
-      setDownloading(false);
-    }
-  }, [downloadUrl, downloading, imageUrl, openUrlInNewTab, resolvedFileName, triggerDirectDownload]);
 
   if (!portalRoot) {
     return null;
@@ -255,17 +137,13 @@ export default function CouplePhotoPreviewDialog({
               )}
             </div>
           </div>
+          {imageUrl ? (
+            <p className="relative z-10 mt-1 text-center text-xs text-neutral-500">
+              手机端建议长按海报图片后选择“保存到相册”。
+            </p>
+          ) : null}
 
-          <div className="relative z-10 mt-3 grid grid-cols-1 gap-2.5 sm:mt-4 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={() => void handleSaveImage()}
-              disabled={!imageUrl || downloading}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-neutral-900 px-4 text-sm font-semibold text-white shadow-lg transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Download size={16} />
-              {downloading ? '保存中...' : '保存图片'}
-            </button>
+          <div className="relative z-10 mt-3 grid grid-cols-1 gap-2.5 sm:mt-4">
             <button
               type="button"
               onClick={onClose}
@@ -274,9 +152,6 @@ export default function CouplePhotoPreviewDialog({
               关闭预览
             </button>
           </div>
-          {saveHint ? (
-            <p className="relative z-10 mt-2 text-center text-xs text-neutral-500">{saveHint}</p>
-          ) : null}
         </div>
       </div>
     ) : null,
