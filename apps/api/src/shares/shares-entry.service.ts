@@ -101,7 +101,12 @@ export class SharesEntryService {
     };
   }
 
-  async resolveShareEntry(shareToken: string, meta: ShareAccessMeta, requestOrigin?: string | null) {
+  async resolveShareEntry(
+    shareToken: string,
+    meta: ShareAccessMeta,
+    requestOrigin?: string | null,
+    requestedProductId?: string | null
+  ) {
     this.assertEntryRateLimit(shareToken, meta.ip);
 
     const share = await this.prisma.publicShare.findUnique({
@@ -133,7 +138,8 @@ export class SharesEntryService {
 
     const resourceType = this.sharesCoreService.parseShareResourceType(share.resourceType);
 
-    const { redirectUrl, expiresAt } = this.sharesCoreService.buildRedirectUrl(
+    const normalizedRequestedProductId = this.normalizeRequestedProductId(requestedProductId);
+    const { redirectUrl: baseRedirectUrl, expiresAt } = this.sharesCoreService.buildRedirectUrl(
       {
         id: share.id,
         tenantId: share.tenantId,
@@ -143,6 +149,11 @@ export class SharesEntryService {
         resourceId: share.resourceId
       },
       requestOrigin
+    );
+    const redirectUrl = this.attachRequestedProductPath(
+      baseRedirectUrl,
+      share.shareToken,
+      normalizedRequestedProductId
     );
 
     await this.sharesCoreService.writeShareAccessAuditLog(
@@ -157,13 +168,47 @@ export class SharesEntryService {
       },
       expiresAt,
       'entry',
-      meta
+      meta,
+      normalizedRequestedProductId
     );
 
     return {
       statusCode: 302,
       redirectUrl
     };
+  }
+
+  private normalizeRequestedProductId(value: string | null | undefined): string | null {
+    const normalized = value?.trim();
+    if (!normalized) {
+      return null;
+    }
+
+    if (!/^[A-Za-z0-9_-]{6,100}$/.test(normalized)) {
+      return null;
+    }
+
+    return normalized;
+  }
+
+  private attachRequestedProductPath(
+    redirectUrl: string,
+    shareToken: string,
+    requestedProductId: string | null
+  ): string {
+    if (!requestedProductId) {
+      return redirectUrl;
+    }
+
+    try {
+      const parsed = new URL(redirectUrl);
+      parsed.pathname = `/public/s/${encodeURIComponent(shareToken)}/products/${encodeURIComponent(
+        requestedProductId
+      )}`;
+      return parsed.toString();
+    } catch {
+      return redirectUrl;
+    }
   }
 
   private assertEntryRateLimit(shareToken: string, ip: string | null): void {

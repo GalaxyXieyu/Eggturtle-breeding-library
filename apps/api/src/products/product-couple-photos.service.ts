@@ -15,6 +15,7 @@ import type {
 import { AuditLogsService } from '../audit-logs/audit-logs.service'
 import { PrismaService } from '../prisma.service'
 import { buildWebpVariantKey, resolveAllowedMaxEdge, resizeToWebpMaxEdge } from '../images/image-variants'
+import { SharesCoreService } from '../shares/shares-core.service'
 import { STORAGE_PROVIDER_TOKEN } from '../storage/storage.constants'
 import type { StorageProvider } from '../storage/storage.provider'
 
@@ -42,6 +43,7 @@ export class ProductCouplePhotosService {
     private readonly prisma: PrismaService,
     private readonly auditLogsService: AuditLogsService,
     private readonly generatedAssetsSupportService: ProductGeneratedAssetsSupportService,
+    private readonly sharesCoreService: SharesCoreService,
     @Inject(STORAGE_PROVIDER_TOKEN) private readonly storageProvider: StorageProvider
   ) {}
 
@@ -90,6 +92,12 @@ export class ProductCouplePhotosService {
       )
     }
 
+    const qrPayload = await this.buildCouplePhotoQrPayload(
+      tenantId,
+      actorUserId,
+      context.femaleProduct.id
+    )
+
     let png: Buffer
     try {
       png = await renderCouplePhotoPng({
@@ -107,7 +115,8 @@ export class ProductCouplePhotosService {
           watermarkText: this.generatedAssetsSupportService.buildWatermarkText(context.tenantName)
         },
         femaleImage,
-        maleImage
+        maleImage,
+        qrPayload: qrPayload ?? undefined
       })
     } catch {
       throw new BadRequestException(
@@ -329,6 +338,28 @@ export class ProductCouplePhotosService {
   private isManagedStorageKey(tenantId: string, key: string): boolean {
     const normalized = key.replace(/\\/g, '/').replace(/^\/+/, '')
     return normalized.startsWith(`${tenantId}/`)
+  }
+
+  private async buildCouplePhotoQrPayload(
+    tenantId: string,
+    actorUserId: string,
+    productId: string
+  ): Promise<string | null> {
+    try {
+      const share = await this.sharesCoreService.getOrCreateShare(
+        tenantId,
+        'tenant_feed',
+        tenantId,
+        null,
+        actorUserId,
+        undefined
+      )
+      const entryUrl = this.sharesCoreService.buildShareEntryUrl(share.shareToken)
+      const joiner = entryUrl.includes('?') ? '&' : '?'
+      return `${entryUrl}${joiner}pid=${encodeURIComponent(productId)}`
+    } catch {
+      return null
+    }
   }
 
   private async loadCouplePhotoContext(tenantId: string, femaleProductId: string): Promise<CouplePhotoContext> {

@@ -37,6 +37,7 @@ export default function CouplePhotoPreviewDialog({
   const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [saveHint, setSaveHint] = useState<string | null>(null);
   const titleId = useId();
 
   const resolvedSubtitle =
@@ -71,6 +72,27 @@ export default function CouplePhotoPreviewDialog({
     setImageLoaded(false);
   }, [imageUrl]);
 
+  useEffect(() => {
+    if (!open) {
+      setSaveHint(null);
+    }
+  }, [open]);
+
+  const openUrlInNewTab = useCallback((targetUrl: string) => {
+    const popup = window.open(targetUrl, '_blank', 'noopener,noreferrer');
+    if (popup) {
+      return;
+    }
+
+    const link = document.createElement('a');
+    link.href = targetUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, []);
+
   const handleSaveImage = useCallback(async () => {
     const targetUrl = downloadUrl || imageUrl;
     if (!targetUrl || downloading) {
@@ -78,13 +100,44 @@ export default function CouplePhotoPreviewDialog({
     }
 
     setDownloading(true);
+    setSaveHint(null);
     try {
-      const response = await fetch(targetUrl, { cache: 'no-store' });
+      const userAgent = typeof navigator === 'undefined' ? '' : navigator.userAgent;
+      const isAppleSafari =
+        /Safari/i.test(userAgent) &&
+        !/Chrome|CriOS|EdgiOS|Edg|OPR|FxiOS|Firefox/i.test(userAgent) &&
+        /Mac|iPhone|iPad|iPod/i.test(userAgent);
+      const canUseSystemShare =
+        typeof navigator !== 'undefined' &&
+        typeof navigator.share === 'function' &&
+        typeof navigator.canShare === 'function' &&
+        typeof File !== 'undefined';
+
+      const response = await fetch(targetUrl);
       if (!response.ok) {
         throw new Error('download failed');
       }
 
       const blob = await response.blob();
+
+      if (canUseSystemShare) {
+        const file = new File([blob], resolvedFileName, { type: blob.type || 'image/png' });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: resolvedFileName,
+          });
+          setSaveHint('已打开系统分享面板，可选择“存储图像”保存。');
+          return;
+        }
+      }
+
+      if (isAppleSafari) {
+        openUrlInNewTab(targetUrl);
+        setSaveHint('Safari 已打开新页面，请长按图片后选择“添加到照片”。');
+        return;
+      }
+
       const objectUrl = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = objectUrl;
@@ -93,19 +146,14 @@ export default function CouplePhotoPreviewDialog({
       link.click();
       document.body.removeChild(link);
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      setSaveHint('已开始下载图片。');
     } catch {
-      const link = document.createElement('a');
-      link.href = targetUrl;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      link.download = resolvedFileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      openUrlInNewTab(targetUrl);
+      setSaveHint('下载失败，已改为打开图片页面，请手动保存。');
     } finally {
       setDownloading(false);
     }
-  }, [downloadUrl, downloading, imageUrl, resolvedFileName]);
+  }, [downloadUrl, downloading, imageUrl, openUrlInNewTab, resolvedFileName]);
 
   if (!portalRoot) {
     return null;
@@ -205,6 +253,9 @@ export default function CouplePhotoPreviewDialog({
               关闭预览
             </button>
           </div>
+          {saveHint ? (
+            <p className="relative z-10 mt-2 text-center text-xs text-neutral-500">{saveHint}</p>
+          ) : null}
         </div>
       </div>
     ) : null,

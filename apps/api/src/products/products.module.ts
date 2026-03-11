@@ -4,6 +4,7 @@ import { AuditLogsModule } from '../audit-logs/audit-logs.module';
 import { AuthModule } from '../auth/auth.module';
 import { BrandingModule } from '../branding/branding.module';
 import { PrismaModule } from '../prisma.module';
+import { SharesCoreService } from '../shares/shares-core.service';
 import { StorageModule } from '../storage/storage.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 
@@ -33,6 +34,7 @@ import { ProductsService } from './products.service';
     ProductCertificateVerificationService,
     ProductSaleBatchesService,
     ProductCouplePhotosService,
+    SharesCoreService,
   ]
 })
 export class ProductsModule {}

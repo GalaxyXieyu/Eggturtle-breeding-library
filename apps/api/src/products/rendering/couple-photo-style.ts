@@ -7,7 +7,7 @@ export const COUPLE_PHOTO_SLOTS = {
   // Keep a 48px center gutter, with male on the left and female on the right.
   male: { x: 136, y: 356, width: 380, height: 380 },
   female: { x: 564, y: 356, width: 380, height: 380 },
-  qr: { x: 118, y: 1316, width: 120, height: 120 }
+  qr: { x: 104, y: 1298, width: 152, height: 152 }
 } as const;
 
 export type CouplePhotoStyleInput = {
@@ -153,7 +153,8 @@ export function buildCouplePhotoStyleSvg(input: CouplePhotoStyleInput): string {
   <text x="638" y="1392" font-size="76" font-weight="700" fill="#2d2218" class="font-main">${escapeXml(input.priceLabel)}</text>
   <text x="640" y="1432" font-size="22" fill="#6a533c" class="font-label">${escapeXml(input.generatedAtLabel)}</text>
 
-  <text x="${qrCenterX}" y="1298" text-anchor="middle" font-size="18" fill="#4b3a28" class="font-label">验真二维码</text>
-  <rect x="${COUPLE_PHOTO_SLOTS.qr.x - 6}" y="${COUPLE_PHOTO_SLOTS.qr.y - 6}" width="${COUPLE_PHOTO_SLOTS.qr.width + 12}" height="${COUPLE_PHOTO_SLOTS.qr.height + 12}" fill="none" stroke="#8f7451" stroke-width="2" rx="8"/>
+  <text x="${qrCenterX}" y="1280" text-anchor="middle" font-size="18" fill="#4b3a28" class="font-label">验真二维码</text>
+  <rect x="${COUPLE_PHOTO_SLOTS.qr.x - 8}" y="${COUPLE_PHOTO_SLOTS.qr.y - 8}" width="${COUPLE_PHOTO_SLOTS.qr.width + 16}" height="${COUPLE_PHOTO_SLOTS.qr.height + 16}" fill="rgba(255,255,255,0.95)" rx="10"/>
+  <rect x="${COUPLE_PHOTO_SLOTS.qr.x - 8}" y="${COUPLE_PHOTO_SLOTS.qr.y - 8}" width="${COUPLE_PHOTO_SLOTS.qr.width + 16}" height="${COUPLE_PHOTO_SLOTS.qr.height + 16}" fill="none" stroke="#8f7451" stroke-width="2" rx="10"/>
 </svg>`;
 }

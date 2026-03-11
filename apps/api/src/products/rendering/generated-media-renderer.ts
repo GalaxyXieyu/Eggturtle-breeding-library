@@ -41,6 +41,7 @@ type CouplePhotoRenderInput = {
   femaleImage?: Buffer | null;
   maleImage?: Buffer | null;
   backgroundImage?: Buffer | null;
+  qrPayload?: string;
 };
 
 type CouplePhotoRenderLayout = {
@@ -415,7 +416,9 @@ export async function renderCouplePhotoPng(input: CouplePhotoRenderInput): Promi
   );
   const layout = await resolveCouplePhotoRenderLayout(backgroundImage);
   const styleSvg = Buffer.from(buildCouplePhotoStyleSvg(input.style));
-  const qrPayload = `couple:${input.style.femaleCode}:${input.style.maleCode}:${input.style.generatedAtLabel}`;
+  const qrPayload =
+    input.qrPayload?.trim() ||
+    `couple:${input.style.femaleCode}:${input.style.maleCode}:${input.style.generatedAtLabel}`;
 
   const femaleSlot = {
     ...COUPLE_PHOTO_SLOTS.female,
