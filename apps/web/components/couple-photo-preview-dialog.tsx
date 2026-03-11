@@ -93,6 +93,16 @@ export default function CouplePhotoPreviewDialog({
     document.body.removeChild(link);
   }, []);
 
+  const triggerDirectDownload = useCallback((targetUrl: string, fileName: string) => {
+    const link = document.createElement('a');
+    link.href = targetUrl;
+    link.download = fileName;
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, []);
+
   const handleSaveImage = useCallback(async () => {
     const targetUrl = downloadUrl || imageUrl;
     if (!targetUrl || downloading) {
@@ -103,6 +113,7 @@ export default function CouplePhotoPreviewDialog({
     setSaveHint(null);
     try {
       const userAgent = typeof navigator === 'undefined' ? '' : navigator.userAgent;
+      const isAndroid = /Android/i.test(userAgent);
       const isAppleSafari =
         /Safari/i.test(userAgent) &&
         !/Chrome|CriOS|EdgiOS|Edg|OPR|FxiOS|Firefox/i.test(userAgent) &&
@@ -112,6 +123,24 @@ export default function CouplePhotoPreviewDialog({
         typeof navigator.share === 'function' &&
         typeof navigator.canShare === 'function' &&
         typeof File !== 'undefined';
+
+      if (isAndroid) {
+        openUrlInNewTab(targetUrl);
+        setSaveHint('安卓已打开图片页，请长按图片后选择“下载图片”或“保存到相册”。');
+        return;
+      }
+
+      if (isAppleSafari && !canUseSystemShare) {
+        openUrlInNewTab(targetUrl);
+        setSaveHint('Safari 已打开新页面，请长按图片后选择“添加到照片”。');
+        return;
+      }
+
+      if (!canUseSystemShare) {
+        triggerDirectDownload(targetUrl, resolvedFileName);
+        setSaveHint('已开始下载图片。');
+        return;
+      }
 
       const response = await fetch(targetUrl);
       if (!response.ok) {
@@ -137,15 +166,7 @@ export default function CouplePhotoPreviewDialog({
         setSaveHint('Safari 已打开新页面，请长按图片后选择“添加到照片”。');
         return;
       }
-
-      const objectUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = objectUrl;
-      link.download = resolvedFileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      triggerDirectDownload(targetUrl, resolvedFileName);
       setSaveHint('已开始下载图片。');
     } catch {
       openUrlInNewTab(targetUrl);
@@ -153,7 +174,7 @@ export default function CouplePhotoPreviewDialog({
     } finally {
       setDownloading(false);
     }
-  }, [downloadUrl, downloading, imageUrl, openUrlInNewTab, resolvedFileName]);
+  }, [downloadUrl, downloading, imageUrl, openUrlInNewTab, resolvedFileName, triggerDirectDownload]);
 
   if (!portalRoot) {
     return null;
