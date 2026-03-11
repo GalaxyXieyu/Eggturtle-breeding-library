@@ -194,6 +194,12 @@ export default function TenantProductsPage() {
   const [hasHydratedState, setHasHydratedState] = useState(false);
   const isInternalUpdateRef = useRef(false);
   const restoredPersistedStateRef = useRef(false);
+  const draftFiltersRef = useRef({
+    searchInput: listQuery.search,
+    sexFilter: listQuery.sex,
+    seriesFilterId: listQuery.seriesId,
+    statusFilter: listQuery.status,
+  });
   const stateStorageKey = useMemo(
     () => buildProductsStateKey(tenantSlug, filterQueryKey),
     [tenantSlug, filterQueryKey]
@@ -313,27 +319,34 @@ export default function TenantProductsPage() {
     ]
   );
 
+  draftFiltersRef.current = {
+    searchInput,
+    sexFilter,
+    seriesFilterId,
+    statusFilter,
+  };
+
   useEffect(() => {
-    // Skip if this is an internal update (triggered by user action)
     if (isInternalUpdateRef.current) {
       isInternalUpdateRef.current = false;
       return;
     }
 
-    // Only update state if URL actually changed (e.g., browser back/forward)
-    if (searchInput !== listQuery.search) {
+    const draftFilters = draftFiltersRef.current;
+
+    if (draftFilters.searchInput !== listQuery.search) {
       setSearchInput(listQuery.search);
     }
-    if (sexFilter !== listQuery.sex) {
+    if (draftFilters.sexFilter !== listQuery.sex) {
       setSexFilter(listQuery.sex);
     }
-    if (seriesFilterId !== listQuery.seriesId) {
+    if (draftFilters.seriesFilterId !== listQuery.seriesId) {
       setSeriesFilterId(listQuery.seriesId);
     }
-    if (statusFilter !== listQuery.status) {
+    if (draftFilters.statusFilter !== listQuery.status) {
       setStatusFilter(listQuery.status);
     }
-  }, [listQuery, searchInput, sexFilter, seriesFilterId, statusFilter]);
+  }, [listQuery.search, listQuery.sex, listQuery.seriesId, listQuery.status]);
 
   useEffect(() => {
     const nextParams = new URLSearchParams(searchParams.toString());
