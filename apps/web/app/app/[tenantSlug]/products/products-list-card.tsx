@@ -2,13 +2,12 @@
 
 import type { MouseEvent as ReactMouseEvent, RefObject } from 'react';
 import type { Product } from '@eggturtle/shared';
-import { Search, SquarePen } from 'lucide-react';
+import { SquarePen } from 'lucide-react';
 
 import { resolveAuthenticatedAssetUrl, withAuthenticatedImageMaxEdge } from '@/lib/api-client';
 import { buildFilterPillClass } from '@/components/filter-pill';
 import { PetCard } from '@/components/pet';
 import type { ProductSeriesOption } from '@/components/product-drawer';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { STATUS_FILTER_OPTIONS } from '@/app/app/[tenantSlug]/products/products-page-state';
 
@@ -143,21 +142,6 @@ export default function ProductsListCard({
             ref={mobileTopFilterRef}
             className="z-20 border border-black/5 bg-white/95 px-3 py-3 shadow-[0_4px_20px_rgba(0,0,0,0.06)] backdrop-blur-md supports-[backdrop-filter]:bg-white/90 lg:hidden lg:rounded-2xl"
           >
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs font-medium text-neutral-600">筛选</p>
-              <div className="relative" data-products-filter-root="true">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={(event) => onOpenFilter(event, 'below', { toggle: true })}
-                >
-                  <Search size={14} />
-                  筛选{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
-                </Button>
-              </div>
-            </div>
-
             <div className="mt-3 grid gap-3">
               <div className="flex min-w-0 items-start gap-2">
                 <p className="mt-2 w-10 shrink-0 text-[11px] font-medium text-neutral-500">系列</p>
