@@ -142,9 +142,10 @@ export default function BreederDetailPage() {
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
   const [eventFilter, setEventFilter] = useState<'all' | 'mating' | 'egg' | 'change_mate'>('all');
   const [eventExpanded, setEventExpanded] = useState(true);
-  const [, setGeneratingCouplePhoto] = useState(false);
+  const [generatingCouplePhoto, setGeneratingCouplePhoto] = useState(false);
   const [quickActionError, setQuickActionError] = useState<string | null>(null);
   const [couplePhotoPreviewPath, setCouplePhotoPreviewPath] = useState<string | null>(null);
+  const [isCouplePhotoPreviewOpen, setIsCouplePhotoPreviewOpen] = useState(false);
   const [isAssetDrawerOpen, setIsAssetDrawerOpen] = useState(false);
   const [assetDrawerSection, setAssetDrawerSection] = useState<DrawerSection>('certificate');
   const [assetDrawerMode, setAssetDrawerMode] = useState<DrawerMode>('quick');
@@ -610,6 +611,7 @@ export default function BreederDetailPage() {
 
   const openCouplePhotoPreview = useCallback((contentPath: string) => {
     setCouplePhotoPreviewPath(contentPath);
+    setIsCouplePhotoPreviewOpen(true);
   }, []);
 
   const handleGenerateCouplePhoto = useCallback(
@@ -627,6 +629,10 @@ export default function BreederDetailPage() {
 
       setGeneratingCouplePhoto(true);
       setQuickActionError(null);
+      if (openPreview) {
+        setCouplePhotoPreviewPath(null);
+        setIsCouplePhotoPreviewOpen(true);
+      }
 
       try {
         const response = await apiRequest(`/products/${breederId}/couple-photos/generate`, {
@@ -643,6 +649,10 @@ export default function BreederDetailPage() {
         const message = formatError(requestError);
         certificateStudioHandlers.setAssetError(message);
         setQuickActionError(message);
+        if (openPreview) {
+          setCouplePhotoPreviewPath(null);
+          setIsCouplePhotoPreviewOpen(false);
+        }
       } finally {
         setGeneratingCouplePhoto(false);
       }
@@ -651,7 +661,7 @@ export default function BreederDetailPage() {
   );
 
   const handleCouplePhotoAction = useCallback(() => {
-    if (!isFemaleBreeder) {
+    if (!isFemaleBreeder || generatingCouplePhoto) {
       return;
     }
 
@@ -665,6 +675,7 @@ export default function BreederDetailPage() {
     void handleGenerateCouplePhoto(true);
   }, [
     generatedAssets.currentCouplePhoto,
+    generatingCouplePhoto,
     handleGenerateCouplePhoto,
     isFemaleBreeder,
     openCouplePhotoPreview,
@@ -691,6 +702,7 @@ export default function BreederDetailPage() {
           setIsAssetDrawerOpen(true);
         }}
         onOpenCouplePhotoDrawer={handleCouplePhotoAction}
+        generatingCouplePhoto={generatingCouplePhoto}
         actionsDisabled={loading || !currentBreeder}
         resolveImageUrl={resolveImageUrl}
       />
@@ -777,12 +789,20 @@ export default function BreederDetailPage() {
       ) : null}
 
       <CouplePhotoPreviewDialog
-        open={Boolean(couplePhotoPreviewPath)}
+        open={isCouplePhotoPreviewOpen}
         imageUrl={couplePhotoPreviewUrl}
+        loading={generatingCouplePhoto && !couplePhotoPreviewPath}
         title={`${currentBreeder?.name?.trim() || currentBreeder?.code || '当前种龟'}夫妻图`}
-        subtitle="生成成功后直接在弹窗里预览，不再跳到空白新页面。"
+        subtitle={
+          generatingCouplePhoto
+            ? '正在生成夫妻图，完成后会自动显示预览。'
+            : '生成成功后直接在弹窗里预览，不再跳到空白新页面。'
+        }
         downloadFileName={currentBreeder?.name?.trim() || currentBreeder?.code || '当前种龟'}
-        onClose={() => setCouplePhotoPreviewPath(null)}
+        onClose={() => {
+          setIsCouplePhotoPreviewOpen(false);
+          setCouplePhotoPreviewPath(null);
+        }}
       />
 
       <ProductDrawer

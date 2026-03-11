@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Download, HeartHandshake, X } from 'lucide-react';
+import { Download, HeartHandshake, Loader2, X } from 'lucide-react';
 
 import { modalCloseButtonClass } from '@/components/ui/floating-actions';
 import { cn } from '@/lib/utils';
@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 type CouplePhotoPreviewDialogProps = {
   open: boolean;
   imageUrl?: string | null;
+  loading?: boolean;
   title: string;
   subtitle?: string;
   className?: string;
@@ -24,6 +25,7 @@ function sanitizeFileName(value: string) {
 export default function CouplePhotoPreviewDialog({
   open,
   imageUrl,
+  loading = false,
   title,
   subtitle,
   className,
@@ -149,6 +151,16 @@ export default function CouplePhotoPreviewDialog({
                     alt={`${title}夫妻图预览`}
                     className="max-h-[min(70dvh,42rem)] w-full rounded-[20px] object-contain"
                   />
+                </div>
+              ) : loading ? (
+                <div className="mx-auto flex aspect-[9/16] w-full max-w-[min(84vw,19rem)] min-h-[17.5rem] flex-col items-center justify-center gap-4 rounded-2xl bg-white px-6 text-center text-sm text-neutral-500 shadow-sm sm:max-w-[19rem]">
+                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-neutral-100 text-neutral-700">
+                    <Loader2 size={18} className="animate-spin" />
+                  </span>
+                  <div className="space-y-1.5">
+                    <p className="text-base font-semibold text-neutral-900">正在生成夫妻图...</p>
+                    <p className="text-xs leading-6 text-neutral-500">沿用海报预览的等待态，生成完成后会自动替换成图片预览。</p>
+                  </div>
                 </div>
               ) : (
                 <div className="mx-auto flex aspect-[9/16] w-full max-w-[min(84vw,19rem)] min-h-[17.5rem] flex-col items-center justify-center gap-4 rounded-2xl bg-white px-6 text-center text-sm text-neutral-500 shadow-sm sm:max-w-[19rem]">

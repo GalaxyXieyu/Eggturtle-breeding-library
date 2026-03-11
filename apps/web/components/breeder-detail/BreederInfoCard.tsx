@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { type Product, type ProductImage } from '@eggturtle/shared';
-import { ArrowLeft, FileBadge2, HeartHandshake, Image as ImageIcon, PencilRuler } from 'lucide-react';
+import { ArrowLeft, FileBadge2, HeartHandshake, Image as ImageIcon, Loader2, PencilRuler } from 'lucide-react';
 import { formatPrice, formatSex } from '@/lib/pet-format';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ type BreederInfoCardProps = {
   onOpenRelation?: (id: string) => void;
   onOpenCertificateDrawer: () => void;
   onOpenCouplePhotoDrawer: () => void;
+  generatingCouplePhoto?: boolean;
   actionsDisabled?: boolean;
   actionErrorMessage?: string | null;
   resolveImageUrl: (url: string) => string;
@@ -95,6 +96,7 @@ export function BreederInfoCard({
   onOpenRelation,
   onOpenCertificateDrawer,
   onOpenCouplePhotoDrawer,
+  generatingCouplePhoto = false,
   actionsDisabled = false,
   actionErrorMessage = null,
   resolveImageUrl
@@ -242,9 +244,14 @@ export function BreederInfoCard({
               生成证书
             </Button>
             {breeder?.sex?.toLowerCase() === 'female' ? (
-              <Button variant="outline" className="bg-white" onClick={onOpenCouplePhotoDrawer} disabled={actionsDisabled}>
-                <HeartHandshake size={16} />
-                生成夫妻图
+              <Button
+                variant="outline"
+                className="bg-white"
+                onClick={onOpenCouplePhotoDrawer}
+                disabled={actionsDisabled || generatingCouplePhoto}
+              >
+                {generatingCouplePhoto ? <Loader2 size={16} className="animate-spin" /> : <HeartHandshake size={16} />}
+                {generatingCouplePhoto ? '生成中...' : '生成夫妻图'}
               </Button>
             ) : null}
           </div>

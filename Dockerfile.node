@@ -33,7 +33,9 @@ ENV PATH="$PNPM_HOME:$PATH"
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN corepack enable && corepack prepare pnpm@9.15.5 --activate
+RUN corepack enable && corepack prepare pnpm@9.15.5 --activate \
+  && apk add --no-cache fontconfig font-noto-cjk \
+  && fc-cache -f
 
 WORKDIR /app
 
