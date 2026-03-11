@@ -7,7 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import type { ProductSeriesOption } from '@/components/product-drawer';
-import { STATUS_FILTER_OPTIONS } from '@/app/app/[tenantSlug]/products/products-page-state';
+import {
+  SEX_FILTER_OPTIONS,
+  STATUS_FILTER_OPTIONS,
+} from '@/app/app/[tenantSlug]/products/products-page-state';
 
 type ProductsFilterOverlayProps = {
   isOpen: boolean;
@@ -15,12 +18,14 @@ type ProductsFilterOverlayProps = {
   placement: 'above' | 'below';
   anchorRect: DOMRect | null;
   searchInput: string;
+  sexFilter: string;
   statusFilter: string;
   seriesFilterId: string;
   quickSeriesOptions: ProductSeriesOption[];
   seriesOptions: ProductSeriesOption[];
   hasMoreSeriesOptions: boolean;
   onSearchInputChange: (value: string) => void;
+  onSexFilterChange: (value: string) => void;
   onStatusFilterChange: (value: string) => void;
   onSeriesFilterChange: (value: string) => void;
   onClose: () => void;
@@ -33,12 +38,14 @@ export default function ProductsFilterOverlay({
   placement,
   anchorRect,
   searchInput,
+  sexFilter,
   statusFilter,
   seriesFilterId,
   quickSeriesOptions,
   seriesOptions,
   hasMoreSeriesOptions,
   onSearchInputChange,
+  onSexFilterChange,
   onStatusFilterChange,
   onSeriesFilterChange,
   onClose,
@@ -48,7 +55,23 @@ export default function ProductsFilterOverlay({
     return null;
   }
 
-  const activeFilterCount = Number(Boolean(searchInput.trim())) + Number(Boolean(statusFilter)) + Number(Boolean(seriesFilterId));
+  const activeFilterCount = Number(Boolean(searchInput.trim())) + Number(Boolean(sexFilter)) + Number(Boolean(statusFilter)) + Number(Boolean(seriesFilterId));
+
+  const renderSexPills = () => {
+    return SEX_FILTER_OPTIONS.map((item) => {
+      const selected = sexFilter === item.value;
+      return (
+        <button
+          key={`sex-panel-${item.label}`}
+          type="button"
+          className={buildFilterPillClass(selected)}
+          onClick={() => onSexFilterChange(item.value)}
+        >
+          {item.label}
+        </button>
+      );
+    });
+  };
 
   const renderStatusPills = () => {
     return STATUS_FILTER_OPTIONS.map((item) => {
@@ -107,6 +130,11 @@ export default function ProductsFilterOverlay({
           className="h-9"
           onChange={(event) => onSearchInputChange(event.target.value)}
         />
+      </div>
+
+      <div className="grid gap-1.5">
+        <p className="text-xs font-medium text-neutral-600 dark:text-neutral-300">性别</p>
+        <div className="flex flex-wrap gap-2">{renderSexPills()}</div>
       </div>
 
       <div className="grid gap-1.5">

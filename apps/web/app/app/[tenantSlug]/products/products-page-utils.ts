@@ -68,7 +68,7 @@ export function parseListQuery(queryString: string): ProductsListQuery {
     page,
     pageSize,
     search: (query.get('search') ?? '').trim(),
-    sex: '',
+    sex: (query.get('sex') ?? '').trim(),
     seriesId: (query.get('seriesId') ?? '').trim(),
     status: (query.get('status') ?? '').trim(),
     sortBy,

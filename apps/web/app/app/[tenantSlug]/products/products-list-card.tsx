@@ -5,6 +5,7 @@ import type { Product } from '@eggturtle/shared';
 import { SquarePen } from 'lucide-react';
 
 import { resolveAuthenticatedAssetUrl, withAuthenticatedImageMaxEdge } from '@/lib/api-client';
+import { formatSex } from '@/lib/pet-format';
 import { buildFilterPillClass } from '@/components/filter-pill';
 import { PetCard } from '@/components/pet';
 import type { ProductSeriesOption } from '@/components/product-drawer';
@@ -20,6 +21,7 @@ type ProductsListCardProps = {
   mobileTopFilterRef: RefObject<HTMLDivElement>;
   activeFilterCount: number;
   searchInput: string;
+  sexFilter: string;
   seriesFilterId: string;
   statusFilter: string;
   selectedSeriesLabel: string | null;
@@ -38,6 +40,7 @@ type ProductsListCardProps = {
     options?: { toggle?: boolean },
   ) => void;
   onClearSearch: () => void;
+  onSexFilterChange: (value: string) => void;
   onSeriesFilterChange: (value: string) => void;
   onStatusFilterChange: (value: string) => void;
   onOpenEdit: (productId: string) => void;
@@ -50,6 +53,7 @@ export default function ProductsListCard({
   mobileTopFilterRef,
   activeFilterCount,
   searchInput,
+  sexFilter,
   seriesFilterId,
   statusFilter,
   selectedSeriesLabel,
@@ -64,6 +68,7 @@ export default function ProductsListCard({
   loadMoreSentinelRef,
   onOpenFilter,
   onClearSearch,
+  onSexFilterChange,
   onSeriesFilterChange,
   onStatusFilterChange,
   onOpenEdit,
@@ -199,6 +204,15 @@ export default function ProductsListCard({
                 onClick={onClearSearch}
               >
                 关键词：{searchInput.trim()} ×
+              </button>
+            ) : null}
+            {sexFilter ? (
+              <button
+                type="button"
+                className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5"
+                onClick={() => onSexFilterChange('')}
+              >
+                性别：{formatSex(sexFilter)} ×
               </button>
             ) : null}
             {selectedSeriesLabel ? (
