@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  Patch,
   Param,
   Post,
   Put,
@@ -24,6 +25,7 @@ import {
   createProductEventResponseSchema,
   createProductRequestSchema,
   createProductResponseSchema,
+  deleteProductEventResponseSchema,
   createSaleAllocationRequestSchema,
   createSaleAllocationResponseSchema,
   createSaleBatchRequestSchema,
@@ -61,6 +63,8 @@ import {
   reorderProductImagesResponseSchema,
   reissueProductCertificateRequestSchema,
   setMainProductImageResponseSchema,
+  updateProductEventRequestSchema,
+  updateProductEventResponseSchema,
   updateProductRequestSchema,
   uploadProductImageResponseSchema,
   voidProductCertificateRequestSchema
@@ -311,6 +315,51 @@ export class ProductsController {
     const event = await this.productsService.createProductEvent(tenantId, actorUserId, productId, payload);
 
     return createProductEventResponseSchema.parse({ event });
+  }
+
+  @Patch(':id/events/:eventId')
+  @RequireTenantRole('EDITOR')
+  async updateProductEvent(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Param('eventId') eventId: string,
+    @Body() body: unknown
+  ) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const actorUserId = this.requireUserId(request.user?.id);
+    const productId = parseOrThrow(productIdParamSchema, id);
+    const parsedEventId = parseOrThrow(productIdParamSchema, eventId);
+    const payload = parseOrThrow(updateProductEventRequestSchema, body);
+    const event = await this.productsService.updateProductEvent(
+      tenantId,
+      actorUserId,
+      productId,
+      parsedEventId,
+      payload
+    );
+
+    return updateProductEventResponseSchema.parse({ event });
+  }
+
+  @Delete(':id/events/:eventId')
+  @RequireTenantRole('EDITOR')
+  async deleteProductEvent(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Param('eventId') eventId: string
+  ) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const actorUserId = this.requireUserId(request.user?.id);
+    const productId = parseOrThrow(productIdParamSchema, id);
+    const parsedEventId = parseOrThrow(productIdParamSchema, eventId);
+    const response = await this.productsService.deleteProductEvent(
+      tenantId,
+      actorUserId,
+      productId,
+      parsedEventId
+    );
+
+    return deleteProductEventResponseSchema.parse(response);
   }
 
   @Get(':id/family-tree')

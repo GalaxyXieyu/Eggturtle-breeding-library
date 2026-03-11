@@ -227,6 +227,28 @@ export const createProductEventResponseSchema = z.object({
   event: productEventSchema
 });
 
+export const updateProductEventRequestSchema = z
+  .object({
+    eventDate: eventDateInputSchema.optional(),
+    maleCode: z.string().trim().max(120).nullable().optional(),
+    eggCount: z.number().int().min(0).max(999).nullable().optional(),
+    note: z.string().trim().max(5000).nullable().optional(),
+    oldMateCode: z.string().trim().max(120).nullable().optional(),
+    newMateCode: z.string().trim().max(120).nullable().optional()
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: '至少需要提供一个可更新字段。'
+  });
+
+export const updateProductEventResponseSchema = z.object({
+  event: productEventSchema
+});
+
+export const deleteProductEventResponseSchema = z.object({
+  deleted: z.boolean(),
+  eventId: z.string().trim().min(1)
+});
+
 export const listProductEventsResponseSchema = z.object({
   events: z.array(productEventSchema)
 });
@@ -332,6 +354,7 @@ export type UpdateProductRequest = z.infer<typeof updateProductRequestSchema>;
 export type CreateMatingRecordRequest = z.infer<typeof createMatingRecordRequestSchema>;
 export type CreateEggRecordRequest = z.infer<typeof createEggRecordRequestSchema>;
 export type CreateProductEventRequest = z.infer<typeof createProductEventRequestSchema>;
+export type UpdateProductEventRequest = z.infer<typeof updateProductEventRequestSchema>;
 export type ListProductsQuery = z.infer<typeof listProductsQuerySchema>;
 export type ProductListStats = z.infer<typeof listProductsResponseSchema.shape.stats>;
 export type ProductImage = z.infer<typeof productImageSchema>;

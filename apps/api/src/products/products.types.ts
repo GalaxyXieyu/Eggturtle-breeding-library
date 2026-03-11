@@ -1,4 +1,8 @@
-import type { CreateProductRequest } from '@eggturtle/shared';
+import type {
+  CreateProductEventRequest,
+  CreateProductRequest,
+  UpdateProductEventRequest,
+} from '@eggturtle/shared';
 
 export type UploadedBinaryFile = {
   originalname: string;
@@ -32,12 +36,6 @@ export type CreateEggRecordInput = {
   note?: string | null;
 };
 
-export type CreateProductEventInput = {
-  eventType: 'mating' | 'egg' | 'change_mate';
-  eventDate: string;
-  maleCode?: string | null;
-  eggCount?: number | null;
-  note?: string | null;
-  oldMateCode?: string | null;
-  newMateCode?: string | null;
-};
+export type CreateProductEventInput = CreateProductEventRequest;
+
+export type UpdateProductEventInput = UpdateProductEventRequest;

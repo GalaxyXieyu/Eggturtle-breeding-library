@@ -12,6 +12,7 @@ export const ErrorCode = {
   TenantSlugConflict: 'TENANT_SLUG_CONFLICT',
   TenantNotSelected: 'TENANT_NOT_SELECTED',
   ProductNotFound: 'PRODUCT_NOT_FOUND',
+  ProductEventNotFound: 'PRODUCT_EVENT_NOT_FOUND',
   ProductImageNotFound: 'PRODUCT_IMAGE_NOT_FOUND',
   ProductCertificateNotFound: 'PRODUCT_CERTIFICATE_NOT_FOUND',
   ProductCertificateEligibilityFailed: 'PRODUCT_CERTIFICATE_ELIGIBILITY_FAILED',

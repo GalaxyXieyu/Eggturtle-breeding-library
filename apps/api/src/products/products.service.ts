@@ -37,6 +37,7 @@ import type {
   CreateMatingRecordInput,
   CreateProductEventInput,
   ProductImageContentResult,
+  UpdateProductEventInput,
   UpdateProductInput,
   UploadedBinaryFile,
 } from './products.types';
@@ -46,6 +47,7 @@ export type {
   CreateMatingRecordInput,
   CreateProductEventInput,
   ProductImageContentResult,
+  UpdateProductEventInput,
   UpdateProductInput,
   UploadedBinaryFile,
 } from './products.types';
@@ -359,6 +361,25 @@ export class ProductsService {
 
   async listProductEvents(tenantId: string, productId: string): Promise<ProductEvent[]> {
     return this.productsEventsService.listProductEvents(tenantId, productId);
+  }
+
+  async updateProductEvent(
+    tenantId: string,
+    actorUserId: string,
+    productId: string,
+    eventId: string,
+    payload: UpdateProductEventInput,
+  ): Promise<ProductEvent> {
+    return this.productsEventsService.updateProductEvent(tenantId, actorUserId, productId, eventId, payload);
+  }
+
+  async deleteProductEvent(
+    tenantId: string,
+    actorUserId: string,
+    productId: string,
+    eventId: string,
+  ): Promise<{ deleted: boolean; eventId: string }> {
+    return this.productsEventsService.deleteProductEvent(tenantId, actorUserId, productId, eventId);
   }
 
   async listProductMaleMatingHistory(
