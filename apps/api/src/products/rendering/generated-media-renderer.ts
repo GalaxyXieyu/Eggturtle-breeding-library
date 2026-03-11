@@ -43,6 +43,12 @@ type CouplePhotoRenderInput = {
   backgroundImage?: Buffer | null;
 };
 
+type CouplePhotoRenderLayout = {
+  canvasWidth: number;
+  canvasHeight: number;
+  contentTopOffset: number;
+};
+
 let couplePhotoBackgroundCache: Buffer | null | undefined;
 
 async function loadDefaultCouplePhotoBackground(): Promise<Buffer | null> {
@@ -116,6 +122,45 @@ async function buildCanvasBackgroundLayer(
     left: 0,
     top: 0
   };
+}
+
+async function resolveCouplePhotoRenderLayout(
+  backgroundImage: Buffer | null | undefined
+): Promise<CouplePhotoRenderLayout> {
+  const canvasWidth = COUPLE_PHOTO_CANVAS.width;
+  const baseCanvasHeight = COUPLE_PHOTO_CANVAS.height;
+  if (!backgroundImage) {
+    return {
+      canvasWidth,
+      canvasHeight: baseCanvasHeight,
+      contentTopOffset: 0
+    };
+  }
+
+  try {
+    const metadata = await sharp(backgroundImage).rotate().metadata();
+    if (!metadata.width || !metadata.height || metadata.width <= 0 || metadata.height <= 0) {
+      return {
+        canvasWidth,
+        canvasHeight: baseCanvasHeight,
+        contentTopOffset: 0
+      };
+    }
+
+    const computedHeight = Math.round((canvasWidth * metadata.height) / metadata.width);
+    const canvasHeight = Math.max(baseCanvasHeight, computedHeight);
+    return {
+      canvasWidth,
+      canvasHeight,
+      contentTopOffset: Math.max(0, Math.round((canvasHeight - baseCanvasHeight) / 2))
+    };
+  } catch {
+    return {
+      canvasWidth,
+      canvasHeight: baseCanvasHeight,
+      contentTopOffset: 0
+    };
+  }
 }
 
 async function buildBottomDecorationLayer(image: Buffer | null | undefined): Promise<sharp.OverlayOptions | null> {
@@ -363,38 +408,55 @@ export async function renderCertificatePng(input: CertificateRenderInput): Promi
 }
 
 export async function renderCouplePhotoPng(input: CouplePhotoRenderInput): Promise<Buffer> {
+  const backgroundImage = await (
+    input.backgroundImage !== undefined
+      ? Promise.resolve(input.backgroundImage)
+      : loadDefaultCouplePhotoBackground()
+  );
+  const layout = await resolveCouplePhotoRenderLayout(backgroundImage);
   const styleSvg = Buffer.from(buildCouplePhotoStyleSvg(input.style));
   const qrPayload = `couple:${input.style.femaleCode}:${input.style.maleCode}:${input.style.generatedAtLabel}`;
 
-  const [backgroundImage, femaleLayer, maleLayer, qrBuffer] = await Promise.all([
-    input.backgroundImage !== undefined ? Promise.resolve(input.backgroundImage) : loadDefaultCouplePhotoBackground(),
-    buildImageLayer(input.femaleImage, COUPLE_PHOTO_SLOTS.female),
-    buildImageLayer(input.maleImage, COUPLE_PHOTO_SLOTS.male),
-    createQrBuffer(qrPayload, COUPLE_PHOTO_SLOTS.qr.width)
-  ]);
+  const femaleSlot = {
+    ...COUPLE_PHOTO_SLOTS.female,
+    y: COUPLE_PHOTO_SLOTS.female.y + layout.contentTopOffset
+  };
+  const maleSlot = {
+    ...COUPLE_PHOTO_SLOTS.male,
+    y: COUPLE_PHOTO_SLOTS.male.y + layout.contentTopOffset
+  };
+  const qrSlot = {
+    ...COUPLE_PHOTO_SLOTS.qr,
+    y: COUPLE_PHOTO_SLOTS.qr.y + layout.contentTopOffset
+  };
 
-  const backgroundLayer = await buildCanvasBackgroundLayer(
-    backgroundImage,
-    COUPLE_PHOTO_CANVAS.width,
-    COUPLE_PHOTO_CANVAS.height
-  );
+  const [backgroundLayer, femaleLayer, maleLayer, qrBuffer] = await Promise.all([
+    buildCanvasBackgroundLayer(
+      backgroundImage,
+      layout.canvasWidth,
+      layout.canvasHeight
+    ),
+    buildImageLayer(input.femaleImage, femaleSlot),
+    buildImageLayer(input.maleImage, maleSlot),
+    createQrBuffer(qrPayload, qrSlot.width)
+  ]);
 
   const composites: Array<sharp.OverlayOptions | null> = [
     backgroundLayer,
-    { input: styleSvg, top: 0, left: 0 },
+    { input: styleSvg, top: layout.contentTopOffset, left: 0 },
     femaleLayer,
     maleLayer,
     {
       input: qrBuffer,
-      left: COUPLE_PHOTO_SLOTS.qr.x,
-      top: COUPLE_PHOTO_SLOTS.qr.y
+      left: qrSlot.x,
+      top: qrSlot.y
     }
   ];
 
   return sharp({
     create: {
-      width: COUPLE_PHOTO_CANVAS.width,
-      height: COUPLE_PHOTO_CANVAS.height,
+      width: layout.canvasWidth,
+      height: layout.canvasHeight,
       channels: 4,
       background: '#f6f0e4'
     }
