@@ -153,11 +153,11 @@ export default function CouplePhotoPreviewDialog({
           <div className="relative z-10 flex min-h-0 flex-1 items-center justify-center py-2 sm:py-3">
             <div className="flex h-full min-h-[min(62dvh,32rem)] w-full items-center justify-center overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-50 p-3 sm:min-h-[min(72vh,42rem)] sm:rounded-3xl sm:p-4">
               {imageUrl ? (
-                <div className="relative mx-auto flex max-h-full w-full max-w-[min(84vw,21rem)] items-center justify-center rounded-2xl bg-neutral-900 p-1 shadow-xl sm:max-w-[21rem]">
+                <div className="relative mx-auto flex aspect-[9/16] w-full max-w-[min(84vw,21rem)] min-h-[17.5rem] items-center justify-center overflow-hidden rounded-2xl bg-neutral-900 p-1 shadow-xl sm:max-w-[21rem]">
                   <img
                     src={imageUrl}
                     alt={`${title}夫妻图预览`}
-                    className="max-h-[min(70dvh,42rem)] w-full rounded-[20px] object-contain"
+                    className="h-full w-full rounded-[20px] object-contain"
                     onLoad={() => setImageLoaded(true)}
                     onError={() => setImageLoaded(true)}
                   />

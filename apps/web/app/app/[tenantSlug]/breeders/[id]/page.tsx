@@ -676,19 +676,11 @@ export default function BreederDetailPage() {
     }
 
     setQuickActionError(null);
-
-    if (generatedAssets.currentCouplePhoto) {
-      openCouplePhotoPreview(generatedAssets.currentCouplePhoto.contentPath, generatedAssets.currentCouplePhoto.generatedAt);
-      return;
-    }
-
     void handleGenerateCouplePhoto(true);
   }, [
-    generatedAssets.currentCouplePhoto,
     generatingCouplePhoto,
     handleGenerateCouplePhoto,
     isFemaleBreeder,
-    openCouplePhotoPreview,
   ]);
 
   return (
