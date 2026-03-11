@@ -50,7 +50,7 @@ export function CouplePhotoSection({ isFemaleBreeder, currentCouplePhoto, couple
         <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2">
           {couplePhotoHistory.slice(0, 6).map((photo) => (
             <div key={photo.id} className="space-y-1 rounded-2xl border border-neutral-200 bg-neutral-50 p-2">
-              <img src={resolveAuthenticatedAssetUrl(photo.contentPath)} alt={`${photo.femaleCodeSnapshot}-${photo.maleCodeSnapshot}`} className="h-20 w-full rounded-xl object-cover" />
+              <img src={buildCouplePhotoUrl(photo.contentPath, photo.generatedAt)} alt={`${photo.femaleCodeSnapshot}-${photo.maleCodeSnapshot}`} className="h-20 w-full rounded-xl object-cover" />
               <p className="truncate text-[11px] font-semibold text-neutral-800">
                 {photo.femaleCodeSnapshot} × {photo.maleCodeSnapshot}
               </p>

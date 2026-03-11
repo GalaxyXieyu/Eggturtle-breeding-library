@@ -609,8 +609,11 @@ export default function BreederDetailPage() {
     }
   }, []);
 
-  const openCouplePhotoPreview = useCallback((contentPath: string) => {
-    setCouplePhotoPreviewPath(contentPath);
+  const openCouplePhotoPreview = useCallback((contentPath: string, generatedAt?: string) => {
+    // Add cache-bust parameter to force browser reload
+    const timestamp = generatedAt ? new Date(generatedAt).getTime() : Date.now();
+    const pathWithCacheBust = `${contentPath}${contentPath.includes('?') ? '&' : '?'}t=${timestamp}`;
+    setCouplePhotoPreviewPath(pathWithCacheBust);
     setIsCouplePhotoPreviewOpen(true);
   }, []);
 
@@ -642,7 +645,7 @@ export default function BreederDetailPage() {
           responseSchema: generateProductCouplePhotoResponseSchema,
         });
         if (openPreview) {
-          openCouplePhotoPreview(response.photo.contentPath);
+          openCouplePhotoPreview(response.photo.contentPath, response.photo.generatedAt);
         }
         await loadGeneratedAssets(breederId);
       } catch (requestError) {
@@ -668,7 +671,7 @@ export default function BreederDetailPage() {
     setQuickActionError(null);
 
     if (generatedAssets.currentCouplePhoto) {
-      openCouplePhotoPreview(generatedAssets.currentCouplePhoto.contentPath);
+      openCouplePhotoPreview(generatedAssets.currentCouplePhoto.contentPath, generatedAssets.currentCouplePhoto.generatedAt);
       return;
     }
 
