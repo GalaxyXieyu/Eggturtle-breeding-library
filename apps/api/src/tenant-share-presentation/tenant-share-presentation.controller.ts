@@ -2,7 +2,6 @@ import {
   BadRequestException,
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Post,
   Put,
@@ -14,7 +13,9 @@ import {
 import {
   ErrorCode,
   getTenantSharePresentationResponseSchema,
-  updateTenantSharePresentationRequestSchema
+  uploadTenantSharePresentationImageResponseSchema,
+  updateTenantSharePresentationRequestSchema,
+  updateTenantSharePresentationResponseSchema
 } from '@eggturtle/shared';
 import { FileInterceptor } from '@nestjs/platform-express';
 
@@ -52,10 +53,17 @@ export class TenantSharePresentationController {
   @Put()
   @RequireTenantRole('EDITOR')
   async updateTenantPresentation(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
-    parseOrThrow(updateTenantSharePresentationRequestSchema, body);
-    this.requireTenantId(request.tenantId);
+    const tenantId = this.requireTenantId(request.tenantId);
+    const payload = parseOrThrow(updateTenantSharePresentationRequestSchema, body);
 
-    throw new ForbiddenException('Share presentation editing moved to admin settings > tenant branding.');
+    const presentation = await this.tenantSharePresentationService.upsertTenantTemplate(
+      tenantId,
+      payload.presentation
+    );
+
+    return updateTenantSharePresentationResponseSchema.parse({
+      presentation
+    });
   }
 
   @Post('images')
@@ -72,14 +80,15 @@ export class TenantSharePresentationController {
     @Req() request: AuthenticatedRequest,
     @UploadedFile() file: UploadedBinaryFile | undefined
   ) {
-    this.requireTenantId(request.tenantId);
-    this.requireUserId(request.user?.id);
+    const tenantId = this.requireTenantId(request.tenantId);
+    const actorUserId = this.requireUserId(request.user?.id);
 
     if (!file || !file.buffer || file.buffer.length === 0) {
       throw new BadRequestException('A single image file is required in form field "file".');
     }
 
-    throw new ForbiddenException('Share presentation editing moved to admin settings > tenant branding.');
+    const asset = await this.tenantSharePresentationService.uploadImage(tenantId, actorUserId, file);
+    return uploadTenantSharePresentationImageResponseSchema.parse({ asset });
   }
 
   private requireTenantId(tenantId?: string): string {

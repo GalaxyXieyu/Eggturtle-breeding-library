@@ -13,6 +13,9 @@ import {
 import { useParams, useRouter } from 'next/navigation';
 import {
   getTenantSharePresentationResponseSchema,
+  uploadTenantSharePresentationImageResponseSchema,
+  updateTenantSharePresentationRequestSchema,
+  updateTenantSharePresentationResponseSchema,
   type TenantSharePresentation,
 } from '@eggturtle/shared';
 import {
@@ -29,6 +32,7 @@ import ShareCoverCropDialog from './share-cover-crop-dialog';
 import { apiRequest, resolveAuthenticatedAssetUrl } from '@/lib/api-client';
 import { formatApiError } from '@/lib/error-utils';
 import { ensureTenantRouteSession } from '@/lib/tenant-route-session';
+import { uploadSingleFileWithAuth } from '@/lib/upload-client';
 import TenantShareDialogTrigger from '@/components/tenant-share-dialog-trigger';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -45,8 +49,6 @@ import { Textarea } from '@/components/ui/textarea';
 
 const DEFAULT_HERO_IMAGE = '/images/mg_04.jpg';
 const FORM_ID = 'share-presentation-form';
-const SHARE_PRESENTATION_READ_ONLY_MESSAGE =
-  '公开分享页配置已迁移到后台管理 > 设置 > 租户品牌，当前页面仅支持预览。';
 
 type EditorKey = 'title' | 'subtitle' | 'contact' | 'cover' | 'carousel' | null;
 
@@ -138,17 +140,6 @@ export default function SharePresentationPage() {
     applyPresentation(response.presentation);
   }, [applyPresentation]);
 
-  const showReadOnlyNotice = useCallback(() => {
-    setActiveEditor(null);
-    setSaving(false);
-    setUploadingPreviewImage(false);
-    setUploadingHeroImages(false);
-    setUploadingWechatImage(false);
-    setCropUploading(false);
-    setError(null);
-    setMessage(SHARE_PRESENTATION_READ_ONLY_MESSAGE);
-  }, []);
-
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -223,36 +214,182 @@ export default function SharePresentationPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    showReadOnlyNotice();
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const request = updateTenantSharePresentationRequestSchema.parse({
+        presentation: {
+          feedTitle: normalizeNullableString(form.feedTitle),
+          feedSubtitle: normalizeNullableString(form.feedSubtitle),
+          brandPrimary: normalizeColor(form.brandPrimary),
+          brandSecondary: normalizeColor(form.brandSecondary),
+          heroImages: buildHeroImages(form.previewImageUrl, form.heroImagesText),
+          showWechatBlock: form.showWechatBlock,
+          wechatQrImageUrl: normalizeNullableString(form.wechatQrImageUrl),
+          wechatId: normalizeNullableString(form.wechatId),
+        },
+      });
+
+      const response = await apiRequest('/tenant-share-presentation', {
+        method: 'PUT',
+        body: request,
+        requestSchema: updateTenantSharePresentationRequestSchema,
+        responseSchema: updateTenantSharePresentationResponseSchema,
+      });
+
+      applyPresentation(response.presentation);
+      setActiveEditor(null);
+      setMessage('已保存，公开分享页刷新后立即生效。');
+    } catch (requestError) {
+      setError(formatApiError(requestError));
+    } finally {
+      setSaving(false);
+    }
   }
 
   function toggleEditor(nextEditor: Exclude<EditorKey, null>) {
-    void nextEditor;
-    showReadOnlyNotice();
+    setActiveEditor((current) => (current === nextEditor ? null : nextEditor));
+    setMessage(null);
+    setError(null);
+  }
+
+  function openCropDialogFromFile(file: File) {
+    const objectUrl = URL.createObjectURL(file);
+    setCropSource({
+      fileName: file.name || 'share-cover.jpg',
+      revokeOnClose: true,
+      url: objectUrl,
+    });
   }
 
   async function handleUploadPreviewImage(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
     event.target.value = '';
-    showReadOnlyNotice();
+
+    if (!file) {
+      return;
+    }
+
+    setError(null);
+    setMessage(null);
+    openCropDialogFromFile(file);
   }
 
   async function handleConfirmCrop(payload: { blob: Blob; fileName: string }) {
-    void payload;
-    showReadOnlyNotice();
+    setCropUploading(true);
+    setUploadingPreviewImage(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const cropFile = new File([payload.blob], ensureJpegFileName(payload.fileName), {
+        type: payload.blob.type || 'image/jpeg',
+      });
+      const uploaded = await uploadSharePresentationImage(cropFile);
+      setForm((prev) => ({
+        ...prev,
+        previewImageUrl: uploaded.url,
+        heroImagesText: normalizeHeroImageList(prev.heroImagesText, uploaded.url).join('\n'),
+      }));
+      setMessage('封面图已裁切并上传。');
+      closeCropDialog();
+    } catch (requestError) {
+      setError(formatApiError(requestError));
+    } finally {
+      setCropUploading(false);
+      setUploadingPreviewImage(false);
+    }
   }
 
   function handleRecropCurrentPreview() {
-    showReadOnlyNotice();
+    if (!form.previewImageUrl) {
+      return;
+    }
+
+    setError(null);
+    setMessage(null);
+    setCropSource({
+      fileName: 'share-cover.jpg',
+      revokeOnClose: false,
+      url: resolveAuthenticatedAssetUrl(form.previewImageUrl),
+    });
   }
 
   async function handleUploadHeroImages(event: ChangeEvent<HTMLInputElement>) {
+    const files = event.target.files ? Array.from(event.target.files) : [];
     event.target.value = '';
-    showReadOnlyNotice();
+
+    if (files.length === 0) {
+      return;
+    }
+
+    setUploadingHeroImages(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const availableSlots = Math.max(0, maxHeroImages - heroImageUrls.length);
+      if (availableSlots === 0) {
+        setMessage(`轮播图最多 ${maxHeroImages} 张，请先删除后再上传。`);
+        return;
+      }
+
+      const uploadQueue = files.slice(0, availableSlots);
+      const uploadedUrls: string[] = [];
+      for (const file of uploadQueue) {
+        const uploaded = await uploadSharePresentationImage(file);
+        uploadedUrls.push(uploaded.url);
+      }
+
+      setForm((prev) => ({
+        ...prev,
+        heroImagesText: normalizeHeroImageList(
+          [
+            ...normalizeHeroImageList(prev.heroImagesText, prev.previewImageUrl),
+            ...uploadedUrls,
+          ].join('\n'),
+          prev.previewImageUrl,
+        ).join('\n'),
+      }));
+
+      if (files.length > uploadQueue.length) {
+        setMessage(`已上传 ${uploadQueue.length} 张，超出上限的图片已忽略。`);
+      } else {
+        setMessage(`已上传 ${uploadQueue.length} 张轮播图。`);
+      }
+    } catch (requestError) {
+      setError(formatApiError(requestError));
+    } finally {
+      setUploadingHeroImages(false);
+    }
   }
 
   async function handleUploadWechatImage(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
     event.target.value = '';
-    showReadOnlyNotice();
+
+    if (!file) {
+      return;
+    }
+
+    setUploadingWechatImage(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const uploaded = await uploadSharePresentationImage(file);
+      setForm((prev) => ({
+        ...prev,
+        wechatQrImageUrl: uploaded.url,
+      }));
+      setMessage('微信二维码上传成功。');
+    } catch (requestError) {
+      setError(formatApiError(requestError));
+    } finally {
+      setUploadingWechatImage(false);
+    }
   }
 
   function handleRestoreSaved() {
@@ -285,10 +422,8 @@ export default function SharePresentationPage() {
         <form id={FORM_ID} className="relative space-y-3" onSubmit={handleSubmit}>
           <MobileSettingsHeader
             title="分享配置"
-            description="当前页面仅支持预览；品牌与分享文案已迁移到后台管理 > 设置 > 租户品牌。"
+            description="先看当前效果，再点某一项进去修改。"
           />
-
-          <StatusBanner tone="warning">{SHARE_PRESENTATION_READ_ONLY_MESSAGE}</StatusBanner>
 
           {error ? (
             <StatusBanner tone="error">{error}</StatusBanner>
@@ -753,7 +888,7 @@ function AssetPreviewMini({ alt, detail, imageUrl, label, trailing }: AssetPrevi
 
 type StatusBannerProps = {
   children: ReactNode;
-  tone: 'error' | 'success' | 'warning';
+  tone: 'error' | 'success';
 };
 
 function StatusBanner({ children, tone }: StatusBannerProps) {
@@ -764,8 +899,6 @@ function StatusBanner({ children, tone }: StatusBannerProps) {
       className={`rounded-2xl border px-4 py-3 text-sm font-medium shadow-[0_8px_22px_rgba(15,23,42,0.05)] backdrop-blur-sm ${
         tone === 'error'
           ? 'border-red-200/80 bg-red-50/90 text-red-700'
-          : tone === 'warning'
-            ? 'border-amber-200/80 bg-amber-50/90 text-amber-800'
           : 'border-emerald-200/80 bg-emerald-50/90 text-emerald-700'
       }`}
     >
@@ -872,4 +1005,18 @@ function hexToRgba(hex: string, alpha: number): string {
   const blue = Number.parseInt(value.slice(4, 6), 16);
 
   return `rgba(${Number.isNaN(red) ? 255 : red}, ${Number.isNaN(green) ? 212 : green}, ${Number.isNaN(blue) ? 0 : blue}, ${alpha})`;
+}
+
+function ensureJpegFileName(value: string): string {
+  const normalized = value.trim().replace(/\.[^./]+$/, '');
+  return `${normalized || 'share-cover'}.jpg`;
+}
+
+async function uploadSharePresentationImage(file: File) {
+  const parsed = await uploadSingleFileWithAuth(
+    '/tenant-share-presentation/images',
+    file,
+    uploadTenantSharePresentationImageResponseSchema,
+  );
+  return parsed.asset;
 }
