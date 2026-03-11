@@ -25,8 +25,10 @@ type CouplePhotoContext = {
   tenantName: string
   femaleProduct: PrismaProduct
   maleProduct: PrismaProduct
-  seriesName: string | null
-  seriesDescription: string | null
+  femaleSeriesName: string | null
+  femaleSeriesDescription: string | null
+  maleSeriesName: string | null
+  maleSeriesDescription: string | null
   femaleImageKey: string | null
   maleImageKey: string | null
 }
@@ -90,8 +92,12 @@ export class ProductCouplePhotosService {
         style: {
           femaleCode: context.femaleProduct.code,
           maleCode: context.maleProduct.code,
-          seriesName: context.seriesName ?? '未设置系列',
-          seriesDescription: context.seriesDescription ?? '暂无系列介绍',
+          femaleSeriesName: context.femaleSeriesName ?? '未设置系列',
+          femaleSeriesDescription: context.femaleSeriesDescription ?? '暂无系列介绍',
+          maleSeriesName: context.maleSeriesName ?? '未设置系列',
+          maleSeriesDescription: context.maleSeriesDescription ?? '暂无系列介绍',
+          femaleShortDescription: context.femaleProduct.description ?? '',
+          maleShortDescription: context.maleProduct.description ?? '',
           priceLabel: `¥${offspringUnitPrice.toFixed(2)}`,
           generatedAtLabel: `生成时间：${this.generatedAssetsSupportService.formatDateTime(generatedAt)}`,
           watermarkText: this.generatedAssetsSupportService.buildWatermarkText(context.tenantName)
@@ -291,8 +297,9 @@ export class ProductCouplePhotosService {
       throw new BadRequestException(`配偶编码 ${mateCode} 对应的不是公种龟。`)
     }
 
-    const [seriesSummary, femaleImageKey, maleImageKey] = await Promise.all([
+    const [femaleSeriesSummary, maleSeriesSummary, femaleImageKey, maleImageKey] = await Promise.all([
       this.generatedAssetsSupportService.resolveSeriesSummary(tenantId, femaleProduct.seriesId),
+      this.generatedAssetsSupportService.resolveSeriesSummary(tenantId, maleProduct.seriesId),
       this.generatedAssetsSupportService.findMainImageKey(tenantId, femaleProduct.id),
       this.generatedAssetsSupportService.findMainImageKey(tenantId, maleProduct.id)
     ])
@@ -302,8 +309,10 @@ export class ProductCouplePhotosService {
       tenantName: tenant.name,
       femaleProduct,
       maleProduct,
-      seriesName: seriesSummary.name,
-      seriesDescription: seriesSummary.description,
+      femaleSeriesName: femaleSeriesSummary.name,
+      femaleSeriesDescription: femaleSeriesSummary.description,
+      maleSeriesName: maleSeriesSummary.name,
+      maleSeriesDescription: maleSeriesSummary.description,
       femaleImageKey,
       maleImageKey
     }
