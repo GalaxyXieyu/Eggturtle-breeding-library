@@ -72,6 +72,8 @@ const BUSINESS_AUDIT_ACTION_LABELS: Record<AuditActionType, string> = {
   [AuditAction.ProductCreate]: '新建产品',
   [AuditAction.ProductUpdate]: '编辑产品',
   [AuditAction.ProductEventCreate]: '新增产品事件',
+  [AuditAction.ProductEventUpdate]: '编辑产品事件',
+  [AuditAction.ProductEventDelete]: '删除产品事件',
   [AuditAction.ProductImageUpload]: '上传图片',
   [AuditAction.ProductImageDelete]: '删除图片',
   [AuditAction.ProductImageSetMain]: '设为主图',
