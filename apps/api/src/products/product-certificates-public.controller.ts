@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Res, StreamableFile } from '@nestjs/common';
+import { Controller, Get, Param, Query, Res, StreamableFile } from '@nestjs/common';
 import {
   verifyProductCertificateResponseSchema
 } from '@eggturtle/shared';
@@ -23,9 +23,12 @@ export class ProductCertificatesPublicController {
   @Get('verify/:verifyId/content')
   async getVerifiedCertificateContent(
     @Param('verifyId') verifyId: string,
+    @Query('maxEdge') maxEdge: string | undefined,
     @Res({ passthrough: true }) response: PublicPassthroughResponse
   ) {
-    const content = await this.productCertificateVerificationService.getVerifiedCertificateContent(verifyId.trim());
+    const content = await this.productCertificateVerificationService.getVerifiedCertificateContent(verifyId.trim(), {
+      maxEdge: maxEdge ? Number(maxEdge) : undefined
+    });
 
     response.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300');
 

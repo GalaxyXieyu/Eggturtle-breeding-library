@@ -74,7 +74,12 @@ export default async function PublicCertificateVerifyPage({ params }: PageProps)
                 已验真
               </div>
             </div>
-            <img src={certificate.contentPath} alt={certificate.certNo} className="w-full bg-[#f4eee2] object-cover" />
+            <img
+              src={withMaxEdge(certificate.contentPath, 1200)}
+              alt={certificate.certNo}
+              className="w-full bg-[#f4eee2] object-cover"
+              decoding="async"
+            />
           </div>
 
           <div className="space-y-5">
@@ -158,6 +163,21 @@ async function fetchCertificate(verifyId: string) {
     ok: true as const,
     data: parsed.data,
   };
+}
+
+function withMaxEdge(url: string, maxEdge: 320 | 480 | 640 | 960 | 1200): string {
+  if (!url.trim()) {
+    return url;
+  }
+
+  try {
+    const parsed = new URL(url, 'http://localhost');
+    parsed.searchParams.set('maxEdge', String(maxEdge));
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    const joiner = url.includes('?') ? '&' : '?';
+    return `${url}${joiner}maxEdge=${maxEdge}`;
+  }
 }
 
 function MetricCard({ label, value, note }: { label: string; value: string; note: string }) {
