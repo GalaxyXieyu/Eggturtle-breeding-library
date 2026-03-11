@@ -293,7 +293,7 @@ export const adminUsageMetricKeySchema = z.enum(['products', 'images', 'shares',
 
 export const adminUsageCountMetricSchema = z.object({
   used: z.number().int().nonnegative(),
-  limit: z.number().int().positive().nullable(),
+  limit: z.number().int().nonnegative().nullable(),
   utilization: z.number().min(0).nullable(),
   status: adminUsageLimitStatusSchema
 })
