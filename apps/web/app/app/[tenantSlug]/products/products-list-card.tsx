@@ -9,7 +9,10 @@ import { buildFilterPillClass } from '@/components/filter-pill';
 import { PetCard } from '@/components/pet';
 import type { ProductSeriesOption } from '@/components/product-drawer';
 import { Card, CardContent } from '@/components/ui/card';
-import { STATUS_FILTER_OPTIONS } from '@/app/app/[tenantSlug]/products/products-page-state';
+import {
+  SEX_FILTER_OPTIONS,
+  STATUS_FILTER_OPTIONS,
+} from '@/app/app/[tenantSlug]/products/products-page-state';
 
 type ProductsListCardProps = {
   listStatsLabel: string;
@@ -66,6 +69,22 @@ export default function ProductsListCard({
   onOpenEdit,
   onOpenPreviewDetail,
 }: ProductsListCardProps) {
+  const renderSexPills = (keyPrefix: string, className?: string) => {
+    return SEX_FILTER_OPTIONS.map((item) => {
+      const selected = sexFilter === item.value;
+      return (
+        <button
+          key={`${keyPrefix}-${item.label}`}
+          type="button"
+          className={buildFilterPillClass(selected, { className })}
+          onClick={() => onSexFilterChange(item.value)}
+        >
+          {item.label}
+        </button>
+      );
+    });
+  };
+
   const renderStatusPills = (keyPrefix: string, className?: string) => {
     return STATUS_FILTER_OPTIONS.map((item) => {
       const selected = statusFilter === item.value;
@@ -151,6 +170,13 @@ export default function ProductsListCard({
                     showMoreButton: true,
                     onMoreClick: (event) => onOpenFilter(event, 'below'),
                   })}
+                </div>
+              </div>
+
+              <div className="flex min-w-0 items-start gap-2">
+                <p className="mt-2 w-10 shrink-0 text-[11px] font-medium text-neutral-500">性别</p>
+                <div className="flex min-w-0 max-w-full flex-1 gap-2 overflow-x-auto overscroll-x-contain pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {renderSexPills('sex-top', 'shrink-0')}
                 </div>
               </div>
 
