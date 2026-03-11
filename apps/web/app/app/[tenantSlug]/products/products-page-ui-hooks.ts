@@ -5,6 +5,8 @@ const MOBILE_FILTER_FAB_HIDE_SCROLL_TOP = 96;
 const MOBILE_FILTER_FAB_SHOW_TOP_FILTER_BOTTOM = -24;
 const MOBILE_FILTER_FAB_HIDE_TOP_FILTER_BOTTOM = 24;
 
+const MOBILE_FILTER_FAB_TOP_FILTER_FALLBACK_HEIGHT = 220;
+
 function resolveTenantScrollRoot(): HTMLElement | null {
   if (typeof document === 'undefined') {
     return null;
@@ -27,7 +29,8 @@ function resolveNextMobileFilterFabVisibility(
   scrollY: number,
 ) {
   if (topFilter) {
-    const bottom = topFilter.getBoundingClientRect().bottom;
+    const rect = topFilter.getBoundingClientRect();
+    const bottom = rect.height > 0 ? rect.bottom : rect.top + MOBILE_FILTER_FAB_TOP_FILTER_FALLBACK_HEIGHT;
 
     if (bottom <= MOBILE_FILTER_FAB_SHOW_TOP_FILTER_BOTTOM) {
       return true;
