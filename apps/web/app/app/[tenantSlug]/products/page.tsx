@@ -333,7 +333,7 @@ export default function TenantProductsPage() {
     if (statusFilter !== listQuery.status) {
       setStatusFilter(listQuery.status);
     }
-  }, [listQuery, searchInput, seriesFilterId, statusFilter]);
+  }, [listQuery, searchInput, sexFilter, seriesFilterId, statusFilter]);
 
   useEffect(() => {
     const nextParams = new URLSearchParams(searchParams.toString());
