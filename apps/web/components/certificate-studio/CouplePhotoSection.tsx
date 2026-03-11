@@ -14,6 +14,13 @@ interface CouplePhotoSectionProps {
 }
 
 export function CouplePhotoSection({ isFemaleBreeder, currentCouplePhoto, couplePhotoHistory, generatingCouplePhoto, onGenerate }: CouplePhotoSectionProps) {
+  // Add cache-bust parameter to force browser reload on new generation
+  const buildCouplePhotoUrl = (contentPath: string, generatedAt: string) => {
+    const timestamp = new Date(generatedAt).getTime();
+    const pathWithCacheBust = `${contentPath}${contentPath.includes('?') ? '&' : '?'}t=${timestamp}`;
+    return resolveAuthenticatedAssetUrl(pathWithCacheBust);
+  };
+
   return (
     <div className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -28,7 +35,7 @@ export function CouplePhotoSection({ isFemaleBreeder, currentCouplePhoto, couple
       {!isFemaleBreeder ? <p className="mt-3 text-xs text-neutral-500">仅母龟可以生成夫妻照。</p> : null}
       {currentCouplePhoto ? (
         <div className="mt-4 overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-50">
-          <img src={resolveAuthenticatedAssetUrl(currentCouplePhoto.contentPath)} alt="当前夫妻照" className="h-64 w-full object-cover" />
+          <img src={buildCouplePhotoUrl(currentCouplePhoto.contentPath, currentCouplePhoto.generatedAt)} alt="当前夫妻照" className="h-64 w-full object-cover" />
           <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm text-neutral-600">
             <p className="font-semibold text-neutral-900">
               {currentCouplePhoto.femaleCodeSnapshot} × {currentCouplePhoto.maleCodeSnapshot}

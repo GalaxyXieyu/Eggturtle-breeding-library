@@ -94,13 +94,21 @@ export function useProductsPageUiEffects({
       setIsFilterPopoverOpen(false);
     };
 
-    const clickOptions: AddEventListenerOptions = { capture: true };
+    // Use bubble phase so inner buttons can handle onClick first.
+    // Using capture here will close the overlay before React's onClick runs,
+    // making filter pills appear unclickable on both desktop and mobile.
+    // Delay registration to avoid closing the popover immediately after opening.
+    const clickOptions: AddEventListenerOptions = { capture: false };
 
-    document.addEventListener('click', handleClickAway, clickOptions);
+    const timerId = window.setTimeout(() => {
+      document.addEventListener('click', handleClickAway, clickOptions);
+    }, 0);
+
     document.addEventListener('keydown', handleKeyDown);
     scrollTarget.addEventListener('scroll', handleScroll, { passive: true });
 
     return () => {
+      window.clearTimeout(timerId);
       document.removeEventListener('click', handleClickAway, clickOptions);
       document.removeEventListener('keydown', handleKeyDown);
       scrollTarget.removeEventListener('scroll', handleScroll);
