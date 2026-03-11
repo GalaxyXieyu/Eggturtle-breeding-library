@@ -23,9 +23,9 @@ export function AllocationStep({ studio, setStudio, selectedBatch }: AllocationS
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-500">Step 02</p>
           <h3 className="mt-1 text-lg font-semibold text-neutral-900">填写客户信息</h3>
-          <p className="mt-1 text-sm text-neutral-500">只需填写买家名称；成交记录会在生成正式证书时自动创建。</p>
+          <p className="mt-1 text-sm text-neutral-500">买家名称必填，建议同步填写单价；成交记录会在生成正式证书时自动创建。</p>
         </div>
-        <Badge className="rounded-full bg-neutral-100 px-3 py-1 text-[11px] font-semibold text-neutral-700">买家名必填</Badge>
+        <Badge className="rounded-full bg-neutral-100 px-3 py-1 text-[11px] font-semibold text-neutral-700">买家名必填 · 单价建议填</Badge>
       </div>
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         <div className="space-y-2 md:col-span-2">

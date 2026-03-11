@@ -618,6 +618,13 @@ export default function BreederDetailPage() {
         return;
       }
 
+      if (currentBreeder?.offspringUnitPrice === null || currentBreeder?.offspringUnitPrice === undefined) {
+        const message = '请先填写子代单价，再生成夫妻图。';
+        certificateStudioHandlers.setAssetError(message);
+        setQuickActionError(message);
+        return;
+      }
+
       setGeneratingCouplePhoto(true);
       setQuickActionError(null);
 
@@ -640,7 +647,7 @@ export default function BreederDetailPage() {
         setGeneratingCouplePhoto(false);
       }
     },
-    [breederId, loadGeneratedAssets, certificateStudioHandlers, openCouplePhotoPreview],
+    [breederId, certificateStudioHandlers, currentBreeder?.offspringUnitPrice, loadGeneratedAssets, openCouplePhotoPreview],
   );
 
   const handleCouplePhotoAction = useCallback(() => {

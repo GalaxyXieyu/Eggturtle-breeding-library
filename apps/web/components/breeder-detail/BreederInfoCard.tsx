@@ -194,6 +194,9 @@ export function BreederInfoCard({
             {typeof breeder?.offspringUnitPrice === 'number' ? (
               <Badge variant="warning">子代 ¥ {formatPrice(breeder.offspringUnitPrice)}</Badge>
             ) : null}
+            {breeder?.sex?.toLowerCase() === 'female' && typeof breeder?.offspringUnitPrice !== 'number' ? (
+              <Badge variant="warning">待填子代单价</Badge>
+            ) : null}
           </div>
           <div className="space-y-1">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">名称</p>

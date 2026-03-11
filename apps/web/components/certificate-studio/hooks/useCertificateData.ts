@@ -22,7 +22,7 @@ const CERTIFICATE_STUDIO_STEPS: Array<{
   note: string;
 }> = [
   { key: 'batch', title: '批次', note: '先选事件并上传主体图' },
-  { key: 'allocation', title: '客户', note: '再填写客户信息' },
+  { key: 'allocation', title: '客户', note: '再填写客户与单价' },
   { key: 'preview', title: '预览', note: '确认后正式发证' }
 ];
 

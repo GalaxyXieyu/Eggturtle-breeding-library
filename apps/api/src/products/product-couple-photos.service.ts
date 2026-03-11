@@ -25,10 +25,8 @@ type CouplePhotoContext = {
   tenantName: string
   femaleProduct: PrismaProduct
   maleProduct: PrismaProduct
-  femaleSeriesName: string | null
-  femaleSeriesDescription: string | null
-  maleSeriesName: string | null
-  maleSeriesDescription: string | null
+  seriesName: string | null
+  seriesDescription: string | null
   femaleImageKey: string | null
   maleImageKey: string | null
 }
@@ -55,6 +53,11 @@ export class ProductCouplePhotosService {
       watermarkText: this.generatedAssetsSupportService.buildWatermarkText(context.tenantName)
     }
     const generatedAt = new Date()
+    const offspringUnitPrice = context.femaleProduct.offspringUnitPrice
+
+    if (offspringUnitPrice === null) {
+      throw new BadRequestException('请先填写子代单价，再生成夫妻图。')
+    }
 
     if (!context.femaleImageKey || !context.maleImageKey) {
       throw new BadRequestException(
@@ -87,16 +90,9 @@ export class ProductCouplePhotosService {
         style: {
           femaleCode: context.femaleProduct.code,
           maleCode: context.maleProduct.code,
-          femaleSeriesName: context.femaleSeriesName ?? '未设置系列',
-          femaleSeriesDescription: context.femaleSeriesDescription ?? '暂无系列介绍',
-          maleSeriesName: context.maleSeriesName ?? '未设置系列',
-          maleSeriesDescription: context.maleSeriesDescription ?? '暂无系列介绍',
-          femaleShortDescription: context.femaleProduct.description ?? '',
-          maleShortDescription: context.maleProduct.description ?? '',
-          priceLabel:
-            context.femaleProduct.offspringUnitPrice !== null
-              ? `¥${context.femaleProduct.offspringUnitPrice.toFixed(2)}`
-              : '未设置',
+          seriesName: context.seriesName ?? '未设置系列',
+          seriesDescription: context.seriesDescription ?? '暂无系列介绍',
+          priceLabel: `¥${offspringUnitPrice.toFixed(2)}`,
           generatedAtLabel: `生成时间：${this.generatedAssetsSupportService.formatDateTime(generatedAt)}`,
           watermarkText: this.generatedAssetsSupportService.buildWatermarkText(context.tenantName)
         },
@@ -146,7 +142,7 @@ export class ProductCouplePhotosService {
             maleCodeSnapshot: context.maleProduct.code,
             femaleImageKeySnapshot: context.femaleImageKey,
             maleImageKeySnapshot: context.maleImageKey,
-            priceSnapshot: context.femaleProduct.offspringUnitPrice,
+            priceSnapshot: offspringUnitPrice,
             templateVersion,
             watermarkSnapshot,
             imageKey: uploadResult?.key ?? key,
@@ -295,9 +291,8 @@ export class ProductCouplePhotosService {
       throw new BadRequestException(`配偶编码 ${mateCode} 对应的不是公种龟。`)
     }
 
-    const [femaleSeriesSummary, maleSeriesSummary, femaleImageKey, maleImageKey] = await Promise.all([
+    const [seriesSummary, femaleImageKey, maleImageKey] = await Promise.all([
       this.generatedAssetsSupportService.resolveSeriesSummary(tenantId, femaleProduct.seriesId),
-      this.generatedAssetsSupportService.resolveSeriesSummary(tenantId, maleProduct.seriesId),
       this.generatedAssetsSupportService.findMainImageKey(tenantId, femaleProduct.id),
       this.generatedAssetsSupportService.findMainImageKey(tenantId, maleProduct.id)
     ])
@@ -307,10 +302,8 @@ export class ProductCouplePhotosService {
       tenantName: tenant.name,
       femaleProduct,
       maleProduct,
-      femaleSeriesName: femaleSeriesSummary.name,
-      femaleSeriesDescription: femaleSeriesSummary.description,
-      maleSeriesName: maleSeriesSummary.name,
-      maleSeriesDescription: maleSeriesSummary.description,
+      seriesName: seriesSummary.name,
+      seriesDescription: seriesSummary.description,
       femaleImageKey,
       maleImageKey
     }
