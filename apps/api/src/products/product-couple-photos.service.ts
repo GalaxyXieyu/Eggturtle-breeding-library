@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common'
+import { BadRequestException, Inject, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common'
 import { AuditAction, ErrorCode } from '@eggturtle/shared'
 import type {
   GenerateProductCouplePhotoRequest,
@@ -14,6 +14,9 @@ import type {
 
 import { AuditLogsService } from '../audit-logs/audit-logs.service'
 import { PrismaService } from '../prisma.service'
+import { buildWebpVariantKey, resolveAllowedMaxEdge, resizeToWebpMaxEdge } from '../images/image-variants'
+import { STORAGE_PROVIDER_TOKEN } from '../storage/storage.constants'
+import type { StorageProvider } from '../storage/storage.provider'
 
 import { ProductGeneratedAssetsSupportService, type StoredContentResult } from './product-generated-assets-support.service'
 import { renderCouplePhotoPng } from './rendering/generated-media-renderer'
@@ -38,7 +41,8 @@ export class ProductCouplePhotosService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditLogsService: AuditLogsService,
-    private readonly generatedAssetsSupportService: ProductGeneratedAssetsSupportService
+    private readonly generatedAssetsSupportService: ProductGeneratedAssetsSupportService,
+    @Inject(STORAGE_PROVIDER_TOKEN) private readonly storageProvider: StorageProvider
   ) {}
 
   async generateCouplePhoto(
@@ -230,7 +234,10 @@ export class ProductCouplePhotosService {
   async getCouplePhotoContent(
     tenantId: string,
     femaleProductId: string,
-    photoId: string
+    photoId: string,
+    options?: {
+      maxEdge?: number
+    }
   ): Promise<StoredContentResult> {
     const photo = await this.prisma.productCouplePhoto.findFirst({
       where: {
@@ -252,11 +259,76 @@ export class ProductCouplePhotosService {
       })
     }
 
-    return this.generatedAssetsSupportService.resolveStoredBinary(tenantId, photo.imageKey, photo.imageUrl, {
-      notFoundMessage: '夫妻图内容不存在。',
-      errorCode: ErrorCode.ProductCouplePhotoNotFound,
-      contentType: photo.contentType
-    })
+    const maxEdge = resolveAllowedMaxEdge(options?.maxEdge)
+    if (!this.isManagedStorageKey(tenantId, photo.imageKey)) {
+      const redirectUrl = (photo.imageUrl ?? '').trim()
+      if (!redirectUrl.startsWith('http://') && !redirectUrl.startsWith('https://')) {
+        throw new NotFoundException({
+          message: '夫妻图内容不存在。',
+          errorCode: ErrorCode.ProductCouplePhotoNotFound
+        })
+      }
+
+      return {
+        redirectUrl,
+        contentType: photo.contentType
+      }
+    }
+
+    try {
+      if (maxEdge) {
+        const variantKey = buildWebpVariantKey(photo.imageKey, maxEdge)
+        try {
+          const variantObject = await this.storageProvider.getObject(variantKey)
+          return {
+            content: variantObject.body,
+            contentType: variantObject.contentType ?? photo.contentType
+          }
+        } catch (error) {
+          if (!(error instanceof NotFoundException)) {
+            throw error
+          }
+        }
+      }
+
+      const storedObject = await this.storageProvider.getObject(photo.imageKey)
+      const resized = maxEdge ? await resizeToWebpMaxEdge({ body: storedObject.body, maxEdge }) : null
+
+      if (maxEdge && resized) {
+        const variantKey = buildWebpVariantKey(photo.imageKey, maxEdge)
+        void this.storageProvider
+          .putObject({
+            key: variantKey,
+            body: resized.body,
+            contentType: resized.contentType,
+            metadata: {
+              source: 'product-couple-photo-variant',
+              originalKey: photo.imageKey,
+              maxEdge: String(maxEdge)
+            }
+          })
+          .catch(() => undefined)
+      }
+
+      return {
+        content: resized?.body ?? storedObject.body,
+        contentType: resized?.contentType ?? photo.contentType ?? storedObject.contentType
+      }
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw new NotFoundException({
+          message: '夫妻图内容不存在。',
+          errorCode: ErrorCode.ProductCouplePhotoNotFound
+        })
+      }
+
+      throw error
+    }
+  }
+
+  private isManagedStorageKey(tenantId: string, key: string): boolean {
+    const normalized = key.replace(/\\/g, '/').replace(/^\/+/, '')
+    return normalized.startsWith(`${tenantId}/`)
   }
 
   private async loadCouplePhotoContext(tenantId: string, femaleProductId: string): Promise<CouplePhotoContext> {

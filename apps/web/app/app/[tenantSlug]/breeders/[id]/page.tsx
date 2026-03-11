@@ -163,7 +163,14 @@ export default function BreederDetailPage() {
     soldAt: buildLocalDateTimeValue(new Date()),
   }));
   const currentBreeder = data.breeder;
-  const couplePhotoPreviewUrl = useMemo(
+  const couplePhotoPreviewUrl = useMemo(() => {
+    if (!couplePhotoPreviewPath) {
+      return null;
+    }
+    const joiner = couplePhotoPreviewPath.includes('?') ? '&' : '?';
+    return resolveImageUrl(`${couplePhotoPreviewPath}${joiner}maxEdge=960`);
+  }, [couplePhotoPreviewPath]);
+  const couplePhotoDownloadUrl = useMemo(
     () => (couplePhotoPreviewPath ? resolveImageUrl(couplePhotoPreviewPath) : null),
     [couplePhotoPreviewPath],
   );
@@ -794,6 +801,7 @@ export default function BreederDetailPage() {
       <CouplePhotoPreviewDialog
         open={isCouplePhotoPreviewOpen}
         imageUrl={couplePhotoPreviewUrl}
+        downloadUrl={couplePhotoDownloadUrl}
         loading={generatingCouplePhoto && !couplePhotoPreviewPath}
         title={`${currentBreeder?.name?.trim() || currentBreeder?.code || '当前种龟'}夫妻图`}
         subtitle={

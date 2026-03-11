@@ -222,7 +222,7 @@ export default function CertificateCenterPage() {
   }
 
   function openCertificatePreview(contentPath: string) {
-    const target = resolveImage(contentPath);
+    const target = resolveFullImage(contentPath);
     const popup = window.open(target, '_blank', 'noopener');
     if (!popup) {
       window.location.href = target;
@@ -489,7 +489,7 @@ export default function CertificateCenterPage() {
                       aria-label={`预览 ${item.certificate.certNo}`}
                     >
                       <img
-                        src={resolveImage(item.certificate.contentPath)}
+                        src={resolveCertificateThumbnail(item.certificate.contentPath)}
                         alt={item.certificate.certNo}
                         className="aspect-[5/4] w-full object-cover transition-transform duration-300 hover:scale-[1.01] sm:aspect-[4/3]"
                       />
@@ -537,7 +537,7 @@ export default function CertificateCenterPage() {
                       {item.subjectContentPath ? (
                         <div className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-2.5">
                           <img
-                            src={resolveImage(item.subjectContentPath)}
+                            src={resolveFullImage(item.subjectContentPath)}
                             alt={item.batchNo ?? 'subject'}
                             className="h-16 w-16 rounded-xl object-cover"
                           />
@@ -669,8 +669,31 @@ function compactVerifyId(value: string) {
   return `${value.slice(0, 8)} · ${value.slice(-4)}`;
 }
 
-function resolveImage(value: string) {
+function withMaxEdge(url: string, maxEdge: 320 | 480 | 960 | 1200): string {
+  if (!url.trim()) {
+    return url;
+  }
+
+  try {
+    const isAbsolute = /^https?:\/\//i.test(url);
+    const parsed = new URL(url, 'http://localhost');
+    parsed.searchParams.set('maxEdge', String(maxEdge));
+    if (isAbsolute) {
+      return parsed.toString();
+    }
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    const joiner = url.includes('?') ? '&' : '?';
+    return `${url}${joiner}maxEdge=${maxEdge}`;
+  }
+}
+
+function resolveFullImage(value: string) {
   return resolveAuthenticatedAssetUrl(value);
+}
+
+function resolveCertificateThumbnail(value: string) {
+  return withMaxEdge(resolveFullImage(value), 960);
 }
 
 function formatError(error: unknown) {

@@ -15,9 +15,10 @@ interface CouplePhotoSectionProps {
 
 export function CouplePhotoSection({ isFemaleBreeder, currentCouplePhoto, couplePhotoHistory, generatingCouplePhoto, onGenerate }: CouplePhotoSectionProps) {
   // Add cache-bust parameter to force browser reload on new generation
-  const buildCouplePhotoUrl = (contentPath: string, generatedAt: string) => {
+  const buildCouplePhotoUrl = (contentPath: string, generatedAt: string, maxEdge: 320 | 480 | 960 = 960) => {
     const timestamp = new Date(generatedAt).getTime();
-    const pathWithCacheBust = `${contentPath}${contentPath.includes('?') ? '&' : '?'}t=${timestamp}`;
+    const joiner = contentPath.includes('?') ? '&' : '?';
+    const pathWithCacheBust = `${contentPath}${joiner}t=${timestamp}&maxEdge=${maxEdge}`;
     return resolveAuthenticatedAssetUrl(pathWithCacheBust);
   };
 
@@ -35,7 +36,7 @@ export function CouplePhotoSection({ isFemaleBreeder, currentCouplePhoto, couple
       {!isFemaleBreeder ? <p className="mt-3 text-xs text-neutral-500">仅母龟可以生成夫妻照。</p> : null}
       {currentCouplePhoto ? (
         <div className="mt-4 overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-50">
-          <img src={buildCouplePhotoUrl(currentCouplePhoto.contentPath, currentCouplePhoto.generatedAt)} alt="当前夫妻照" className="h-64 w-full object-cover" />
+          <img src={buildCouplePhotoUrl(currentCouplePhoto.contentPath, currentCouplePhoto.generatedAt, 960)} alt="当前夫妻照" className="h-64 w-full object-cover" />
           <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm text-neutral-600">
             <p className="font-semibold text-neutral-900">
               {currentCouplePhoto.femaleCodeSnapshot} × {currentCouplePhoto.maleCodeSnapshot}
@@ -50,7 +51,7 @@ export function CouplePhotoSection({ isFemaleBreeder, currentCouplePhoto, couple
         <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2">
           {couplePhotoHistory.slice(0, 6).map((photo) => (
             <div key={photo.id} className="space-y-1 rounded-2xl border border-neutral-200 bg-neutral-50 p-2">
-              <img src={buildCouplePhotoUrl(photo.contentPath, photo.generatedAt)} alt={`${photo.femaleCodeSnapshot}-${photo.maleCodeSnapshot}`} className="h-20 w-full rounded-xl object-cover" />
+              <img src={buildCouplePhotoUrl(photo.contentPath, photo.generatedAt, 320)} alt={`${photo.femaleCodeSnapshot}-${photo.maleCodeSnapshot}`} className="h-20 w-full rounded-xl object-cover" />
               <p className="truncate text-[11px] font-semibold text-neutral-800">
                 {photo.femaleCodeSnapshot} × {photo.maleCodeSnapshot}
               </p>

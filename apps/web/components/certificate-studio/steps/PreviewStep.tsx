@@ -125,7 +125,13 @@ export function PreviewStep({
           <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(138px,1fr))] gap-3">
             {certificates.slice(0, 6).map((certificate) => (
               <div key={certificate.id} className="overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-50">
-                <img src={resolveAuthenticatedAssetUrl(certificate.contentPath)} alt={certificate.certNo} className="h-24 w-full object-cover" />
+                <img
+                  src={resolveAuthenticatedAssetUrl(
+                    `${certificate.contentPath}${certificate.contentPath.includes('?') ? '&' : '?'}maxEdge=480`,
+                  )}
+                  alt={certificate.certNo}
+                  className="h-24 w-full object-cover"
+                />
                 <div className="space-y-1 px-3 py-3">
                   <p className="truncate text-xs font-semibold text-neutral-900">{certificate.certNo}</p>
                   <p className="text-[11px] text-neutral-500">

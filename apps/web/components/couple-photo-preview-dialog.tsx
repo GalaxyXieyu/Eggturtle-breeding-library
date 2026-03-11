@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 type CouplePhotoPreviewDialogProps = {
   open: boolean;
   imageUrl?: string | null;
+  downloadUrl?: string | null;
   loading?: boolean;
   title: string;
   subtitle?: string;
@@ -25,6 +26,7 @@ function sanitizeFileName(value: string) {
 export default function CouplePhotoPreviewDialog({
   open,
   imageUrl,
+  downloadUrl,
   loading = false,
   title,
   subtitle,
@@ -34,6 +36,7 @@ export default function CouplePhotoPreviewDialog({
 }: CouplePhotoPreviewDialogProps) {
   const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const titleId = useId();
 
   const resolvedSubtitle =
@@ -64,14 +67,19 @@ export default function CouplePhotoPreviewDialog({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose, open]);
 
+  useEffect(() => {
+    setImageLoaded(false);
+  }, [imageUrl]);
+
   const handleSaveImage = useCallback(async () => {
-    if (!imageUrl || downloading) {
+    const targetUrl = downloadUrl || imageUrl;
+    if (!targetUrl || downloading) {
       return;
     }
 
     setDownloading(true);
     try {
-      const response = await fetch(imageUrl, { cache: 'no-store' });
+      const response = await fetch(targetUrl, { cache: 'no-store' });
       if (!response.ok) {
         throw new Error('download failed');
       }
@@ -87,7 +95,7 @@ export default function CouplePhotoPreviewDialog({
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
     } catch {
       const link = document.createElement('a');
-      link.href = imageUrl;
+      link.href = targetUrl;
       link.target = '_blank';
       link.rel = 'noopener noreferrer';
       link.download = resolvedFileName;
@@ -97,7 +105,7 @@ export default function CouplePhotoPreviewDialog({
     } finally {
       setDownloading(false);
     }
-  }, [downloading, imageUrl, resolvedFileName]);
+  }, [downloadUrl, downloading, imageUrl, resolvedFileName]);
 
   if (!portalRoot) {
     return null;
@@ -145,12 +153,21 @@ export default function CouplePhotoPreviewDialog({
           <div className="relative z-10 flex min-h-0 flex-1 items-center justify-center py-2 sm:py-3">
             <div className="flex h-full min-h-[min(62dvh,32rem)] w-full items-center justify-center overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-50 p-3 sm:min-h-[min(72vh,42rem)] sm:rounded-3xl sm:p-4">
               {imageUrl ? (
-                <div className="mx-auto flex max-h-full w-full max-w-[min(84vw,21rem)] items-center justify-center rounded-2xl bg-neutral-900 p-1 shadow-xl sm:max-w-[21rem]">
+                <div className="relative mx-auto flex max-h-full w-full max-w-[min(84vw,21rem)] items-center justify-center rounded-2xl bg-neutral-900 p-1 shadow-xl sm:max-w-[21rem]">
                   <img
                     src={imageUrl}
                     alt={`${title}夫妻图预览`}
                     className="max-h-[min(70dvh,42rem)] w-full rounded-[20px] object-contain"
+                    onLoad={() => setImageLoaded(true)}
+                    onError={() => setImageLoaded(true)}
                   />
+                  {!imageLoaded ? (
+                    <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-neutral-900/70">
+                      <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-neutral-100 text-neutral-700">
+                        <Loader2 size={18} className="animate-spin" />
+                      </span>
+                    </div>
+                  ) : null}
                 </div>
               ) : loading ? (
                 <div className="mx-auto flex aspect-[9/16] w-full max-w-[min(84vw,19rem)] min-h-[17.5rem] flex-col items-center justify-center gap-4 rounded-2xl bg-white px-6 text-center text-sm text-neutral-500 shadow-sm sm:max-w-[19rem]">

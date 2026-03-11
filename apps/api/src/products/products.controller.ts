@@ -475,13 +475,17 @@ export class ProductsController {
     @Req() request: AuthenticatedRequest,
     @Param('pid') productId: string,
     @Param('cid') certificateId: string,
+    @Query('maxEdge') maxEdge: string | undefined,
     @Res({ passthrough: true }) response: PassthroughResponse
   ) {
     const tenantId = this.requireTenantId(request.tenantId);
     const content = await this.productCertificatesService.getCertificateContent(
       tenantId,
       productId,
-      certificateId
+      certificateId,
+      {
+        maxEdge: maxEdge ? Number(maxEdge) : undefined,
+      }
     );
 
     this.applyPrivateAssetCacheHeaders(response);
@@ -542,10 +546,13 @@ export class ProductsController {
     @Req() request: AuthenticatedRequest,
     @Param('pid') productId: string,
     @Param('photoId') photoId: string,
+    @Query('maxEdge') maxEdge: string | undefined,
     @Res({ passthrough: true }) response: PassthroughResponse
   ) {
     const tenantId = this.requireTenantId(request.tenantId);
-    const content = await this.productCouplePhotosService.getCouplePhotoContent(tenantId, productId, photoId);
+    const content = await this.productCouplePhotosService.getCouplePhotoContent(tenantId, productId, photoId, {
+      maxEdge: maxEdge ? Number(maxEdge) : undefined,
+    });
 
     this.applyPrivateAssetCacheHeaders(response);
 

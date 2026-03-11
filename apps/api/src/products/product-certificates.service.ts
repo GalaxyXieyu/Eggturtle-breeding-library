@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException
 } from '@nestjs/common'
@@ -33,6 +34,9 @@ import { randomUUID } from 'node:crypto'
 import { AuditLogsService } from '../audit-logs/audit-logs.service'
 import { BrandingService } from '../branding/branding.service'
 import { PrismaService } from '../prisma.service'
+import { buildWebpVariantKey, resolveAllowedMaxEdge, resizeToWebpMaxEdge } from '../images/image-variants'
+import { STORAGE_PROVIDER_TOKEN } from '../storage/storage.constants'
+import type { StorageProvider } from '../storage/storage.provider'
 
 import { ProductGeneratedAssetsSupportService, type StoredContentResult } from './product-generated-assets-support.service'
 import { ProductSaleBatchesService } from './product-sale-batches.service'
@@ -61,7 +65,8 @@ export class ProductCertificatesService {
     private readonly auditLogsService: AuditLogsService,
     private readonly brandingService: BrandingService,
     private readonly generatedAssetsSupportService: ProductGeneratedAssetsSupportService,
-    private readonly productSaleBatchesService: ProductSaleBatchesService
+    private readonly productSaleBatchesService: ProductSaleBatchesService,
+    @Inject(STORAGE_PROVIDER_TOKEN) private readonly storageProvider: StorageProvider
   ) {}
 
   async getCertificateEligibility(
@@ -373,7 +378,10 @@ export class ProductCertificatesService {
   async getCertificateContent(
     tenantId: string,
     productId: string,
-    certificateId: string
+    certificateId: string,
+    options?: {
+      maxEdge?: number
+    }
   ): Promise<StoredContentResult> {
     const certificate = await this.prisma.productCertificate.findFirst({
       where: {
@@ -395,11 +403,76 @@ export class ProductCertificatesService {
       })
     }
 
-    return this.generatedAssetsSupportService.resolveStoredBinary(tenantId, certificate.imageKey, certificate.imageUrl, {
-      notFoundMessage: '证书文件不存在。',
-      errorCode: ErrorCode.ProductCertificateNotFound,
-      contentType: certificate.contentType
-    })
+    const maxEdge = resolveAllowedMaxEdge(options?.maxEdge)
+    if (!this.isManagedStorageKey(tenantId, certificate.imageKey)) {
+      const redirectUrl = (certificate.imageUrl ?? '').trim()
+      if (!redirectUrl.startsWith('http://') && !redirectUrl.startsWith('https://')) {
+        throw new NotFoundException({
+          message: '证书文件不存在。',
+          errorCode: ErrorCode.ProductCertificateNotFound
+        })
+      }
+
+      return {
+        redirectUrl,
+        contentType: certificate.contentType
+      }
+    }
+
+    try {
+      if (maxEdge) {
+        const variantKey = buildWebpVariantKey(certificate.imageKey, maxEdge)
+        try {
+          const variantObject = await this.storageProvider.getObject(variantKey)
+          return {
+            content: variantObject.body,
+            contentType: variantObject.contentType ?? certificate.contentType
+          }
+        } catch (error) {
+          if (!(error instanceof NotFoundException)) {
+            throw error
+          }
+        }
+      }
+
+      const storedObject = await this.storageProvider.getObject(certificate.imageKey)
+      const resized = maxEdge ? await resizeToWebpMaxEdge({ body: storedObject.body, maxEdge }) : null
+
+      if (maxEdge && resized) {
+        const variantKey = buildWebpVariantKey(certificate.imageKey, maxEdge)
+        void this.storageProvider
+          .putObject({
+            key: variantKey,
+            body: resized.body,
+            contentType: resized.contentType,
+            metadata: {
+              source: 'product-certificate-variant',
+              originalKey: certificate.imageKey,
+              maxEdge: String(maxEdge)
+            }
+          })
+          .catch(() => undefined)
+      }
+
+      return {
+        content: resized?.body ?? storedObject.body,
+        contentType: resized?.contentType ?? certificate.contentType ?? storedObject.contentType
+      }
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw new NotFoundException({
+          message: '证书文件不存在。',
+          errorCode: ErrorCode.ProductCertificateNotFound
+        })
+      }
+
+      throw error
+    }
+  }
+
+  private isManagedStorageKey(tenantId: string, key: string): boolean {
+    const normalized = key.replace(/\\/g, '/').replace(/^\/+/, '')
+    return normalized.startsWith(`${tenantId}/`)
   }
 
   async listCertificateCenter(
