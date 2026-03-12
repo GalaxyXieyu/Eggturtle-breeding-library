@@ -11,6 +11,7 @@ import {
   uploadProductImageResponseSchema,
   type Product,
   type ProductImage,
+  type ReferralReward,
 } from '@eggturtle/shared';
 import {
   Loader2,
@@ -52,6 +53,7 @@ export type ProductCreateResult = {
   product: Product;
   imageFailures: number;
   message: string;
+  referralReward?: ReferralReward | null;
 };
 
 type ProductCreateDrawerProps = {
@@ -363,6 +365,7 @@ export default function ProductCreateDrawer({
           product: demoProduct,
           imageFailures: 0,
           message: `演示模式：已创建产品 ${demoProduct.code}。`,
+          referralReward: null,
         });
 
         resetFormState();
@@ -382,15 +385,20 @@ export default function ProductCreateDrawer({
         orderedPendingImages,
       });
 
-      const successMessage =
+      let successMessage =
         uploadOutcome.imageFailures > 0
           ? `产品 ${createProductResponse.product.code} 创建成功，但有 ${uploadOutcome.imageFailures} 张图片处理失败。`
           : `产品 ${createProductResponse.product.code} 创建成功。`;
+
+      if (createProductResponse.referralReward?.status === 'AWARDED') {
+        successMessage += ` 邀请奖励已到账，双方各 +${createProductResponse.referralReward.rewardDaysInvitee} 天。`;
+      }
 
       await onCreated({
         product: createProductResponse.product,
         imageFailures: uploadOutcome.imageFailures,
         message: successMessage,
+        referralReward: createProductResponse.referralReward ?? null,
       });
 
       resetFormState();

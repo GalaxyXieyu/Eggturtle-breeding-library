@@ -2,6 +2,8 @@ import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import {
   bindReferralRequestSchema,
   bindReferralResponseSchema,
+  bindReferralFromAttributionRequestSchema,
+  bindReferralFromAttributionResponseSchema,
   myReferralOverviewResponseSchema,
   publicReferralLandingResponseSchema,
 } from '@eggturtle/shared';
@@ -40,6 +42,17 @@ export class ReferralsController {
       payload.source ?? 'manual_fallback',
     );
     return bindReferralResponseSchema.parse(response);
+  }
+
+  @Post('referrals/bind-from-attribution')
+  @UseGuards(AuthGuard)
+  async bindReferralFromAttribution(
+    @CurrentUser() user: NonNullable<AuthenticatedRequest['user']>,
+    @Body() body: unknown,
+  ) {
+    const payload = parseOrThrow(bindReferralFromAttributionRequestSchema, body);
+    const response = await this.referralsService.bindReferralFromAttribution(user.id, payload);
+    return bindReferralFromAttributionResponseSchema.parse(response);
   }
 
   @Get('public/referrals/:referralCode')

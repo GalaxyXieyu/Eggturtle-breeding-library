@@ -105,7 +105,8 @@ export class SharesEntryService {
     shareToken: string,
     meta: ShareAccessMeta,
     requestOrigin?: string | null,
-    requestedProductId?: string | null
+    requestedProductId?: string | null,
+    entrySource?: string | null
   ) {
     this.assertEntryRateLimit(shareToken, meta.ip);
 
@@ -139,6 +140,7 @@ export class SharesEntryService {
     const resourceType = this.sharesCoreService.parseShareResourceType(share.resourceType);
 
     const normalizedRequestedProductId = this.normalizeRequestedProductId(requestedProductId);
+    const normalizedEntrySource = this.normalizeEntrySource(entrySource);
     const { redirectUrl: baseRedirectUrl, expiresAt } = this.sharesCoreService.buildRedirectUrl(
       {
         id: share.id,
@@ -150,10 +152,11 @@ export class SharesEntryService {
       },
       requestOrigin
     );
-    const redirectUrl = this.attachRequestedProductPath(
+    const redirectUrl = this.attachRedirectContext(
       baseRedirectUrl,
       share.shareToken,
-      normalizedRequestedProductId
+      normalizedRequestedProductId,
+      normalizedEntrySource
     );
 
     await this.sharesCoreService.writeShareAccessAuditLog(
@@ -169,7 +172,8 @@ export class SharesEntryService {
       expiresAt,
       'entry',
       meta,
-      normalizedRequestedProductId
+      normalizedRequestedProductId,
+      normalizedEntrySource
     );
 
     return {
@@ -191,20 +195,31 @@ export class SharesEntryService {
     return normalized;
   }
 
-  private attachRequestedProductPath(
-    redirectUrl: string,
-    shareToken: string,
-    requestedProductId: string | null
-  ): string {
-    if (!requestedProductId) {
-      return redirectUrl;
+  private normalizeEntrySource(value: string | null | undefined): string | null {
+    const normalized = value?.trim();
+    if (!normalized) {
+      return null;
     }
 
+    return normalized.slice(0, 40);
+  }
+
+  private attachRedirectContext(
+    redirectUrl: string,
+    shareToken: string,
+    requestedProductId: string | null,
+    entrySource: string | null
+  ): string {
     try {
       const parsed = new URL(redirectUrl);
-      parsed.pathname = `/public/s/${encodeURIComponent(shareToken)}/products/${encodeURIComponent(
-        requestedProductId
-      )}`;
+      if (requestedProductId) {
+        parsed.pathname = `/public/s/${encodeURIComponent(shareToken)}/products/${encodeURIComponent(
+          requestedProductId
+        )}`;
+      }
+      if (entrySource) {
+        parsed.searchParams.set('src', entrySource);
+      }
       return parsed.toString();
     } catch {
       return redirectUrl;

@@ -34,6 +34,7 @@ import { randomUUID } from 'node:crypto'
 import { AuditLogsService } from '../audit-logs/audit-logs.service'
 import { BrandingService } from '../branding/branding.service'
 import { PrismaService } from '../prisma.service'
+import { SharesCoreService } from '../shares/shares-core.service'
 import { buildWebpVariantKey, resolveAllowedMaxEdge, resizeToWebpMaxEdge } from '../images/image-variants'
 import { STORAGE_PROVIDER_TOKEN } from '../storage/storage.constants'
 import type { StorageProvider } from '../storage/storage.provider'
@@ -66,6 +67,7 @@ export class ProductCertificatesService {
     private readonly brandingService: BrandingService,
     private readonly generatedAssetsSupportService: ProductGeneratedAssetsSupportService,
     private readonly productSaleBatchesService: ProductSaleBatchesService,
+    private readonly sharesCoreService: SharesCoreService,
     @Inject(STORAGE_PROVIDER_TOKEN) private readonly storageProvider: StorageProvider
   ) {}
 
@@ -862,6 +864,12 @@ export class ProductCertificatesService {
     ])
     const certificateBranding = this.brandingService.buildCertificateBranding(platformBranding)
 
+    const qrPayloadUrl = await this.buildCertificateQrPayload(
+      input.context.tenantId,
+      input.actorUserId,
+      input.context.product.id
+    )
+
     const style = {
       brandTitleZh: certificateBranding.titleZh,
       brandTitleEn: certificateBranding.titleEn,
@@ -894,7 +902,7 @@ export class ProductCertificatesService {
     try {
       return await renderCertificatePng({
         style,
-        verifyUrl: this.generatedAssetsSupportService.buildPublicVerifyUrl(input.verifyId),
+        qrPayloadUrl,
         subjectImage,
         sireImage,
         damImage
@@ -913,6 +921,26 @@ export class ProductCertificatesService {
     quota?: CertificateQuota
   ): string[] {
     return buildCertificateEligibilityReasons(requirements, quota)
+  }
+
+
+  private async buildCertificateQrPayload(
+    tenantId: string,
+    actorUserId: string,
+    productId: string
+  ): Promise<string> {
+    const share = await this.sharesCoreService.getOrCreateShare(
+      tenantId,
+      'tenant_feed',
+      tenantId,
+      null,
+      actorUserId,
+      undefined
+    )
+    const entryUrl = new URL(this.sharesCoreService.buildShareEntryUrl(share.shareToken))
+    entryUrl.searchParams.set('pid', productId)
+    entryUrl.searchParams.set('src', 'certificate')
+    return entryUrl.toString()
   }
 
   private assertCertificateLineageEligible(requirements: ProductCertificateEligibilityRequirements): void {

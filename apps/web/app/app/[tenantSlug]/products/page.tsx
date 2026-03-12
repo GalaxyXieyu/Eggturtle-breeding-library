@@ -24,6 +24,7 @@ import { formatApiError } from '@/lib/error-utils';
 import { clearProductsPageDirty, readProductsPageDirtyAt } from '@/lib/products-page-cache';
 import { ensureTenantRouteSession } from '@/lib/tenant-route-session';
 import ProductDrawer, {
+  type ProductCreateResult,
   type ProductSeriesOption,
 } from '@/components/product-drawer';
 import TenantFloatingShareButton from '@/components/tenant-floating-share-button';
@@ -974,11 +975,7 @@ export default function TenantProductsPage() {
     });
   }
 
-  async function handleCreated(result: {
-    product: Product;
-    imageFailures: number;
-    message: string;
-  }) {
+  async function handleCreated(result: ProductCreateResult) {
     setError(null);
     setMessage(result.message);
     setContinueEditProductId(result.imageFailures > 0 ? result.product.id : null);

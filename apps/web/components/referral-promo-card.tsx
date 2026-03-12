@@ -72,7 +72,7 @@ export default function ReferralPromoCard({
     const current = new Date(currentExpiresAt).getTime();
     const base = Number.isNaN(current) ? now : Math.max(now, current);
     const projected = new Date(
-      base + overview.rules.firstPaymentReferrerDays * 24 * 60 * 60 * 1000,
+      base + overview.rules.firstProductReferrerDays * 24 * 60 * 60 * 1000,
     );
     if (Number.isNaN(projected.getTime())) {
       return null;
@@ -82,6 +82,7 @@ export default function ReferralPromoCard({
   }, [currentExpiresAt, overview]);
 
   const compact = variant === 'share';
+  const firstUploadDays = overview?.rules.firstProductInviteeDays ?? 7;
 
   return (
     <div
@@ -102,14 +103,14 @@ export default function ReferralPromoCard({
             Invite Rewards
           </p>
           <h3 className={`font-semibold text-neutral-900 ${compact ? 'mt-1.5 text-sm' : 'mt-2 text-base sm:text-lg'}`}>
-            邀请好友首付，双方各得 7 天
+            邀请好友上传首只乌龟，双方各得 {firstUploadDays} 天
           </h3>
           <p
             className={`mt-1 text-neutral-700 ${
               compact ? 'line-clamp-2 text-[11px] leading-4' : 'text-sm leading-6'
             }`}
           >
-            好友后续每次续费，你再得 30 天；每人每月最多 60 天。奖励直充 PRO，到期时间顺延。
+            好友从公开页注册后会自动绑定；首次成功上传一只乌龟后，双方各得 {firstUploadDays} 天，奖励直充 PRO，到期时间顺延。
           </p>
         </div>
         <Link
@@ -144,7 +145,7 @@ export default function ReferralPromoCard({
             <p className="text-[11px] text-neutral-500">奖励价值</p>
             <p className="mt-1 text-sm font-semibold text-neutral-900">
               {projectedExpiry
-                ? `成功 1 单后预计到 ${projectedExpiry}`
+                ? `完成 1 次首只上传后预计到 ${projectedExpiry}`
                 : '证书 / 水印 / 品牌化展示 / 200 只管理上限'}
             </p>
           </div>

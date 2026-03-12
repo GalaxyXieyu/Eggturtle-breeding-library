@@ -28,7 +28,7 @@ type SlotRect = {
 
 type CertificateRenderInput = {
   style: CertificateStyleInput;
-  verifyUrl: string;
+  qrPayloadUrl: string;
   backgroundImage?: Buffer | null;
   backgroundMode?: 'full' | 'bottom' | 'tiled';
   subjectImage?: Buffer | null;
@@ -335,25 +335,21 @@ function buildPseudoQrSvg(payload: string, size: number): string {
 }
 
 async function createQrBuffer(payload: string, size: number): Promise<Buffer> {
-  try {
-    // Prefer real QR code generation when dependency exists.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const qrCode = require('qrcode') as {
-      toBuffer: (value: string, options?: Record<string, unknown>) => Promise<Buffer>;
-    };
-    return await qrCode.toBuffer(payload, {
-      type: 'png',
-      width: size,
-      margin: 0,
-      color: {
-        dark: '#1a120bff',
-        light: '#00000000'
-      }
-    });
-  } catch {
-    const pseudoSvg = buildPseudoQrSvg(payload, size);
-    return sharp(Buffer.from(pseudoSvg)).png().toBuffer();
-  }
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const qrCode = require('qrcode') as {
+    toBuffer: (value: string, options?: Record<string, unknown>) => Promise<Buffer>;
+  };
+
+  return await qrCode.toBuffer(payload, {
+    type: 'png',
+    width: size,
+    margin: 2,
+    errorCorrectionLevel: 'M',
+    color: {
+      dark: '#1a120bff',
+      light: '#ffffffff'
+    }
+  });
 }
 
 export async function renderCertificatePng(input: CertificateRenderInput): Promise<Buffer> {
@@ -366,7 +362,7 @@ export async function renderCertificatePng(input: CertificateRenderInput): Promi
     })
   );
   const debugOverlay = input.style.debugGuides ? Buffer.from(buildCertificateDebugOverlaySvg()) : null;
-  const qrBuffer = await createQrBuffer(input.verifyUrl, CERTIFICATE_SLOTS.qr.width);
+  const qrBuffer = await createQrBuffer(input.qrPayloadUrl, CERTIFICATE_SLOTS.qr.width);
 
   const [backgroundLayer, bottomDecorationLayer, subjectLayer, sireLayer, damLayer] = await Promise.all([
     backgroundMode === 'full'

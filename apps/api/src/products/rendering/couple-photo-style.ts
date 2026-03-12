@@ -153,7 +153,7 @@ export function buildCouplePhotoStyleSvg(input: CouplePhotoStyleInput): string {
   <text x="638" y="1392" font-size="76" font-weight="700" fill="#2d2218" class="font-main">${escapeXml(input.priceLabel)}</text>
   <text x="640" y="1432" font-size="22" fill="#6a533c" class="font-label">${escapeXml(input.generatedAtLabel)}</text>
 
-  <text x="${qrCenterX}" y="1280" text-anchor="middle" font-size="18" fill="#4b3a28" class="font-label">验真二维码</text>
+  <text x="${qrCenterX}" y="1280" text-anchor="middle" font-size="18" fill="#4b3a28" class="font-label">母龟详情二维码</text>
   <rect x="${COUPLE_PHOTO_SLOTS.qr.x - 8}" y="${COUPLE_PHOTO_SLOTS.qr.y - 8}" width="${COUPLE_PHOTO_SLOTS.qr.width + 16}" height="${COUPLE_PHOTO_SLOTS.qr.height + 16}" fill="rgba(255,255,255,0.95)" rx="10"/>
   <rect x="${COUPLE_PHOTO_SLOTS.qr.x - 8}" y="${COUPLE_PHOTO_SLOTS.qr.y - 8}" width="${COUPLE_PHOTO_SLOTS.qr.width + 16}" height="${COUPLE_PHOTO_SLOTS.qr.height + 16}" fill="none" stroke="#8f7451" stroke-width="2" rx="10"/>
 </svg>`;

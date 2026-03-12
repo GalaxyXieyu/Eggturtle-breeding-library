@@ -1,12 +1,12 @@
 import { meSubscriptionResponseSchema, registerResponseSchema } from '../../packages/shared/src/auth';
 import {
+  bindReferralFromAttributionResponseSchema,
   bindReferralResponseSchema,
   myReferralOverviewResponseSchema,
   publicReferralLandingResponseSchema,
   settleReferralPaidEventResponseSchema,
 } from '../../packages/shared/src/referral';
 import { createProductResponseSchema } from '../../packages/shared/src/product';
-import { updateTenantSubscriptionResponseSchema } from '../../packages/shared/src/subscription';
 
 import {
   ApiTestError,
@@ -25,7 +25,6 @@ type RegisteredUser = {
   userId: string;
   tenantId: string;
   tenantSlug: string;
-  referralCode?: string;
 };
 
 let accountCounter = 0;
@@ -34,7 +33,7 @@ let phoneCounter = 0;
 export const referralsModule: TestModule = {
   name: 'referrals',
   description:
-    'Referral binding, activation counting, reward settlement, monthly cap clipping, and paid-account bind guard checks',
+    'Public-page attribution auto-bind, first-product reward settlement, reward idempotency, and paid-order fallback checks',
   requiresWrites: true,
   run,
 };
@@ -52,8 +51,8 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
   if (!inviterOverview.referralCode || inviterOverview.invitedCount !== 0) {
     throw new ApiTestError('referrals.inviter.overview-initial expected referralCode and zero invitedCount');
   }
-  if (inviterOverview.activatedInviteeCount !== 0 || inviterOverview.monthAwardedDays !== 0) {
-    throw new ApiTestError('referrals.inviter.overview-initial expected zero activation and reward counters');
+  if (inviterOverview.rules.rewardMode !== 'first_product_create') {
+    throw new ApiTestError('referrals.inviter.overview-initial expected rewardMode=first_product_create');
   }
 
   const publicLandingResponse = await ctx.request({
@@ -83,35 +82,54 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
   const invitee = await registerFreshUser(ctx, 'refinvitee');
   checks += 1;
 
-  const bindResponse = await ctx.request({
+  const inviteeSubscriptionBefore = await getMySubscription(
+    ctx,
+    invitee.token,
+    'referrals.invitee.subscription-before-reward',
+  );
+  const inviterSubscriptionBefore = await getMySubscription(
+    ctx,
+    inviter.token,
+    'referrals.inviter.subscription-before-reward',
+  );
+  checks += 2;
+
+  const autoBindResponse = await ctx.request({
     method: 'POST',
-    path: '/referrals/bind',
+    path: '/referrals/bind-from-attribution',
     token: invitee.token,
     json: {
-      referralCode: inviterOverview.referralCode,
-      source: 'share_link',
+      fromUrl: `https://example.com/public/${encodeURIComponent(inviter.tenantSlug)}?src=poster`,
+      pageType: 'tenant_feed',
+      tenantSlug: inviter.tenantSlug,
+      entrySource: 'poster',
+      capturedAt: new Date().toISOString(),
     },
   });
-  assertStatus(bindResponse, 201, 'referrals.bind');
-  const binding = bindReferralResponseSchema.parse(bindResponse.body).binding;
-  if (binding.referrerUserId !== inviter.userId || binding.inviteeUserId !== invitee.userId) {
-    throw new ApiTestError('referrals.bind relation mismatch');
+  assertStatus(autoBindResponse, 201, 'referrals.bind-from-attribution');
+  const autoBind = bindReferralFromAttributionResponseSchema.parse(autoBindResponse.body);
+  if (!autoBind.binding || autoBind.binding.referrerUserId !== inviter.userId || autoBind.binding.inviteeUserId !== invitee.userId) {
+    throw new ApiTestError('referrals.bind-from-attribution expected inviter/invitee binding');
   }
   checks += 1;
 
-  const bindReplayResponse = await ctx.request({
+  const autoBindReplayResponse = await ctx.request({
     method: 'POST',
-    path: '/referrals/bind',
+    path: '/referrals/bind-from-attribution',
     token: invitee.token,
     json: {
-      referralCode: inviterOverview.referralCode,
-      source: 'share_link',
+      fromUrl: `https://example.com/public/${encodeURIComponent(inviter.tenantSlug)}/products/demo-product?src=poster`,
+      pageType: 'tenant_product',
+      tenantSlug: inviter.tenantSlug,
+      productId: 'demo-product',
+      entrySource: 'poster',
+      capturedAt: new Date().toISOString(),
     },
   });
-  assertStatus(bindReplayResponse, 201, 'referrals.bind-replay');
-  const replayBinding = bindReferralResponseSchema.parse(bindReplayResponse.body).binding;
-  if (replayBinding.id !== binding.id) {
-    throw new ApiTestError('referrals.bind-replay expected idempotent binding id');
+  assertStatus(autoBindReplayResponse, 201, 'referrals.bind-from-attribution-replay');
+  const autoBindReplay = bindReferralFromAttributionResponseSchema.parse(autoBindReplayResponse.body);
+  if (!autoBindReplay.binding || autoBindReplay.binding.id !== autoBind.binding.id) {
+    throw new ApiTestError('referrals.bind-from-attribution-replay expected same binding id');
   }
   checks += 1;
 
@@ -127,320 +145,127 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
     throw new ApiTestError('referrals.invitee.overview-after-bind missing binding');
   }
 
-  const inviteeProductResponse = await ctx.request({
+  const firstProductResponse = await ctx.request({
     method: 'POST',
     path: '/products',
     token: invitee.token,
     json: {
-      code: uniqueSuffix('ref').replace(/-/g, '').slice(0, 18).toUpperCase(),
-      name: `Referral Activation ${Date.now()}`,
-      description: 'Referral activation fixture',
+      code: uniqueSuffix('refa').replace(/-/g, '').slice(0, 18).toUpperCase(),
+      name: `Referral Reward ${Date.now()}`,
+      description: 'Referral first product reward fixture',
     },
   });
-  assertStatus(inviteeProductResponse, 201, 'referrals.invitee.product-create');
-  createProductResponseSchema.parse(inviteeProductResponse.body);
+  assertStatus(firstProductResponse, 201, 'referrals.invitee.first-product-create');
+  const firstProduct = createProductResponseSchema.parse(firstProductResponse.body);
+  if (!firstProduct.referralReward || firstProduct.referralReward.triggerType !== 'first_product_create') {
+    throw new ApiTestError('referrals.invitee.first-product-create expected first_product_create reward');
+  }
+  if (firstProduct.referralReward.status !== 'AWARDED') {
+    throw new ApiTestError('referrals.invitee.first-product-create expected AWARDED reward');
+  }
+  if (firstProduct.referralReward.rewardDaysReferrer !== 7 || firstProduct.referralReward.rewardDaysInvitee !== 7) {
+    throw new ApiTestError('referrals.invitee.first-product-create expected reward days 7/7');
+  }
   checks += 1;
 
-  const inviterAfterActivation = await getReferralOverview(
-    ctx,
-    inviter.token,
-    'referrals.inviter.overview-after-activation',
-  );
-  checks += 1;
-  if (inviterAfterActivation.activatedInviteeCount !== 1) {
-    throw new ApiTestError('referrals.inviter.overview-after-activation expected activatedInviteeCount=1');
-  }
-
-  if (!ctx.options.superAdminEmail) {
-    ctx.log.warn('referrals.settlement.skipped', {
-      reason: 'missing --super-admin-email for internal settlement and paid-account bind guard checks',
-    });
-
-    return {
-      checks,
-      details: {
-        inviterUserId: inviter.userId,
-        inviteeUserId: invitee.userId,
-        inviterReferralCode: inviterOverview.referralCode,
-        settlementSkipped: true,
-        paidBindGuardSkipped: true,
-      },
-    };
-  }
-
-  const superAdminLogin = await loginWithDevCode(ctx, ctx.options.superAdminEmail);
-
-  const inviterSubscriptionBefore = await getMySubscription(
-    ctx,
-    inviter.token,
-    'referrals.inviter.subscription-before',
-  );
-  checks += 1;
-  const inviteeSubscriptionBefore = await getMySubscription(
-    ctx,
-    invitee.token,
-    'referrals.invitee.subscription-before',
-  );
-  checks += 1;
-  if (inviterSubscriptionBefore.subscription.plan !== 'FREE') {
-    throw new ApiTestError('referrals.inviter.subscription-before expected FREE plan');
-  }
-  if (inviteeSubscriptionBefore.subscription.plan !== 'FREE') {
-    throw new ApiTestError('referrals.invitee.subscription-before expected FREE plan');
-  }
-
-  const firstPaymentOrderId = uniqueSuffix('ref-first-order');
-  const firstPaymentResponse = await ctx.request({
+  const secondProductResponse = await ctx.request({
     method: 'POST',
-    path: '/payments/referral-events/paid',
-    token: superAdminLogin.token,
+    path: '/products',
+    token: invitee.token,
     json: {
-      userId: invitee.userId,
-      tenantId: invitee.tenantId,
-      provider: 'wechat',
-      orderId: firstPaymentOrderId,
-      paymentId: uniqueSuffix('ref-first-pay'),
-      paidAt: new Date().toISOString(),
+      code: uniqueSuffix('refb').replace(/-/g, '').slice(0, 18).toUpperCase(),
+      name: `Referral Noop ${Date.now()}`,
+      description: 'Referral second product noop fixture',
     },
   });
-  checks += 1;
-
-  if (firstPaymentResponse.status !== 201) {
-    if (ctx.options.requireSuperAdminPass) {
-      throw new ApiTestError(
-        `referrals.first-payment expected 201, got ${firstPaymentResponse.status}`,
-      );
-    }
-
-    ctx.log.warn('referrals.super-admin.warn', {
-      status: firstPaymentResponse.status,
-      hint: 'Mark the settlement operator as isSuperAdmin=true for full referral settlement checks.',
-    });
-
-    return {
-      checks,
-      details: {
-        inviterUserId: inviter.userId,
-        inviteeUserId: invitee.userId,
-        inviterReferralCode: inviterOverview.referralCode,
-        settlementSkipped: true,
-        paidBindGuardSkipped: true,
-        superAdminStatus: firstPaymentResponse.status,
-      },
-    };
-  }
-
-  const firstPayment = settleReferralPaidEventResponseSchema.parse(firstPaymentResponse.body);
-  if (!firstPayment.settled || firstPayment.triggerType !== 'first_payment' || !firstPayment.reward) {
-    throw new ApiTestError('referrals.first-payment expected settled first_payment reward');
-  }
-  if (firstPayment.reward.rewardDaysReferrer !== 7 || firstPayment.reward.rewardDaysInvitee !== 7) {
-    throw new ApiTestError('referrals.first-payment expected inviter/invitee reward days = 7/7');
-  }
-
-  const firstPaymentReplayResponse = await ctx.request({
-    method: 'POST',
-    path: '/payments/referral-events/paid',
-    token: superAdminLogin.token,
-    json: {
-      userId: invitee.userId,
-      tenantId: invitee.tenantId,
-      provider: 'wechat',
-      orderId: firstPaymentOrderId,
-      paymentId: firstPayment.reward.paymentId,
-      paidAt: new Date(Date.now() + 10_000).toISOString(),
-    },
-  });
-  assertStatus(firstPaymentReplayResponse, 201, 'referrals.first-payment-replay');
-  const firstPaymentReplay = settleReferralPaidEventResponseSchema.parse(firstPaymentReplayResponse.body);
-  if (firstPaymentReplay.reward?.id !== firstPayment.reward.id) {
-    throw new ApiTestError('referrals.first-payment-replay expected same reward id');
+  assertStatus(secondProductResponse, 201, 'referrals.invitee.second-product-create');
+  const secondProduct = createProductResponseSchema.parse(secondProductResponse.body);
+  if (secondProduct.referralReward !== null && secondProduct.referralReward !== undefined) {
+    throw new ApiTestError('referrals.invitee.second-product-create expected no referral reward');
   }
   checks += 1;
 
-  const inviterSubscriptionAfterFirst = await getMySubscription(
+  const inviterSubscriptionAfter = await getMySubscription(
     ctx,
     inviter.token,
-    'referrals.inviter.subscription-after-first',
+    'referrals.inviter.subscription-after-reward',
   );
-  const inviteeSubscriptionAfterFirst = await getMySubscription(
+  const inviteeSubscriptionAfter = await getMySubscription(
     ctx,
     invitee.token,
-    'referrals.invitee.subscription-after-first',
+    'referrals.invitee.subscription-after-reward',
   );
   checks += 2;
-  const inviterExpiryAfterFirst = requireExpiresAtMs(
-    inviterSubscriptionAfterFirst.subscription.expiresAt,
-    'referrals.inviter.subscription-after-first',
+  const inviterExpiryAfter = requireExpiresAtMs(
+    inviterSubscriptionAfter.subscription.expiresAt,
+    'referrals.inviter.subscription-after-reward',
   );
-  const inviteeExpiryAfterFirst = requireExpiresAtMs(
-    inviteeSubscriptionAfterFirst.subscription.expiresAt,
-    'referrals.invitee.subscription-after-first',
+  const inviteeExpiryAfter = requireExpiresAtMs(
+    inviteeSubscriptionAfter.subscription.expiresAt,
+    'referrals.invitee.subscription-after-reward',
   );
+  if (inviterSubscriptionBefore.subscription.expiresAt && inviterExpiryAfter <= Date.parse(inviterSubscriptionBefore.subscription.expiresAt)) {
+    throw new ApiTestError('referrals.inviter.subscription-after-reward expected later expiry');
+  }
+  if (inviteeSubscriptionBefore.subscription.expiresAt && inviteeExpiryAfter <= Date.parse(inviteeSubscriptionBefore.subscription.expiresAt)) {
+    throw new ApiTestError('referrals.invitee.subscription-after-reward expected later expiry');
+  }
 
-  const inviterAfterFirst = await getReferralOverview(
-    ctx,
-    inviter.token,
-    'referrals.inviter.overview-after-first',
-  );
-  const inviteeAfterFirst = await getReferralOverview(
-    ctx,
-    invitee.token,
-    'referrals.invitee.overview-after-first',
-  );
-  checks += 2;
-  assertMonthCounters(inviterAfterFirst, 7, 53, 'referrals.inviter.overview-after-first');
-  assertMonthCounters(inviteeAfterFirst, 7, 53, 'referrals.invitee.overview-after-first');
-
-  const renewalOne = await settlePaidOrder(ctx, superAdminLogin.token, {
-    userId: invitee.userId,
-    tenantId: invitee.tenantId,
-    provider: 'wechat',
-    orderId: uniqueSuffix('ref-renew-1'),
-    paymentId: uniqueSuffix('ref-renew-pay-1'),
-  }, 'referrals.renewal-1');
+  const inviterAfterReward = await getReferralOverview(ctx, inviter.token, 'referrals.inviter.overview-after-reward');
   checks += 1;
-  if (!renewalOne.reward || renewalOne.triggerType !== 'renewal') {
-    throw new ApiTestError('referrals.renewal-1 expected renewal reward');
+  if (inviterAfterReward.activatedInviteeCount !== 1) {
+    throw new ApiTestError('referrals.inviter.overview-after-reward expected activatedInviteeCount=1');
   }
-  if (renewalOne.reward.rewardDaysReferrer !== 30 || renewalOne.reward.rewardDaysInvitee !== 0) {
-    throw new ApiTestError('referrals.renewal-1 expected inviter/invitee reward days = 30/0');
+  if (!inviterAfterReward.invites[0] || inviterAfterReward.invites[0].status !== 'reward_awarded') {
+    throw new ApiTestError('referrals.inviter.overview-after-reward expected invite status reward_awarded');
   }
-
-  const inviterSubscriptionAfterRenewalOne = await getMySubscription(
-    ctx,
-    inviter.token,
-    'referrals.inviter.subscription-after-renewal-1',
-  );
-  const inviteeSubscriptionAfterRenewalOne = await getMySubscription(
-    ctx,
-    invitee.token,
-    'referrals.invitee.subscription-after-renewal-1',
-  );
-  checks += 2;
-  const inviterExpiryAfterRenewalOne = requireExpiresAtMs(
-    inviterSubscriptionAfterRenewalOne.subscription.expiresAt,
-    'referrals.inviter.subscription-after-renewal-1',
-  );
-  const inviteeExpiryAfterRenewalOne = requireExpiresAtMs(
-    inviteeSubscriptionAfterRenewalOne.subscription.expiresAt,
-    'referrals.invitee.subscription-after-renewal-1',
-  );
-  if (inviterExpiryAfterRenewalOne <= inviterExpiryAfterFirst) {
-    throw new ApiTestError('referrals.inviter.subscription-after-renewal-1 expected later expiry');
-  }
-  if (inviteeExpiryAfterRenewalOne !== inviteeExpiryAfterFirst) {
-    throw new ApiTestError('referrals.invitee.subscription-after-renewal-1 expected unchanged expiry');
+  if (!inviterAfterReward.rewards.some((reward) => reward.triggerType === 'first_product_create')) {
+    throw new ApiTestError('referrals.inviter.overview-after-reward expected first_product_create reward record');
   }
 
-  const inviterAfterRenewalOne = await getReferralOverview(
-    ctx,
-    inviter.token,
-    'referrals.inviter.overview-after-renewal-1',
-  );
+  const manualInvitee = await registerFreshUser(ctx, 'refmanual');
   checks += 1;
-  assertMonthCounters(inviterAfterRenewalOne, 37, 23, 'referrals.inviter.overview-after-renewal-1');
-
-  const renewalTwo = await settlePaidOrder(ctx, superAdminLogin.token, {
-    userId: invitee.userId,
-    tenantId: invitee.tenantId,
-    provider: 'wechat',
-    orderId: uniqueSuffix('ref-renew-2'),
-    paymentId: uniqueSuffix('ref-renew-pay-2'),
-  }, 'referrals.renewal-2');
-  checks += 1;
-  if (!renewalTwo.reward || renewalTwo.reward.rewardDaysReferrer !== 23) {
-    throw new ApiTestError('referrals.renewal-2 expected clipped inviter reward of 23 days');
-  }
-  if (renewalTwo.reward.statusReason !== 'monthly_cap_clipped') {
-    throw new ApiTestError('referrals.renewal-2 expected monthly_cap_clipped statusReason');
-  }
-
-  const renewalThree = await settlePaidOrder(ctx, superAdminLogin.token, {
-    userId: invitee.userId,
-    tenantId: invitee.tenantId,
-    provider: 'wechat',
-    orderId: uniqueSuffix('ref-renew-3'),
-    paymentId: uniqueSuffix('ref-renew-pay-3'),
-  }, 'referrals.renewal-3');
-  checks += 1;
-  if (!renewalThree.reward || renewalThree.reward.rewardDaysReferrer !== 0) {
-    throw new ApiTestError('referrals.renewal-3 expected zero inviter reward after monthly cap');
-  }
-  if (renewalThree.reward.status !== 'SKIPPED' || renewalThree.reward.statusReason !== 'monthly_cap_reached') {
-    throw new ApiTestError('referrals.renewal-3 expected skipped reward after monthly cap');
-  }
-
-  const inviterSubscriptionAfterRenewalTwo = await getMySubscription(
-    ctx,
-    inviter.token,
-    'referrals.inviter.subscription-after-renewal-2',
-  );
-  const inviterSubscriptionAfterRenewalThree = await getMySubscription(
-    ctx,
-    inviter.token,
-    'referrals.inviter.subscription-after-renewal-3',
-  );
-  checks += 2;
-  const inviterExpiryAfterRenewalTwo = requireExpiresAtMs(
-    inviterSubscriptionAfterRenewalTwo.subscription.expiresAt,
-    'referrals.inviter.subscription-after-renewal-2',
-  );
-  const inviterExpiryAfterRenewalThree = requireExpiresAtMs(
-    inviterSubscriptionAfterRenewalThree.subscription.expiresAt,
-    'referrals.inviter.subscription-after-renewal-3',
-  );
-  if (inviterExpiryAfterRenewalTwo <= inviterExpiryAfterRenewalOne) {
-    throw new ApiTestError('referrals.inviter.subscription-after-renewal-2 expected later expiry');
-  }
-  if (inviterExpiryAfterRenewalThree !== inviterExpiryAfterRenewalTwo) {
-    throw new ApiTestError('referrals.inviter.subscription-after-renewal-3 expected unchanged expiry');
-  }
-
-  const inviterAtCap = await getReferralOverview(ctx, inviter.token, 'referrals.inviter.overview-cap');
-  checks += 1;
-  assertMonthCounters(inviterAtCap, 60, 0, 'referrals.inviter.overview-cap');
-
-  const paidCandidate = await registerFreshUser(ctx, 'refpaid');
-  checks += 1;
-  const paidCandidateSetProResponse = await ctx.request({
-    method: 'PUT',
-    path: `/admin/tenants/${paidCandidate.tenantId}/subscription`,
-    token: superAdminLogin.token,
-    json: {
-      plan: 'PRO',
-      startsAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      disabledAt: null,
-      disabledReason: null,
-      maxImages: null,
-      maxStorageBytes: null,
-      maxShares: null,
-    },
-  });
-  assertStatus(paidCandidateSetProResponse, 200, 'referrals.paid-candidate.set-pro');
-  updateTenantSubscriptionResponseSchema.parse(paidCandidateSetProResponse.body);
-  checks += 1;
-
-  const paidCandidateBindResponse = await ctx.request({
+  const manualBindResponse = await ctx.request({
     method: 'POST',
     path: '/referrals/bind',
-    token: paidCandidate.token,
+    token: manualInvitee.token,
     json: {
       referralCode: inviterOverview.referralCode,
-      source: 'manual_fallback',
+      source: 'share_link',
     },
   });
-  assertStatus(paidCandidateBindResponse, 403, 'referrals.paid-candidate.bind-denied');
-  assertErrorCode(paidCandidateBindResponse, 'FORBIDDEN');
+  assertStatus(manualBindResponse, 201, 'referrals.manual-bind');
+  const manualBinding = bindReferralResponseSchema.parse(manualBindResponse.body).binding;
+  if (manualBinding.referrerUserId !== inviter.userId || manualBinding.inviteeUserId !== manualInvitee.userId) {
+    throw new ApiTestError('referrals.manual-bind relation mismatch');
+  }
   checks += 1;
 
-  ctx.log.ok('referrals.done', {
-    checks,
-    inviterUserId: inviter.userId,
-    inviteeUserId: invitee.userId,
-    inviterReferralCode: inviterOverview.referralCode,
-  });
+  let paidEventSkipped = true;
+  if (ctx.options.superAdminEmail) {
+    const superAdminLogin = await loginWithDevCode(ctx, ctx.options.superAdminEmail);
+    const paidEventResponse = await ctx.request({
+      method: 'POST',
+      path: '/payments/referral-events/paid',
+      token: superAdminLogin.token,
+      json: {
+        userId: invitee.userId,
+        tenantId: invitee.tenantId,
+        provider: 'wechat',
+        orderId: uniqueSuffix('ref-paid-order'),
+        paymentId: uniqueSuffix('ref-paid-payment'),
+        paidAt: new Date().toISOString(),
+      },
+    });
+    if (paidEventResponse.status === 201) {
+      const paidEvent = settleReferralPaidEventResponseSchema.parse(paidEventResponse.body);
+      if (paidEvent.settled) {
+        throw new ApiTestError('referrals.paid-event expected settled=false under first_product_create mode');
+      }
+      paidEventSkipped = false;
+      checks += 1;
+    }
+  }
 
   return {
     checks,
@@ -448,8 +273,7 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
       inviterUserId: inviter.userId,
       inviteeUserId: invitee.userId,
       inviterReferralCode: inviterOverview.referralCode,
-      settlementSkipped: false,
-      paidBindGuardSkipped: false,
+      paidEventSkipped,
     },
   };
 }
@@ -499,44 +323,6 @@ async function getMySubscription(ctx: TestContext, token: string, label: string)
   });
   assertStatus(response, 200, label);
   return meSubscriptionResponseSchema.parse(response.body);
-}
-
-async function settlePaidOrder(
-  ctx: TestContext,
-  superAdminToken: string,
-  payload: {
-    userId: string;
-    tenantId: string;
-    provider: string;
-    orderId: string;
-    paymentId: string;
-  },
-  label: string,
-) {
-  const response = await ctx.request({
-    method: 'POST',
-    path: '/payments/referral-events/paid',
-    token: superAdminToken,
-    json: {
-      ...payload,
-      paidAt: new Date().toISOString(),
-    },
-  });
-  assertStatus(response, 201, label);
-  return settleReferralPaidEventResponseSchema.parse(response.body);
-}
-
-function assertMonthCounters(
-  overview: ReturnType<typeof myReferralOverviewResponseSchema.parse>,
-  expectedAwarded: number,
-  expectedRemaining: number,
-  label: string,
-) {
-  if (overview.monthAwardedDays !== expectedAwarded || overview.monthRemainingDays !== expectedRemaining) {
-    throw new ApiTestError(
-      `${label} expected monthAwardedDays/monthRemainingDays = ${expectedAwarded}/${expectedRemaining}, got ${overview.monthAwardedDays}/${overview.monthRemainingDays}`,
-    );
-  }
 }
 
 function requireExpiresAtMs(expiresAt: string | null, label: string): number {

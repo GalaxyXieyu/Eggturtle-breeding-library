@@ -9,6 +9,7 @@ import type {
   CreateProductRequest,
   ListProductsPublicClicksQuery,
   ListProductsQuery,
+  MyReferralOverviewResponse,
   Product,
   ProductEvent,
   ProductFamilyTree,
@@ -18,6 +19,8 @@ import type {
   ReorderProductImagesRequest,
 } from '@eggturtle/shared';
 import { Prisma } from '@prisma/client';
+
+import { ReferralsService } from '../referrals/referrals.service';
 import type { Product as PrismaProduct } from '@prisma/client';
 
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
@@ -61,13 +64,14 @@ export class ProductsService {
     private readonly productsReadService: ProductsReadService,
     private readonly productsEventsService: ProductsEventsService,
     private readonly productsImagesService: ProductsImagesService,
+    private readonly referralsService: ReferralsService,
   ) {}
 
   async createProduct(
     tenantId: string,
     actorUserId: string,
     payload: CreateProductRequest,
-  ): Promise<Product> {
+  ): Promise<{ product: Product; referralReward: MyReferralOverviewResponse['rewards'][number] | null }> {
     await this.tenantSubscriptionsService.assertProductCreateAllowed(tenantId);
     const normalizedCode = this.normalizeRequiredCode(payload.code);
     const existingByCode = await this.prisma.product.findFirst({
@@ -95,40 +99,59 @@ export class ProductsService {
     }
 
     try {
-      const product = await this.prisma.product.create({
-        data: {
-          tenantId,
-          code: normalizedCode,
-          type: this.normalizeOptionalText(payload.type) ?? 'breeder',
-          name: this.normalizeOptionalText(payload.name) ?? normalizedCode,
-          description: this.normalizeOptionalText(payload.description),
-          seriesId: this.normalizeOptionalText(payload.seriesId),
-          sex: this.normalizeOptionalSex(payload.sex),
-          offspringUnitPrice: payload.offspringUnitPrice ?? null,
-          sireCode: this.normalizeOptionalCode(payload.sireCode),
-          damCode: this.normalizeOptionalCode(payload.damCode),
-          mateCode: this.normalizeOptionalCode(payload.mateCode),
-          excludeFromBreeding: payload.excludeFromBreeding ?? false,
-          hasSample: payload.hasSample ?? false,
-          inStock: payload.inStock ?? true,
-          popularityScore: payload.popularityScore ?? 0,
-          isFeatured: payload.isFeatured ?? false,
-        },
-      });
+      return await this.prisma.$transaction(async (tx) => {
+        const product = await tx.product.create({
+          data: {
+            tenantId,
+            code: normalizedCode,
+            type: this.normalizeOptionalText(payload.type) ?? 'breeder',
+            name: this.normalizeOptionalText(payload.name) ?? normalizedCode,
+            description: this.normalizeOptionalText(payload.description),
+            seriesId: this.normalizeOptionalText(payload.seriesId),
+            sex: this.normalizeOptionalSex(payload.sex),
+            offspringUnitPrice: payload.offspringUnitPrice ?? null,
+            sireCode: this.normalizeOptionalCode(payload.sireCode),
+            damCode: this.normalizeOptionalCode(payload.damCode),
+            mateCode: this.normalizeOptionalCode(payload.mateCode),
+            excludeFromBreeding: payload.excludeFromBreeding ?? false,
+            hasSample: payload.hasSample ?? false,
+            inStock: payload.inStock ?? true,
+            popularityScore: payload.popularityScore ?? 0,
+            isFeatured: payload.isFeatured ?? false,
+          },
+        });
 
-      await this.auditLogsService.createLog({
-        tenantId,
-        actorUserId,
-        action: AuditAction.ProductCreate,
-        resourceType: 'product',
-        resourceId: product.id,
-        metadata: {
-          code: product.code,
-          name: product.name,
-        },
-      });
+        await tx.auditLog.create({
+          data: {
+            tenantId,
+            actorUserId,
+            action: AuditAction.ProductCreate,
+            resourceType: 'product',
+            resourceId: product.id,
+            metadata: {
+              code: product.code,
+              name: product.name,
+            },
+          },
+        });
 
-      return this.toProduct(product);
+        const referralReward = await this.referralsService.awardReferralForFirstProductCreate(
+          {
+            actorUserId,
+            userId: actorUserId,
+            tenantId,
+            productId: product.id,
+            productCode: product.code,
+            createdAt: product.createdAt,
+          },
+          tx,
+        );
+
+        return {
+          product: this.toProduct(product),
+          referralReward,
+        };
+      });
     } catch (error) {
       if (this.isProductCodeConflict(error)) {
         throw new ConflictException('Product code already exists in this tenant.');

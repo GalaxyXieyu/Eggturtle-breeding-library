@@ -54,8 +54,12 @@ export async function loadPublicShareProductDetail(
 ): Promise<PublicShareProductDetailLoadResult> {
   const sidValue = firstSearchParamValue(searchParams.sid);
   const hasSidParam = typeof sidValue === 'string' && sidValue.trim().length > 0;
+  const entrySource = firstSearchParamValue(searchParams.src)?.trim();
   if (!hasSidParam) {
-    const location = await refreshPublicShareEntryLocation(params.shareToken);
+    const location = await refreshPublicShareEntryLocation(params.shareToken, {
+      productId: params.id,
+      entrySource
+    });
     if (location) {
       redirect(location);
     }
@@ -67,7 +71,10 @@ export async function loadPublicShareProductDetail(
 
   if (!shareResult.ok) {
     if (shouldAutoRefreshShareSignature(shareResult.status, shareResult.errorCode)) {
-      const location = await refreshPublicShareEntryLocation(params.shareToken);
+      const location = await refreshPublicShareEntryLocation(params.shareToken, {
+        productId: params.id,
+        entrySource
+      });
       if (location) {
         redirect(location);
       }

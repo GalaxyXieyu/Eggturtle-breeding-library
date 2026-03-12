@@ -75,6 +75,7 @@ export default function ReferralFirstVisitModal({ tenantSlug }: { tenantSlug: st
   }, [notice]);
 
   const shareUrl = useMemo(() => resolveReferralShareUrl(overview), [overview]);
+  const firstUploadDays = overview?.rules.firstProductInviteeDays ?? 7;
 
   async function handleCopy() {
     if (!shareUrl) {
@@ -116,19 +117,19 @@ export default function ReferralFirstVisitModal({ tenantSlug }: { tenantSlug: st
           <Sparkles size={12} />
           Invite Rewards
         </p>
-        <h2 className="mt-3 text-xl font-semibold text-neutral-900">邀请好友首付，双方各得 7 天</h2>
+        <h2 className="mt-3 text-xl font-semibold text-neutral-900">邀请好友上传首只乌龟，双方各得 {firstUploadDays} 天</h2>
         <p className="mt-2 text-sm leading-6 text-neutral-600">
-          好友后续每次续费，你再得 30 天；每人每月最多 60 天。奖励会直接延长 PRO 到期时间。
+          好友从公开页注册后会自动绑定；首次成功上传一只乌龟后，双方各得 {firstUploadDays} 天，奖励会直接延长 PRO 到期时间。
         </p>
 
         <div className="mt-4 grid grid-cols-3 gap-2">
           <div className="rounded-2xl bg-neutral-50 px-3 py-2">
-            <p className="text-[11px] text-neutral-500">首付奖励</p>
-            <p className="mt-1 text-sm font-semibold text-neutral-900">双方各 7 天</p>
+            <p className="text-[11px] text-neutral-500">首只上传</p>
+            <p className="mt-1 text-sm font-semibold text-neutral-900">双方各 {firstUploadDays} 天</p>
           </div>
           <div className="rounded-2xl bg-neutral-50 px-3 py-2">
-            <p className="text-[11px] text-neutral-500">续费奖励</p>
-            <p className="mt-1 text-sm font-semibold text-neutral-900">你得 30 天</p>
+            <p className="text-[11px] text-neutral-500">自动绑定</p>
+            <p className="mt-1 text-sm font-semibold text-neutral-900">注册后自动建联</p>
           </div>
           <div className="rounded-2xl bg-neutral-50 px-3 py-2">
             <p className="text-[11px] text-neutral-500">本月上限</p>

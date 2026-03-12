@@ -45,6 +45,43 @@ export function formatError(error: unknown) {
   return '未知错误';
 }
 
+function normalizeDisplayText(value: string | null | undefined) {
+  return (value ?? '')
+    .trim()
+    .replace(/[公母♀♂]+$/u, '')
+    .toLowerCase();
+}
+
+export function resolveDistinctBreederName(
+  code: string | null | undefined,
+  name: string | null | undefined,
+) {
+  const displayName = name?.trim() ?? '';
+  if (!displayName) {
+    return null;
+  }
+
+  const displayCode = code?.trim() ?? '';
+  if (displayCode && normalizeDisplayText(displayName) === normalizeDisplayText(displayCode)) {
+    return null;
+  }
+
+  return displayName;
+}
+
+export function buildBreederCodeNameLabel(
+  code: string | null | undefined,
+  name: string | null | undefined,
+) {
+  const displayCode = code?.trim() ?? '';
+  const distinctName = resolveDistinctBreederName(code, name);
+  if (displayCode && distinctName) {
+    return `${displayCode} · ${distinctName}`;
+  }
+
+  return displayCode || distinctName || '未命名种龟';
+}
+
 export function eventTypeLabel(eventType: string) {
   if (eventType === 'mating') return '交配';
   if (eventType === 'egg') return '产蛋';

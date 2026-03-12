@@ -13,15 +13,21 @@ import {
 } from '@eggturtle/shared/auth';
 
 import { UiPreferenceControls, type UiLocale, useUiPreferences } from '@/components/ui-preferences';
-import { apiRequest, getAccessToken, setAccessToken } from '@/lib/api-client';
+import { ApiError, apiRequest, getAccessToken, setAccessToken } from '@/lib/api-client';
 import { usePlatformBranding } from '@/lib/branding-client';
 import { formatApiError } from '@/lib/error-utils';
+import {
+  clearPendingPublicAttribution,
+  getPendingPublicAttribution,
+} from '@/lib/public-attribution-client';
 import { resolvePostAuthRedirect } from '@/lib/post-auth-redirect';
 import {
   bindReferralCode,
+  bindReferralFromAttribution,
   clearPendingReferralCode,
   getPendingReferralCode,
   stashPendingReferralCode,
+  stashReferralAuthNotice,
 } from '@/lib/referral-client';
 
 type EntryView = 'login' | 'register';
@@ -380,6 +386,65 @@ function LoginPageContent() {
     );
   }
 
+  function shouldClearPendingReferralAfterError(error: unknown) {
+    return error instanceof ApiError && error.status >= 400 && error.status < 500;
+  }
+
+  async function consumePendingReferralAfterAuth() {
+    const explicitReferralCode = searchParams.get('ref')
+      ? stashPendingReferralCode(searchParams.get('ref'))
+      : getPendingReferralCode();
+
+    if (explicitReferralCode) {
+      try {
+        const response = await bindReferralCode(explicitReferralCode, 'share_link');
+        clearPendingReferralCode();
+        clearPendingPublicAttribution();
+        if (response.binding) {
+          stashReferralAuthNotice('已绑定邀请关系。');
+        }
+        return;
+      } catch (bindError) {
+        console.warn('[Referral] Auto bind after auth failed:', bindError);
+        if (shouldClearPendingReferralAfterError(bindError)) {
+          clearPendingReferralCode();
+        }
+        return;
+      }
+    }
+
+    const pendingAttribution = getPendingPublicAttribution();
+    if (!pendingAttribution) {
+      return;
+    }
+
+    try {
+      const response = await bindReferralFromAttribution({
+        fromUrl: pendingAttribution.fromUrl,
+        pageType: pendingAttribution.pageType,
+        shareToken: pendingAttribution.shareToken,
+        tenantSlug: pendingAttribution.tenantSlug,
+        productId: pendingAttribution.productId,
+        verifyId: pendingAttribution.verifyId,
+        entrySource: pendingAttribution.entrySource,
+        capturedAt: pendingAttribution.capturedAt,
+      });
+
+      if (response.consumed) {
+        clearPendingPublicAttribution();
+      }
+
+      if (response.binding) {
+        clearPendingReferralCode();
+        stashReferralAuthNotice('已绑定邀请关系。');
+      } else if (response.reason) {
+        console.info('[Referral] Public attribution consumed:', response.reason);
+      }
+    } catch (bindError) {
+      console.warn('[Referral] Public attribution bind failed:', bindError);
+    }
+  }
+
   function normalizePhone(value: string) {
     const digitsOnly = value.replace(/\D/g, '');
     if (digitsOnly.startsWith('86') && digitsOnly.length > 11) {
@@ -550,6 +615,7 @@ function LoginPageContent() {
       });
 
       setAccessToken(response.accessToken);
+      await consumePendingReferralAfterAuth();
       router.replace(getPostAuthRedirect('/app'));
     } catch (requestError) {
       setError(formatApiError(requestError, copy.unknownError, locale));
@@ -592,6 +658,7 @@ function LoginPageContent() {
       });
 
       setAccessToken(response.accessToken);
+      await consumePendingReferralAfterAuth();
       const nextPath = response.isNewUser
         ? `/app/${response.tenant.slug}/account?setup=1`
         : `/app/${response.tenant.slug}`;
@@ -653,18 +720,7 @@ function LoginPageContent() {
       });
 
       setAccessToken(response.accessToken);
-
-      const pendingReferralCode = searchParams.get('ref')
-        ? stashPendingReferralCode(searchParams.get('ref'))
-        : getPendingReferralCode();
-      if (pendingReferralCode) {
-        try {
-          await bindReferralCode(pendingReferralCode, 'share_link');
-          clearPendingReferralCode();
-        } catch (bindError) {
-          console.warn('[Referral] Auto bind after register failed:', bindError);
-        }
-      }
+      await consumePendingReferralAfterAuth();
 
       router.replace(
         getPostAuthRedirect(`/app/${response.tenant.slug}/account?setup=1`, {

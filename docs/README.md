@@ -18,9 +18,14 @@
   - UI 设计规范与交互契约（抽屉、药丸筛选、FAB、移动端行为）
 - [deploy/sealos-domain-hardening.md](./deploy/sealos-domain-hardening.md)
   - Sealos 域名/HTTPS/301 收口方案与发布后自动验收闸门
+- [deployment/t77-public-attribution-first-product-runbook.md](./deployment/t77-public-attribution-first-product-runbook.md)
+  - T77 公开页归因、自动绑定、首只上传奖励上线与回滚手册
 
 ## 本轮重点变更（2026-03-04）
 
+- 公开页新增首触归因采集；注册/登录后自动消费公开页来源并建立邀请关系。
+- 邀请奖励主链路切换为“首只乌龟上传成功”，双方各得 7 天会员。
+- 证书二维码改为强制绝对验真 URL；海报二维码默认追加 `src=poster` 便于归因。
 - 产品管理从“多入口页面”收敛为“列表 + 抽屉”单入口交互。
 - 创建/编辑统一由 `ProductDrawer` 分发，图片上传与资料编辑都在抽屉内完成。
 - 移动端筛选逻辑明确分支：

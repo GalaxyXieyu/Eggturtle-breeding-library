@@ -118,9 +118,9 @@ export class ProductsController {
     const tenantId = this.requireTenantId(request.tenantId);
     const actorUserId = this.requireUserId(request.user?.id);
     const payload = parseOrThrow(createProductRequestSchema, body);
-    const product = await this.productsService.createProduct(tenantId, actorUserId, payload);
+    const result = await this.productsService.createProduct(tenantId, actorUserId, payload);
 
-    return createProductResponseSchema.parse({ product });
+    return createProductResponseSchema.parse(result);
   }
 
   @Get()

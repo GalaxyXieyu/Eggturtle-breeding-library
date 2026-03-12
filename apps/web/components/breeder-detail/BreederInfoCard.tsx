@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { type Product, type ProductImage } from '@eggturtle/shared';
 import { ArrowLeft, FileBadge2, HeartHandshake, Image as ImageIcon, Loader2, PencilRuler } from 'lucide-react';
+import { resolveDistinctBreederName } from '@/lib/breeder-utils';
 import { formatPrice, formatSex } from '@/lib/pet-format';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -106,6 +107,12 @@ export function BreederInfoCard({
     [activeImage, resolveImageUrl]
   );
   const [heroImageLoaded, setHeroImageLoaded] = useState(false);
+  const breederCode = breeder?.code?.trim() ?? '';
+  const breederDistinctName = useMemo(
+    () => resolveDistinctBreederName(breeder?.code, breeder?.name),
+    [breeder?.code, breeder?.name],
+  );
+  const breederTitle = (breederDistinctName ?? breederCode) || '种龟详情';
 
   useEffect(() => {
     setHeroImageLoaded(false);
@@ -150,8 +157,10 @@ export function BreederInfoCard({
               </div>
             )}
             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/50 to-transparent p-4">
-              <p className="text-sm font-semibold text-white">{breeder?.code ?? '种龟详情'}</p>
-              <p className="text-xs text-white/85">{breeder?.name ?? '未命名种龟'}</p>
+              <p className="text-sm font-semibold text-white">{breederCode || breederTitle}</p>
+              {breederCode && breederDistinctName ? (
+                <p className="text-xs text-white/85">{breederDistinctName}</p>
+              ) : null}
             </div>
           </div>
 
@@ -203,7 +212,7 @@ export function BreederInfoCard({
           <div className="space-y-1">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">名称</p>
             <CardTitle className="text-3xl text-neutral-900 sm:text-4xl">
-              {breeder?.name?.trim() || breeder?.code || '种龟详情'}
+              {breederTitle}
             </CardTitle>
           </div>
           <div className="flex flex-wrap items-center gap-2">

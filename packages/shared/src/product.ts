@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { referralRewardSchema } from './referral';
+
 const nullableText = z.string().trim().max(5000).nullable().optional();
 const nullableCode = z.string().trim().max(120).nullable().optional();
 const nullableSeriesId = z.string().trim().max(120).nullable().optional();
@@ -131,7 +133,8 @@ export const createProductEventRequestSchema = z.object({
 });
 
 export const createProductResponseSchema = z.object({
-  product: productSchema
+  product: productSchema,
+  referralReward: referralRewardSchema.nullable().optional(),
 });
 
 export const getProductResponseSchema = z.object({

@@ -1,8 +1,11 @@
 import {
+  bindReferralFromAttributionRequestSchema,
+  bindReferralFromAttributionResponseSchema,
   bindReferralRequestSchema,
   bindReferralResponseSchema,
   myReferralOverviewResponseSchema,
   publicReferralLandingResponseSchema,
+  type BindReferralFromAttributionRequest,
   type BindReferralRequest,
   type MyReferralOverviewResponse,
 } from '@eggturtle/shared';
@@ -11,6 +14,7 @@ import { apiRequest } from '@/lib/api-client';
 
 const PENDING_REFERRAL_STORAGE_KEY = 'eggturtle.pending-referral-code:v1';
 const REFERRAL_PROMO_DISMISSED_KEY_PREFIX = 'eggturtle.referral-promo-dismissed:v1:';
+const REFERRAL_AUTH_NOTICE_STORAGE_KEY = 'eggturtle.referral-auth-notice:v1';
 
 function canUseStorage() {
   return typeof window !== 'undefined';
@@ -69,6 +73,29 @@ export function markReferralPromoDismissed(tenantSlug: string): void {
   window.localStorage.setItem(`${REFERRAL_PROMO_DISMISSED_KEY_PREFIX}${tenantSlug}`, '1');
 }
 
+export function stashReferralAuthNotice(message: string): void {
+  if (!canUseStorage()) {
+    return;
+  }
+
+  const normalized = message.trim();
+  if (!normalized) {
+    return;
+  }
+
+  window.sessionStorage.setItem(REFERRAL_AUTH_NOTICE_STORAGE_KEY, normalized);
+}
+
+export function consumeReferralAuthNotice(): string | null {
+  if (!canUseStorage()) {
+    return null;
+  }
+
+  const message = window.sessionStorage.getItem(REFERRAL_AUTH_NOTICE_STORAGE_KEY)?.trim() ?? '';
+  window.sessionStorage.removeItem(REFERRAL_AUTH_NOTICE_STORAGE_KEY);
+  return message || null;
+}
+
 export function resolveReferralShareUrl(
   overview: Pick<MyReferralOverviewResponse, 'sharePath' | 'shareUrl'> | null | undefined,
 ): string {
@@ -117,5 +144,14 @@ export async function bindReferralCode(
     },
     requestSchema: bindReferralRequestSchema,
     responseSchema: bindReferralResponseSchema,
+  });
+}
+
+export async function bindReferralFromAttribution(input: BindReferralFromAttributionRequest) {
+  return apiRequest('/referrals/bind-from-attribution', {
+    method: 'POST',
+    body: input,
+    requestSchema: bindReferralFromAttributionRequestSchema,
+    responseSchema: bindReferralFromAttributionResponseSchema,
   });
 }

@@ -63,6 +63,7 @@ export class SharesController {
   async openShare(
     @Param('shareToken') shareToken: string,
     @Query('pid') requestedProductId: string | undefined,
+    @Query('src') entrySource: string | undefined,
     @Req() request: PublicRequest,
     @Res() response: { redirect: (statusCode: number, url: string) => unknown }
   ) {
@@ -73,7 +74,8 @@ export class SharesController {
         userAgent: this.getUserAgent(request)
       },
       this.getRequestOrigin(request.headers),
-      requestedProductId
+      requestedProductId,
+      entrySource
     );
 
     return response.redirect(result.statusCode, result.redirectUrl);

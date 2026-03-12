@@ -246,7 +246,13 @@ function resolvePublicShareRevalidateSeconds(): number {
   return Math.floor(parsed);
 }
 
-export async function refreshPublicShareEntryLocation(shareToken: string): Promise<string | null> {
+export async function refreshPublicShareEntryLocation(
+  shareToken: string,
+  options: {
+    productId?: string | null;
+    entrySource?: string | null;
+  } = {}
+): Promise<string | null> {
   const normalizedShareToken = shareToken.trim();
   if (!normalizedShareToken) {
     return null;
@@ -255,6 +261,15 @@ export async function refreshPublicShareEntryLocation(shareToken: string): Promi
   const apiBaseUrl =
     process.env.INTERNAL_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE_URL;
   const requestUrl = new URL(`/s/${normalizedShareToken}`, apiBaseUrl);
+  const normalizedProductId = options.productId?.trim();
+  if (normalizedProductId) {
+    requestUrl.searchParams.set('pid', normalizedProductId);
+  }
+
+  const normalizedEntrySource = options.entrySource?.trim();
+  if (normalizedEntrySource) {
+    requestUrl.searchParams.set('src', normalizedEntrySource);
+  }
 
   try {
     const response = await fetch(requestUrl.toString(), {

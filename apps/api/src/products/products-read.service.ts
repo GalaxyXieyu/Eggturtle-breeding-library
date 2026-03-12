@@ -451,7 +451,7 @@ export class ProductsReadService {
     }
 
     const maleCodeCandidates = canonicalMateCodeCandidates(product.code);
-    const matchedFemales = await this.listMatchedFemaleProductsForMale(
+    const matchedFemales = await this.listMatchedFemaleProductsForMaleRaw(
       tenantId,
       product,
       maleCodeCandidates,
@@ -461,6 +461,14 @@ export class ProductsReadService {
     }
 
     const femaleById = new Map(matchedFemales.map((female) => [female.id, female]));
+    const representativeFemaleByKey = new Map<string, PrismaProduct>();
+    for (const female of matchedFemales) {
+      const femaleKey = this.buildProductCodeGroupKey(female.code, female.id);
+      if (!representativeFemaleByKey.has(femaleKey)) {
+        representativeFemaleByKey.set(femaleKey, female);
+      }
+    }
+
     const events = await this.prisma.productEvent.findMany({
       where: {
         tenantId,
@@ -478,34 +486,46 @@ export class ProductsReadService {
       orderBy: [{ eventDate: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
     });
 
-    return events.flatMap((event) => {
+    const pickedByFemaleKey = new Map<string, ProductMaleMatingHistoryItem>();
+
+    for (const event of events) {
       const female = femaleById.get(event.productId);
       if (!female) {
-        return [];
+        continue;
       }
 
       const parsedNote = parseTaggedProductEventNote(event.note);
       const maleCode = this.normalizeOptionalCode(parsedNote.maleCode);
       if (!maleCode || !maleCodeCandidates.includes(maleCode)) {
-        return [];
+        continue;
       }
 
-      return [
-        {
-          id: event.id,
-          tenantId: event.tenantId,
-          maleProductId: product.id,
-          maleCode,
-          femaleProductId: female.id,
-          femaleCode: female.code,
-          femaleName: female.name,
-          eventDate: event.eventDate.toISOString(),
-          note: parsedNote.note,
-          createdAt: event.createdAt.toISOString(),
-          updatedAt: event.updatedAt.toISOString(),
-        },
-      ];
-    });
+      const femaleKey = this.buildProductCodeGroupKey(female.code, female.id);
+      if (pickedByFemaleKey.has(femaleKey)) {
+        continue;
+      }
+
+      const representativeFemale = representativeFemaleByKey.get(femaleKey) ?? female;
+      const femaleName =
+        this.resolveDistinctProductName(representativeFemale.code, representativeFemale.name) ??
+        this.resolveDistinctProductName(representativeFemale.code, female.name);
+
+      pickedByFemaleKey.set(femaleKey, {
+        id: event.id,
+        tenantId: event.tenantId,
+        maleProductId: product.id,
+        maleCode,
+        femaleProductId: representativeFemale.id,
+        femaleCode: representativeFemale.code,
+        femaleName,
+        eventDate: event.eventDate.toISOString(),
+        note: parsedNote.note,
+        createdAt: event.createdAt.toISOString(),
+        updatedAt: event.updatedAt.toISOString(),
+      });
+    }
+
+    return Array.from(pickedByFemaleKey.values());
   }
 
   private async loadListStats(
@@ -669,7 +689,7 @@ export class ProductsReadService {
     return null;
   }
 
-  private async listMatchedFemaleProductsForMale(
+  private async listMatchedFemaleProductsForMaleRaw(
     tenantId: string,
     product: PrismaProduct,
     mateCodeCandidates = canonicalMateCodeCandidates(product.code),
@@ -696,6 +716,66 @@ export class ProductsReadService {
       orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
       take: 100,
     });
+  }
+
+  private async listMatchedFemaleProductsForMale(
+    tenantId: string,
+    product: PrismaProduct,
+    mateCodeCandidates = canonicalMateCodeCandidates(product.code),
+  ): Promise<PrismaProduct[]> {
+    const matchedFemales = await this.listMatchedFemaleProductsForMaleRaw(
+      tenantId,
+      product,
+      mateCodeCandidates,
+    );
+
+    return this.dedupeProductsByCode(matchedFemales);
+  }
+
+  private dedupeProductsByCode(products: PrismaProduct[]): PrismaProduct[] {
+    const pickedByCode = new Map<string, PrismaProduct>();
+
+    for (const product of products) {
+      const key = this.buildProductCodeGroupKey(product.code, product.id);
+      if (!pickedByCode.has(key)) {
+        pickedByCode.set(key, product);
+      }
+    }
+
+    return Array.from(pickedByCode.values());
+  }
+
+  private buildProductCodeGroupKey(code: string | null | undefined, fallbackId: string): string {
+    const normalizedCode = this.normalizeOptionalCode(code);
+    if (!normalizedCode) {
+      return 'product:' + fallbackId;
+    }
+
+    return normalizedCode.replace(/[公母♀♂]+$/u, '') || normalizedCode;
+  }
+
+  private resolveDistinctProductName(
+    code: string | null | undefined,
+    name: string | null | undefined,
+  ): string | null {
+    const displayName = name?.trim() ?? '';
+    if (!displayName) {
+      return null;
+    }
+
+    const displayCode = code?.trim() ?? '';
+    if (displayCode && this.normalizeDisplayText(displayName) === this.normalizeDisplayText(displayCode)) {
+      return null;
+    }
+
+    return displayName;
+  }
+
+  private normalizeDisplayText(value: string | null | undefined): string {
+    return (value ?? '')
+      .trim()
+      .replace(/[公母♀♂]+$/u, '')
+      .toUpperCase();
   }
 
   private async resolveCurrentMateCode(tenantId: string, product: PrismaProduct): Promise<string | null> {

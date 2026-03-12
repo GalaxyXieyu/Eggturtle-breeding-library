@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common'
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common'
 import { ErrorCode } from '@eggturtle/shared'
 import { Prisma } from '@prisma/client'
 import type {
@@ -322,19 +322,10 @@ export class ProductGeneratedAssetsSupportService {
 
   buildPublicVerifyUrl(verifyId: string): string {
     const verifyPath = this.buildPublicVerifyPath(verifyId)
-    const baseUrl = (
-      process.env.PUBLIC_VERIFY_BASE_URL ??
-      process.env.PUBLIC_WEB_BASE_URL ??
-      process.env.NEXT_PUBLIC_PUBLIC_APP_ORIGIN ??
-      ''
-    )
-      .trim()
-      .replace(/\/+$/, '')
-    if (!baseUrl) {
-      return verifyPath
-    }
-
-    return `${baseUrl}${verifyPath}`
+    const baseUrl = this.resolvePublicVerifyBaseUrl()
+    const url = new URL(verifyPath, `${baseUrl}/`)
+    url.searchParams.set('src', 'certificate')
+    return url.toString()
   }
 
   buildPublicCertificateContentPath(verifyId: string): string {
@@ -372,6 +363,60 @@ export class ProductGeneratedAssetsSupportService {
     }
 
     return value.toNumber()
+  }
+
+  private resolvePublicVerifyBaseUrl(): string {
+    const candidates = [
+      process.env.PUBLIC_VERIFY_BASE_URL,
+      process.env.PUBLIC_WEB_BASE_URL,
+      process.env.NEXT_PUBLIC_PUBLIC_APP_ORIGIN
+    ]
+
+    for (const candidate of candidates) {
+      const normalized = this.normalizeAbsoluteUrl(candidate)
+      if (!normalized) {
+        continue
+      }
+
+      this.assertPublicVerifyUrlSafe(normalized)
+      return normalized
+    }
+
+    throw new BadRequestException({
+      message: 'PUBLIC_VERIFY_BASE_URL must be configured as an absolute public URL.',
+      errorCode: ErrorCode.InvalidRequestPayload
+    })
+  }
+
+  private normalizeAbsoluteUrl(value: string | null | undefined): string | null {
+    const normalized = value?.trim().replace(/\/+$/, '')
+    if (!normalized) {
+      return null
+    }
+
+    try {
+      const parsed = new URL(normalized)
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        return null
+      }
+
+      return parsed.toString().replace(/\/+$/, '')
+    } catch {
+      return null
+    }
+  }
+
+  private assertPublicVerifyUrlSafe(baseUrl: string): void {
+    const parsed = new URL(baseUrl)
+    const host = parsed.hostname.toLowerCase()
+    const isLocalhost = host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0'
+
+    if (process.env.NODE_ENV === 'production' && isLocalhost) {
+      throw new BadRequestException({
+        message: 'PUBLIC_VERIFY_BASE_URL must use a public production host.',
+        errorCode: ErrorCode.InvalidRequestPayload
+      })
+    }
   }
 
   private getFileExtension(originalName: string, mimeType: string): string {

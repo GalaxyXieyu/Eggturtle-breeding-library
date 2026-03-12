@@ -372,7 +372,7 @@ export function buildCertificateStyleSvg(input: CertificateStyleInput): string {
   <text x="${lineageRightCenterX}" y="${lineageLine1Y}" text-anchor="middle" font-size="20" fill="#4f3f2d" class="font-code">外祖父 (Dam&apos;s Sire): ${esc(input.damSireCode)}</text>
   <text x="${lineageRightCenterX}" y="${lineageLine2Y}" text-anchor="middle" font-size="20" fill="#4f3f2d" class="font-code">外祖母 (Dam&apos;s Dam): ${esc(input.damDamCode)}</text>
 
-  <text x="${QR_SLOT.x + QR_SLOT.width / 2}" y="${qrLabelY}" text-anchor="middle" font-size="20" fill="#4b3a28" class="font-label">验真二维码</text>
+  <text x="${QR_SLOT.x + QR_SLOT.width / 2}" y="${qrLabelY}" text-anchor="middle" font-size="20" fill="#4b3a28" class="font-label">母龟详情二维码</text>
   <rect x="${CERTIFICATE_SLOTS.qr.x - 6}" y="${CERTIFICATE_SLOTS.qr.y - 6}" width="${CERTIFICATE_SLOTS.qr.width + 12}" height="${CERTIFICATE_SLOTS.qr.height + 12}" fill="none" stroke="#8f7451" stroke-width="2" rx="8"/>
 
   <g transform="translate(${STAMP_CENTER.x},${STAMP_CENTER.y})">

@@ -276,7 +276,7 @@ export default function TenantShareDialogTrigger({
   }, [handleClose, open]);
 
   useEffect(() => {
-    const currentLink = link.trim();
+    const currentLink = appendShareSource(link.trim(), 'poster');
     if (!currentLink) {
       setQrDataUrl(null);
       return;
@@ -1259,6 +1259,27 @@ function drawPosterInfoChip(ctx: CanvasRenderingContext2D, options: PosterInfoCh
 async function loadImages(urls: string[]) {
   const results = await Promise.allSettled(urls.map((url) => loadImage(url)));
   return results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []));
+}
+
+function appendShareSource(link: string, source: string): string {
+  const normalizedLink = link.trim();
+  if (!normalizedLink) {
+    return '';
+  }
+
+  try {
+    const parsed = new URL(normalizedLink, window.location.origin);
+    if (!parsed.searchParams.has('src')) {
+      parsed.searchParams.set('src', source);
+    }
+
+    return /^https?:\/\//i.test(normalizedLink)
+      ? parsed.toString()
+      : `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    const joiner = normalizedLink.includes('?') ? '&' : '?';
+    return `${normalizedLink}${joiner}src=${encodeURIComponent(source)}`;
+  }
 }
 
 function wait(ms: number) {

@@ -263,7 +263,8 @@ export class SharesCoreService {
     expiresAt: Date,
     phase: 'entry' | 'data' | 'asset',
     meta: ShareAccessMeta,
-    requestedProductId?: string | null
+    requestedProductId?: string | null,
+    requestedEntrySource?: string | null
   ) {
     await this.auditLogsService.createLog({
       tenantId: share.tenantId,
@@ -276,6 +277,7 @@ export class SharesCoreService {
         resourceId: share.resourceId,
         productId: share.productId,
         requestedProductId: requestedProductId ?? null,
+        requestedEntrySource: requestedEntrySource ?? null,
         phase,
         expiresAt: expiresAt.toISOString(),
         ip: meta.ip,

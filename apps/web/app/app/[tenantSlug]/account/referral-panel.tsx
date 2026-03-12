@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import type { MyReferralOverviewResponse } from '@eggturtle/shared';
+import type { MyReferralOverviewResponse, ReferralInviteProgress, ReferralReward } from '@eggturtle/shared';
 import { Copy, Gift, Users } from 'lucide-react';
 
 import { copyTextWithFallback } from '@/lib/browser-share';
@@ -22,6 +22,7 @@ export default function ReferralPanel({ tenantSlug }: { tenantSlug: string }) {
   const [binding, setBinding] = useState(false);
 
   const shareLink = useMemo(() => resolveReferralShareUrl(overview), [overview]);
+  const firstUploadDays = overview?.rules.firstProductInviteeDays ?? 7;
 
   useEffect(() => {
     let cancelled = false;
@@ -58,9 +59,7 @@ export default function ReferralPanel({ tenantSlug }: { tenantSlug: string }) {
     }
 
     const timer = window.setTimeout(() => setNotice(null), 2500);
-    return () => {
-      window.clearTimeout(timer);
-    };
+    return () => window.clearTimeout(timer);
   }, [notice]);
 
   async function refreshOverview() {
@@ -75,7 +74,7 @@ export default function ReferralPanel({ tenantSlug }: { tenantSlug: string }) {
 
     const copied = await copyTextWithFallback(shareLink);
     if (copied) {
-      setNotice('邀请链接已复制。邀请好友首付，双方各得 7 天。');
+      setNotice(`邀请链接已复制。好友上传首只乌龟后，双方各得 ${firstUploadDays} 天。`);
       return;
     }
 
@@ -106,9 +105,11 @@ export default function ReferralPanel({ tenantSlug }: { tenantSlug: string }) {
               <Gift size={12} />
               Invite Rewards
             </p>
-            <h2 className="mt-3 text-lg font-semibold text-neutral-900 sm:text-xl">邀请好友首付，双方各得 7 天</h2>
+            <h2 className="mt-3 text-lg font-semibold text-neutral-900 sm:text-xl">
+              邀请好友上传首只乌龟，双方各得 {firstUploadDays} 天
+            </h2>
             <p className="mt-2 text-sm leading-6 text-neutral-700">
-              好友后续每次续费，你再得 30 天；每人每月最多 {overview?.rules.monthlyCapDays ?? 60} 天。奖励直接延长 PRO 到期时间。
+              新用户从公开页注册后会自动绑定邀请关系；首次成功上传一只乌龟后，奖励直接延长双方 PRO 到期时间。
             </p>
           </div>
           <div className="inline-flex items-center gap-2 rounded-full bg-neutral-900 px-3 py-2 text-sm font-semibold text-white">
@@ -131,7 +132,7 @@ export default function ReferralPanel({ tenantSlug }: { tenantSlug: string }) {
             value={overview ? `${overview.totalAwardedDays} 天` : loading ? '加载中…' : '-'}
           />
           <MetricCard
-            label="已激活邀请"
+            label="已完成上传"
             value={overview ? `${overview.activatedInviteeCount} 人` : loading ? '加载中…' : '-'}
           />
         </div>
@@ -181,35 +182,40 @@ export default function ReferralPanel({ tenantSlug }: { tenantSlug: string }) {
       </Card>
 
       <Card className="rounded-3xl border-neutral-200/90 bg-white p-6">
+        <h3 className="text-base font-semibold text-neutral-900">邀请进度</h3>
+        <p className="mt-1 text-sm text-neutral-500">注册即锁定邀请关系；首只乌龟上传成功后，再发放奖励。</p>
+
+        {loading ? <p className="mt-4 text-sm text-neutral-600">正在加载…</p> : null}
+
+        {!loading && overview?.invites.length ? (
+          <div className="mt-4 space-y-3">
+            {overview.invites.map((invite) => (
+              <InviteProgressCard key={invite.inviteeUserId} invite={invite} />
+            ))}
+          </div>
+        ) : null}
+
+        {!loading && !overview?.invites.length ? (
+          <p className="mt-4 text-sm text-neutral-600">还没有邀请记录。先复制邀请链接，让好友从公开页进入并完成注册。</p>
+        ) : null}
+      </Card>
+
+      <Card className="rounded-3xl border-neutral-200/90 bg-white p-6">
         <h3 className="text-base font-semibold text-neutral-900">奖励记录</h3>
-        <p className="mt-1 text-sm text-neutral-500">绑定早、发奖晚：注册即锁定邀请关系，奖励只在首付/续费成功后到账。</p>
+        <p className="mt-1 text-sm text-neutral-500">兼容展示历史首付/续费奖励，以及新的首只上传奖励。</p>
 
         {loading ? <p className="mt-4 text-sm text-neutral-600">正在加载…</p> : null}
 
         {!loading && overview?.rewards.length ? (
           <div className="mt-4 space-y-3">
             {overview.rewards.map((reward) => (
-              <div key={reward.id} className="rounded-2xl border border-neutral-200 bg-neutral-50/80 p-4">
-                <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-500">
-                  <span className="rounded-full bg-white px-2 py-1 font-semibold text-neutral-700">
-                    {reward.triggerType === 'first_payment' ? '首付奖励' : '续费奖励'}
-                  </span>
-                  <span>{reward.status}</span>
-                  <span>{new Date(reward.createdAt).toLocaleString()}</span>
-                </div>
-                <p className="mt-2 text-sm font-semibold text-neutral-900">
-                  邀请人 +{reward.rewardDaysReferrer} 天，被邀请者 +{reward.rewardDaysInvitee} 天
-                </p>
-                {reward.statusReason ? (
-                  <p className="mt-1 text-xs text-amber-700">{reward.statusReason === 'monthly_cap_clipped' ? '本次奖励受月上限裁剪。' : '本月奖励已达上限。'}</p>
-                ) : null}
-              </div>
+              <RewardCard key={reward.id} reward={reward} />
             ))}
           </div>
         ) : null}
 
         {!loading && !overview?.rewards.length ? (
-          <p className="mt-4 text-sm text-neutral-600">还没有奖励记录。先复制你的邀请链接，邀请好友首付后就会开始累计。</p>
+          <p className="mt-4 text-sm text-neutral-600">还没有奖励记录。邀请好友从公开页注册并上传首只乌龟后，就会开始累计。</p>
         ) : null}
       </Card>
 
@@ -234,4 +240,86 @@ function MetricCard({ label, value }: { label: string; value: string }) {
       <p className="mt-1 text-sm font-semibold text-neutral-900">{value}</p>
     </div>
   );
+}
+
+function InviteProgressCard({ invite }: { invite: ReferralInviteProgress }) {
+  const status = getInviteStatusMeta(invite.status);
+
+  return (
+    <div className="rounded-2xl border border-neutral-200 bg-neutral-50/80 p-4">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-500">
+        <span className="rounded-full bg-white px-2 py-1 font-semibold text-neutral-700">{invite.inviteeDisplayName}</span>
+        <span className={`rounded-full px-2 py-1 font-semibold ${status.className}`}>{status.label}</span>
+        <span>{new Date(invite.boundAt).toLocaleString()}</span>
+      </div>
+      <p className="mt-2 text-sm font-semibold text-neutral-900">邀请码 {invite.referralCode}</p>
+      <p className="mt-1 text-xs text-neutral-600">
+        {invite.firstProductCreatedAt
+          ? `首只乌龟上传时间：${new Date(invite.firstProductCreatedAt).toLocaleString()}`
+          : '尚未完成首只乌龟上传'}
+      </p>
+      {invite.rewardAwardedAt ? (
+        <p className="mt-1 text-xs text-emerald-700">奖励到账时间：{new Date(invite.rewardAwardedAt).toLocaleString()}</p>
+      ) : null}
+    </div>
+  );
+}
+
+function RewardCard({ reward }: { reward: ReferralReward }) {
+  return (
+    <div className="rounded-2xl border border-neutral-200 bg-neutral-50/80 p-4">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-500">
+        <span className="rounded-full bg-white px-2 py-1 font-semibold text-neutral-700">
+          {getRewardTriggerLabel(reward.triggerType)}
+        </span>
+        <span>{reward.status}</span>
+        <span>{new Date(reward.createdAt).toLocaleString()}</span>
+      </div>
+      <p className="mt-2 text-sm font-semibold text-neutral-900">
+        邀请人 +{reward.rewardDaysReferrer} 天，被邀请者 +{reward.rewardDaysInvitee} 天
+      </p>
+      {reward.statusReason ? (
+        <p className="mt-1 text-xs text-amber-700">
+          {reward.statusReason === 'monthly_cap_clipped' ? '本次奖励受月上限裁剪。' : '本月奖励已达上限。'}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function getRewardTriggerLabel(triggerType: ReferralReward['triggerType']): string {
+  if (triggerType === 'first_product_create') {
+    return '首只上传奖励';
+  }
+
+  if (triggerType === 'first_payment') {
+    return '首付奖励';
+  }
+
+  return '续费奖励';
+}
+
+function getInviteStatusMeta(status: ReferralInviteProgress['status']) {
+  switch (status) {
+    case 'reward_awarded':
+      return {
+        label: '已发奖',
+        className: 'bg-emerald-100 text-emerald-700',
+      };
+    case 'reward_skipped':
+      return {
+        label: '奖励跳过',
+        className: 'bg-amber-100 text-amber-700',
+      };
+    case 'first_product_uploaded':
+      return {
+        label: '已上传首只',
+        className: 'bg-sky-100 text-sky-700',
+      };
+    default:
+      return {
+        label: '已绑定',
+        className: 'bg-neutral-200 text-neutral-700',
+      };
+  }
 }

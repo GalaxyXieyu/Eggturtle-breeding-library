@@ -65,6 +65,31 @@
 3. 需要转化时进入“我的”页 CTA
 4. 登录后回流用户后台
 
+
+### 2.4 邀请回流：公开页归因 -> 注册自动绑定 -> 首只上传奖励
+
+**触发场景**
+- 访客从海报二维码、公开详情页、证书验真页进入公开页面
+
+**成功标准**
+- 首次进入公开页时自动记录来源 URL
+- 注册/登录后无需手输邀请码，系统自动绑定公开页所属租户 Owner
+- 被邀请用户首次创建 `product` 后，邀请双方各得 7 天会员
+- 前端能看到绑定成功与奖励到账提示
+
+**主路径**
+1. 访客进入 `/public/s/[shareToken]`、`/public/[tenantSlug]` 或 `/public/certificates/verify/[verifyId]`
+2. 前端记录 `fromUrl / pageType / shareToken|tenantSlug|productId|verifyId / entrySource`
+3. 访客注册或登录后，优先消费显式 `ref`，否则消费 `pendingAttribution`
+4. 后端解析 inviter = 公开页所属租户 Owner，并写入 `referral_bindings.source_meta`
+5. invitee 首次成功创建 `product` 时触发 `first_product_create` 奖励
+6. 邀请双方各加 7 天 PRO，有且仅有一次，删除重建不重复发奖
+
+**回退路径**
+- 无效公开页、无 Owner、自邀、已绑定、超出 24 小时绑定窗口时，自动忽略并清理归因
+- 第二次创建产品不重复奖励
+- 海报/二维码复制链路仍可正常打开公开页，即使未登录也不阻塞浏览
+
 ## 3. 最新交互变更清单（2026-03-04）
 
 ### 3.1 产品管理流
@@ -91,6 +116,8 @@
 - 产品创建与编辑必须走抽屉，不再新增独立管理页。
 - 图片相关操作必须与资料编辑处于同一交互容器（抽屉）。
 - 移动端筛选 FAB 必须打开底部抽屉。
+- 公开页归因只在未登录状态记录，且采用 first-touch wins，30 天 TTL。
+- 邀请奖励只能由 invitee 首次创建 `product` 触发一次。
 - 关闭按钮位置统一为右侧，避免不同容器认知不一致。
 
 ### SHOULD

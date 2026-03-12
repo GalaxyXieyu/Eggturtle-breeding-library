@@ -92,11 +92,16 @@ export class ProductCouplePhotosService {
       )
     }
 
-    const qrPayload = await this.buildCouplePhotoQrPayload(
-      tenantId,
-      actorUserId,
-      context.femaleProduct.id
-    )
+    let qrPayload: string
+    try {
+      qrPayload = await this.buildCouplePhotoQrPayload(
+        tenantId,
+        actorUserId,
+        context.femaleProduct.id
+      )
+    } catch {
+      throw new InternalServerErrorException('夫妻图分享链接生成失败，请检查公网域名配置后重试。')
+    }
 
     let png: Buffer
     try {
@@ -344,22 +349,19 @@ export class ProductCouplePhotosService {
     tenantId: string,
     actorUserId: string,
     productId: string
-  ): Promise<string | null> {
-    try {
-      const share = await this.sharesCoreService.getOrCreateShare(
-        tenantId,
-        'tenant_feed',
-        tenantId,
-        null,
-        actorUserId,
-        undefined
-      )
-      const entryUrl = this.sharesCoreService.buildShareEntryUrl(share.shareToken)
-      const joiner = entryUrl.includes('?') ? '&' : '?'
-      return `${entryUrl}${joiner}pid=${encodeURIComponent(productId)}`
-    } catch {
-      return null
-    }
+  ): Promise<string> {
+    const share = await this.sharesCoreService.getOrCreateShare(
+      tenantId,
+      'tenant_feed',
+      tenantId,
+      null,
+      actorUserId,
+      undefined
+    )
+    const entryUrl = new URL(this.sharesCoreService.buildShareEntryUrl(share.shareToken))
+    entryUrl.searchParams.set('pid', productId)
+    entryUrl.searchParams.set('src', 'couple_photo')
+    return entryUrl.toString()
   }
 
   private async loadCouplePhotoContext(tenantId: string, femaleProductId: string): Promise<CouplePhotoContext> {
