@@ -15,7 +15,7 @@ import {
 import {
   AdminBadge,
   AdminPanel,
-  AdminTableFrame
+    AdminTableFrame
 } from '@/components/dashboard/polish-primitives';
 import { formatAuditActionLabel } from '@/lib/admin-labels';
 import { apiRequest } from '@/lib/api-client';

@@ -14,6 +14,7 @@ type AdminPageHeaderProps = {
 
 type AdminPanelProps = ClassNameProps & {
   children: ReactNode;
+  id?: string;
 };
 
 type AdminMetricCardProps = {
@@ -30,6 +31,18 @@ type AdminBadgeProps = ClassNameProps & {
 type AdminActionLinkProps = {
   href: string;
   children: ReactNode;
+};
+
+type AdminSectionNavItem = {
+  label: string;
+  href?: string;
+  active?: boolean;
+  onClick?: () => void;
+};
+
+type AdminSectionNavProps = {
+  items: AdminSectionNavItem[];
+  ariaLabel?: string;
 };
 
 type BilingualCopy = {
@@ -68,8 +81,12 @@ export function AdminPageHeader({
   );
 }
 
-export function AdminPanel({ className, children }: AdminPanelProps) {
-  return <article className={cx('admin-panel', className)}>{children}</article>;
+export function AdminPanel({ className, children, id }: AdminPanelProps) {
+  return (
+    <article id={id} className={cx('admin-panel', className)}>
+      {children}
+    </article>
+  );
 }
 
 export function AdminMetricCard({ label, value, meta }: AdminMetricCardProps) {
@@ -91,6 +108,38 @@ export function AdminActionLink({ href, children }: AdminActionLinkProps) {
     <Link className="admin-action-link" href={href}>
       {children}
     </Link>
+  );
+}
+
+export function AdminSectionNav({ items, ariaLabel = '页面分类' }: AdminSectionNavProps) {
+  return (
+    <nav className="admin-section-nav" aria-label={ariaLabel}>
+      <div className="admin-section-nav-list">
+        {items.map((item) => {
+          const className = cx('admin-section-nav-link', item.active && 'is-active');
+
+          if (item.href) {
+            return (
+              <Link key={`${item.label}:${item.href}`} className={className} href={item.href}>
+                {item.label}
+              </Link>
+            );
+          }
+
+          return (
+            <button
+              key={item.label}
+              data-ui="button"
+              type="button"
+              className={className}
+              onClick={item.onClick}
+            >
+              {item.label}
+            </button>
+          );
+        })}
+      </div>
+    </nav>
   );
 }
 
