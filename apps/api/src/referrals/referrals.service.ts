@@ -349,13 +349,16 @@ export class ReferralsService {
     });
   }
 
-  async awardReferralForPaidOrder(input: PaidOrderInput): Promise<SettleReferralPaidEventResponse> {
+  async awardReferralForPaidOrder(
+    input: PaidOrderInput,
+    db?: Prisma.TransactionClient,
+  ): Promise<SettleReferralPaidEventResponse> {
     const paidAt = input.paidAt ?? new Date();
     const normalizedProvider = input.provider.trim().toLowerCase();
     const normalizedOrderId = input.orderId.trim();
     const normalizedPaymentId = input.paymentId?.trim() || null;
 
-    return this.prisma.$transaction(async (tx) => {
+    const run = async (tx: Prisma.TransactionClient) => {
       const existingReward = await tx.referralReward.findFirst({
         where: this.buildRewardDedupWhere(normalizedOrderId, normalizedPaymentId),
         select: {
@@ -522,7 +525,13 @@ export class ReferralsService {
         triggerType: this.toApiTriggerType(reward.triggerType),
         reward: this.toApiReward(reward),
       };
-    });
+    };
+
+    if (db) {
+      return run(db);
+    }
+
+    return this.prisma.$transaction(async (tx) => run(tx));
   }
 
   async ensureReferralCode(userId: string, db?: Prisma.TransactionClient): Promise<string> {

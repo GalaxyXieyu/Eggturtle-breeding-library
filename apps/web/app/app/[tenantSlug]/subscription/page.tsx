@@ -1,84 +1,126 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useParams, usePathname, useSearchParams } from 'next/navigation';
 import {
+  SUBSCRIPTION_PLAN_PRODUCT_LIMITS,
+  SUBSCRIPTION_PRICE_BOOK,
+  createSubscriptionOrderRequestSchema,
+  createSubscriptionOrderResponseSchema,
+  createWechatAuthorizeUrlRequestSchema,
+  createWechatAuthorizeUrlResponseSchema,
+  getSubscriptionOrderResponseSchema,
   meSubscriptionResponseSchema,
   redeemTenantSubscriptionActivationCodeRequestSchema,
   redeemTenantSubscriptionActivationCodeResponseSchema,
-  type TenantSubscription
+  type PayableTenantSubscriptionPlan,
+  cancelSubscriptionOrderResponseSchema,
+  type SubscriptionDurationDays,
+  type SubscriptionOrder,
+  type TenantSubscription,
 } from '@eggturtle/shared';
-import { Wallet } from 'lucide-react';
+import { CheckCircle2, Clock3, ShieldCheck, Wallet } from 'lucide-react';
 
+import ReferralPromoCard from '@/components/referral-promo-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import ReferralPromoCard from '@/components/referral-promo-card';
 import { buildInteractivePillClass } from '@/components/ui/pill';
 import { ApiError, apiRequest, getAccessToken } from '@/lib/api-client';
 import { switchTenantBySlug } from '@/lib/tenant-session';
 
-type PlanTier = 'FREE' | 'BASIC' | 'PRO';
+type PlanTier = 'FREE' | PayableTenantSubscriptionPlan;
 
-type PlanPackage = {
-  tier: PlanTier;
-  name: string;
-  price: string;
-  productLimit: string;
-  aiQuota: string;
-  perks: string[];
+type PurchaseIntent = {
+  plan: PayableTenantSubscriptionPlan;
+  durationDays: SubscriptionDurationDays;
 };
 
-const PLAN_LIMITS: Record<PlanTier, number> = {
-  FREE: 10,
-  BASIC: 30,
-  PRO: 200
+type WechatPayInvokeResult = {
+  err_msg?: string;
 };
 
-const PLAN_PACKAGES: PlanPackage[] = [
-  {
-    tier: 'FREE',
-    name: '免费版',
-    price: '¥0 / 月',
-    productLimit: '10 只',
-    aiQuota: '自动记录体验额度 10 次/月',
-    perks: ['基础档案管理', '交配/产蛋记录', '基础分享能力']
-  },
-  {
-    tier: 'BASIC',
-    name: '基础版',
-    price: '¥28 / 月',
-    productLimit: '30 只',
-    aiQuota: '自动记录 + 问数（按月限次）',
-    perks: ['完整血统溯源', '图册展示 + 二维码', '小团队稳定运营']
-  },
-  {
-    tier: 'PRO',
-    name: '专业版',
-    price: '¥49 / 月',
-    productLimit: '200 只',
-    aiQuota: '更高 AI 月额度 + 支持叠加充值包',
-    perks: ['证书能力', '图片水印能力', '品牌化展示与成交支持']
+type WeixinJsBridge = {
+  invoke: (
+    name: 'getBrandWCPayRequest',
+    params: Record<string, string>,
+    callback: (result: WechatPayInvokeResult) => void,
+  ) => void;
+};
+
+declare global {
+  interface Window {
+    WeixinJSBridge?: WeixinJsBridge;
   }
-];
+}
+
+const DURATION_OPTIONS: SubscriptionDurationDays[] = [30, 90, 365];
+const PENDING_PURCHASE_STORAGE_KEY = 'eggturtle.subscription.pending-purchase.v1';
+const ORDER_POLL_INTERVAL_MS = 2_000;
+const ORDER_POLL_TIMEOUT_MS = 60_000;
+
+const PLAN_META: Record<PlanTier, { name: string; summary: string; perks: string[]; badge: string }> = {
+  FREE: {
+    name: '免费版',
+    summary: '适合刚开始建档的个人或小规模龟场。',
+    badge: '体验',
+    perks: ['基础档案管理', '交配 / 产蛋记录', '基础分享能力'],
+  },
+  BASIC: {
+    name: '基础版',
+    summary: '适合稳定经营、需要完整溯源和对外展示的团队。',
+    badge: '常用',
+    perks: ['完整血统溯源', '图册展示 + 二维码', '更高图片与分享额度'],
+  },
+  PRO: {
+    name: '专业版',
+    summary: '适合高频上新、品牌化展示和更高配额的运营场景。',
+    badge: '推荐',
+    perks: ['证书能力', '图片水印能力', '高配额与品牌化展示'],
+  },
+};
 
 export default function SubscriptionPage() {
   const params = useParams<{ tenantSlug: string }>();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const tenantSlug = useMemo(() => params.tenantSlug ?? '', [params.tenantSlug]);
+  const wechatAuthStatus = searchParams.get('wechatAuth');
 
   const [loading, setLoading] = useState(true);
-  const [redeeming, setRedeeming] = useState(false);
   const [subscription, setSubscription] = useState<TenantSubscription | null>(null);
   const [activationCode, setActivationCode] = useState('');
+  const [redeeming, setRedeeming] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [upgradeModalPlan, setUpgradeModalPlan] = useState<PlanPackage | null>(null);
-  const [activeMobilePlanIndex, setActiveMobilePlanIndex] = useState(0);
-  const [proPlanFocused, setProPlanFocused] = useState(false);
-  const mobilePlansRef = useRef<HTMLDivElement>(null);
-  const proPlanFocusTimerRef = useRef<number | null>(null);
+  const [purchasePlan, setPurchasePlan] = useState<PayableTenantSubscriptionPlan | null>(null);
+  const [purchaseDuration, setPurchaseDuration] = useState<SubscriptionDurationDays>(30);
+  const [paying, setPaying] = useState(false);
+  const [lastOrderNo, setLastOrderNo] = useState<string | null>(null);
+
+  const oauthResumeHandledRef = useRef(false);
+  const [isWechat, setIsWechat] = useState<boolean | null>(null);
+  const currentPlan = normalizePlan(subscription?.plan);
+  const currentMeta = PLAN_META[currentPlan];
+
+  const refreshSubscription = useCallback(async () => {
+    if (!tenantSlug) {
+      return null;
+    }
+
+    await switchTenantBySlug(tenantSlug);
+    const response = await apiRequest('/me/subscription', {
+      responseSchema: meSubscriptionResponseSchema,
+    });
+    setSubscription(response.subscription);
+    return response.subscription;
+  }, [tenantSlug]);
+
+  useEffect(() => {
+    setIsWechat(isWechatBrowser());
+  }, []);
 
   useEffect(() => {
     if (!tenantSlug) {
@@ -100,7 +142,7 @@ export default function SubscriptionPage() {
       try {
         await switchTenantBySlug(tenantSlug);
         const response = await apiRequest('/me/subscription', {
-          responseSchema: meSubscriptionResponseSchema
+          responseSchema: meSubscriptionResponseSchema,
         });
 
         if (cancelled) {
@@ -124,74 +166,179 @@ export default function SubscriptionPage() {
     };
   }, [tenantSlug]);
 
-  const currentPlan = normalizePlan(subscription?.plan);
-  const effectiveProductLimit = resolveEffectiveProductLimit(subscription);
-  const featuredPlan = useMemo(() => getHighestUpgradePlan(currentPlan), [currentPlan]);
-  const featuredPlanDelta = useMemo(() => {
-    if (!featuredPlan) {
-      return 0;
-    }
+  const redirectToWechatAuthorize = useCallback(async (intent: PurchaseIntent) => {
+    persistPendingPurchaseIntent(intent);
+    await switchTenantBySlug(tenantSlug);
+    const response = await apiRequest('/auth/wechat/authorize-url', {
+      method: 'POST',
+      body: {
+        returnPath: pathname || `/app/${tenantSlug}/subscription`,
+      },
+      requestSchema: createWechatAuthorizeUrlRequestSchema,
+      responseSchema: createWechatAuthorizeUrlResponseSchema,
+    });
 
-    return Math.max(PLAN_LIMITS[featuredPlan.tier] - effectiveProductLimit, 0);
-  }, [featuredPlan, effectiveProductLimit]);
-  const highestPlanIndex = useMemo(() => PLAN_PACKAGES.findIndex((item) => item.tier === 'PRO'), []);
+    window.location.assign(response.authorizeUrl);
+  }, [pathname, tenantSlug]);
 
-  useEffect(() => {
-    if (highestPlanIndex >= 0) {
-      setActiveMobilePlanIndex(highestPlanIndex);
-    }
-  }, [highestPlanIndex]);
+  const pollOrderStatus = useCallback(async (orderNo: string) => {
+    const startedAt = Date.now();
 
-  useEffect(() => {
-    return () => {
-      if (proPlanFocusTimerRef.current !== null) {
-        window.clearTimeout(proPlanFocusTimerRef.current);
+    while (Date.now() - startedAt <= ORDER_POLL_TIMEOUT_MS) {
+      const response = await apiRequest(`/subscriptions/orders/${encodeURIComponent(orderNo)}`, {
+        responseSchema: cancelSubscriptionOrderResponseSchema,
+      });
+      const order = response.order;
+
+      if (order.status === 'PAID') {
+        clearPendingPurchaseIntent();
+        await refreshSubscription().catch(() => null);
+        setMessage(buildPaidOrderMessage(order));
+        setPurchasePlan(null);
+        setLastOrderNo(order.orderNo);
+        return order;
       }
-    };
-  }, []);
 
-  useEffect(() => {
-    if (!upgradeModalPlan) {
+      if (order.status === 'CANCELLED') {
+        throw new Error('订单已取消，请重新发起支付。');
+      }
+
+      if (order.status === 'EXPIRED') {
+        throw new Error('订单已过期，请重新发起支付。');
+      }
+
+      if (order.status === 'REFUNDED') {
+        throw new Error('订单已退款，请联系管理员确认订阅状态。');
+      }
+
+      await sleep(ORDER_POLL_INTERVAL_MS);
+    }
+
+    setMessage('支付结果确认中，请稍后刷新页面查看最新订阅状态。');
+    return null;
+  }, [refreshSubscription]);
+
+  const startWechatPayment = useCallback(async (intent: PurchaseIntent) => {
+    if (!tenantSlug) {
       return;
     }
 
-    function handleEscClose(event: KeyboardEvent) {
-      if (event.key === 'Escape' && !redeeming) {
-        setUpgradeModalPlan(null);
-      }
+    if (isWechat !== true) {
+      setError('微信支付一期仅支持微信内 JSAPI，请在微信内打开本页；激活码入口仍可继续使用。');
+      return;
     }
 
-    window.addEventListener('keydown', handleEscClose);
-    return () => {
-      window.removeEventListener('keydown', handleEscClose);
-    };
-  }, [upgradeModalPlan, redeeming]);
+    persistPendingPurchaseIntent(intent);
+    setPaying(true);
+    setError(null);
+    setMessage(null);
+    setLastOrderNo(null);
+
+    try {
+      await switchTenantBySlug(tenantSlug);
+
+      const created = await apiRequest('/subscriptions/orders', {
+        method: 'POST',
+        body: {
+          plan: intent.plan,
+          durationDays: intent.durationDays,
+          paymentChannel: 'JSAPI',
+        },
+        requestSchema: createSubscriptionOrderRequestSchema,
+        responseSchema: createSubscriptionOrderResponseSchema,
+      });
+
+      setLastOrderNo(created.order.orderNo);
+      const bridge = await waitForWeixinJsBridge();
+      const invokeResult = await invokeWechatPay(created.jsapiParams, bridge);
+      const normalizedResult = (invokeResult.err_msg ?? '').toLowerCase();
+
+      if (normalizedResult.endsWith(':ok')) {
+        setMessage('支付已提交，正在确认订单状态…');
+        await pollOrderStatus(created.order.orderNo);
+        return;
+      }
+
+      if (normalizedResult.endsWith(':cancel')) {
+        setMessage('你已取消支付，本次订单已停止。');
+        await cancelOrderBestEffort(created.order.orderNo);
+        return;
+      }
+
+      setError(normalizedResult ? `微信支付未完成：${invokeResult.err_msg}` : '微信支付未完成，请稍后重试。');
+    } catch (requestError) {
+      if (requestError instanceof ApiError && requestError.errorCode === 'WECHAT_OAUTH_REQUIRED') {
+        try {
+          setMessage('正在跳转微信授权，完成后会自动回到当前订阅页继续支付。');
+          await redirectToWechatAuthorize(intent);
+          return;
+        } catch (oauthError) {
+          setError(formatError(oauthError));
+          return;
+        }
+      }
+
+      setError(formatError(requestError));
+    } finally {
+      setPaying(false);
+    }
+  }, [isWechat, pollOrderStatus, redirectToWechatAuthorize, tenantSlug]);
+
+  useEffect(() => {
+    if (!wechatAuthStatus || loading || oauthResumeHandledRef.current || isWechat === null) {
+      return;
+    }
+
+    oauthResumeHandledRef.current = true;
+    clearWechatAuthQuery();
+
+    if (wechatAuthStatus !== 'success') {
+      clearPendingPurchaseIntent();
+      setError(resolveWechatAuthMessage(wechatAuthStatus));
+      return;
+    }
+
+    const pendingIntent = loadPendingPurchaseIntent();
+    if (!pendingIntent) {
+      setMessage('微信授权已完成，你可以继续选择套餐并发起支付。');
+      return;
+    }
+
+    setPurchasePlan(pendingIntent.plan);
+    setPurchaseDuration(pendingIntent.durationDays);
+    setMessage('微信授权已完成，正在恢复支付流程…');
+    void startWechatPayment(pendingIntent);
+  }, [isWechat, loading, startWechatPayment, wechatAuthStatus]);
 
   async function handleRedeemActivationCode() {
-    if (!activationCode.trim()) {
-      setError('请输入升级码。');
+    if (!tenantSlug) {
+      return;
+    }
+
+    const code = activationCode.trim();
+    if (!code) {
+      setError('请输入激活码。');
       return;
     }
 
     setRedeeming(true);
-    setMessage(null);
     setError(null);
+    setMessage(null);
 
     try {
-      const payload = redeemTenantSubscriptionActivationCodeRequestSchema.parse({
-        code: activationCode.trim()
-      });
+      await switchTenantBySlug(tenantSlug);
       const response = await apiRequest('/subscriptions/activation-codes/redeem', {
         method: 'POST',
-        body: payload,
+        body: { code },
         requestSchema: redeemTenantSubscriptionActivationCodeRequestSchema,
-        responseSchema: redeemTenantSubscriptionActivationCodeResponseSchema
+        responseSchema: redeemTenantSubscriptionActivationCodeResponseSchema,
       });
 
       setSubscription(response.subscription);
-      setMessage(`套餐已更新为${formatPlanLabel(response.subscription.plan)}。`);
       setActivationCode('');
-      setUpgradeModalPlan(null);
+      setPurchasePlan(null);
+      clearPendingPurchaseIntent();
+      setMessage(`套餐已更新为${formatPlanLabel(response.subscription.plan)}。`);
     } catch (requestError) {
       setError(formatError(requestError));
     } finally {
@@ -199,451 +346,234 @@ export default function SubscriptionPage() {
     }
   }
 
-  function openUpgradeModal(plan: PlanPackage) {
-    setActivationCode('');
-    setMessage(null);
-    setError(null);
-    setUpgradeModalPlan(plan);
-  }
-
-  function focusUpgradeSection() {
-    focusPlanSection(highestPlanIndex >= 0 ? highestPlanIndex : undefined);
-  }
-
-  function focusPlanSection(index?: number) {
-    const target = document.getElementById('plan-packages');
-    target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-    window.setTimeout(() => {
-      const isDesktop = typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches;
-      const proAnchorId = isDesktop ? 'plan-tier-pro-desktop' : 'plan-tier-pro-mobile';
-      const proAnchor = document.getElementById(proAnchorId);
-      proAnchor?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-      if (typeof index === 'number' && index >= 0) {
-        scrollToMobilePlan(index);
-      }
-
-      setProPlanFocused(true);
-      if (proPlanFocusTimerRef.current !== null) {
-        window.clearTimeout(proPlanFocusTimerRef.current);
-      }
-      proPlanFocusTimerRef.current = window.setTimeout(() => {
-        setProPlanFocused(false);
-      }, 1400);
-    }, 220);
-  }
-
-  function scrollToMobilePlan(index: number) {
-    const container = mobilePlansRef.current;
-    if (!container) {
-      return;
-    }
-
-    const target = container.children.item(index) as HTMLElement | null;
-    if (!target) {
-      return;
-    }
-
-    container.scrollTo({ left: target.offsetLeft, behavior: 'smooth' });
-    setActiveMobilePlanIndex(index);
-  }
-
-  function handleMobilePlanScroll() {
-    const container = mobilePlansRef.current;
-    if (!container) {
-      return;
-    }
-
-    const children = Array.from(container.children) as HTMLElement[];
-    if (children.length === 0) {
-      return;
-    }
-
-    let nextIndex = 0;
-    let smallestDistance = Number.POSITIVE_INFINITY;
-    for (let index = 0; index < children.length; index += 1) {
-      const distance = Math.abs(children[index].offsetLeft - container.scrollLeft);
-      if (distance < smallestDistance) {
-        smallestDistance = distance;
-        nextIndex = index;
-      }
-    }
-
-    if (nextIndex !== activeMobilePlanIndex) {
-      setActiveMobilePlanIndex(nextIndex);
-    }
-  }
+  const paymentPreviewPrice = purchasePlan ? SUBSCRIPTION_PRICE_BOOK[purchasePlan][purchaseDuration] : 0;
 
   return (
-    <main className="space-y-4 pb-10 sm:space-y-6">
-      {loading ? (
-        <Card className="rounded-3xl border-neutral-200/90 bg-white p-6">
-          <p className="text-sm text-neutral-600">正在加载套餐信息...</p>
-        </Card>
-      ) : null}
-
-      {!loading ? (
-        <ReferralPromoCard tenantSlug={tenantSlug} currentExpiresAt={subscription?.expiresAt ?? null} />
-      ) : null}
-
-      {!loading ? (
-        <Card
-          className={`rounded-2xl border p-4 ${
-            currentPlan === 'FREE'
-              ? 'border-[#FFD400]/70 bg-gradient-to-b from-[#FFF7D5] via-white to-white'
-              : 'border-neutral-200/90 bg-white'
-          }`}
-        >
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="accent">套餐订阅中心</Badge>
-                <Badge variant={subscription?.status === 'ACTIVE' ? 'success' : 'warning'}>{formatStatusLabel(subscription?.status)}</Badge>
-                {currentPlan === 'FREE' ? <Badge variant="warning">建议升级</Badge> : null}
-              </div>
-              <p className="mt-2 text-2xl font-black text-neutral-900">{formatPlanLabel(currentPlan)}</p>
-              <p className="mt-1 text-sm text-neutral-700">{buildPlanUrgencyCopy(currentPlan, effectiveProductLimit)}</p>
+    <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 md:px-6">
+      <section className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+        <Card className="rounded-3xl border-neutral-200 bg-white/95 shadow-sm">
+          <CardHeader className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant={subscription?.status === 'ACTIVE' ? 'success' : 'warning'}>
+                {formatStatusLabel(subscription?.status)}
+              </Badge>
+              <Badge variant="accent">当前套餐</Badge>
+              {isWechat === true ? <Badge variant="success">微信内可支付</Badge> : <Badge variant="warning">请在微信内打开</Badge>}
             </div>
-            <div className="w-full rounded-2xl border border-neutral-900/10 bg-neutral-900 p-2.5 text-white sm:w-auto sm:min-w-[220px]">
-              <Button
-                type="button"
-                className="h-11 w-full rounded-xl bg-[#FFD400] text-sm font-semibold text-neutral-900 shadow-[0_10px_22px_rgba(0,0,0,0.34)] hover:bg-[#f0c800]"
-                onClick={focusUpgradeSection}
-              >
-                立刻升级
-              </Button>
-              <p className="mt-2 text-center text-xs text-neutral-200/90">点击后定位到专业版卡片，三档套餐均保留可对比</p>
+            <div>
+              <CardTitle className="text-2xl font-black text-neutral-900">{currentMeta.name}</CardTitle>
+              <CardDescription className="mt-2 text-sm text-neutral-600">{currentMeta.summary}</CardDescription>
             </div>
-          </div>
-
-          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <div className="rounded-xl border border-neutral-200 bg-white/90 px-3 py-2">
-              <p className="text-[11px] text-neutral-500">可管理种龟</p>
-              <p className="mt-1 text-lg font-black text-neutral-900">{effectiveProductLimit}</p>
-            </div>
-            <div className="rounded-xl border border-neutral-200 bg-white/90 px-3 py-2">
-              <p className="text-[11px] text-neutral-500">图片上限</p>
-              <p className="mt-1 text-lg font-black text-neutral-900">{toDisplayValue(subscription?.maxImages)}</p>
-            </div>
-            <div className="rounded-xl border border-neutral-200 bg-white/90 px-3 py-2">
-              <p className="text-[11px] text-neutral-500">存储上限</p>
-              <p className="mt-1 text-lg font-black text-neutral-900">{toDisplayBytes(subscription?.maxStorageBytes)}</p>
-            </div>
-            <div className="rounded-xl border border-neutral-200 bg-white/90 px-3 py-2">
-              <p className="text-[11px] text-neutral-500">到期时间</p>
-              <p className="mt-1 text-lg font-black text-neutral-900">{formatSubscriptionDate(subscription?.expiresAt ?? null)}</p>
-            </div>
-          </div>
-
-          {featuredPlan ? (
-            <div className="mt-3 rounded-2xl border border-neutral-900/10 bg-neutral-900 px-3 py-3 text-white">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-xs uppercase tracking-[0.16em] text-[#FFD400]">高阶福利预览</p>
-                  <p className="mt-1 text-sm font-semibold">
-                    {featuredPlan.name} · {featuredPlan.price}
-                  </p>
-                  <p className="mt-1 text-xs text-neutral-200">
-                    {featuredPlanDelta > 0 ? `种龟管理容量最高可提升 +${featuredPlanDelta}` : '解锁更多高级能力'}
-                    ，并开启{featuredPlan.perks[0]}。
-                  </p>
-                </div>
-                <p className="shrink-0 rounded-full border border-white/30 bg-white/10 px-2 py-1 text-[11px] font-semibold text-white">
-                  默认展示最高档
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm font-semibold text-emerald-700">
-              当前已是专业版，建议继续用证书与水印能力放大品牌成交效率。
-            </div>
-          )}
-        </Card>
-      ) : null}
-
-      {!loading ? (
-        <Card id="plan-packages" className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-2xl">
-              <Wallet size={18} />
-              版本差异与升级收益
-            </CardTitle>
-            <CardDescription>保留三档套餐卡片，便于横向对比能力差异。</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-3 md:hidden">
-              <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                {PLAN_PACKAGES.map((item, index) => (
-                  <button
-                    key={`mobile-plan-tab-${item.tier}`}
-                    type="button"
-                    className={buildInteractivePillClass(activeMobilePlanIndex === index, {
-                      className: 'whitespace-nowrap',
-                      activeClassName: 'border-neutral-900 bg-neutral-900 text-white',
-                      idleClassName: 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300'
-                    })}
-                    onClick={() => scrollToMobilePlan(index)}
-                  >
-                    {item.name}
-                  </button>
-                ))}
-              </div>
-              <div
-                ref={mobilePlansRef}
-                className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                onScroll={handleMobilePlanScroll}
-              >
-                {PLAN_PACKAGES.map((item, index) => {
-                  const isCurrent = item.tier === currentPlan;
-                  const isHighest = item.tier === 'PRO';
-                  const isFocusedPro = isHighest && proPlanFocused;
-                  return (
-                    <section
-                      key={`mobile-${item.tier}`}
-                      id={isHighest ? 'plan-tier-pro-mobile' : undefined}
-                      className={`relative min-w-[86%] snap-center overflow-hidden rounded-2xl border p-4 shadow-[0_8px_20px_rgba(15,23,42,0.08)] ${
-                        isCurrent
-                          ? 'border-[#FFD400]/70 bg-gradient-to-b from-[#FFF6CF] to-white'
-                          : isHighest
-                            ? 'border-neutral-900 bg-gradient-to-b from-neutral-50 to-white'
-                            : 'border-neutral-200 bg-white'
-                      } ${isFocusedPro ? 'ring-2 ring-[#FFD400] ring-offset-2 ring-offset-white' : ''}`}
-                    >
-                      <div className="pointer-events-none absolute -right-6 -top-8 h-20 w-20 rounded-full bg-[#FFD400]/30 blur-2xl" />
-                      <div className="relative z-10">
-                        <div className="flex items-center justify-between">
-                          <p className="text-lg font-bold text-neutral-900">{item.name}</p>
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                              isCurrent ? 'bg-neutral-900 text-white' : isHighest ? 'bg-[#FFD400]/25 text-neutral-900' : 'bg-neutral-100 text-neutral-700'
-                            }`}
-                          >
-                            {isCurrent ? '当前' : isHighest ? '高阶' : '可升级'}
-                          </span>
-                        </div>
-                        <p className="mt-2 text-2xl font-black text-neutral-900">{item.price}</p>
-                        <div className="mt-3 grid grid-cols-2 gap-2">
-                          <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-2 py-1.5">
-                            <p className="text-[11px] text-neutral-500">种龟上限</p>
-                            <p className="text-sm font-semibold text-neutral-900">{item.productLimit}</p>
-                          </div>
-                          <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-2 py-1.5">
-                            <p className="text-[11px] text-neutral-500">AI 额度</p>
-                            <p className="text-xs font-semibold text-neutral-900">{item.aiQuota}</p>
-                          </div>
-                        </div>
-                        <details className="mt-3 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2">
-                          <summary className="cursor-pointer text-xs font-semibold text-neutral-700">展开核心福利</summary>
-                          <div className="mt-2 space-y-1">
-                            {item.perks.map((perk) => (
-                              <p key={`mobile-perk-${item.tier}-${perk}`} className="text-sm text-neutral-800">
-                                • {perk}
-                              </p>
-                            ))}
-                          </div>
-                        </details>
-                        {!isCurrent ? (
-                          <div className="mt-3 flex justify-end">
-                            <Button type="button" size="sm" className="h-8 rounded-lg px-3" onClick={() => openUpgradeModal(item)}>
-                              升级
-                            </Button>
-                          </div>
-                        ) : null}
-                        <p className="mt-2 text-center text-[11px] text-neutral-500">
-                          {index + 1} / {PLAN_PACKAGES.length}
-                        </p>
-                      </div>
-                    </section>
-                  );
-                })}
-              </div>
-              <div className="flex items-center justify-center gap-1.5">
-                {PLAN_PACKAGES.map((item, index) => (
-                  <span
-                    key={`mobile-dot-${item.tier}`}
-                    className={`h-1.5 rounded-full transition-all ${
-                      activeMobilePlanIndex === index ? 'w-4 bg-neutral-900' : 'w-1.5 bg-neutral-300'
-                    }`}
-                  />
-                ))}
-              </div>
-            </div>
+          <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <MetricCard label="产品容量" value={`${SUBSCRIPTION_PLAN_PRODUCT_LIMITS[currentPlan]} 只`} />
+            <MetricCard label="图片额度" value={toDisplayValue(subscription?.maxImages)} />
+            <MetricCard label="分享额度" value={toDisplayValue(subscription?.maxShares)} />
+            <MetricCard label="存储额度" value={toDisplayBytes(subscription?.maxStorageBytes)} />
+            <MetricCard label="生效时间" value={formatSubscriptionDate(subscription?.startsAt ?? null)} />
+            <MetricCard label="到期时间" value={formatSubscriptionDate(subscription?.expiresAt ?? null)} />
+            <MetricCard label="当前状态" value={formatStatusLabel(subscription?.status)} />
+            <MetricCard label="最近订单" value={lastOrderNo ?? '暂无'} />
+          </CardContent>
+        </Card>
 
-            <div className="hidden overflow-x-auto rounded-2xl border border-neutral-200 md:block">
-              <table className="w-full min-w-[760px] border-separate border-spacing-0 text-left">
-                <thead>
-                  <tr className="bg-neutral-50">
-                    <th className="border-b border-neutral-200 px-4 py-2 text-sm font-semibold text-neutral-700">版本</th>
-                    <th className="border-b border-neutral-200 px-4 py-2 text-sm font-semibold text-neutral-700">价格</th>
-                    <th className="border-b border-neutral-200 px-4 py-2 text-sm font-semibold text-neutral-700">种龟上限</th>
-                    <th className="border-b border-neutral-200 px-4 py-2 text-sm font-semibold text-neutral-700">AI 额度</th>
-                    <th className="border-b border-neutral-200 px-4 py-2 text-sm font-semibold text-neutral-700">核心福利</th>
-                    <th className="border-b border-neutral-200 px-4 py-2 text-right text-sm font-semibold text-neutral-700">操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {PLAN_PACKAGES.map((item) => {
-                    const isCurrent = item.tier === currentPlan;
-                    const isHighest = item.tier === 'PRO';
-                    const isFocusedPro = isHighest && proPlanFocused;
-                    return (
-                      <tr
-                        key={item.tier}
-                        id={isHighest ? 'plan-tier-pro-desktop' : undefined}
-                        className={isFocusedPro ? 'bg-[#FFF3C0]' : isCurrent ? 'bg-[#FFD400]/10' : ''}
-                      >
-                        <td className="border-b border-neutral-200 px-4 py-3 align-top">
-                          <p className="text-sm font-semibold text-neutral-900">{item.name}</p>
-                          {isCurrent ? <p className="text-xs text-neutral-600">当前套餐</p> : null}
-                        </td>
-                        <td className="border-b border-neutral-200 px-4 py-3 align-top text-sm text-neutral-800">{item.price}</td>
-                        <td className="border-b border-neutral-200 px-4 py-3 align-top text-sm text-neutral-800">{item.productLimit}</td>
-                        <td className="border-b border-neutral-200 px-4 py-3 align-top text-sm text-neutral-800">{item.aiQuota}</td>
-                        <td className="border-b border-neutral-200 px-4 py-3 align-top">
-                          <div className="space-y-1">
-                            {item.perks.map((perk) => (
-                              <p key={`${item.tier}-${perk}`} className="text-sm text-neutral-800">
-                                • {perk}
-                              </p>
-                            ))}
-                          </div>
-                        </td>
-                        <td className="border-b border-neutral-200 px-4 py-3 align-top">
-                          {!isCurrent ? (
-                            <div className="flex justify-end">
-                              <Button type="button" size="sm" className="h-8 rounded-lg px-3" onClick={() => openUpgradeModal(item)}>
-                                升级
-                              </Button>
-                            </div>
-                          ) : (
-                            <p className="text-right text-xs text-neutral-500">已生效</p>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+        <Card className="rounded-3xl border-neutral-200 bg-white/95 shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-xl font-black text-neutral-900">
+              <Wallet className="h-5 w-5 text-[#B8860B]" />
+              支付说明
+            </CardTitle>
+            <CardDescription>
+              一期仅支持微信内 JSAPI 支付；非微信环境保留激活码升级入口。
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-neutral-700">
+            <InfoRow icon={<ShieldCheck className="h-4 w-4" />} text="支付成功后立即或延后履约，具体取决于当前套餐与目标套餐。" />
+            <InfoRow icon={<Clock3 className="h-4 w-4" />} text="订单 30 分钟未支付会自动过期；支付成功后会自动轮询确认状态。" />
+            <InfoRow icon={<CheckCircle2 className="h-4 w-4" />} text="激活码链路继续保留，可与微信支付并行使用。" />
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800">
+              {isWechat === true
+                ? '当前检测到微信环境，可以直接发起微信支付。'
+                : '当前不是微信环境，微信支付按钮会禁用。请复制链接到微信内打开，或使用激活码升级。'}
             </div>
           </CardContent>
         </Card>
-      ) : null}
+      </section>
 
-      {!loading ? (
-        <Card id="quick-upgrade" className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-2xl">
-              <Wallet size={18} />
-              立即升级
-            </CardTitle>
-            <CardDescription>统一在这里输入激活码完成升级。</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {featuredPlan ? (
-              <section className="relative overflow-hidden rounded-2xl border border-neutral-900 bg-neutral-900 p-4 text-white">
-                <div className="pointer-events-none absolute -right-8 -top-10 h-24 w-24 rounded-full bg-[#FFD400]/30 blur-2xl" />
-                <div className="relative z-10">
-                  <p className="text-xs uppercase tracking-[0.16em] text-[#FFD400]">推荐路径</p>
-                  <p className="mt-1 text-xl font-black">
-                    升级到{featuredPlan.name} · {featuredPlan.price}
-                  </p>
-                  <p className="mt-1 text-sm text-neutral-200">输入激活码后立即生效，套餐状态自动刷新。</p>
+      <section className="grid gap-4 xl:grid-cols-3">
+        {(['FREE', 'BASIC', 'PRO'] as const).map((plan) => {
+          const meta = PLAN_META[plan];
+          const isCurrent = currentPlan === plan;
+          const isPayable = plan !== 'FREE';
+          const monthlyPrice = plan === 'FREE' ? 0 : SUBSCRIPTION_PRICE_BOOK[plan][30];
 
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <div className="rounded-xl border border-white/20 bg-white/10 px-3 py-2">
-                      <p className="text-[11px] text-neutral-200">种龟容量</p>
-                      <p className="mt-1 text-sm font-semibold text-white">
-                        {effectiveProductLimit} → {PLAN_LIMITS[featuredPlan.tier]}
-                      </p>
-                    </div>
-                    <div className="rounded-xl border border-white/20 bg-white/10 px-3 py-2">
-                      <p className="text-[11px] text-neutral-200">AI 额度</p>
-                      <p className="mt-1 text-xs font-semibold text-white">{featuredPlan.aiQuota}</p>
+          return (
+            <Card
+              key={plan}
+              className={[
+                'rounded-3xl border bg-white shadow-sm transition',
+                plan === 'PRO' ? 'border-[#FFD400]/70 shadow-[0_12px_40px_rgba(255,212,0,0.14)]' : 'border-neutral-200',
+              ].join(' ')}
+            >
+              <CardHeader className="space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-xl font-black text-neutral-900">{meta.name}</CardTitle>
+                    <CardDescription className="mt-1 text-sm text-neutral-600">{meta.summary}</CardDescription>
+                  </div>
+                  <Badge variant={plan === 'PRO' ? 'accent' : isCurrent ? 'success' : 'default'}>{isCurrent ? '当前' : meta.badge}</Badge>
+                </div>
+                <div>
+                  <p className="text-3xl font-black text-neutral-900">{plan === 'FREE' ? '¥0' : formatCurrency(monthlyPrice)}</p>
+                  <p className="mt-1 text-sm text-neutral-500">{plan === 'FREE' ? '永久免费体验' : '30 天参考价，支持 30 / 90 / 365 天购买'}</p>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="rounded-2xl bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
+                  产品容量：<span className="font-semibold text-neutral-900">{SUBSCRIPTION_PLAN_PRODUCT_LIMITS[plan]} 只</span>
+                </div>
+                <ul className="space-y-2 text-sm text-neutral-700">
+                  {meta.perks.map((item) => (
+                    <li key={item} className="flex items-start gap-2">
+                      <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[#FFD400]" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+                {isPayable ? (
+                  <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">价目表</p>
+                    <div className="mt-3 grid grid-cols-3 gap-2 text-sm text-neutral-700">
+                      {DURATION_OPTIONS.map((days) => (
+                        <div key={days} className="rounded-2xl bg-white px-3 py-2 text-center ring-1 ring-neutral-200">
+                          <p className="font-semibold text-neutral-900">{days} 天</p>
+                          <p>{formatCurrency(SUBSCRIPTION_PRICE_BOOK[plan][days])}</p>
+                        </div>
+                      ))}
                     </div>
                   </div>
-
-                  <div className="mt-3 space-y-1">
-                    {featuredPlan.perks.slice(0, 3).map((perk) => (
-                      <p key={`quick-upgrade-perk-${perk}`} className="text-sm text-neutral-100">
-                        • {perk}
-                      </p>
-                    ))}
-                  </div>
-
+                ) : null}
+                {isPayable ? (
                   <Button
                     type="button"
-                    className="mt-4 h-11 w-full rounded-xl bg-[#FFD400] text-sm font-semibold text-neutral-900 shadow-[0_10px_22px_rgba(0,0,0,0.34)] hover:bg-[#f0c800]"
-                    onClick={() => openUpgradeModal(featuredPlan)}
+                    variant={plan === 'PRO' ? 'primary' : 'default'}
+                    className="w-full"
+                    disabled={paying || isWechat !== true}
+                    onClick={() => {
+                      setPurchasePlan(plan);
+                      setPurchaseDuration(30);
+                      setError(null);
+                      setMessage(null);
+                    }}
                   >
-                    立即升级到{featuredPlan.name}
+                    {isWechat !== true ? '请在微信内打开' : buildPurchaseButtonLabel(currentPlan, plan)}
                   </Button>
-                </div>
-              </section>
-            ) : (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
-                当前已是专业版，无需升级。可继续通过证书与水印能力提升品牌成交效率。
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      ) : null}
+                ) : (
+                  <Button type="button" variant="secondary" className="w-full" disabled>
+                    当前默认可用
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </section>
 
-      {!loading && upgradeModalPlan ? (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-3 sm:items-center"
-          onClick={() => {
-            if (!redeeming) {
-              setUpgradeModalPlan(null);
-            }
-          }}
-        >
-          <section
-            className="mx-auto w-[min(92vw,28rem)] rounded-2xl border border-neutral-200 bg-white p-4 shadow-[0_22px_60px_rgba(15,23,42,0.22)]"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-lg font-black text-neutral-900">输入激活码升级套餐</p>
-                <p className="mt-1 text-sm text-neutral-600">
-                  目标版本：{upgradeModalPlan.name}（后续这里可切换为支付弹窗）
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="secondary"
-                className="h-8 rounded-lg px-2 text-xs"
-                disabled={redeeming}
-                onClick={() => {
-                  setUpgradeModalPlan(null);
-                }}
-              >
-                关闭
-              </Button>
-            </div>
-            <div className="mt-4 space-y-2">
-              <Label htmlFor="subscription-activation-code-modal">激活码</Label>
+      <section className="grid gap-4 lg:grid-cols-[1fr_0.9fr]">
+        <Card className="rounded-3xl border-neutral-200 bg-white shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-xl font-black text-neutral-900">激活码升级</CardTitle>
+            <CardDescription>继续保留原有激活码入口，适合线下发码、运营赠送或补偿升级。</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="subscription-activation-code">激活码</Label>
               <Input
-                id="subscription-activation-code-modal"
+                id="subscription-activation-code"
                 type="text"
                 value={activationCode}
                 placeholder="例如 ETM-ABCD-1234-EFGH"
                 onChange={(event) => setActivationCode(event.target.value)}
               />
             </div>
-            <div className="mt-4 flex items-center justify-end gap-2">
+            <Button type="button" className="w-full sm:w-auto" disabled={redeeming} onClick={() => void handleRedeemActivationCode()}>
+              {redeeming ? '兑换中…' : '兑换并升级'}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <ReferralPromoCard tenantSlug={tenantSlug} />
+      </section>
+
+      {purchasePlan ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm"
+          onClick={() => {
+            if (!paying) {
+              setPurchasePlan(null);
+            }
+          }}
+        >
+          <section
+            className="w-full max-w-lg rounded-3xl border border-neutral-200 bg-white p-5 shadow-[0_24px_80px_rgba(15,23,42,0.26)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xl font-black text-neutral-900">微信支付购买 {formatPlanLabel(purchasePlan)}</p>
+                <p className="mt-1 text-sm text-neutral-600">{buildFulfillmentHint(currentPlan, purchasePlan, subscription)}</p>
+              </div>
               <Button
                 type="button"
                 variant="secondary"
-                disabled={redeeming}
-                onClick={() => {
-                  setUpgradeModalPlan(null);
-                }}
+                size="sm"
+                disabled={paying}
+                onClick={() => setPurchasePlan(null)}
               >
+                关闭
+              </Button>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              <p className="text-sm font-semibold text-neutral-900">选择购买时长</p>
+              <div className="flex flex-wrap gap-2">
+                {DURATION_OPTIONS.map((days) => (
+                  <button
+                    key={days}
+                    type="button"
+                    className={buildInteractivePillClass(purchaseDuration === days)}
+                    disabled={paying}
+                    onClick={() => setPurchaseDuration(days)}
+                  >
+                    {days} 天 · {formatCurrency(SUBSCRIPTION_PRICE_BOOK[purchasePlan][days])}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-2xl border border-[#FFD400]/40 bg-[#FFFBE6] px-4 py-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">支付预览</p>
+              <p className="mt-2 text-3xl font-black text-neutral-900">{formatCurrency(paymentPreviewPrice)}</p>
+              <p className="mt-1 text-sm text-neutral-700">{purchaseDuration} 天 · {formatPlanLabel(purchasePlan)} · 微信 JSAPI</p>
+            </div>
+
+            {isWechat !== true ? (
+              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                当前不是微信浏览器，无法调起 JSAPI 支付。请在微信内打开后再继续。
+              </div>
+            ) : null}
+
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button type="button" variant="secondary" disabled={paying} onClick={() => setPurchasePlan(null)}>
                 取消
               </Button>
-              <Button type="button" disabled={redeeming} onClick={() => void handleRedeemActivationCode()}>
-                {redeeming ? '升级中...' : '确认升级'}
+              <Button
+                type="button"
+                variant="primary"
+                disabled={paying || isWechat !== true}
+                onClick={() => void startWechatPayment({ plan: purchasePlan, durationDays: purchaseDuration })}
+              >
+                {paying ? '处理中…' : '立即微信支付'}
               </Button>
             </div>
           </section>
@@ -661,59 +591,55 @@ export default function SubscriptionPage() {
           <p className="text-sm font-semibold text-red-700">{error}</p>
         </Card>
       ) : null}
+
+      {loading ? (
+        <Card className="rounded-2xl border-neutral-200 bg-white p-4">
+          <p className="text-sm text-neutral-600">正在加载订阅信息…</p>
+        </Card>
+      ) : null}
     </main>
   );
-  }
-
-function resolveEffectiveProductLimit(subscription: TenantSubscription | null): number {
-  if (!subscription) {
-    return PLAN_LIMITS.FREE;
-  }
-
-  if (subscription.maxShares !== null) {
-    return subscription.maxShares;
-  }
-
-  return PLAN_LIMITS[normalizePlan(subscription.plan)];
 }
 
-function getHighestUpgradePlan(plan: PlanTier): PlanPackage | null {
-  if (plan === 'PRO') {
-    return null;
-  }
-
-  return PLAN_PACKAGES.find((item) => item.tier === 'PRO') ?? null;
+function MetricCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
+      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">{label}</p>
+      <p className="mt-2 text-sm font-semibold text-neutral-900">{value}</p>
+    </div>
+  );
 }
 
-function buildPlanUrgencyCopy(plan: PlanTier, effectiveProductLimit: number) {
-  if (plan === 'FREE') {
-    return `免费版最多可管理 ${effectiveProductLimit} 只，达到上限后需升级才能继续扩容。`;
-  }
-
-  if (plan === 'BASIC') {
-    return `基础版当前可管理 ${effectiveProductLimit} 只，适合稳定运营；增长阶段建议升级专业版。`;
-  }
-
-  return `专业版当前可管理 ${effectiveProductLimit} 只，适合高频上新与品牌化经营。`;
+function InfoRow({ icon, text }: { icon: ReactNode; text: string }) {
+  return (
+    <div className="flex items-start gap-2 rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
+      <span className="mt-0.5 text-neutral-700">{icon}</span>
+      <span>{text}</span>
+    </div>
+  );
 }
 
 function normalizePlan(plan: TenantSubscription['plan'] | null | undefined): PlanTier {
   if (plan === 'BASIC') {
     return 'BASIC';
   }
+
   if (plan === 'PRO') {
     return 'PRO';
   }
+
   return 'FREE';
 }
 
-function formatPlanLabel(plan: TenantSubscription['plan'] | PlanTier | null | undefined) {
+function formatPlanLabel(plan: PlanTier | null | undefined) {
   if (plan === 'BASIC') {
     return '基础版';
   }
+
   if (plan === 'PRO') {
     return '专业版';
   }
+
   return '免费版';
 }
 
@@ -721,13 +647,65 @@ function formatStatusLabel(status: TenantSubscription['status'] | null | undefin
   if (status === 'ACTIVE') {
     return '生效中';
   }
+
   if (status === 'EXPIRED') {
     return '已过期';
   }
+
   if (status === 'DISABLED') {
     return '已禁用';
   }
+
   return '未配置';
+}
+
+function buildPurchaseButtonLabel(currentPlan: PlanTier, targetPlan: PayableTenantSubscriptionPlan) {
+  if (currentPlan === 'FREE') {
+    return `购买${formatPlanLabel(targetPlan)}`;
+  }
+
+  if (currentPlan === targetPlan) {
+    return `续费${formatPlanLabel(targetPlan)}`;
+  }
+
+  if (currentPlan === 'PRO' && targetPlan === 'BASIC') {
+    return '预约降级到基础版';
+  }
+
+  return `升级到${formatPlanLabel(targetPlan)}`;
+}
+
+function buildFulfillmentHint(
+  currentPlan: PlanTier,
+  targetPlan: PayableTenantSubscriptionPlan,
+  subscription: TenantSubscription | null,
+) {
+  if (currentPlan === 'FREE') {
+    return `支付成功后将立即开通${formatPlanLabel(targetPlan)}。`;
+  }
+
+  if (currentPlan === targetPlan) {
+    return `支付成功后将从当前到期时间起顺延 ${formatPlanLabel(targetPlan)} 时长。`;
+  }
+
+  if (currentPlan === 'BASIC' && targetPlan === 'PRO') {
+    return '支付成功后将立即升级为专业版，并从当前有效期终点继续顺延购买时长。';
+  }
+
+  if (currentPlan === 'PRO' && targetPlan === 'BASIC') {
+    const expiresAt = subscription?.expiresAt ? formatSubscriptionDate(subscription.expiresAt) : '当前 PRO 到期时';
+    return `该订单为延后生效降级，支付成功后会在 ${expiresAt} 自动切换为基础版。`;
+  }
+
+  return '支付成功后系统会自动应用订阅权益。';
+}
+
+function buildPaidOrderMessage(order: SubscriptionOrder) {
+  if (order.fulfillmentMode === 'DEFERRED') {
+    return `支付成功，${formatPlanLabel(order.plan)} 已购买成功，将在当前专业版到期后自动生效。`;
+  }
+
+  return `支付成功，${formatPlanLabel(order.plan)} 已开通或续费成功。`;
 }
 
 function formatSubscriptionDate(value: string | null) {
@@ -765,6 +743,15 @@ function toDisplayBytes(value: string | null | undefined) {
   return `${gb.toFixed(2)} GB`;
 }
 
+function formatCurrency(cents: number) {
+  return new Intl.NumberFormat('zh-CN', {
+    style: 'currency',
+    currency: 'CNY',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(cents / 100);
+}
+
 function formatError(error: unknown) {
   if (error instanceof ApiError) {
     return error.message;
@@ -775,4 +762,138 @@ function formatError(error: unknown) {
   }
 
   return '未知错误';
+}
+
+function resolveWechatAuthMessage(status: string) {
+  if (status === 'conflict') {
+    return '该微信账号已绑定到其他平台账号，请切换微信或联系客服处理。';
+  }
+
+  return '微信授权未完成，请重新发起支付。';
+}
+
+function isWechatBrowser() {
+  if (typeof navigator === 'undefined') {
+    return false;
+  }
+
+  return /micromessenger/i.test(navigator.userAgent);
+}
+
+function persistPendingPurchaseIntent(intent: PurchaseIntent) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.sessionStorage.setItem(PENDING_PURCHASE_STORAGE_KEY, JSON.stringify(intent));
+}
+
+function loadPendingPurchaseIntent(): PurchaseIntent | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const rawValue = window.sessionStorage.getItem(PENDING_PURCHASE_STORAGE_KEY);
+  if (!rawValue) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue) as Partial<PurchaseIntent> | null;
+    if (!parsed || (parsed.plan !== 'BASIC' && parsed.plan !== 'PRO')) {
+      return null;
+    }
+
+    if (parsed.durationDays !== 30 && parsed.durationDays !== 90 && parsed.durationDays !== 365) {
+      return null;
+    }
+
+    return {
+      plan: parsed.plan,
+      durationDays: parsed.durationDays,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function clearPendingPurchaseIntent() {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.sessionStorage.removeItem(PENDING_PURCHASE_STORAGE_KEY);
+}
+
+function clearWechatAuthQuery() {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const url = new URL(window.location.href);
+  if (!url.searchParams.has('wechatAuth')) {
+    return;
+  }
+
+  url.searchParams.delete('wechatAuth');
+  const nextQuery = url.searchParams.toString();
+  window.history.replaceState({}, '', `${url.pathname}${nextQuery ? `?${nextQuery}` : ''}${url.hash}`);
+}
+
+async function waitForWeixinJsBridge() {
+  if (typeof window === 'undefined') {
+    throw new Error('当前环境不支持微信支付。');
+  }
+
+  if (window.WeixinJSBridge) {
+    return window.WeixinJSBridge;
+  }
+
+  return new Promise<WeixinJsBridge>((resolve, reject) => {
+    const timeoutId = window.setTimeout(() => {
+      cleanup();
+      reject(new Error('未检测到 WeixinJSBridge，请确认当前页面运行在微信内。'));
+    }, 5000);
+
+    const handleReady = () => {
+      if (!window.WeixinJSBridge) {
+        return;
+      }
+
+      cleanup();
+      resolve(window.WeixinJSBridge);
+    };
+
+    const cleanup = () => {
+      window.clearTimeout(timeoutId);
+      document.removeEventListener('WeixinJSBridgeReady', handleReady as EventListener);
+    };
+
+    document.addEventListener('WeixinJSBridgeReady', handleReady as EventListener, { once: true });
+  });
+}
+
+async function invokeWechatPay(params: Record<string, string>, bridge: WeixinJsBridge) {
+  return new Promise<WechatPayInvokeResult>((resolve) => {
+    bridge.invoke('getBrandWCPayRequest', params, (result) => {
+      resolve(result ?? {});
+    });
+  });
+}
+
+async function cancelOrderBestEffort(orderNo: string) {
+  try {
+    await apiRequest(`/subscriptions/orders/${encodeURIComponent(orderNo)}/cancel`, {
+      method: 'POST',
+      responseSchema: getSubscriptionOrderResponseSchema,
+    });
+  } catch {
+    // ignore best-effort cancel failure
+  }
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }

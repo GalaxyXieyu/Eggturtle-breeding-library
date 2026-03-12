@@ -8,6 +8,8 @@ export {
   authPhoneNumberSchema,
   authPasswordSchema,
   authUserSchema,
+  createWechatAuthorizeUrlRequestSchema,
+  createWechatAuthorizeUrlResponseSchema,
   meProfileResponseSchema,
   meProfileSchema,
   meResponseSchema,
@@ -37,6 +39,8 @@ export {
 } from './auth';
 export type {
   AuthUser,
+  CreateWechatAuthorizeUrlRequest,
+  CreateWechatAuthorizeUrlResponse,
   MeProfileResponse,
   MeProfile,
   MeResponse,
@@ -392,6 +396,43 @@ export type {
   DashboardOverviewWindow,
 } from './dashboard';
 export {
+  isPayableTenantSubscriptionPlan,
+  payableTenantSubscriptionPlanSchema,
+  resolveSubscriptionPriceCents,
+  SUBSCRIPTION_PLAN_MONTHLY_PRICE_CENTS,
+  SUBSCRIPTION_PLAN_PRODUCT_LIMITS,
+  SUBSCRIPTION_PRICE_BOOK,
+  subscriptionDurationDaysSchema,
+} from './subscription-catalog';
+export type {
+  PayableTenantSubscriptionPlan,
+  SubscriptionDurationDays,
+} from './subscription-catalog';
+export {
+  cancelSubscriptionOrderResponseSchema,
+  createSubscriptionOrderRequestSchema,
+  createSubscriptionOrderResponseSchema,
+  getSubscriptionOrderResponseSchema,
+  subscriptionOrderFulfillmentModeSchema,
+  subscriptionOrderPaymentChannelSchema,
+  subscriptionOrderPaymentProviderSchema,
+  subscriptionOrderSchema,
+  subscriptionOrderStatusSchema,
+  subscriptionOrderWechatJsapiParamsSchema,
+} from './subscription-order';
+export type {
+  CancelSubscriptionOrderResponse,
+  CreateSubscriptionOrderRequest,
+  CreateSubscriptionOrderResponse,
+  GetSubscriptionOrderResponse,
+  SubscriptionOrder,
+  SubscriptionOrderFulfillmentMode,
+  SubscriptionOrderPaymentChannel,
+  SubscriptionOrderPaymentProvider,
+  SubscriptionOrderStatus,
+  SubscriptionOrderWechatJsapiParams,
+} from './subscription-order';
+export {
   createTenantSubscriptionActivationCodeRequestSchema,
   createTenantSubscriptionActivationCodeResponseSchema,
   getAdminTenantSubscriptionResponseSchema,
@@ -482,11 +523,17 @@ export type {
 export {
   bindReferralRequestSchema,
   bindReferralResponseSchema,
+  bindReferralFromAttributionRequestSchema,
+  bindReferralFromAttributionResponseSchema,
   myReferralOverviewResponseSchema,
   publicReferralLandingResponseSchema,
+  referralAttributionPageTypeSchema,
   referralBindingSchema,
   referralBindingSourceSchema,
+  referralInviteProgressSchema,
+  referralInviteProgressStatusSchema,
   referralProgramRulesSchema,
+  referralRewardModeSchema,
   referralRewardSchema,
   referralRewardStatusSchema,
   referralRewardTriggerTypeSchema,
@@ -496,12 +543,17 @@ export {
 export type {
   BindReferralRequest,
   BindReferralResponse,
+  BindReferralFromAttributionRequest,
+  BindReferralFromAttributionResponse,
   MyReferralOverviewResponse,
   PublicReferralLandingResponse,
+  ReferralAttributionPageType,
   ReferralBinding,
   ReferralBindingSource,
+  ReferralInviteProgress,
   ReferralProgramRules,
   ReferralReward,
+  ReferralRewardMode,
   ReferralRewardStatus,
   ReferralRewardTriggerType,
   SettleReferralPaidEventRequest,

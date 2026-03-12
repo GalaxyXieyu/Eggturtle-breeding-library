@@ -16,6 +16,7 @@ import { SmsVerificationService } from './sms-verification.service';
 import { SuperAdminGuard } from './super-admin.guard';
 import { SubscriptionActivationCodesController } from './subscription-activation-codes.controller';
 import { TenantSubscriptionGuard } from './tenant-subscription.guard';
+import { WechatAuthService } from './wechat-auth.service';
 
 @Module({
   imports: [PrismaModule, SubscriptionsModule],
@@ -30,7 +31,8 @@ import { TenantSubscriptionGuard } from './tenant-subscription.guard';
     SuperAdminGuard,
     TenantSubscriptionGuard,
     JwtTokenService,
-    SmsVerificationService
+    SmsVerificationService,
+    WechatAuthService
   ],
   exports: [AuthGuard, RbacGuard, SuperAdminGuard, TenantSubscriptionGuard, AuthAccessService]
 })

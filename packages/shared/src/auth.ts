@@ -206,6 +206,22 @@ export const meSubscriptionResponseSchema = z.object({
   subscription: tenantSubscriptionSchema,
 });
 
+export const createWechatAuthorizeUrlRequestSchema = z.object({
+  returnPath: z
+    .string()
+    .trim()
+    .min(1)
+    .max(500)
+    .refine((value) => value.startsWith('/'), {
+      message: 'returnPath must start with /.',
+    }),
+});
+
+export const createWechatAuthorizeUrlResponseSchema = z.object({
+  authorizeUrl: z.string().url(),
+  expiresAt: z.string().datetime(),
+});
+
 // Registration schemas
 export const registerRequestSchema = z.object({
   account: authAccountSchema,
@@ -253,5 +269,7 @@ export type MyPhoneBindingResponse = z.infer<typeof myPhoneBindingResponseSchema
 export type UpsertMyPhoneBindingRequest = z.infer<typeof upsertMyPhoneBindingRequestSchema>;
 export type UpsertMyPhoneBindingResponse = z.infer<typeof upsertMyPhoneBindingResponseSchema>;
 export type MeSubscriptionResponse = z.infer<typeof meSubscriptionResponseSchema>;
+export type CreateWechatAuthorizeUrlRequest = z.infer<typeof createWechatAuthorizeUrlRequestSchema>;
+export type CreateWechatAuthorizeUrlResponse = z.infer<typeof createWechatAuthorizeUrlResponseSchema>;
 export type RegisterRequest = z.infer<typeof registerRequestSchema>;
 export type RegisterResponse = z.infer<typeof registerResponseSchema>;

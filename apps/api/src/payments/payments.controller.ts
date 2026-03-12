@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Post, Req, Res, UseGuards } from '@nestjs/common';
 import {
   settleReferralPaidEventRequestSchema,
   settleReferralPaidEventResponseSchema,
@@ -12,6 +12,11 @@ import type { AuthenticatedRequest } from '../auth/auth.types';
 import { parseOrThrow } from '../common/zod-parse';
 
 import { PaymentsService } from './payments.service';
+
+type RawBodyRequest = {
+  rawBody?: Buffer;
+  body?: unknown;
+};
 
 @Controller('payments')
 export class PaymentsController {
@@ -37,8 +42,25 @@ export class PaymentsController {
   }
 
   @Post('webhooks/wechat')
-  handleWechatWebhook(@Body() body: unknown) {
-    return this.paymentsService.handleWechatWebhook(body);
+  async handleWechatWebhook(
+    @Req() request: RawBodyRequest,
+    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Res() response: { status: (code: number) => { json: (payload: unknown) => unknown } },
+  ) {
+    const rawBody = request.rawBody?.toString('utf8') ?? JSON.stringify(request.body ?? {});
+
+    try {
+      await this.paymentsService.handleWechatWebhook(headers, rawBody);
+      return response.status(200).json({
+        code: 'SUCCESS',
+        message: '成功',
+      });
+    } catch (error) {
+      return response.status(500).json({
+        code: 'ERROR',
+        message: (error as Error)?.message ?? '处理失败',
+      });
+    }
   }
 
   @Post('webhooks/alipay')

@@ -1,7 +1,4 @@
-import {
-  Injectable,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import {
   ErrorCode,
   type SettleReferralPaidEventRequest,
@@ -10,6 +7,9 @@ import {
 } from '@eggturtle/shared';
 
 import { ReferralsService } from '../referrals/referrals.service';
+
+import { SubscriptionOrdersService } from './subscription-orders.service';
+import { WechatPayService } from './wechat-pay.service';
 
 type PaymentProvider = 'alipay' | 'wechat';
 
@@ -58,18 +58,26 @@ const PROVIDER_CONFIG: Record<
     enabledEnv: 'PAYMENT_WECHAT_ENABLED',
     required: [
       'PAYMENT_WECHAT_MCH_ID',
+      'PAYMENT_WECHAT_APP_ID',
+      'WECHAT_MP_APP_SECRET',
       'PAYMENT_WECHAT_API_V3_KEY',
+      'PAYMENT_WECHAT_MCH_SERIAL_NO',
       'PAYMENT_WECHAT_PRIVATE_KEY_PATH',
       'PAYMENT_WECHAT_PLATFORM_SERIAL_NO',
+      'PAYMENT_WECHAT_PLATFORM_CERT_PATH',
       'PAYMENT_WECHAT_NOTIFY_URL'
     ],
-    optional: ['PAYMENT_WECHAT_APP_ID', 'PAYMENT_WECHAT_MCH_SERIAL_NO']
+    optional: []
   }
 };
 
 @Injectable()
 export class PaymentsService {
-  constructor(private readonly referralsService: ReferralsService) {}
+  constructor(
+    private readonly referralsService: ReferralsService,
+    private readonly subscriptionOrdersService: SubscriptionOrdersService,
+    private readonly wechatPayService: WechatPayService,
+  ) {}
 
   getReadiness(): PaymentReadiness {
     const featureEnabled = this.isTrue('PAYMENT_FEATURE_ENABLED');
@@ -88,9 +96,12 @@ export class PaymentsService {
     };
   }
 
-  async handleWechatWebhook(body: unknown): Promise<WebhookHandleResult> {
+  async handleWechatWebhook(
+    headers: Record<string, string | string[] | undefined>,
+    rawBody: string,
+  ): Promise<void> {
     this.ensureProviderEnabled('wechat');
-    return this.handleReferralWebhook('wechat', body);
+    await this.subscriptionOrdersService.handleWechatPaymentNotification(headers, rawBody);
   }
 
   async handleAlipayWebhook(body: unknown): Promise<WebhookHandleResult> {
@@ -114,6 +125,10 @@ export class PaymentsService {
   }
 
   private getProviderReadiness(provider: PaymentProvider): ProviderReadiness {
+    if (provider === 'wechat') {
+      return this.wechatPayService.getReadiness();
+    }
+
     const config = PROVIDER_CONFIG[provider];
     const providerEnabled = this.isTrue(config.enabledEnv);
     const requiredFields = [...config.required];

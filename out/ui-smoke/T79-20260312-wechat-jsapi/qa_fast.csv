@@ -1,0 +1,4 @@
+case_id,priority,test_point,result,evidence_path,screenshot_path,notes
+TC-001,P0,移动端 WeChat UA 打开订阅页，展示当前套餐与微信支付卡片,PASS,out/ui-smoke/T79-20260312-wechat-jsapi/summary.md,/Users/apple/coding/.openclaw/media/outbound/T79_20260312_mobile_subscription_wechat_page.png,当前套餐/支付说明/价格卡片可见
+TC-002,P0,点击专业版购买按钮后弹出微信支付弹窗，30/90/365 天价格正确,PASS,out/ui-smoke/T79-20260312-wechat-jsapi/summary.md,/Users/apple/coding/.openclaw/media/outbound/T79_20260312_mobile_subscription_wechat_modal.png,弹窗展示 30=49 90=129 365=499 且按钮文案正确
+TC-003,P1,非微信环境打开订阅页仍显示“请在微信内打开”限制,PASS,out/ui-smoke/T79-20260312-wechat-jsapi/summary.md,/Users/apple/coding/.openclaw/media/outbound/T79_20260312_mobile_subscription_non_wechat.png,激活码入口仍保留

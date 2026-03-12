@@ -189,11 +189,15 @@ export function withAuthenticatedImageMaxEdge(
 
 export class ApiError extends Error {
   status: number;
+  errorCode: string | null;
+  payload: unknown;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, errorCode?: string | null, payload?: unknown) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
+    this.errorCode = errorCode ?? null;
+    this.payload = payload ?? null;
   }
 }
 
@@ -267,6 +271,23 @@ function pickErrorMessage(payload: unknown, fallback: string) {
   return fallback;
 }
 
+
+function pickErrorCode(payload: unknown) {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  if ('errorCode' in payload && typeof payload.errorCode === 'string') {
+    return payload.errorCode;
+  }
+
+  if ('code' in payload && typeof payload.code === 'string') {
+    return payload.code;
+  }
+
+  return null;
+}
+
 export async function apiRequest<RequestPayload = never, ResponsePayload = unknown>(
   path: string,
   options: ApiRequestOptions<RequestPayload, ResponsePayload>
@@ -330,14 +351,14 @@ export async function apiRequest<RequestPayload = never, ResponsePayload = unkno
       /timed out/i.test(message);
 
     if (isTimeoutAbort) {
-      throw new ApiError(options.timeoutMessage ?? `Request timed out after ${timeoutMs}ms`, 408);
+      throw new ApiError(options.timeoutMessage ?? `Request timed out after ${timeoutMs}ms`, 408, null, null);
     }
 
     if (isExternalAbort) {
       throw error;
     }
 
-    throw new ApiError(message || 'Network request failed.', 0);
+    throw new ApiError(message || 'Network request failed.', 0, null, null);
   } finally {
     if (timeoutId) {
       clearTimeout(timeoutId);
@@ -359,7 +380,9 @@ export async function apiRequest<RequestPayload = never, ResponsePayload = unkno
   if (!response.ok) {
     throw new ApiError(
       pickErrorMessage(payload, `Request failed with status ${response.status}`),
-      response.status
+      response.status,
+      pickErrorCode(payload),
+      payload,
     );
   }
 

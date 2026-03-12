@@ -7,7 +7,9 @@ import * as path from 'node:path';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    rawBody: true,
+  });
 
   if (process.env.NODE_ENV === 'development') {
     const devOrigins = (process.env.WEB_DEV_ORIGIN ?? 'http://localhost:30010,http://localhost:30020')

@@ -1,3 +1,4 @@
+import { createWechatAuthorizeUrlResponseSchema } from '../../packages/shared/src/auth';
 import { getAdminTenantUsageResponseSchema } from '../../packages/shared/src/admin';
 import {
   createTenantSubscriptionActivationCodeResponseSchema,
@@ -21,6 +22,7 @@ import {
   ensureTenantSession,
   formatError,
   loginWithDevCode,
+  readBoolean,
   readObject,
   readString,
   switchTenant,
@@ -74,6 +76,69 @@ async function run(ctx: TestContext): Promise<ModuleResult> {
     freeImageLimit,
     freeStorageLimit,
   });
+
+  const paymentsReadinessResponse = await ctx.request({
+    method: 'GET',
+    path: '/payments/readiness',
+    token: superAdminLogin.token,
+  });
+  assertStatus(paymentsReadinessResponse, 200, 'subscription.payments.readiness');
+  const readinessPayload = asObject(paymentsReadinessResponse.body, 'subscription.payments.readiness');
+  const readinessProviders = readObject(readinessPayload, 'providers', 'subscription.payments.readiness.providers');
+  const wechatProvider = readObject(readinessProviders, 'wechat', 'subscription.payments.readiness.providers.wechat');
+  const wechatReady = readBoolean(wechatProvider, 'ready', 'subscription.payments.readiness.providers.wechat.ready');
+  const requiredFields = asArray(
+    (wechatProvider as Record<string, unknown>).requiredFields,
+    'subscription.payments.readiness.providers.wechat.requiredFields',
+  ).map((entry, index) =>
+    readString(
+      { value: entry },
+      'value',
+      `subscription.payments.readiness.providers.wechat.requiredFields[${index}]`,
+    ),
+  );
+  for (const field of ['WECHAT_MP_APP_SECRET', 'PAYMENT_WECHAT_PRIVATE_KEY_PATH', 'PAYMENT_WECHAT_PLATFORM_CERT_PATH']) {
+    if (!requiredFields.includes(field)) {
+      throw new ApiTestError(`subscription.payments.readiness missing required field: ${field}`);
+    }
+  }
+  checks += 1;
+
+  if (wechatReady) {
+    const authorizeUrlResponse = await ctx.request({
+      method: 'POST',
+      path: '/auth/wechat/authorize-url',
+      token: session.token,
+      json: {
+        returnPath: `/app/${session.tenantSlug}/subscription`,
+      },
+    });
+    assertStatus(authorizeUrlResponse, 201, 'subscription.wechat.authorize-url');
+    const authorizePayload = createWechatAuthorizeUrlResponseSchema.parse(authorizeUrlResponse.body);
+    if (!authorizePayload.authorizeUrl.includes('open.weixin.qq.com')) {
+      throw new ApiTestError('subscription.wechat.authorize-url expected WeChat authorize domain');
+    }
+    checks += 1;
+
+    const createOrderDeniedResponse = await ctx.request({
+      method: 'POST',
+      path: '/subscriptions/orders',
+      token: session.token,
+      json: {
+        plan: 'BASIC',
+        durationDays: 30,
+        paymentChannel: 'JSAPI',
+      },
+    });
+    assertStatus(createOrderDeniedResponse, 403, 'subscription.wechat.order-denied-without-binding');
+    assertErrorCode(createOrderDeniedResponse, 'WECHAT_OAUTH_REQUIRED');
+    checks += 1;
+  } else {
+    ctx.log.warn('subscription.wechat.skipped', {
+      tenantId: session.tenantId,
+      reason: 'wechat-provider-not-ready',
+    });
+  }
 
   const getBeforeResponse = await ctx.request({
     method: 'GET',

@@ -1,5 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { AuditAction, ErrorCode, SuperAdminAuditAction } from '@eggturtle/shared';
+import {
+  AuditAction,
+  ErrorCode,
+  SUBSCRIPTION_PLAN_MONTHLY_PRICE_CENTS,
+  SuperAdminAuditAction,
+} from '@eggturtle/shared';
 import type {
   AdminActivityOverviewResponse,
   AdminRevenueOverviewResponse,
@@ -53,8 +58,8 @@ const DEFAULT_USAGE_LIMITS: Record<
 };
 const PLAN_MONTHLY_PRICE_CENTS: Record<TenantSubscriptionPlan, number> = {
   FREE: 0,
-  BASIC: 39900,
-  PRO: 129900
+  BASIC: SUBSCRIPTION_PLAN_MONTHLY_PRICE_CENTS.BASIC,
+  PRO: SUBSCRIPTION_PLAN_MONTHLY_PRICE_CENTS.PRO,
 };
 const PLAN_LEVEL: Record<TenantSubscriptionPlan, number> = {
   FREE: 0,

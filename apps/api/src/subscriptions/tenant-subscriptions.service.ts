@@ -4,6 +4,7 @@ import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/com
 import {
   AuditAction,
   ErrorCode,
+  SUBSCRIPTION_PLAN_PRODUCT_LIMITS,
   type CreateTenantSubscriptionActivationCodeRequest,
   type CreateTenantSubscriptionActivationCodeResponse,
   type RedeemTenantSubscriptionActivationCodeResponse,
@@ -32,11 +33,7 @@ type ResolvedTenantSubscription = {
   updatedAt: Date | null;
 };
 
-const PLAN_PRODUCT_LIMITS: Record<TenantSubscriptionPlan, number | null> = {
-  FREE: 10,
-  BASIC: 30,
-  PRO: 200
-};
+const PLAN_PRODUCT_LIMITS: Record<TenantSubscriptionPlan, number | null> = SUBSCRIPTION_PLAN_PRODUCT_LIMITS;
 
 @Injectable()
 export class TenantSubscriptionsService {
@@ -153,6 +150,47 @@ export class TenantSubscriptionsService {
 
     const resolved = this.resolveFromRecord(next);
     return this.toApiSubscription(resolved);
+  }
+
+  async applyPaidSubscriptionOrder(
+    input: {
+      tenantId: string;
+      plan: TenantSubscriptionPlan;
+      durationDays: number;
+      fulfillmentMode: 'IMMEDIATE' | 'DEFERRED';
+      effectiveStartsAt: Date;
+      appliedAt?: Date;
+    },
+    db?: Prisma.TransactionClient,
+  ): Promise<TenantSubscription> {
+    if (!Number.isInteger(input.durationDays) || input.durationDays <= 0) {
+      throw new BadRequestException({
+        message: 'durationDays must be a positive integer.',
+        errorCode: ErrorCode.InvalidRequestPayload,
+      });
+    }
+
+    const appliedAt = input.appliedAt ?? new Date();
+    const startsAt =
+      input.fulfillmentMode === 'DEFERRED' ? input.effectiveStartsAt : appliedAt;
+    const expiresAt = new Date(
+      input.effectiveStartsAt.getTime() + input.durationDays * 24 * 60 * 60 * 1000,
+    );
+
+    return this.upsertSubscription(
+      input.tenantId,
+      {
+        plan: input.plan,
+        startsAt: startsAt.toISOString(),
+        expiresAt: expiresAt.toISOString(),
+        disabledAt: null,
+        disabledReason: null,
+        maxImages: null,
+        maxStorageBytes: null,
+        maxShares: null,
+      },
+      db,
+    );
   }
 
   async createSubscriptionActivationCode(
