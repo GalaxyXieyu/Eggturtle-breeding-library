@@ -92,6 +92,8 @@ const PLATFORM_PUBLIC_KEY_FIELD = 'PAYMENT_WECHAT_PLATFORM_PUBLIC_KEY_PATH';
 
 const OPTIONAL_FIELDS = [PLATFORM_CERT_FIELD, PLATFORM_PUBLIC_KEY_FIELD] as const;
 
+type WechatConfigField = (typeof BASE_REQUIRED_FIELDS)[number] | (typeof OPTIONAL_FIELDS)[number];
+
 @Injectable()
 export class WechatPayService {
   private merchantPrivateKey: KeyObject | null = null;
@@ -99,10 +101,12 @@ export class WechatPayService {
   private platformPublicKey: KeyObject | null = null;
 
   getReadiness(): ProviderReadiness {
-    const providedFields = [...BASE_REQUIRED_FIELDS, ...OPTIONAL_FIELDS].filter((name) =>
+    const providedFields: WechatConfigField[] = [...BASE_REQUIRED_FIELDS, ...OPTIONAL_FIELDS].filter((name) =>
       this.isFieldProvided(name),
     );
-    const missingFields = BASE_REQUIRED_FIELDS.filter((name) => !this.isFieldProvided(name));
+    const missingFields: WechatConfigField[] = BASE_REQUIRED_FIELDS.filter(
+      (name) => !this.isFieldProvided(name),
+    );
     const hasPlatformCert = this.isFieldProvided(PLATFORM_CERT_FIELD);
     const hasPlatformPublicKey = this.isFieldProvided(PLATFORM_PUBLIC_KEY_FIELD);
 
