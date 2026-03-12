@@ -128,23 +128,47 @@ jobs:
           echo "Deploy context: $(kubectl config current-context)"
           echo "Deploy namespace: ${NAMESPACE}"
 
-          if [ "$WORKLOAD_KIND" = "auto" ]; then
-            if kubectl get deployment/"$WORKLOAD_NAME" -n "$NAMESPACE" >/dev/null 2>&1; then
-              WORKLOAD_KIND="deployment"
-            elif kubectl get statefulset/"$WORKLOAD_NAME" -n "$NAMESPACE" >/dev/null 2>&1; then
-              WORKLOAD_KIND="statefulset"
+          resolve_workload_kind() {
+            if [ "$WORKLOAD_KIND" = "auto" ]; then
+              if kubectl get deployment/"$WORKLOAD_NAME" -n "$NAMESPACE" >/dev/null 2>&1; then
+                WORKLOAD_KIND="deployment"
+                return
+              fi
+              if kubectl get statefulset/"$WORKLOAD_NAME" -n "$NAMESPACE" >/dev/null 2>&1; then
+                WORKLOAD_KIND="statefulset"
+                return
+              fi
+            elif [ "$WORKLOAD_KIND" = "deployment" ]; then
+              if kubectl get deployment/"$WORKLOAD_NAME" -n "$NAMESPACE" >/dev/null 2>&1; then
+                return
+              fi
+              if kubectl get statefulset/"$WORKLOAD_NAME" -n "$NAMESPACE" >/dev/null 2>&1; then
+                echo "::warning::K8S_WORKLOAD_KIND=deployment but found statefulset/$WORKLOAD_NAME. Switching to statefulset."
+                WORKLOAD_KIND="statefulset"
+                return
+              fi
+            elif [ "$WORKLOAD_KIND" = "statefulset" ]; then
+              if kubectl get statefulset/"$WORKLOAD_NAME" -n "$NAMESPACE" >/dev/null 2>&1; then
+                return
+              fi
+              if kubectl get deployment/"$WORKLOAD_NAME" -n "$NAMESPACE" >/dev/null 2>&1; then
+                echo "::warning::K8S_WORKLOAD_KIND=statefulset but found deployment/$WORKLOAD_NAME. Switching to deployment."
+                WORKLOAD_KIND="deployment"
+                return
+              fi
             else
-              echo "::error::No deployment/statefulset named '$WORKLOAD_NAME' in namespace '$NAMESPACE'"
-              echo "Available workloads:"
-              kubectl get deploy,sts -n "$NAMESPACE" || true
+              echo "::error::K8S_WORKLOAD_KIND must be 'deployment', 'statefulset', or 'auto'"
               exit 1
             fi
-          fi
 
-          if [ "$WORKLOAD_KIND" != "deployment" ] && [ "$WORKLOAD_KIND" != "statefulset" ]; then
-            echo "::error::K8S_WORKLOAD_KIND must be 'deployment', 'statefulset', or 'auto'"
+            echo "::error::No deployment/statefulset named '$WORKLOAD_NAME' in namespace '$NAMESPACE'"
+            echo "Available workloads:"
+            kubectl get deploy,sts -n "$NAMESPACE" || true
             exit 1
-          fi
+          }
+
+          resolve_workload_kind
+          echo "Resolved workload kind: ${WORKLOAD_KIND}"
 
           if [ -z "$CONTAINER_NAME" ]; then
             CONTAINER_NAME=$(kubectl get "$WORKLOAD_KIND"/"$WORKLOAD_NAME" -n "$NAMESPACE" -o jsonpath='{.spec.template.spec.containers[0].name}')
