@@ -4,16 +4,20 @@ import { useEffect, useMemo, useState } from 'react';
 import type { MyReferralOverviewResponse, ReferralInviteProgress, ReferralReward } from '@eggturtle/shared';
 import { Copy, Gift, Users } from 'lucide-react';
 
+import { Card } from '@/components/ui/card';
+import { useUiPreferences } from '@/components/ui-preferences';
 import { copyTextWithFallback } from '@/lib/browser-share';
 import { formatApiError } from '@/lib/error-utils';
+import { ACCOUNT_REFERRAL_MESSAGES } from '@/lib/locales/account';
 import {
   bindReferralCode,
   fetchMyReferralOverview,
   resolveReferralShareUrl,
 } from '@/lib/referral-client';
-import { Card } from '@/components/ui/card';
 
 export default function ReferralPanel({ tenantSlug }: { tenantSlug: string }) {
+  const { locale } = useUiPreferences();
+  const messages = ACCOUNT_REFERRAL_MESSAGES[locale];
   const [loading, setLoading] = useState(true);
   const [overview, setOverview] = useState<MyReferralOverviewResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +42,7 @@ export default function ReferralPanel({ tenantSlug }: { tenantSlug: string }) {
         }
       } catch (requestError) {
         if (!cancelled) {
-          setError(formatApiError(requestError));
+          setError(formatApiError(requestError, undefined, locale));
         }
       } finally {
         if (!cancelled) {
@@ -51,7 +55,7 @@ export default function ReferralPanel({ tenantSlug }: { tenantSlug: string }) {
       cancelled = true;
       controller.abort();
     };
-  }, [tenantSlug]);
+  }, [locale, tenantSlug]);
 
   useEffect(() => {
     if (!notice) {
@@ -74,11 +78,11 @@ export default function ReferralPanel({ tenantSlug }: { tenantSlug: string }) {
 
     const copied = await copyTextWithFallback(shareLink);
     if (copied) {
-      setNotice(`邀请链接已复制。好友上传首只乌龟后，双方各得 ${firstUploadDays} 天。`);
+      setNotice(messages.copySuccess(firstUploadDays));
       return;
     }
 
-    setError('复制失败，请稍后再试。');
+    setError(messages.copyFailed);
   }
 
   async function handleBind() {
@@ -88,9 +92,9 @@ export default function ReferralPanel({ tenantSlug }: { tenantSlug: string }) {
       await refreshOverview();
       setBindCode('');
       setError(null);
-      setNotice('邀请关系已绑定。');
+      setNotice(messages.bindConfirm);
     } catch (requestError) {
-      setError(formatApiError(requestError));
+      setError(formatApiError(requestError, undefined, locale));
     } finally {
       setBinding(false);
     }
@@ -103,43 +107,47 @@ export default function ReferralPanel({ tenantSlug }: { tenantSlug: string }) {
           <div>
             <p className="inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700">
               <Gift size={12} />
-              Invite Rewards
+              {messages.badge}
             </p>
             <h2 className="mt-3 text-lg font-semibold text-neutral-900 sm:text-xl">
-              邀请好友上传首只乌龟，双方各得 {firstUploadDays} 天
+              {messages.heroTitle(firstUploadDays)}
             </h2>
-            <p className="mt-2 text-sm leading-6 text-neutral-700">
-              新用户从公开页注册后会自动绑定邀请关系；首次成功上传一只乌龟后，奖励直接延长双方 PRO 到期时间。
-            </p>
+            <p className="mt-2 text-sm leading-6 text-neutral-700">{messages.heroDesc}</p>
           </div>
           <div className="inline-flex items-center gap-2 rounded-full bg-neutral-900 px-3 py-2 text-sm font-semibold text-white">
             <Users size={14} />
-            已邀请 {overview?.invitedCount ?? 0} 人
+            {messages.invitedCount(overview?.invitedCount ?? 0)}
           </div>
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-4">
           <MetricCard
-            label="本月已获"
-            value={overview ? `${overview.monthAwardedDays}/${overview.rules.monthlyCapDays} 天` : loading ? '加载中…' : '-'}
+            label={messages.metrics.awarded}
+            value={
+              overview
+                ? `${overview.monthAwardedDays}/${overview.rules.monthlyCapDays} ${messages.days}`
+                : loading
+                  ? messages.loading
+                  : '-'
+            }
           />
           <MetricCard
-            label="本月剩余"
-            value={overview ? `${overview.monthRemainingDays} 天` : loading ? '加载中…' : '-'}
+            label={messages.metrics.remaining}
+            value={overview ? `${overview.monthRemainingDays} ${messages.days}` : loading ? messages.loading : '-'}
           />
           <MetricCard
-            label="累计奖励"
-            value={overview ? `${overview.totalAwardedDays} 天` : loading ? '加载中…' : '-'}
+            label={messages.metrics.total}
+            value={overview ? `${overview.totalAwardedDays} ${messages.days}` : loading ? messages.loading : '-'}
           />
           <MetricCard
-            label="已完成上传"
-            value={overview ? `${overview.activatedInviteeCount} 人` : loading ? '加载中…' : '-'}
+            label={messages.metrics.activated}
+            value={overview ? `${overview.activatedInviteeCount} ${messages.people}` : loading ? messages.loading : '-'}
           />
         </div>
 
         <div className="mt-4 rounded-2xl border border-black/10 bg-white/90 p-4">
-          <p className="text-xs text-neutral-500">我的邀请链接</p>
-          <p className="mt-2 break-all text-sm font-semibold text-neutral-900">{shareLink || '加载中…'}</p>
+          <p className="text-xs text-neutral-500">{messages.shareLinkLabel}</p>
+          <p className="mt-2 break-all text-sm font-semibold text-neutral-900">{shareLink || messages.loading}</p>
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
@@ -148,23 +156,23 @@ export default function ReferralPanel({ tenantSlug }: { tenantSlug: string }) {
               className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-neutral-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-60"
             >
               <Copy size={14} />
-              复制链接
+              {messages.copyLink}
             </button>
           </div>
         </div>
 
         <div className="mt-4 rounded-2xl border border-black/10 bg-white/90 p-4">
-          <p className="text-xs text-neutral-500">绑定邀请人</p>
+          <p className="text-xs text-neutral-500">{messages.bindTitle}</p>
           <p className="mt-2 text-sm font-semibold text-neutral-900">
             {overview?.binding
-              ? `已绑定邀请码 ${overview.binding.referralCode}`
-              : `新注册 ${overview?.rules.bindWindowHours ?? 24} 小时内可手动补绑一次`}
+              ? messages.bindingCode(overview.binding.referralCode)
+              : messages.bindWindow(overview?.rules.bindWindowHours ?? 24)}
           </p>
           {!overview?.binding ? (
             <div className="mt-3 flex flex-wrap gap-2">
               <input
                 className="w-[220px] rounded-xl border border-neutral-200 px-3 py-2 text-sm"
-                placeholder="填写好友邀请码"
+                placeholder={messages.bindPlaceholder}
                 value={bindCode}
                 onChange={(event) => setBindCode(event.target.value)}
               />
@@ -174,7 +182,7 @@ export default function ReferralPanel({ tenantSlug }: { tenantSlug: string }) {
                 disabled={!bindCode.trim() || binding}
                 onClick={() => void handleBind()}
               >
-                {binding ? '绑定中…' : '确认绑定'}
+                {binding ? messages.binding : messages.bindConfirm}
               </button>
             </div>
           ) : null}
@@ -182,40 +190,40 @@ export default function ReferralPanel({ tenantSlug }: { tenantSlug: string }) {
       </Card>
 
       <Card className="rounded-3xl border-neutral-200/90 bg-white p-6">
-        <h3 className="text-base font-semibold text-neutral-900">邀请进度</h3>
-        <p className="mt-1 text-sm text-neutral-500">注册即锁定邀请关系；首只乌龟上传成功后，再发放奖励。</p>
+        <h3 className="text-base font-semibold text-neutral-900">{messages.progressTitle}</h3>
+        <p className="mt-1 text-sm text-neutral-500">{messages.progressDesc}</p>
 
-        {loading ? <p className="mt-4 text-sm text-neutral-600">正在加载…</p> : null}
+        {loading ? <p className="mt-4 text-sm text-neutral-600">{messages.loading}</p> : null}
 
         {!loading && overview?.invites.length ? (
           <div className="mt-4 space-y-3">
             {overview.invites.map((invite) => (
-              <InviteProgressCard key={invite.inviteeUserId} invite={invite} />
+              <InviteProgressCard key={invite.inviteeUserId} invite={invite} locale={locale} />
             ))}
           </div>
         ) : null}
 
         {!loading && !overview?.invites.length ? (
-          <p className="mt-4 text-sm text-neutral-600">还没有邀请记录。先复制邀请链接，让好友从公开页进入并完成注册。</p>
+          <p className="mt-4 text-sm text-neutral-600">{messages.progressEmpty}</p>
         ) : null}
       </Card>
 
       <Card className="rounded-3xl border-neutral-200/90 bg-white p-6">
-        <h3 className="text-base font-semibold text-neutral-900">奖励记录</h3>
-        <p className="mt-1 text-sm text-neutral-500">兼容展示历史首付/续费奖励，以及新的首只上传奖励。</p>
+        <h3 className="text-base font-semibold text-neutral-900">{messages.rewardsTitle}</h3>
+        <p className="mt-1 text-sm text-neutral-500">{messages.rewardsDesc}</p>
 
-        {loading ? <p className="mt-4 text-sm text-neutral-600">正在加载…</p> : null}
+        {loading ? <p className="mt-4 text-sm text-neutral-600">{messages.loading}</p> : null}
 
         {!loading && overview?.rewards.length ? (
           <div className="mt-4 space-y-3">
             {overview.rewards.map((reward) => (
-              <RewardCard key={reward.id} reward={reward} />
+              <RewardCard key={reward.id} reward={reward} locale={locale} />
             ))}
           </div>
         ) : null}
 
         {!loading && !overview?.rewards.length ? (
-          <p className="mt-4 text-sm text-neutral-600">还没有奖励记录。邀请好友从公开页注册并上传首只乌龟后，就会开始累计。</p>
+          <p className="mt-4 text-sm text-neutral-600">{messages.rewardsEmpty}</p>
         ) : null}
       </Card>
 
@@ -242,84 +250,108 @@ function MetricCard({ label, value }: { label: string; value: string }) {
   );
 }
 
-function InviteProgressCard({ invite }: { invite: ReferralInviteProgress }) {
-  const status = getInviteStatusMeta(invite.status);
+function InviteProgressCard({
+  invite,
+  locale,
+}: {
+  invite: ReferralInviteProgress;
+  locale: 'zh' | 'en';
+}) {
+  const messages = ACCOUNT_REFERRAL_MESSAGES[locale];
+  const status = getInviteStatusMeta(invite.status, locale);
 
   return (
     <div className="rounded-2xl border border-neutral-200 bg-neutral-50/80 p-4">
       <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-500">
         <span className="rounded-full bg-white px-2 py-1 font-semibold text-neutral-700">{invite.inviteeDisplayName}</span>
         <span className={`rounded-full px-2 py-1 font-semibold ${status.className}`}>{status.label}</span>
-        <span>{new Date(invite.boundAt).toLocaleString()}</span>
+        <span>{formatReferralDate(invite.boundAt, locale)}</span>
       </div>
-      <p className="mt-2 text-sm font-semibold text-neutral-900">邀请码 {invite.referralCode}</p>
+      <p className="mt-2 text-sm font-semibold text-neutral-900">{messages.inviteCode(invite.referralCode)}</p>
       <p className="mt-1 text-xs text-neutral-600">
         {invite.firstProductCreatedAt
-          ? `首只乌龟上传时间：${new Date(invite.firstProductCreatedAt).toLocaleString()}`
-          : '尚未完成首只乌龟上传'}
+          ? messages.firstUploadAt(formatReferralDate(invite.firstProductCreatedAt, locale))
+          : messages.uploadPending}
       </p>
       {invite.rewardAwardedAt ? (
-        <p className="mt-1 text-xs text-emerald-700">奖励到账时间：{new Date(invite.rewardAwardedAt).toLocaleString()}</p>
-      ) : null}
-    </div>
-  );
-}
-
-function RewardCard({ reward }: { reward: ReferralReward }) {
-  return (
-    <div className="rounded-2xl border border-neutral-200 bg-neutral-50/80 p-4">
-      <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-500">
-        <span className="rounded-full bg-white px-2 py-1 font-semibold text-neutral-700">
-          {getRewardTriggerLabel(reward.triggerType)}
-        </span>
-        <span>{reward.status}</span>
-        <span>{new Date(reward.createdAt).toLocaleString()}</span>
-      </div>
-      <p className="mt-2 text-sm font-semibold text-neutral-900">
-        邀请人 +{reward.rewardDaysReferrer} 天，被邀请者 +{reward.rewardDaysInvitee} 天
-      </p>
-      {reward.statusReason ? (
-        <p className="mt-1 text-xs text-amber-700">
-          {reward.statusReason === 'monthly_cap_clipped' ? '本次奖励受月上限裁剪。' : '本月奖励已达上限。'}
+        <p className="mt-1 text-xs text-emerald-700">
+          {messages.rewardAwardedAt(formatReferralDate(invite.rewardAwardedAt, locale))}
         </p>
       ) : null}
     </div>
   );
 }
 
-function getRewardTriggerLabel(triggerType: ReferralReward['triggerType']): string {
+function RewardCard({
+  reward,
+  locale,
+}: {
+  reward: ReferralReward;
+  locale: 'zh' | 'en';
+}) {
+  const messages = ACCOUNT_REFERRAL_MESSAGES[locale];
+
+  return (
+    <div className="rounded-2xl border border-neutral-200 bg-neutral-50/80 p-4">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-500">
+        <span className="rounded-full bg-white px-2 py-1 font-semibold text-neutral-700">
+          {getRewardTriggerLabel(reward.triggerType, locale)}
+        </span>
+        <span>{reward.status}</span>
+        <span>{formatReferralDate(reward.createdAt, locale)}</span>
+      </div>
+      <p className="mt-2 text-sm font-semibold text-neutral-900">
+        {messages.rewardDelta(reward.rewardDaysReferrer, reward.rewardDaysInvitee)}
+      </p>
+      {reward.statusReason ? (
+        <p className="mt-1 text-xs text-amber-700">
+          {reward.statusReason === 'monthly_cap_clipped' ? messages.rewardClipped : messages.rewardCapped}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function getRewardTriggerLabel(triggerType: ReferralReward['triggerType'], locale: 'zh' | 'en'): string {
+  const messages = ACCOUNT_REFERRAL_MESSAGES[locale];
   if (triggerType === 'first_product_create') {
-    return '首只上传奖励';
+    return messages.triggerFirstUpload;
   }
 
   if (triggerType === 'first_payment') {
-    return '首付奖励';
+    return messages.triggerFirstPayment;
   }
 
-  return '续费奖励';
+  return messages.triggerRenewal;
 }
 
-function getInviteStatusMeta(status: ReferralInviteProgress['status']) {
+function getInviteStatusMeta(status: ReferralInviteProgress['status'], locale: 'zh' | 'en') {
+  const messages = ACCOUNT_REFERRAL_MESSAGES[locale];
+
   switch (status) {
     case 'reward_awarded':
       return {
-        label: '已发奖',
+        label: messages.statusAwarded,
         className: 'bg-emerald-100 text-emerald-700',
       };
     case 'reward_skipped':
       return {
-        label: '奖励跳过',
+        label: messages.statusSkipped,
         className: 'bg-amber-100 text-amber-700',
       };
     case 'first_product_uploaded':
       return {
-        label: '已上传首只',
+        label: messages.statusUploaded,
         className: 'bg-sky-100 text-sky-700',
       };
     default:
       return {
-        label: '已绑定',
+        label: messages.statusBound,
         className: 'bg-neutral-200 text-neutral-700',
       };
   }
+}
+
+function formatReferralDate(value: string, locale: 'zh' | 'en') {
+  return new Date(value).toLocaleString(locale === 'zh' ? 'zh-CN' : 'en-US');
 }

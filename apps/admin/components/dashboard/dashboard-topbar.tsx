@@ -7,6 +7,11 @@ import { usePathname, useRouter } from 'next/navigation';
 
 import { apiRequest } from '@/lib/api-client';
 import { UiPreferenceControls, useUiPreferences, type UiLocale } from '@/components/ui-preferences';
+import {
+  DASHBOARD_SECTION_MESSAGES,
+  DASHBOARD_SEGMENT_MESSAGES,
+  DASHBOARD_TOPBAR_MESSAGES,
+} from '@/lib/locales/shell';
 
 type DashboardTopbarProps = {
   collapsed: boolean;
@@ -20,25 +25,6 @@ type BreadcrumbItem = {
   isCurrent: boolean;
 };
 
-const TOPBAR_COPY = {
-  zh: {
-    collapseSidebar: '收起侧边栏',
-    expandSidebar: '展开侧边栏',
-    breadcrumbsLabel: '面包屑',
-    currentAccount: '当前账号：',
-    signingOut: '退出中...',
-    signOut: '退出登录'
-  },
-  en: {
-    collapseSidebar: 'Collapse sidebar',
-    expandSidebar: 'Expand sidebar',
-    breadcrumbsLabel: 'Breadcrumbs',
-    currentAccount: 'Current account:',
-    signingOut: 'Signing out...',
-    signOut: 'Sign out'
-  }
-} as const;
-
 export function DashboardTopbar({
   collapsed,
   currentUserEmail,
@@ -47,7 +33,7 @@ export function DashboardTopbar({
   const pathname = usePathname();
   const router = useRouter();
   const { locale } = useUiPreferences();
-  const copy = TOPBAR_COPY[locale];
+  const messages = DASHBOARD_TOPBAR_MESSAGES[locale];
   const [signingOut, setSigningOut] = useState(false);
   const [tenantName, setTenantName] = useState<string | null>(null);
 
@@ -89,9 +75,8 @@ export function DashboardTopbar({
     [pathname, locale, tenantId, tenantName]
   );
   const currentPageLabel =
-    [...breadcrumbs].reverse().find((crumb) => crumb.isCurrent)?.label ??
-    (locale === 'zh' ? '平台总览' : 'Overview');
-  const sidebarToggleLabel = collapsed ? copy.expandSidebar : copy.collapseSidebar;
+    [...breadcrumbs].reverse().find((crumb) => crumb.isCurrent)?.label ?? messages.currentPageFallback;
+  const sidebarToggleLabel = collapsed ? messages.expandSidebar : messages.collapseSidebar;
 
   async function handleSignOut() {
     if (signingOut) {
@@ -127,7 +112,7 @@ export function DashboardTopbar({
         </button>
 
         <div>
-          <nav className="breadcrumbs" aria-label={copy.breadcrumbsLabel}>
+          <nav className="breadcrumbs" aria-label={messages.breadcrumbsLabel}>
             {breadcrumbs.map((crumb, index) => (
               <span
                 key={`${crumb.label}-${index}`}
@@ -150,10 +135,10 @@ export function DashboardTopbar({
       <div className="topbar-actions">
         <UiPreferenceControls />
         <p className="topbar-meta">
-          {copy.currentAccount} {currentUserEmail}
+          {messages.currentAccount} {currentUserEmail}
         </p>
         <button className="secondary" type="button" onClick={handleSignOut} disabled={signingOut}>
-          {signingOut ? copy.signingOut : copy.signOut}
+          {signingOut ? messages.signingOut : messages.signOut}
         </button>
       </div>
     </header>
@@ -166,18 +151,17 @@ function buildBreadcrumbs(
   tenantId: string | null,
   tenantName: string | null
 ) {
-  const baseLabel = locale === 'zh' ? '平台后台' : 'Admin Console';
-  const overviewLabel = locale === 'zh' ? '数据' : 'Data';
+  const messages = DASHBOARD_TOPBAR_MESSAGES[locale];
 
   if (!pathname.startsWith('/dashboard')) {
-    return [{ label: baseLabel, isCurrent: true }] satisfies BreadcrumbItem[];
+    return [{ label: messages.baseLabel, isCurrent: true }] satisfies BreadcrumbItem[];
   }
 
   const segments = pathname.split('/').filter(Boolean).slice(1);
-  const breadcrumbs: BreadcrumbItem[] = [{ label: baseLabel, href: '/dashboard', isCurrent: false }];
+  const breadcrumbs: BreadcrumbItem[] = [{ label: messages.baseLabel, href: '/dashboard', isCurrent: false }];
 
   if (segments.length === 0) {
-    breadcrumbs.push({ label: overviewLabel, isCurrent: true });
+    breadcrumbs.push({ label: messages.overviewLabel, isCurrent: true });
     return breadcrumbs;
   }
 
@@ -217,48 +201,33 @@ function buildBreadcrumbs(
 }
 
 function resolveSectionLabel(firstSegment: string, locale: UiLocale) {
+  const messages = DASHBOARD_SECTION_MESSAGES[locale];
+
   if (firstSegment === 'analytics' || firstSegment === 'usage' || firstSegment === 'billing') {
-    return locale === 'zh' ? '数据' : 'Data';
+    return messages.data;
   }
 
   if (firstSegment === 'tenant-management' || firstSegment === 'tenants' || firstSegment === 'memberships') {
-    return locale === 'zh' ? '用户' : 'Users';
+    return messages.users;
   }
 
   if (firstSegment === 'settings' || firstSegment === 'audit-logs') {
-    return locale === 'zh' ? '设置' : 'Settings';
+    return messages.settings;
   }
 
   return null;
 }
 
 function resolveSegmentLabel(segment: string, locale: UiLocale) {
-  const labelMap: Record<string, { zh: string; en: string }> = {
-    'tenant-management': { zh: '用户', en: 'Users' },
-    tenants: { zh: '用户详情', en: 'Tenant Detail' },
-    memberships: { zh: '成员权限', en: 'Member Access' },
-    settings: { zh: '设置', en: 'Settings' },
-    'platform-branding': { zh: '平台品牌', en: 'Platform Branding' },
-    'tenant-branding': { zh: '租户品牌', en: 'Tenant Branding' },
-    'audit-logs': { zh: '审计记录', en: 'Audit Logs' },
-    analytics: { zh: '活跃度', en: 'Activity' },
-    usage: { zh: '用量', en: 'Usage' },
-    billing: { zh: '营收', en: 'Revenue' },
-    activity: { zh: '活跃度视图', en: 'Activity View' },
-    revenue: { zh: '营收视图', en: 'Revenue View' }
-  };
-
-  const mapped = labelMap[segment];
+  const mapped = DASHBOARD_SEGMENT_MESSAGES[locale][segment];
   if (mapped) {
-    return mapped[locale];
+    return mapped;
   }
 
-  const words = segment
+  return segment
     .split('-')
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
-
-  return locale === 'zh' ? words : words;
 }
 
 function formatTenantLabel(tenantId: string, tenantName: string | null, locale: UiLocale) {
@@ -266,8 +235,7 @@ function formatTenantLabel(tenantId: string, tenantName: string | null, locale: 
     return tenantName;
   }
 
-  const shortTenantId = tenantId.length > 8 ? tenantId.slice(0, 8) : tenantId;
-  return locale === 'zh' ? `用户 ${shortTenantId}` : `Tenant ${shortTenantId}`;
+  return DASHBOARD_TOPBAR_MESSAGES[locale].tenantLabel(tenantId);
 }
 
 function extractTenantId(pathname: string) {

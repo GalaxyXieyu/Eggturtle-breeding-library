@@ -1,6 +1,11 @@
-import { NextResponse } from 'next/server';
 import { requestSmsCodeRequestSchema, requestSmsCodeResponseSchema } from '@eggturtle/shared/auth';
+import { NextResponse } from 'next/server';
 
+import {
+  createStandardErrorResponse,
+  invalidRequestResponse,
+  parseErrorPayload,
+} from '@/lib/api-error-response';
 import { getAdminApiBaseUrl } from '@/lib/server-session';
 
 export async function POST(request: Request) {
@@ -17,54 +22,14 @@ export async function POST(request: Request) {
       cache: 'no-store'
     });
 
-    const body = await parseJsonBody(upstreamResponse);
+    const body = await parseErrorPayload(upstreamResponse);
 
     if (!upstreamResponse.ok) {
-      return NextResponse.json(
-        {
-          message: pickErrorMessage(body, `请求失败（${upstreamResponse.status}）`)
-        },
-        { status: upstreamResponse.status }
-      );
+      return createStandardErrorResponse(upstreamResponse.status, body);
     }
 
     return NextResponse.json(requestSmsCodeResponseSchema.parse(body));
   } catch {
-    return NextResponse.json(
-      {
-        message: '请求参数无效。'
-      },
-      { status: 400 }
-    );
+    return invalidRequestResponse();
   }
-}
-
-async function parseJsonBody(response: Response) {
-  const text = await response.text();
-
-  if (!text) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(text) as unknown;
-  } catch {
-    return { message: text };
-  }
-}
-
-function pickErrorMessage(payload: unknown, fallback: string) {
-  if (!payload || typeof payload !== 'object') {
-    return fallback;
-  }
-
-  if ('message' in payload && typeof payload.message === 'string') {
-    return payload.message;
-  }
-
-  if ('error' in payload && typeof payload.error === 'string') {
-    return payload.error;
-  }
-
-  return fallback;
 }

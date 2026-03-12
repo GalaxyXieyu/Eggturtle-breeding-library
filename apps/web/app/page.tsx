@@ -34,7 +34,7 @@ type HomeCopy = {
   gallery: Array<{ src: string; alt: string; large: boolean }>;
 };
 
-const COPY: Record<'zh' | 'en', HomeCopy> = {
+const HOME_MESSAGES: Record<'zh' | 'en', HomeCopy> = {
   zh: {
     navLogin: '登录控制台',
     brandEyebrow: 'Breeding Traceability Record',
@@ -165,7 +165,7 @@ const COPY: Record<'zh' | 'en', HomeCopy> = {
 
 export default function HomePage() {
   const { locale } = useUiPreferences();
-  const copy = COPY[locale];
+  const messages = HOME_MESSAGES[locale];
   const branding = usePlatformBranding();
   const brandTitle = branding.appName[locale];
   const brandEyebrow = branding.appEyebrow[locale];
@@ -183,7 +183,7 @@ export default function HomePage() {
             </div>
           </div>
           <Link href="/login" className={styles.navLogin}>
-            {copy.navLogin}
+            {messages.navLogin}
           </Link>
         </div>
       </header>
@@ -191,27 +191,27 @@ export default function HomePage() {
       <main className={styles.main}>
         <section className={styles.hero}>
           <div className={styles.heroCopy}>
-            <p className={styles.kicker}>{copy.heroKicker}</p>
+            <p className={styles.kicker}>{messages.heroKicker}</p>
             <div className={styles.brandPanel}>
               <p className={styles.brandEyebrow}>{brandEyebrow}</p>
               <p className={styles.brandTitle}>{brandTitle}</p>
               <p className={styles.brandDescription}>{brandDescription}</p>
             </div>
             <h1>
-              {copy.heroTitleLine1}
-              <span>{copy.heroTitleLine2}</span>
+              {messages.heroTitleLine1}
+              <span>{messages.heroTitleLine2}</span>
             </h1>
-            <p className={styles.subtitle}>{copy.heroSubtitle}</p>
+            <p className={styles.subtitle}>{messages.heroSubtitle}</p>
             <div className={styles.heroActions}>
               <Link href="/login" className={styles.primaryAction}>
-                {copy.heroPrimaryAction}
+                {messages.heroPrimaryAction}
               </Link>
               <a href="#features" className={styles.secondaryAction}>
-                {copy.heroSecondaryAction}
+                {messages.heroSecondaryAction}
               </a>
             </div>
             <div className={styles.heroMeta}>
-              {copy.heroMeta.map((item) => (
+              {messages.heroMeta.map((item) => (
                 <article key={item.title}>
                   <strong>{item.title}</strong>
                   <span>{item.desc}</span>
@@ -226,7 +226,7 @@ export default function HomePage() {
                 <source media="(max-width: 640px)" srcSet="/images/mg_02.jpg" />
                 <img
                   src="/images/mg_01.jpg"
-                  alt={copy.gallery[0]?.alt ?? ''}
+                  alt={messages.gallery[0]?.alt ?? ''}
                   className={styles.heroImage}
                   loading="eager"
                   decoding="async"
@@ -234,11 +234,11 @@ export default function HomePage() {
               </picture>
             </div>
             <div className={styles.floatingCard}>
-              <p>{copy.heroStockLabel}</p>
+              <p>{messages.heroStockLabel}</p>
               <strong>5000+</strong>
             </div>
             <div className={`${styles.floatingCard} ${styles.floatingCardAlt}`}>
-              <p>{copy.heroHatchLabel}</p>
+              <p>{messages.heroHatchLabel}</p>
               <strong>98%</strong>
             </div>
           </div>
@@ -246,11 +246,11 @@ export default function HomePage() {
 
         <section className={styles.features} id="features">
           <div className={styles.sectionHead}>
-            <p className={styles.kicker}>{copy.featuresKicker}</p>
-            <h2>{copy.featuresTitle}</h2>
+            <p className={styles.kicker}>{messages.featuresKicker}</p>
+            <h2>{messages.featuresTitle}</h2>
           </div>
           <div className={styles.featureGrid}>
-            {copy.features.map((feature) => (
+            {messages.features.map((feature) => (
               <article key={feature.title} className={styles.featureCard}>
                 <span aria-hidden="true" className={styles.featureIcon}>
                   {feature.icon}
@@ -264,7 +264,7 @@ export default function HomePage() {
 
         <section className={styles.gallery}>
           <div className={styles.galleryGrid}>
-            {copy.gallery.map((item) => (
+            {messages.gallery.map((item) => (
               <figure
                 key={item.src}
                 className={`${styles.galleryItem} ${item.large ? styles.galleryItemLarge : ''}`}
@@ -284,7 +284,7 @@ export default function HomePage() {
         </section>
 
         <section className={styles.stats}>
-          {copy.stats.map((item) => (
+          {messages.stats.map((item) => (
             <article key={item.label} className={styles.statCard}>
               <strong>{item.value}</strong>
               <p>{item.label}</p>
@@ -293,11 +293,11 @@ export default function HomePage() {
         </section>
 
         <section className={styles.cta}>
-          <p className={styles.kicker}>{copy.ctaKicker}</p>
-          <h2>{copy.ctaTitle}</h2>
-          <p>{copy.ctaDesc}</p>
+          <p className={styles.kicker}>{messages.ctaKicker}</p>
+          <h2>{messages.ctaTitle}</h2>
+          <p>{messages.ctaDesc}</p>
           <Link href="/login" className={styles.primaryAction}>
-            {copy.ctaAction}
+            {messages.ctaAction}
           </Link>
         </section>
       </main>
@@ -306,8 +306,8 @@ export default function HomePage() {
         <div className={styles.container}>
           <p>© 2026 {branding.appName.en}. All rights reserved.</p>
           <div className={styles.footerLinks}>
-            <Link href="/login">{copy.footerLogin}</Link>
-            <a href="#features">{copy.footerFeatures}</a>
+            <Link href="/login">{messages.footerLogin}</Link>
+            <a href="#features">{messages.footerFeatures}</a>
           </div>
         </div>
       </footer>

@@ -11,8 +11,10 @@ import {
 } from '@eggturtle/shared';
 
 import { AdminBadge, AdminPageHeader, AdminPanel } from '@/components/dashboard/polish-primitives';
+import { useUiPreferences } from '@/components/ui-preferences';
 import { apiRequest } from '@/lib/api-client';
 import { formatUnknownError } from '@/lib/formatters';
+import { TENANT_BRANDING_MESSAGES } from '@/lib/locales/settings-pages';
 
 const EMPTY_FORM: TenantBrandingOverride = {
   displayName: null,
@@ -21,6 +23,8 @@ const EMPTY_FORM: TenantBrandingOverride = {
 };
 
 export default function DashboardTenantBrandingPage() {
+  const { locale } = useUiPreferences();
+  const messages = TENANT_BRANDING_MESSAGES[locale];
   const [tenants, setTenants] = useState<AdminTenant[]>([]);
   const [tenantSearch, setTenantSearch] = useState('');
   const [selectedTenantId, setSelectedTenantId] = useState('');
@@ -56,7 +60,7 @@ export default function DashboardTenantBrandingPage() {
         }
       } catch (currentError) {
         if (!cancelled) {
-          setError(formatUnknownError(currentError));
+          setError(formatUnknownError(currentError, { fallback: messages.tenantListError, locale }));
         }
       } finally {
         if (!cancelled) {
@@ -68,7 +72,7 @@ export default function DashboardTenantBrandingPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [locale, messages.tenantListError]);
 
   const filteredTenants = useMemo(() => {
     const keyword = tenantSearch.trim().toLowerCase();
@@ -107,7 +111,7 @@ export default function DashboardTenantBrandingPage() {
         }
       } catch (currentError) {
         if (!cancelled) {
-          setError(formatUnknownError(currentError));
+          setError(formatUnknownError(currentError, { fallback: messages.tenantBrandingError, locale }));
           setForm(EMPTY_FORM);
           setResolvedPreview({
             displayName: '',
@@ -126,7 +130,7 @@ export default function DashboardTenantBrandingPage() {
     return () => {
       cancelled = true;
     };
-  }, [selectedTenantId]);
+  }, [locale, messages.tenantBrandingError, selectedTenantId]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -151,9 +155,9 @@ export default function DashboardTenantBrandingPage() {
       setForm(response.branding);
       setResolvedPreview(response.resolved);
       setSelectedTenantMeta(response.tenant);
-      setSuccess('租户品牌已保存，公开页默认标题立即按新配置生效。');
+      setSuccess(messages.saveSuccess);
     } catch (currentError) {
-      setError(formatUnknownError(currentError));
+      setError(formatUnknownError(currentError, { fallback: messages.tenantBrandingError, locale }));
     } finally {
       setSaving(false);
     }
@@ -162,34 +166,34 @@ export default function DashboardTenantBrandingPage() {
   return (
     <section className="page admin-page settings-page">
       <AdminPageHeader
-        eyebrow="租户品牌"
-        title="租户品牌"
-        description="为具体租户覆盖展示名和公开图鉴默认标题，留空时继续继承平台品牌规则。"
-        actions={<AdminBadge tone="info">超管统一维护</AdminBadge>}
+        eyebrow={messages.eyebrow}
+        title={messages.title}
+        description={messages.description}
+        actions={<AdminBadge tone="info">{messages.badge}</AdminBadge>}
       />
 
       <div className="tenant-branding-layout">
         <AdminPanel className="stack">
           <div className="admin-section-head">
-            <h3>选择租户</h3>
-            <p>先选中租户，再编辑品牌覆盖字段。</p>
+            <h3>{messages.pickerTitle}</h3>
+            <p>{messages.pickerDesc}</p>
           </div>
 
           <div className="settings-form-field">
-            <label htmlFor="tenant-branding-search">搜索</label>
+            <label htmlFor="tenant-branding-search">{messages.searchLabel}</label>
             <input
               id="tenant-branding-search"
               value={tenantSearch}
               onChange={(event) => setTenantSearch(event.target.value)}
-              placeholder="搜索租户名 / slug / owner"
+              placeholder={messages.searchPlaceholder}
             />
           </div>
 
           <div className="tenant-branding-list">
             {loadingTenants ? (
-              <p className="muted">正在加载租户…</p>
+              <p className="muted">{messages.loadingTenants}</p>
             ) : filteredTenants.length === 0 ? (
-              <p className="muted">没有匹配租户。</p>
+              <p className="muted">{messages.emptyTenants}</p>
             ) : (
               filteredTenants.map((tenant) => {
                 const active = tenant.id === selectedTenantId;
@@ -213,21 +217,21 @@ export default function DashboardTenantBrandingPage() {
 
         <AdminPanel className="stack">
           <div className="admin-section-head">
-            <h3>编辑覆盖</h3>
-            <p>为空时回退到平台品牌默认规则。</p>
+            <h3>{messages.editorTitle}</h3>
+            <p>{messages.editorDesc}</p>
           </div>
 
           {selectedTenantMeta ? (
             <div className="settings-preview-list compact">
               <div>
-                <span>当前租户</span>
+                <span>{messages.currentTenant}</span>
                 <strong>{selectedTenantMeta.name}</strong>
                 <small>{selectedTenantMeta.slug}</small>
               </div>
               <div>
-                <span>解析后展示名</span>
-                <strong>{resolvedPreview.displayName || '—'}</strong>
-                <small>公开页与租户默认展示共用</small>
+                <span>{messages.resolvedDisplayName}</span>
+                <strong>{resolvedPreview.displayName || messages.emptyValue}</strong>
+                <small>{messages.resolvedDisplayNameHint}</small>
               </div>
             </div>
           ) : null}
@@ -237,12 +241,12 @@ export default function DashboardTenantBrandingPage() {
 
           <form className="stack" onSubmit={handleSubmit}>
             <div className="settings-form-field">
-              <label htmlFor="tenant-display-name">覆盖展示名</label>
+              <label htmlFor="tenant-display-name">{messages.displayNameLabel}</label>
               <input
                 id="tenant-display-name"
                 disabled={loadingBranding || saving || !selectedTenantId}
                 value={form.displayName ?? ''}
-                placeholder="例如：XX 选育工作室"
+                placeholder={messages.displayNamePlaceholder}
                 onChange={(event) =>
                   setForm((current) => ({
                     ...current,
@@ -253,12 +257,12 @@ export default function DashboardTenantBrandingPage() {
             </div>
 
             <div className="settings-form-field">
-              <label htmlFor="tenant-public-title">公开图鉴标题</label>
+              <label htmlFor="tenant-public-title">{messages.publicTitleLabel}</label>
               <input
                 id="tenant-public-title"
                 disabled={loadingBranding || saving || !selectedTenantId}
                 value={form.publicTitle ?? ''}
-                placeholder="留空则自动拼接租户名和平台后缀"
+                placeholder={messages.publicTitlePlaceholder}
                 onChange={(event) =>
                   setForm((current) => ({
                     ...current,
@@ -269,13 +273,13 @@ export default function DashboardTenantBrandingPage() {
             </div>
 
             <div className="settings-form-field">
-              <label htmlFor="tenant-public-subtitle">公开图鉴副标题</label>
+              <label htmlFor="tenant-public-subtitle">{messages.publicSubtitleLabel}</label>
               <textarea
                 id="tenant-public-subtitle"
                 rows={3}
                 disabled={loadingBranding || saving || !selectedTenantId}
                 value={form.publicSubtitle ?? ''}
-                placeholder="留空则按平台默认规则生成"
+                placeholder={messages.publicSubtitlePlaceholder}
                 onChange={(event) =>
                   setForm((current) => ({
                     ...current,
@@ -287,18 +291,18 @@ export default function DashboardTenantBrandingPage() {
 
             <div className="settings-preview-list compact">
               <div>
-                <span>解析后公开标题</span>
-                <strong>{resolvedPreview.publicTitle || '—'}</strong>
+                <span>{messages.resolvedPublicTitle}</span>
+                <strong>{resolvedPreview.publicTitle || messages.emptyValue}</strong>
               </div>
               <div>
-                <span>解析后公开副标题</span>
-                <small>{resolvedPreview.publicSubtitle || '—'}</small>
+                <span>{messages.resolvedPublicSubtitle}</span>
+                <small>{resolvedPreview.publicSubtitle || messages.emptyValue}</small>
               </div>
             </div>
 
             <div className="settings-form-actions">
               <button type="submit" disabled={loadingBranding || saving || !selectedTenantId}>
-                {saving ? '保存中…' : '保存租户品牌'}
+                {saving ? messages.savingButton : messages.saveButton}
               </button>
             </div>
           </form>

@@ -56,15 +56,15 @@ export class AuthProfileService {
     if (user.passwordHash) {
       if (!currentPassword || !this.authSharedService.verifyPassword(currentPassword, user.passwordHash)) {
         throw new UnauthorizedException({
-          message: 'Current password is incorrect.',
-          errorCode: ErrorCode.Unauthorized,
+          message: 'Authentication failed.',
+          errorCode: ErrorCode.AuthCurrentPasswordIncorrect,
         });
       }
 
       if (this.authSharedService.verifyPassword(payload.newPassword, user.passwordHash)) {
         throw new BadRequestException({
-          message: 'New password must be different from current password.',
-          errorCode: ErrorCode.InvalidRequestPayload,
+          message: 'Invalid password.',
+          errorCode: ErrorCode.AuthPasswordSameAsCurrent,
         });
       }
     }
@@ -195,15 +195,15 @@ export class AuthProfileService {
         if (isReplacingBoundPhone) {
           if (!payload.oldCode) {
             throw new BadRequestException({
-              message: 'Old phone verification code is required.',
-              errorCode: ErrorCode.InvalidRequestPayload,
+              message: 'Verification required.',
+              errorCode: ErrorCode.AuthOldPhoneCodeRequired,
             });
           }
 
           if (!currentBoundPhone) {
             throw new BadRequestException({
-              message: 'Current bound phone is missing.',
-              errorCode: ErrorCode.InvalidRequestPayload,
+              message: 'Verification required.',
+              errorCode: ErrorCode.AuthCurrentPhoneMissing,
             });
           }
 
@@ -223,8 +223,8 @@ export class AuthProfileService {
 
         if (existingPhoneBinding && existingPhoneBinding.userId !== userId) {
           throw new ConflictException({
-            message: 'Phone number is already bound to another account.',
-            errorCode: ErrorCode.InvalidRequestPayload,
+            message: 'Request failed.',
+            errorCode: ErrorCode.AuthPhoneBound,
           });
         }
 
@@ -256,8 +256,8 @@ export class AuthProfileService {
     } catch (error) {
       if (this.authSharedService.isUserPhoneBindingConflict(error)) {
         throw new ConflictException({
-          message: 'Phone number is already bound to another account.',
-          errorCode: ErrorCode.InvalidRequestPayload,
+          message: 'Request failed.',
+          errorCode: ErrorCode.AuthPhoneBound,
         });
       }
 

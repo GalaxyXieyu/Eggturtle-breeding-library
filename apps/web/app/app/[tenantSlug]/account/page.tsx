@@ -28,9 +28,9 @@ import AccountSetupCard from '@/app/app/[tenantSlug]/account/account-setup-card'
 import {
   CUSTOM_SECURITY_QUESTION_VALUE,
   EMPTY_SETUP_REQUIREMENTS,
-  SECURITY_QUESTION_OPTIONS,
   describeLoginAccount,
   formatLoginAccount,
+  getSecurityQuestionOptions,
   getSetupChecklistItems,
   getSetupSubmitLabel,
   maskPhoneNumber,
@@ -40,6 +40,8 @@ import {
   type AccountTab,
   type SetupRequirements,
 } from '@/app/app/[tenantSlug]/account/account-page-utils';
+import { useUiPreferences } from '@/components/ui-preferences';
+import { ACCOUNT_PAGE_MESSAGES } from '@/lib/locales/account';
 import SubscriptionPageContent from '@/app/app/[tenantSlug]/subscription/page';
 import ReferralPanel from '@/app/app/[tenantSlug]/account/referral-panel';
 
@@ -48,6 +50,9 @@ export default function AccountPage() {
   const params = useParams<{ tenantSlug: string }>();
   const searchParams = useSearchParams();
   const tenantSlug = useMemo(() => params.tenantSlug ?? '', [params.tenantSlug]);
+  const { locale } = useUiPreferences();
+  const messages = ACCOUNT_PAGE_MESSAGES[locale];
+  const securityQuestionOptions = getSecurityQuestionOptions(locale);
 
   const [activeTab, setActiveTab] = useState<AccountTab>('profile');
   const [loading, setLoading] = useState(true);
@@ -84,15 +89,15 @@ export default function AccountPage() {
     setupRequirements.needsSecurity;
   const shouldShowSetup = needsSetup || mustCompleteSetup;
   const isReplacingBoundPhone = Boolean(boundPhoneNumber && boundPhoneNumber !== phoneDraft);
-  const selectedSecurityQuestion = SECURITY_QUESTION_OPTIONS.includes(
-    securityQuestionDraft as (typeof SECURITY_QUESTION_OPTIONS)[number],
+  const selectedSecurityQuestion = securityQuestionOptions.includes(
+    securityQuestionDraft as (typeof securityQuestionOptions)[number],
   )
     ? securityQuestionDraft
     : CUSTOM_SECURITY_QUESTION_VALUE;
-  const loginAccountValue = formatLoginAccount(profile?.account, boundPhoneNumber);
-  const loginAccountHint = describeLoginAccount(profile?.account, boundPhoneNumber);
-  const setupChecklistItems = getSetupChecklistItems(setupRequirements);
-  const setupSubmitLabel = getSetupSubmitLabel(setupRequirements);
+  const loginAccountValue = formatLoginAccount(profile?.account, boundPhoneNumber, locale);
+  const loginAccountHint = describeLoginAccount(profile?.account, boundPhoneNumber, locale);
+  const setupChecklistItems = getSetupChecklistItems(setupRequirements, locale);
+  const setupSubmitLabel = getSetupSubmitLabel(setupRequirements, locale);
 
   useEffect(() => {
     if (phoneCodeCooldown <= 0) {
@@ -143,14 +148,14 @@ export default function AccountPage() {
       try {
         const access = await ensureTenantRouteSession({
           tenantSlug,
-          missingTenantMessage: '缺少 tenantSlug。',
+          missingTenantMessage: messages.missingTenant,
           router,
         });
 
         if (!access.ok) {
           if (!cancelled) {
             if (access.reason === 'missing-tenant') {
-              setError(access.message ?? '缺少 tenantSlug。');
+              setError(access.message ?? messages.missingTenant);
             }
             setLoading(false);
           }
@@ -188,12 +193,12 @@ export default function AccountPage() {
         setSetupRequirements(nextSetupRequirements);
         setSecurityQuestionDraft(
           securityResponse.profile?.question ??
-            (nextSetupRequirements.needsSecurity ? SECURITY_QUESTION_OPTIONS[0] : ''),
+            (nextSetupRequirements.needsSecurity ? securityQuestionOptions[0] ?? '' : ''),
         );
         setSecurityAnswerDraft('');
       } catch (requestError) {
         if (!cancelled) {
-          setError(formatApiError(requestError));
+          setError(formatApiError(requestError, undefined, locale));
         }
       } finally {
         if (!cancelled) {
@@ -205,7 +210,7 @@ export default function AccountPage() {
     return () => {
       cancelled = true;
     };
-  }, [router, tenantSlug, needsSetup]);
+  }, [router, tenantSlug, needsSetup, locale, messages.missingTenant, securityQuestionOptions]);
 
   useEffect(() => {
     if (!loading && needsSetup && !mustCompleteSetup && tenantSlug) {
@@ -235,9 +240,9 @@ export default function AccountPage() {
         ...current,
         needsDisplayName: !response.profile.name?.trim(),
       }));
-      setMessage('账户资料已更新。');
+      setMessage(messages.profileUpdated);
     } catch (requestError) {
-      setError(formatApiError(requestError));
+      setError(formatApiError(requestError, undefined, locale));
     } finally {
       setSavingProfile(false);
     }
@@ -245,7 +250,7 @@ export default function AccountPage() {
 
   async function handleChangePassword() {
     if (newPassword !== confirmPassword) {
-      setError('两次输入的新密码不一致。');
+      setError(messages.passwordMismatch);
       return;
     }
 
@@ -272,9 +277,9 @@ export default function AccountPage() {
         ...current,
         needsPassword: false,
       }));
-      setMessage('密码已更新。');
+      setMessage(messages.passwordUpdated);
     } catch (requestError) {
-      setError(formatApiError(requestError));
+      setError(formatApiError(requestError, undefined, locale));
     } finally {
       setSavingPassword(false);
     }
@@ -282,7 +287,7 @@ export default function AccountPage() {
 
   async function handleSendPhoneCode() {
     if (!/^1\d{10}$/.test(phoneDraft)) {
-      setError('请输入正确的 11 位手机号。');
+      setError(messages.phoneInvalid);
       return;
     }
 
@@ -304,9 +309,9 @@ export default function AccountPage() {
       });
 
       setPhoneCodeCooldown(60);
-      setMessage(`验证码已发送到 ${maskPhoneNumber(phoneDraft)}。`);
+      setMessage(messages.smsSentTo(maskPhoneNumber(phoneDraft)));
     } catch (requestError) {
-      setError(formatApiError(requestError));
+      setError(formatApiError(requestError, undefined, locale));
     } finally {
       setSendingPhoneCode(false);
     }
@@ -314,7 +319,7 @@ export default function AccountPage() {
 
   async function handleSendOldPhoneCode() {
     if (!boundPhoneNumber || !/^1\d{10}$/.test(boundPhoneNumber)) {
-      setError('当前账号未绑定可用手机号，请先完成绑定。');
+      setError(messages.phoneMissing);
       return;
     }
 
@@ -336,9 +341,9 @@ export default function AccountPage() {
       });
 
       setOldPhoneCodeCooldown(60);
-      setMessage(`原绑定手机号 ${maskPhoneNumber(boundPhoneNumber)} 的验证码已发送。`);
+      setMessage(messages.oldSmsSentTo(maskPhoneNumber(boundPhoneNumber)));
     } catch (requestError) {
-      setError(formatApiError(requestError));
+      setError(formatApiError(requestError, undefined, locale));
     } finally {
       setSendingOldPhoneCode(false);
     }
@@ -346,17 +351,17 @@ export default function AccountPage() {
 
   async function handleBindPhone() {
     if (!/^1\d{10}$/.test(phoneDraft)) {
-      setError('请输入正确的 11 位手机号。');
+      setError(messages.phoneInvalid);
       return;
     }
 
     if (!/^\d{6}$/.test(phoneCodeDraft)) {
-      setError('请输入 6 位验证码。');
+      setError(messages.codeInvalid);
       return;
     }
 
     if (isReplacingBoundPhone && !/^\d{6}$/.test(oldPhoneCodeDraft)) {
-      setError('更换手机号前，请先输入原手机号收到的 6 位验证码。');
+      setError(messages.oldCodeRequired);
       return;
     }
 
@@ -384,11 +389,11 @@ export default function AccountPage() {
       setOldPhoneCodeCooldown(0);
       setMessage(
         isReplacingBoundPhone
-          ? `手机号已更换为 ${maskPhoneNumber(response.binding.phoneNumber)}。`
-          : `手机号 ${maskPhoneNumber(response.binding.phoneNumber)} 绑定成功。`,
+          ? messages.phoneReplacedSuccess(maskPhoneNumber(response.binding.phoneNumber))
+          : messages.phoneBoundSuccess(maskPhoneNumber(response.binding.phoneNumber)),
       );
     } catch (requestError) {
-      setError(formatApiError(requestError));
+      setError(formatApiError(requestError, undefined, locale));
     } finally {
       setSavingPhoneBinding(false);
     }
@@ -417,9 +422,9 @@ export default function AccountPage() {
         ...current,
         needsSecurity: false,
       }));
-      setMessage('密保信息已更新。');
+      setMessage(messages.securityUpdated);
     } catch (requestError) {
-      setError(formatApiError(requestError));
+      setError(formatApiError(requestError, undefined, locale));
     } finally {
       setSavingSecurity(false);
     }
@@ -436,27 +441,27 @@ export default function AccountPage() {
     const trimmedSecurityAnswer = securityAnswerDraft.trim();
 
     if (setupRequirements.needsDisplayName && !trimmedName) {
-      setError('请填写显示名称，方便团队成员识别账号归属。');
+      setError(messages.displayNameRequired);
       return;
     }
 
     if (setupRequirements.needsPassword && newPassword.length < 8) {
-      setError('登录密码至少 8 位，建议使用“字母+数字”的组合。');
+      setError(messages.passwordTooShort);
       return;
     }
 
     if (setupRequirements.needsPassword && newPassword !== confirmPassword) {
-      setError('两次输入的登录密码不一致，请重新确认。');
+      setError(messages.passwordMismatch);
       return;
     }
 
     if (setupRequirements.needsSecurity && trimmedSecurityQuestion.length < 2) {
-      setError('请先选择或填写一个密保问题。');
+      setError(messages.securityQuestionRequired);
       return;
     }
 
     if (setupRequirements.needsSecurity && trimmedSecurityAnswer.length < 2) {
-      setError('请填写密保答案（至少 2 个字），用于手机号不可用时找回账号。');
+      setError(messages.securityAnswerRequired);
       return;
     }
 
@@ -520,7 +525,7 @@ export default function AccountPage() {
       setSetupRequirements(EMPTY_SETUP_REQUIREMENTS);
       router.replace(`/app/${tenantSlug}`);
     } catch (requestError) {
-      setError(toBusinessSetupError(requestError));
+      setError(toBusinessSetupError(requestError, locale));
     } finally {
       setCompletingSetup(false);
     }
@@ -543,6 +548,7 @@ export default function AccountPage() {
           confirmPassword={confirmPassword}
           completingSetup={completingSetup}
           setupSubmitLabel={setupSubmitLabel}
+          securityQuestionOptions={[...securityQuestionOptions]}
           onNameDraftChange={setNameDraft}
           onNewPasswordChange={setNewPassword}
           onConfirmPasswordChange={setConfirmPassword}
@@ -569,7 +575,7 @@ export default function AccountPage() {
 
       {loading ? (
         <Card className="rounded-2xl border-neutral-200/90 bg-white p-6">
-          <p className="text-sm text-neutral-600">正在加载账户信息…</p>
+          <p className="text-sm text-neutral-600">{messages.loading}</p>
         </Card>
       ) : null}
 
@@ -608,7 +614,7 @@ export default function AccountPage() {
           savingPassword={savingPassword}
           onSavePassword={() => void handleChangePassword()}
           selectedSecurityQuestion={selectedSecurityQuestion}
-          securityQuestionOptions={[...SECURITY_QUESTION_OPTIONS]}
+          securityQuestionOptions={[...securityQuestionOptions]}
           securityQuestionDraft={securityQuestionDraft}
           onSelectedSecurityQuestionChange={(value) => {
             setSecurityQuestionDraft(value === CUSTOM_SECURITY_QUESTION_VALUE ? '' : value);

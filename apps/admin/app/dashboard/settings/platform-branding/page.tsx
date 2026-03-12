@@ -10,8 +10,10 @@ import {
 } from '@eggturtle/shared';
 
 import { AdminBadge, AdminPageHeader, AdminPanel } from '@/components/dashboard/polish-primitives';
+import { useUiPreferences } from '@/components/ui-preferences';
 import { apiRequest } from '@/lib/api-client';
 import { formatUnknownError } from '@/lib/formatters';
+import { PLATFORM_BRANDING_MESSAGES } from '@/lib/locales/settings-pages';
 
 type LocalizedFieldKey =
   | 'appName'
@@ -24,6 +26,8 @@ type LocalizedFieldKey =
   | 'publicCatalogSubtitleSuffix';
 
 export default function DashboardPlatformBrandingPage() {
+  const { locale } = useUiPreferences();
+  const messages = PLATFORM_BRANDING_MESSAGES[locale];
   const [form, setForm] = useState<PlatformBrandingConfig>(DEFAULT_PLATFORM_BRANDING);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -45,7 +49,7 @@ export default function DashboardPlatformBrandingPage() {
         }
       } catch (currentError) {
         if (!cancelled) {
-          setError(formatUnknownError(currentError));
+          setError(formatUnknownError(currentError, { fallback: messages.unknownError, locale }));
         }
       } finally {
         if (!cancelled) {
@@ -57,7 +61,7 @@ export default function DashboardPlatformBrandingPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [locale, messages.unknownError]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -76,9 +80,9 @@ export default function DashboardPlatformBrandingPage() {
       });
 
       setForm(response.branding);
-      setSuccess('平台品牌已保存，前台和后台立即按新配置生效。');
+      setSuccess(messages.saveSuccess);
     } catch (currentError) {
-      setError(formatUnknownError(currentError));
+      setError(formatUnknownError(currentError, { fallback: messages.unknownError, locale }));
     } finally {
       setSaving(false);
     }
@@ -87,36 +91,36 @@ export default function DashboardPlatformBrandingPage() {
   return (
     <section className="page admin-page settings-page">
       <AdminPageHeader
-        eyebrow="平台品牌"
-        title="平台品牌"
-        description="统一维护首页、登录页、后台标题、公开图鉴默认文案和租户默认展示名。"
-        actions={<AdminBadge tone="accent">保存即生效</AdminBadge>}
+        eyebrow={messages.eyebrow}
+        title={messages.title}
+        description={messages.description}
+        actions={<AdminBadge tone="accent">{messages.saveBadge}</AdminBadge>}
       />
 
       <div className="settings-side-grid">
         <AdminPanel className="stack">
           <div className="admin-section-head">
-            <h3>品牌预览</h3>
-            <p>当前配置会覆盖平台级默认品牌入口。</p>
+            <h3>{messages.previewTitle}</h3>
+            <p>{messages.previewDesc}</p>
           </div>
           <div className="settings-preview-list">
             <div>
-              <span>首页品牌</span>
+              <span>{messages.previewAppName}</span>
               <strong>{form.appName.zh}</strong>
               <small>{form.appName.en}</small>
             </div>
             <div>
-              <span>后台标题</span>
+              <span>{messages.previewAdminTitle}</span>
               <strong>{form.adminTitle.zh}</strong>
               <small>{form.adminTitle.en}</small>
             </div>
             <div>
-              <span>租户默认名</span>
+              <span>{messages.previewDefaultTenant}</span>
               <strong>{form.defaultTenantName.zh}</strong>
               <small>{form.defaultTenantName.en}</small>
             </div>
             <div>
-              <span>公开图鉴后缀</span>
+              <span>{messages.previewCatalogSuffix}</span>
               <strong>{form.publicCatalogTitleSuffix.zh}</strong>
               <small>{form.publicCatalogTitleSuffix.en}</small>
             </div>
@@ -125,8 +129,8 @@ export default function DashboardPlatformBrandingPage() {
 
         <AdminPanel className="stack">
           <div className="admin-section-head">
-            <h3>编辑品牌</h3>
-            <p>推荐先维护名称与后台标题，再补充描述和公开图鉴默认文案。</p>
+            <h3>{messages.editorTitle}</h3>
+            <p>{messages.editorDesc}</p>
           </div>
 
           {error ? <p className="settings-inline-note error">{error}</p> : null}
@@ -137,67 +141,75 @@ export default function DashboardPlatformBrandingPage() {
               <LocalizedField
                 form={form}
                 field="appName"
-                label="品牌主名称"
+                label={messages.fields.appName}
                 disabled={loading || saving}
                 onChange={setForm}
+                messages={messages}
               />
               <LocalizedField
                 form={form}
                 field="appEyebrow"
-                label="品牌副标题"
+                label={messages.fields.appEyebrow}
                 disabled={loading || saving}
                 onChange={setForm}
+                messages={messages}
               />
               <LocalizedField
                 form={form}
                 field="adminTitle"
-                label="后台标题"
+                label={messages.fields.adminTitle}
                 disabled={loading || saving}
                 onChange={setForm}
+                messages={messages}
               />
               <LocalizedField
                 form={form}
                 field="adminSubtitle"
-                label="后台副标题"
+                label={messages.fields.adminSubtitle}
                 disabled={loading || saving}
                 multiline
                 onChange={setForm}
+                messages={messages}
               />
               <LocalizedField
                 form={form}
                 field="appDescription"
-                label="平台描述"
+                label={messages.fields.appDescription}
                 disabled={loading || saving}
                 multiline
                 onChange={setForm}
+                messages={messages}
               />
               <LocalizedField
                 form={form}
                 field="defaultTenantName"
-                label="默认租户名"
+                label={messages.fields.defaultTenantName}
                 disabled={loading || saving}
                 onChange={setForm}
+                messages={messages}
               />
               <LocalizedField
                 form={form}
                 field="publicCatalogTitleSuffix"
-                label="公开图鉴标题后缀"
+                label={messages.fields.publicCatalogTitleSuffix}
                 disabled={loading || saving}
                 onChange={setForm}
+                messages={messages}
               />
               <LocalizedField
                 form={form}
                 field="publicCatalogSubtitleSuffix"
-                label="公开图鉴副标题后缀"
+                label={messages.fields.publicCatalogSubtitleSuffix}
                 disabled={loading || saving}
                 multiline
                 onChange={setForm}
+                messages={messages}
               />
             </div>
 
             <div className="settings-form-actions">
               <button type="submit" disabled={loading || saving}>
-                {saving ? '保存中…' : '保存平台品牌'}
+                {saving ? messages.savingButton : messages.saveButton}
               </button>
             </div>
           </form>
@@ -214,6 +226,7 @@ function LocalizedField({
   disabled,
   multiline = false,
   onChange,
+  messages,
 }: {
   form: PlatformBrandingConfig;
   field: LocalizedFieldKey;
@@ -221,6 +234,7 @@ function LocalizedField({
   disabled: boolean;
   multiline?: boolean;
   onChange: (value: PlatformBrandingConfig) => void;
+  messages: (typeof PLATFORM_BRANDING_MESSAGES)[keyof typeof PLATFORM_BRANDING_MESSAGES];
 }) {
   return (
     <section className="settings-form-group">
@@ -228,7 +242,7 @@ function LocalizedField({
         <h3>{label}</h3>
       </div>
       <div className="settings-form-field">
-        <label htmlFor={`${field}-zh`}>中文</label>
+        <label htmlFor={`${field}-zh`}>{messages.localeZh}</label>
         {multiline ? (
           <textarea
             id={`${field}-zh`}
@@ -263,7 +277,7 @@ function LocalizedField({
         )}
       </div>
       <div className="settings-form-field">
-        <label htmlFor={`${field}-en`}>英文</label>
+        <label htmlFor={`${field}-en`}>{messages.localeEn}</label>
         {multiline ? (
           <textarea
             id={`${field}-en`}

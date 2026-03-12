@@ -16,6 +16,7 @@ import { formatPlanLabel } from '@/lib/admin-labels';
 import { useUiPreferences } from '@/components/ui-preferences';
 import { getAdminRevenueOverview } from '@/lib/api-client';
 import { formatUnknownError } from '@/lib/formatters';
+import { REVENUE_ANALYTICS_MESSAGES } from '@/lib/locales/dashboard-pages';
 
 type RevenueState = {
   loading: boolean;
@@ -23,76 +24,9 @@ type RevenueState = {
   data: AdminRevenueOverviewResponse | null;
 };
 
-const COPY = {
-  zh: {
-    eyebrow: '营收分析',
-    title: '付费看板',
-    description: 'v0 基于订阅套餐映射金额估算 MRR/ARR，并追踪升级、降级、流失趋势。',
-    metricMrr: 'MRR',
-    metricArr: 'ARR',
-    metricPaying: '付费用户',
-    metricActive: '活跃用户',
-    metricUpgrade: '升级事件',
-    metricDowngrade: '降级事件',
-    metricChurn: '流失事件',
-    metricReactivation: '恢复事件',
-    priceBookTitle: '套餐映射金额',
-    priceBookDesc: '当前版本直接按套餐月价映射估算营收，后续可替换为真实账单数据。',
-    planTitle: '套餐拆分',
-    planDesc: '按当前活跃订阅估算月收入贡献。',
-    trendTitle: '事件趋势',
-    trendDesc: '升级/降级按连续套餐变更事件推断；流失/恢复来自生命周期操作。',
-    thPlan: '套餐',
-    thMonthlyPrice: '月价映射',
-    thActive: '活跃用户',
-    thPaying: '付费用户',
-    thMrr: 'MRR',
-    thDate: '日期',
-    thUpgrade: '升级',
-    thDowngrade: '降级',
-    thChurn: '流失',
-    thReactivation: '恢复',
-    loading: '加载收入分析中...',
-    empty: '暂无收入数据。',
-    unknownError: '加载付费看板失败。'
-  },
-  en: {
-    eyebrow: 'Revenue Analytics',
-    title: 'Revenue Overview',
-    description: 'v0 estimates MRR and ARR from plan price mapping, then tracks upgrade, downgrade, and churn trends.',
-    metricMrr: 'MRR',
-    metricArr: 'ARR',
-    metricPaying: 'Paying Tenants',
-    metricActive: 'Active Tenants',
-    metricUpgrade: 'Upgrades',
-    metricDowngrade: 'Downgrades',
-    metricChurn: 'Churns',
-    metricReactivation: 'Reactivations',
-    priceBookTitle: 'Plan Price Mapping',
-    priceBookDesc: 'This first version estimates revenue directly from mapped monthly plan prices and can later be replaced by billing-backed data.',
-    planTitle: 'Plan Breakdown',
-    planDesc: 'Monthly revenue contribution estimated from current active subscriptions.',
-    trendTitle: 'Event Trend',
-    trendDesc: 'Upgrade and downgrade are inferred from consecutive plan changes; churn and reactivation come from lifecycle actions.',
-    thPlan: 'Plan',
-    thMonthlyPrice: 'Mapped Monthly Price',
-    thActive: 'Active Tenants',
-    thPaying: 'Paying Tenants',
-    thMrr: 'MRR',
-    thDate: 'Date',
-    thUpgrade: 'Upgrades',
-    thDowngrade: 'Downgrades',
-    thChurn: 'Churns',
-    thReactivation: 'Reactivations',
-    loading: 'Loading revenue analytics...',
-    empty: 'No revenue data available.',
-    unknownError: 'Failed to load revenue analytics.'
-  }
-} as const;
-
 export default function RevenueAnalyticsPage() {
   const { locale } = useUiPreferences();
-  const copy = COPY[locale];
+  const messages = REVENUE_ANALYTICS_MESSAGES[locale];
   const [window, setWindow] = useState<AdminRevenueOverviewWindow>('30d');
   const [state, setState] = useState<RevenueState>({
     loading: true,
@@ -128,7 +62,7 @@ export default function RevenueAnalyticsPage() {
 
         setState({
           loading: false,
-          error: formatUnknownError(error, { fallback: copy.unknownError }),
+          error: formatUnknownError(error, { fallback: messages.unknownError, locale }),
           data: null
         });
       }
@@ -139,7 +73,7 @@ export default function RevenueAnalyticsPage() {
     return () => {
       cancelled = true;
     };
-  }, [copy.unknownError, window]);
+  }, [locale, messages.unknownError, window]);
 
   const maxTrendValue = useMemo(() => {
     if (!state.data || state.data.trend.length === 0) {
@@ -173,9 +107,9 @@ export default function RevenueAnalyticsPage() {
   return (
     <section className="page admin-page">
       <AdminPageHeader
-        eyebrow={copy.eyebrow}
-        title={copy.title}
-        description={copy.description}
+        eyebrow={messages.eyebrow}
+        title={messages.title}
+        description={messages.description}
         actions={(
           <div className="inline-actions">
             <button
@@ -196,32 +130,32 @@ export default function RevenueAnalyticsPage() {
         )}
       />
 
-      {state.loading ? <p className="muted">{copy.loading}</p> : null}
-      {!state.loading && !state.data ? <p className="muted">{copy.empty}</p> : null}
+      {state.loading ? <p className="muted">{messages.loading}</p> : null}
+      {!state.loading && !state.data ? <p className="muted">{messages.empty}</p> : null}
 
       {state.data ? (
         <>
           <div className="admin-metrics-grid">
-            <AdminMetricCard label={copy.metricMrr} value={formatCurrency(state.data.kpis.mrrCents)} />
-            <AdminMetricCard label={copy.metricArr} value={formatCurrency(state.data.kpis.arrCents)} />
-            <AdminMetricCard label={copy.metricPaying} value={state.data.kpis.payingTenantCount} />
-            <AdminMetricCard label={copy.metricActive} value={state.data.kpis.activeTenantCount} />
-            <AdminMetricCard label={copy.metricUpgrade} value={state.data.kpis.upgradeEvents} />
-            <AdminMetricCard label={copy.metricDowngrade} value={state.data.kpis.downgradeEvents} />
-            <AdminMetricCard label={copy.metricChurn} value={state.data.kpis.churnEvents} />
-            <AdminMetricCard label={copy.metricReactivation} value={state.data.kpis.reactivationEvents} />
+            <AdminMetricCard label={messages.metricMrr} value={formatCurrency(state.data.kpis.mrrCents, locale)} />
+            <AdminMetricCard label={messages.metricArr} value={formatCurrency(state.data.kpis.arrCents, locale)} />
+            <AdminMetricCard label={messages.metricPaying} value={state.data.kpis.payingTenantCount} />
+            <AdminMetricCard label={messages.metricActive} value={state.data.kpis.activeTenantCount} />
+            <AdminMetricCard label={messages.metricUpgrade} value={state.data.kpis.upgradeEvents} />
+            <AdminMetricCard label={messages.metricDowngrade} value={state.data.kpis.downgradeEvents} />
+            <AdminMetricCard label={messages.metricChurn} value={state.data.kpis.churnEvents} />
+            <AdminMetricCard label={messages.metricReactivation} value={state.data.kpis.reactivationEvents} />
           </div>
 
           <AdminPanel className="stack">
             <div className="admin-section-head">
-              <h3>{copy.priceBookTitle}</h3>
-              <p>{copy.priceBookDesc}</p>
+              <h3>{messages.priceBookTitle}</h3>
+              <p>{messages.priceBookDesc}</p>
             </div>
             <AdminTableFrame>
               <thead>
                 <tr>
-                  <th>{copy.thPlan}</th>
-                  <th>{copy.thMonthlyPrice}</th>
+                  <th>{messages.thPlan}</th>
+                  <th>{messages.thMonthlyPrice}</th>
                 </tr>
               </thead>
               <tbody>
@@ -229,11 +163,11 @@ export default function RevenueAnalyticsPage() {
                   <tr key={`price-${item.plan}`}>
                     <td>
                       <div className="stack row-tight">
-                        <span>{formatPlanLabel(item.plan)}</span>
+                        <span>{formatPlanLabel(item.plan, locale)}</span>
                         <span className="mono muted">{item.plan}</span>
                       </div>
                     </td>
-                    <td>{formatCurrency(item.monthlyPriceCents)}</td>
+                    <td>{formatCurrency(item.monthlyPriceCents, locale)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -242,16 +176,16 @@ export default function RevenueAnalyticsPage() {
 
           <AdminPanel className="stack">
             <div className="admin-section-head">
-              <h3>{copy.planTitle}</h3>
-              <p>{copy.planDesc}</p>
+              <h3>{messages.planTitle}</h3>
+              <p>{messages.planDesc}</p>
             </div>
             <AdminTableFrame>
               <thead>
                 <tr>
-                  <th>{copy.thPlan}</th>
-                  <th>{copy.thActive}</th>
-                  <th>{copy.thPaying}</th>
-                  <th>{copy.thMrr}</th>
+                  <th>{messages.thPlan}</th>
+                  <th>{messages.thActive}</th>
+                  <th>{messages.thPaying}</th>
+                  <th>{messages.thMrr}</th>
                 </tr>
               </thead>
               <tbody>
@@ -259,13 +193,13 @@ export default function RevenueAnalyticsPage() {
                   <tr key={item.plan}>
                     <td>
                       <div className="stack row-tight">
-                        <span>{formatPlanLabel(item.plan)}</span>
+                        <span>{formatPlanLabel(item.plan, locale)}</span>
                         <span className="mono muted">{item.plan}</span>
                       </div>
                     </td>
                     <td>{item.activeTenantCount}</td>
                     <td>{item.payingTenantCount}</td>
-                    <td>{formatCurrency(item.mrrCents)}</td>
+                    <td>{formatCurrency(item.mrrCents, locale)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -274,17 +208,17 @@ export default function RevenueAnalyticsPage() {
 
           <AdminPanel className="stack">
             <div className="admin-section-head">
-              <h3>{copy.trendTitle}</h3>
-              <p>{copy.trendDesc}</p>
+              <h3>{messages.trendTitle}</h3>
+              <p>{messages.trendDesc}</p>
             </div>
             <AdminTableFrame>
               <thead>
                 <tr>
-                  <th>{copy.thDate}</th>
-                  <th>{copy.thUpgrade}</th>
-                  <th>{copy.thDowngrade}</th>
-                  <th>{copy.thChurn}</th>
-                  <th>{copy.thReactivation}</th>
+                  <th>{messages.thDate}</th>
+                  <th>{messages.thUpgrade}</th>
+                  <th>{messages.thDowngrade}</th>
+                  <th>{messages.thChurn}</th>
+                  <th>{messages.thReactivation}</th>
                 </tr>
               </thead>
               <tbody>
@@ -327,10 +261,10 @@ function ValueWithTrendBar({ value, max }: { value: number; max: number }) {
   );
 }
 
-function formatCurrency(cents: number) {
-  return new Intl.NumberFormat('zh-CN', {
+function formatCurrency(cents: number, locale: 'zh' | 'en') {
+  return new Intl.NumberFormat(locale === 'zh' ? 'zh-CN' : 'en-US', {
     style: 'currency',
-    currency: 'CNY',
+    currency: locale === 'zh' ? 'CNY' : 'USD',
     maximumFractionDigits: 2
   }).format(cents / 100);
 }

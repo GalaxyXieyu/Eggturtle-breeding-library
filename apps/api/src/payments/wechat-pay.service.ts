@@ -1,6 +1,7 @@
 import {
   createDecipheriv,
   createPrivateKey,
+  createPublicKey,
   createSign,
   createVerify,
   KeyObject,
@@ -75,7 +76,7 @@ export type WechatPaymentNotification = {
   };
 };
 
-const REQUIRED_FIELDS = [
+const BASE_REQUIRED_FIELDS = [
   'PAYMENT_WECHAT_MCH_ID',
   'PAYMENT_WECHAT_APP_ID',
   'WECHAT_MP_APP_SECRET',
@@ -83,26 +84,35 @@ const REQUIRED_FIELDS = [
   'PAYMENT_WECHAT_MCH_SERIAL_NO',
   'PAYMENT_WECHAT_PRIVATE_KEY_PATH',
   'PAYMENT_WECHAT_PLATFORM_SERIAL_NO',
-  'PAYMENT_WECHAT_PLATFORM_CERT_PATH',
   'PAYMENT_WECHAT_NOTIFY_URL',
 ] as const;
 
-const OPTIONAL_FIELDS = [] as const;
+const PLATFORM_CERT_FIELD = 'PAYMENT_WECHAT_PLATFORM_CERT_PATH';
+const PLATFORM_PUBLIC_KEY_FIELD = 'PAYMENT_WECHAT_PLATFORM_PUBLIC_KEY_PATH';
+
+const OPTIONAL_FIELDS = [PLATFORM_CERT_FIELD, PLATFORM_PUBLIC_KEY_FIELD] as const;
 
 @Injectable()
 export class WechatPayService {
   private merchantPrivateKey: KeyObject | null = null;
   private platformCertificate: X509Certificate | null = null;
+  private platformPublicKey: KeyObject | null = null;
 
   getReadiness(): ProviderReadiness {
-    const providedFields = [...REQUIRED_FIELDS, ...OPTIONAL_FIELDS].filter((name) =>
+    const providedFields = [...BASE_REQUIRED_FIELDS, ...OPTIONAL_FIELDS].filter((name) =>
       this.isFieldProvided(name),
     );
-    const missingFields = REQUIRED_FIELDS.filter((name) => !this.isFieldProvided(name));
+    const missingFields = BASE_REQUIRED_FIELDS.filter((name) => !this.isFieldProvided(name));
+    const hasPlatformCert = this.isFieldProvided(PLATFORM_CERT_FIELD);
+    const hasPlatformPublicKey = this.isFieldProvided(PLATFORM_PUBLIC_KEY_FIELD);
+
+    if (!hasPlatformCert && !hasPlatformPublicKey) {
+      missingFields.push(PLATFORM_CERT_FIELD, PLATFORM_PUBLIC_KEY_FIELD);
+    }
 
     return {
       enabled: this.isEnabled(),
-      requiredFields: [...REQUIRED_FIELDS],
+      requiredFields: [...BASE_REQUIRED_FIELDS],
       optionalFields: [...OPTIONAL_FIELDS],
       providedFields,
       missingFields,
@@ -242,7 +252,7 @@ export class WechatPayService {
     verifier.update(message);
     verifier.end();
 
-    const verified = verifier.verify(this.getPlatformCertificate().publicKey, signature, 'base64');
+    const verified = verifier.verify(this.getPlatformPublicKey(), signature, 'base64');
     if (!verified) {
       throw new UnauthorizedException({
         message: 'Invalid WeChat payment signature.',
@@ -333,14 +343,35 @@ export class WechatPayService {
   private getPlatformCertificate(): X509Certificate {
     if (!this.platformCertificate) {
       this.platformCertificate = new X509Certificate(
-        readFileSync(this.resolveReadablePath('PAYMENT_WECHAT_PLATFORM_CERT_PATH'), 'utf8'),
+        readFileSync(this.resolveReadablePath(PLATFORM_CERT_FIELD), 'utf8'),
       );
     }
 
     return this.platformCertificate;
   }
 
-  private resolveReadablePath(name: 'PAYMENT_WECHAT_PRIVATE_KEY_PATH' | 'PAYMENT_WECHAT_PLATFORM_CERT_PATH'): string {
+  private getPlatformPublicKey(): KeyObject {
+    if (this.platformPublicKey) {
+      return this.platformPublicKey;
+    }
+
+    if (this.isFieldProvided(PLATFORM_PUBLIC_KEY_FIELD)) {
+      this.platformPublicKey = createPublicKey(
+        readFileSync(this.resolveReadablePath(PLATFORM_PUBLIC_KEY_FIELD), 'utf8'),
+      );
+      return this.platformPublicKey;
+    }
+
+    this.platformPublicKey = this.getPlatformCertificate().publicKey;
+    return this.platformPublicKey;
+  }
+
+  private resolveReadablePath(
+    name:
+      | 'PAYMENT_WECHAT_PRIVATE_KEY_PATH'
+      | 'PAYMENT_WECHAT_PLATFORM_CERT_PATH'
+      | 'PAYMENT_WECHAT_PLATFORM_PUBLIC_KEY_PATH',
+  ): string {
     const configuredPath = this.getEnv(name);
     const resolvedPath = path.isAbsolute(configuredPath)
       ? configuredPath
@@ -357,7 +388,12 @@ export class WechatPayService {
 
     if (name.endsWith('_PATH')) {
       try {
-        this.resolveReadablePath(name as 'PAYMENT_WECHAT_PRIVATE_KEY_PATH' | 'PAYMENT_WECHAT_PLATFORM_CERT_PATH');
+        this.resolveReadablePath(
+          name as
+            | 'PAYMENT_WECHAT_PRIVATE_KEY_PATH'
+            | 'PAYMENT_WECHAT_PLATFORM_CERT_PATH'
+            | 'PAYMENT_WECHAT_PLATFORM_PUBLIC_KEY_PATH',
+        );
         return true;
       } catch {
         return false;

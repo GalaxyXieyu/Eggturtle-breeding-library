@@ -9,140 +9,16 @@ import {
   requestSmsCodeResponseSchema
 } from '@eggturtle/shared';
 
-import { UiPreferenceControls, type UiLocale, useUiPreferences } from '@/components/ui-preferences';
+import { UiPreferenceControls, useUiPreferences } from '@/components/ui-preferences';
 import { usePlatformBranding } from '@/lib/branding-client';
 import { apiRequest } from '@/lib/api-client';
 import { formatUnknownError } from '@/lib/formatters';
+import { ADMIN_LOGIN_MESSAGES, type AdminLoginMessages } from '@/lib/locales/login';
 
 type LoginMode = 'password' | 'code';
 
-type LoginCopy = {
-  productTitle: string;
-  productSubtitle: string;
-  showcaseEyebrow: string;
-  showcaseSecurity: string;
-  showcaseOperations: string;
-  showcaseInsights: string;
-  cardTitle: string;
-  cardSubtitle: string;
-  checkingSession: string;
-  modeLabel: string;
-  modePassword: string;
-  modeCode: string;
-  passwordHint: string;
-  codeHint: string;
-  loginIdentifierLabel: string;
-  loginIdentifierPlaceholder: string;
-  phoneLabel: string;
-  phonePlaceholder: string;
-  passwordLabel: string;
-  passwordPlaceholder: string;
-  signingIn: string;
-  signInButton: string;
-  sending: string;
-  requestCode: string;
-  codeSentTo: string;
-  devCode: string;
-  verificationCode: string;
-  codePlaceholder: string;
-  verifying: string;
-  verifyAndSignIn: string;
-  changePhone: string;
-  identifierRequired: string;
-  emailInvalid: string;
-  accountInvalid: string;
-  phoneInvalid: string;
-  passwordRequired: string;
-  codeInvalid: string;
-  unknownError: string;
-};
-
 const ACCOUNT_PATTERN = /^[a-zA-Z][a-zA-Z0-9_-]{2,30}[a-zA-Z0-9]$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-const COPY: Record<UiLocale, LoginCopy> = {
-  zh: {
-    productTitle: '选育溯源档案',
-    productSubtitle: '用数据驱动选育优化，提升繁育决策效率。',
-    showcaseEyebrow: 'Admin Console',
-    showcaseSecurity: '超级管理员权限校验',
-    showcaseOperations: '租户订阅 / 用量 / 活跃度总览',
-    showcaseInsights: '跨租户运营、审计与数据治理能力',
-    cardTitle: '管理后台登录',
-    cardSubtitle: '仅超级管理员账号可访问，优先使用账号或手机号登录。',
-    checkingSession: '正在检查会话状态…',
-    modeLabel: '登录模式',
-    modePassword: '账号密码',
-    modeCode: '手机验证码',
-    passwordHint: '推荐使用后台账号或手机号登录；旧邮箱密码仍兼容，但不再作为主入口。',
-    codeHint: '短信验证码会发送到已绑定的后台手机号，仅允许超级管理员登录。',
-    loginIdentifierLabel: '账号或手机号',
-    loginIdentifierPlaceholder: '请输入后台账号或手机号，例如 galaxyxieyu / 13800138000',
-    phoneLabel: '手机号',
-    phonePlaceholder: '请输入已绑定的 11 位手机号',
-    passwordLabel: '密码',
-    passwordPlaceholder: '请输入后台登录密码…',
-    signingIn: '登录中…',
-    signInButton: '登录后台',
-    sending: '发送中…',
-    requestCode: '获取验证码',
-    codeSentTo: '验证码已发送至',
-    devCode: '开发验证码',
-    verificationCode: '验证码',
-    codePlaceholder: '请输入 6 位验证码…',
-    verifying: '验证中…',
-    verifyAndSignIn: '验证并登录',
-    changePhone: '更换手机号',
-    identifierRequired: '请输入后台账号、手机号，或旧邮箱。',
-    emailInvalid: '请输入正确的邮箱地址。',
-    accountInvalid: '请输入有效账号名：4-32 位、以字母开头、以字母或数字结尾，可包含数字、下划线、连字符。',
-    phoneInvalid: '请输入正确的 11 位中国大陆手机号。',
-    passwordRequired: '请输入登录密码。',
-    codeInvalid: '请输入 6 位数字验证码。',
-    unknownError: '未知错误'
-  },
-  en: {
-    productTitle: 'Breeding Traceability Record',
-    productSubtitle: 'Data-driven breeding optimization for higher quality and faster decisions.',
-    showcaseEyebrow: 'Admin Console',
-    showcaseSecurity: 'Super-admin permission enforcement',
-    showcaseOperations: 'Tenant subscriptions, usage & activity overview',
-    showcaseInsights: 'Cross-tenant operations, audit & governance tools',
-    cardTitle: 'Admin Sign In',
-    cardSubtitle: 'Only super-admin accounts can access this console.',
-    checkingSession: 'Checking session status…',
-    modeLabel: 'Login mode',
-    modePassword: 'Password',
-    modeCode: 'SMS code',
-    passwordHint: 'Use your admin account or phone number. Legacy email password sign-in remains compatible.',
-    codeHint: 'The verification code is sent to a bound admin phone number and only grants super-admin access.',
-    loginIdentifierLabel: 'Account or phone',
-    loginIdentifierPlaceholder: 'Enter your admin account or phone, e.g. galaxyxieyu / 13800138000',
-    phoneLabel: 'Phone number',
-    phonePlaceholder: 'Enter the bound 11-digit phone number',
-    passwordLabel: 'Password',
-    passwordPlaceholder: 'Enter your admin password…',
-    signingIn: 'Signing in…',
-    signInButton: 'Sign in to Admin',
-    sending: 'Sending…',
-    requestCode: 'Request code',
-    codeSentTo: 'Verification code sent to',
-    devCode: 'Dev code',
-    verificationCode: 'Verification code',
-    codePlaceholder: 'Enter the 6-digit code…',
-    verifying: 'Verifying…',
-    verifyAndSignIn: 'Verify & Sign In',
-    changePhone: 'Change phone',
-    identifierRequired: 'Enter your admin account, phone number, or legacy email.',
-    emailInvalid: 'Enter a valid email address.',
-    accountInvalid:
-      'Enter a valid account name: 4-32 chars, starts with a letter, ends with a letter or number, and only uses letters, numbers, underscores, or hyphens.',
-    phoneInvalid: 'Enter a valid 11-digit mainland China mobile number.',
-    passwordRequired: 'Enter your password.',
-    codeInvalid: 'Enter the 6-digit verification code.',
-    unknownError: 'Unknown error'
-  }
-};
 
 function normalizeCode(value: string) {
   return value.replace(/\D/g, '').slice(0, 6);
@@ -161,11 +37,11 @@ function parseMainlandPhone(value: string): string | null {
   return compact.replace(/^\+?86/, '');
 }
 
-function resolveAdminLoginIdentifier(value: string, copy: LoginCopy) {
+function resolveAdminLoginIdentifier(value: string, messages: AdminLoginMessages) {
   const compact = value.trim().replace(/\s+/g, '');
 
   if (!compact) {
-    return { ok: false as const, message: copy.identifierRequired };
+    return { ok: false as const, message: messages.identifierRequired };
   }
 
   const normalizedPhone = parseMainlandPhone(compact);
@@ -176,18 +52,18 @@ function resolveAdminLoginIdentifier(value: string, copy: LoginCopy) {
   const normalized = compact.toLowerCase();
   if (normalized.includes('@')) {
     if (!EMAIL_PATTERN.test(normalized)) {
-      return { ok: false as const, message: copy.emailInvalid };
+      return { ok: false as const, message: messages.emailInvalid };
     }
 
     return { ok: true as const, login: normalized };
   }
 
   if (/^\d+$/.test(compact)) {
-    return { ok: false as const, message: copy.phoneInvalid };
+    return { ok: false as const, message: messages.phoneInvalid };
   }
 
   if (!ACCOUNT_PATTERN.test(normalized)) {
-    return { ok: false as const, message: copy.accountInvalid };
+    return { ok: false as const, message: messages.accountInvalid };
   }
 
   return { ok: true as const, login: normalized };
@@ -197,8 +73,8 @@ export default function LoginPage() {
   const router = useRouter();
   const { locale } = useUiPreferences();
   const branding = usePlatformBranding();
-  const copy = {
-    ...COPY[locale],
+  const messages = {
+    ...ADMIN_LOGIN_MESSAGES[locale],
     productTitle: branding.appName[locale],
     productSubtitle: branding.appDescription[locale],
   };
@@ -271,14 +147,14 @@ export default function LoginPage() {
   async function handlePasswordLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const resolvedIdentifier = resolveAdminLoginIdentifier(loginIdentifier, copy);
+    const resolvedIdentifier = resolveAdminLoginIdentifier(loginIdentifier, messages);
     if (!resolvedIdentifier.ok) {
       setError(resolvedIdentifier.message);
       return;
     }
 
     if (!password.trim()) {
-      setError(copy.passwordRequired);
+      setError(messages.passwordRequired);
       return;
     }
 
@@ -300,7 +176,7 @@ export default function LoginPage() {
       switchMode('password');
       router.replace(redirectTo);
     } catch (requestError) {
-      setError(formatUnknownError(requestError, { fallback: copy.unknownError, locale }));
+      setError(formatUnknownError(requestError, { fallback: messages.unknownError, locale }));
     } finally {
       setLoading(false);
     }
@@ -311,7 +187,7 @@ export default function LoginPage() {
 
     const normalizedPhone = parseMainlandPhone(phoneNumber);
     if (!normalizedPhone) {
-      setError(copy.phoneInvalid);
+      setError(messages.phoneInvalid);
       return;
     }
 
@@ -335,7 +211,7 @@ export default function LoginPage() {
       setDevCode(response.devCode ?? null);
       setCode('');
     } catch (requestError) {
-      setError(formatUnknownError(requestError, { fallback: copy.unknownError, locale }));
+      setError(formatUnknownError(requestError, { fallback: messages.unknownError, locale }));
     } finally {
       setLoading(false);
     }
@@ -349,7 +225,7 @@ export default function LoginPage() {
 
     const normalizedCode = normalizeCode(code);
     if (normalizedCode.length !== 6) {
-      setError(copy.codeInvalid);
+      setError(messages.codeInvalid);
       return;
     }
 
@@ -370,7 +246,7 @@ export default function LoginPage() {
 
       router.replace(redirectTo);
     } catch (requestError) {
-      setError(formatUnknownError(requestError, { fallback: copy.unknownError, locale }));
+      setError(formatUnknownError(requestError, { fallback: messages.unknownError, locale }));
     } finally {
       setLoading(false);
     }
@@ -386,9 +262,9 @@ export default function LoginPage() {
         <section className="login-showcase">
           <div className="login-showcase-glow" aria-hidden />
           <div className="login-brand-copy">
-            <span className="login-eyebrow">{copy.showcaseEyebrow}</span>
-            <h1 className="login-product-title">{copy.productTitle}</h1>
-            <p className="login-product-subtitle">{copy.productSubtitle}</p>
+            <span className="login-eyebrow">{messages.showcaseEyebrow}</span>
+            <h1 className="login-product-title">{messages.productTitle}</h1>
+            <p className="login-product-subtitle">{messages.productSubtitle}</p>
           </div>
         </section>
 
@@ -396,18 +272,18 @@ export default function LoginPage() {
           <div className="login-card-head">
             <div className="login-card-top">
               <div className="stack login-card-copy">
-                <h2>{copy.cardTitle}</h2>
-                <p className="muted">{copy.cardSubtitle}</p>
+                <h2>{messages.cardTitle}</h2>
+                <p className="muted">{messages.cardSubtitle}</p>
               </div>
               <UiPreferenceControls className="login-preference-controls" />
             </div>
           </div>
 
-          {checkingSession ? <p className="muted login-session-hint">{copy.checkingSession}</p> : null}
+          {checkingSession ? <p className="muted login-session-hint">{messages.checkingSession}</p> : null}
 
           {!checkingSession ? (
             <div className="stack login-form-stack">
-              <div className="login-mode-toggle" role="tablist" aria-label={copy.modeLabel}>
+              <div className="login-mode-toggle" role="tablist" aria-label={messages.modeLabel}>
                 <button
                   type="button"
                   role="tab"
@@ -415,7 +291,7 @@ export default function LoginPage() {
                   className={mode === 'password' ? 'login-mode-btn active' : 'login-mode-btn'}
                   onClick={() => switchMode('password')}
                 >
-                  {copy.modePassword}
+                  {messages.modePassword}
                 </button>
                 <button
                   type="button"
@@ -424,16 +300,16 @@ export default function LoginPage() {
                   className={mode === 'code' ? 'login-mode-btn active' : 'login-mode-btn'}
                   onClick={() => switchMode('code')}
                 >
-                  {copy.modeCode}
+                  {messages.modeCode}
                 </button>
               </div>
 
               {mode === 'password' ? (
                 <form className="stack login-panel" onSubmit={handlePasswordLogin}>
-                  <p className="muted">{copy.passwordHint}</p>
+                  <p className="muted">{messages.passwordHint}</p>
 
                   <div className="stack login-field">
-                    <label htmlFor="login-identifier">{copy.loginIdentifierLabel}</label>
+                    <label htmlFor="login-identifier">{messages.loginIdentifierLabel}</label>
                     <input
                       id="login-identifier"
                       name="loginIdentifier"
@@ -442,7 +318,7 @@ export default function LoginPage() {
                       autoCapitalize="none"
                       spellCheck={false}
                       value={loginIdentifier}
-                      placeholder={copy.loginIdentifierPlaceholder}
+                      placeholder={messages.loginIdentifierPlaceholder}
                       onChange={(event) => setLoginIdentifier(event.target.value)}
                       disabled={isBusy}
                       required
@@ -450,14 +326,14 @@ export default function LoginPage() {
                   </div>
 
                   <div className="stack login-field">
-                    <label htmlFor="password">{copy.passwordLabel}</label>
+                    <label htmlFor="password">{messages.passwordLabel}</label>
                     <input
                       id="password"
                       name="password"
                       type="password"
                       autoComplete="current-password"
                       value={password}
-                      placeholder={copy.passwordPlaceholder}
+                      placeholder={messages.passwordPlaceholder}
                       onChange={(event) => setPassword(event.target.value)}
                       disabled={isBusy}
                       required
@@ -471,17 +347,17 @@ export default function LoginPage() {
                   ) : null}
 
                   <button type="submit" disabled={isBusy}>
-                    {loading ? copy.signingIn : copy.signInButton}
+                    {loading ? messages.signingIn : messages.signInButton}
                   </button>
                 </form>
               ) : null}
 
               {isCodeRequest ? (
                 <form className="stack login-panel" onSubmit={handleRequestSmsCode}>
-                  <p className="muted">{copy.codeHint}</p>
+                  <p className="muted">{messages.codeHint}</p>
 
                   <div className="stack login-field">
-                    <label htmlFor="code-phone">{copy.phoneLabel}</label>
+                    <label htmlFor="code-phone">{messages.phoneLabel}</label>
                     <input
                       id="code-phone"
                       name="phoneNumber"
@@ -490,7 +366,7 @@ export default function LoginPage() {
                       inputMode="tel"
                       spellCheck={false}
                       value={phoneNumber}
-                      placeholder={copy.phonePlaceholder}
+                      placeholder={messages.phonePlaceholder}
                       onChange={(event) => setPhoneNumber(event.target.value)}
                       disabled={isBusy}
                       required
@@ -504,7 +380,7 @@ export default function LoginPage() {
                   ) : null}
 
                   <button type="submit" disabled={isBusy}>
-                    {loading ? copy.sending : copy.requestCode}
+                    {loading ? messages.sending : messages.requestCode}
                   </button>
                 </form>
               ) : null}
@@ -512,18 +388,18 @@ export default function LoginPage() {
               {isCodeVerify ? (
                 <form className="stack login-panel" onSubmit={handlePhoneLogin}>
                   <p className="muted login-code-hint">
-                    {copy.codeSentTo} <strong>{requestedPhoneNumber}</strong>
+                    {messages.codeSentTo} <strong>{requestedPhoneNumber}</strong>
                   </p>
 
                   {devCode ? (
                     <p className="login-dev-code">
-                      <span>{copy.devCode}</span>
+                      <span>{messages.devCode}</span>
                       <code>{devCode}</code>
                     </p>
                   ) : null}
 
                   <div className="stack login-field">
-                    <label htmlFor="code">{copy.verificationCode}</label>
+                    <label htmlFor="code">{messages.verificationCode}</label>
                     <input
                       id="code"
                       name="code"
@@ -534,7 +410,7 @@ export default function LoginPage() {
                       pattern="[0-9]{6}"
                       maxLength={6}
                       value={code}
-                      placeholder={copy.codePlaceholder}
+                      placeholder={messages.codePlaceholder}
                       onChange={(event) => setCode(normalizeCode(event.target.value))}
                       disabled={isBusy}
                       required
@@ -549,10 +425,10 @@ export default function LoginPage() {
 
                   <div className="inline-actions login-inline-actions">
                     <button type="submit" disabled={isBusy}>
-                      {loading ? copy.verifying : copy.verifyAndSignIn}
+                      {loading ? messages.verifying : messages.verifyAndSignIn}
                     </button>
                     <button className="secondary" type="button" disabled={isBusy} onClick={resetCodeFlow}>
-                      {copy.changePhone}
+                      {messages.changePhone}
                     </button>
                   </div>
                 </form>

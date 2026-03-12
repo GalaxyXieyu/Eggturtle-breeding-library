@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { ErrorCode } from '@eggturtle/shared';
 import { meResponseSchema, type AuthUser } from '@eggturtle/shared/auth';
 
 import { ADMIN_SESSION_COOKIE_NAME } from '@/lib/session-constants';
@@ -18,6 +19,7 @@ type AuthValidationResult =
       ok: false;
       status: number;
       message: string;
+      errorCode: string | null;
     };
 
 function getAdminSessionMaxAgeSeconds() {
@@ -65,7 +67,8 @@ export async function validateAdminAccessToken(token: string): Promise<AuthValid
       return {
         ok: false,
         status: response.status,
-        message: response.status === 401 ? 'Invalid admin session.' : 'Unable to validate admin session.'
+        message: response.status === 401 ? 'Unauthorized.' : 'Service unavailable.',
+        errorCode: response.status === 401 ? ErrorCode.Unauthorized : ErrorCode.ApiUnavailable
       };
     }
 
@@ -74,7 +77,8 @@ export async function validateAdminAccessToken(token: string): Promise<AuthValid
       return {
         ok: false,
         status: 403,
-        message: 'Admin access denied.'
+        message: 'Forbidden.',
+        errorCode: ErrorCode.Forbidden
       };
     }
 
@@ -88,7 +92,8 @@ export async function validateAdminAccessToken(token: string): Promise<AuthValid
     return {
       ok: false,
       status: 503,
-      message: 'Unable to validate admin session.'
+      message: 'Service unavailable.',
+      errorCode: ErrorCode.ApiUnavailable
     };
   }
 }

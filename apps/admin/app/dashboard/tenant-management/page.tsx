@@ -24,6 +24,7 @@ import {
 } from '@/lib/admin-labels'
 import { apiRequest, getAdminTenantInsights } from '@/lib/api-client'
 import { formatDateTime, formatUnknownError } from '@/lib/formatters'
+import { TENANT_MANAGEMENT_MESSAGES } from '@/lib/locales/dashboard-pages'
 
 type TenantScope = 'all' | 'paid' | 'expiring' | 'low-activity' | 'high-activity' | 'no-owner'
 
@@ -36,97 +37,6 @@ type SidePanelState = {
   loading: boolean
   error: string | null
 }
-
-const COPY = {
-  zh: {
-    eyebrow: '用户治理',
-    title: '用户',
-    description: '先找到用户，再进入详情页判断数据、修改套餐。',
-    searchPlaceholder: '搜索名称 / slug / Owner 账号 / 邮箱 / 手机号',
-    resultCount: '结果',
-    empty: '当前筛选下没有匹配用户。',
-    loading: '加载用户中...',
-    noSelection: '请选择一个用户查看摘要。',
-    sideLoading: '正在加载用户洞察...',
-    sideError: '摘要加载失败',
-    latestLogs: '最近业务操作',
-    noLogs: '最近没有业务记录。',
-    members: '成员权限',
-    noMembers: '暂无成员。',
-    actions: '操作',
-    allTags: '自动标签',
-    notes: '登录统计自接入后累计，不回填历史登录。',
-    viewDetail: '打开详情',
-    openMembers: '打开成员管理',
-    createdAt: '注册时间',
-    lastActiveAt: '最后活跃',
-    ownerMissing: '无 Owner',
-    listTitle: '用户列表',
-    listDesc: '桌面端支持边选边看摘要；手机端点击卡片直接进入详情。',
-    summaryTitle: '运营摘要',
-    summaryDesc: '只读查看套餐、活跃和使用情况，写操作统一放到详情页。',
-    scopes: {
-      all: '全部',
-      paid: '付费',
-      expiring: '即将到期',
-      'low-activity': '低活跃',
-      'high-activity': '高活跃',
-      'no-owner': '无 Owner'
-    },
-    metrics: {
-      currentPlan: '当前套餐',
-      expiresAt: '到期时间',
-      lastActiveAt: '最近活跃',
-      totalProducts: '产品数',
-      totalImages: '图片数',
-      storageUtilization: '存储利用率'
-    }
-  },
-  en: {
-    eyebrow: 'User Governance',
-    title: 'Users',
-    description: 'Find the tenant first, then open the detail page to inspect data and update plans.',
-    searchPlaceholder: 'Search name / slug / owner account / email / phone',
-    resultCount: 'Results',
-    empty: 'No tenants match the current filter.',
-    loading: 'Loading tenants...',
-    noSelection: 'Select a tenant to inspect its summary.',
-    sideLoading: 'Loading tenant insights...',
-    sideError: 'Failed to load insights',
-    latestLogs: 'Recent Business Activity',
-    noLogs: 'No recent business activity.',
-    members: 'Member Access',
-    noMembers: 'No members yet.',
-    actions: 'Actions',
-    allTags: 'Auto Tags',
-    notes: 'Login metrics accumulate from the new tracking rollout onward.',
-    viewDetail: 'Open Detail',
-    openMembers: 'Open Memberships',
-    createdAt: 'Registered',
-    lastActiveAt: 'Last Active',
-    ownerMissing: 'No owner',
-    listTitle: 'Tenant List',
-    listDesc: 'Desktop keeps the split view; mobile opens detail directly from the card.',
-    summaryTitle: 'Operator Summary',
-    summaryDesc: 'Read-only overview for plan, activity, and usage. All edits move to the detail page.',
-    scopes: {
-      all: 'All',
-      paid: 'Paid',
-      expiring: 'Expiring',
-      'low-activity': 'Low Activity',
-      'high-activity': 'High Activity',
-      'no-owner': 'No Owner'
-    },
-    metrics: {
-      currentPlan: 'Current Plan',
-      expiresAt: 'Expires At',
-      lastActiveAt: 'Last Active',
-      totalProducts: 'Products',
-      totalImages: 'Images',
-      storageUtilization: 'Storage Utilization'
-    }
-  }
-} as const
 
 const SCOPE_ORDER: TenantScope[] = [
   'all',
@@ -141,7 +51,7 @@ export default function DashboardTenantManagementPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { locale } = useUiPreferences()
-  const copy = COPY[locale]
+  const messages = TENANT_MANAGEMENT_MESSAGES[locale]
 
   const query = searchParams.get('q') ?? ''
   const scope = normalizeScope(searchParams.get('scope'))
@@ -157,7 +67,7 @@ export default function DashboardTenantManagementPage() {
 
   useEffect(() => {
     setSearchInput(query)
-  }, [query])
+  }, [locale, messages.unknownError, query])
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -202,7 +112,7 @@ export default function DashboardTenantManagementPage() {
         }
 
         setTenants([])
-        setListState({ loading: false, error: formatUnknownError(error) })
+        setListState({ loading: false, error: formatUnknownError(error, { fallback: messages.unknownError, locale }) })
       }
     }
 
@@ -211,7 +121,7 @@ export default function DashboardTenantManagementPage() {
     return () => {
       cancelled = true
     }
-  }, [query])
+  }, [locale, messages.unknownError, query])
 
   const filteredTenants = useMemo(() => tenants.filter((tenant) => matchesScope(tenant, scope)), [tenants, scope])
   const selectedTenant = useMemo(() => {
@@ -282,7 +192,7 @@ export default function DashboardTenantManagementPage() {
 
         setSelectedInsights(null)
         setSelectedMembers([])
-        setSidePanelState({ loading: false, error: formatUnknownError(error) })
+        setSidePanelState({ loading: false, error: formatUnknownError(error, { fallback: messages.sideError, locale }) })
       }
     }
 
@@ -291,7 +201,7 @@ export default function DashboardTenantManagementPage() {
     return () => {
       cancelled = true
     }
-  }, [selectedTenantKey])
+  }, [locale, messages.sideError, selectedTenantKey])
 
   function handleSearchSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -335,21 +245,21 @@ export default function DashboardTenantManagementPage() {
   const summaryMetrics = selectedInsights
     ? [
         {
-          label: copy.metrics.currentPlan,
-          value: formatPlanLabel(selectedInsights.tenant.subscription?.plan ?? 'FREE')
+          label: messages.metrics.currentPlan,
+          value: formatPlanLabel(selectedInsights.tenant.subscription?.plan ?? 'FREE', locale)
         },
         {
-          label: copy.metrics.expiresAt,
+          label: messages.metrics.expiresAt,
           value: formatExpiryCell(selectedInsights.tenant.subscription?.expiresAt ?? null, locale)
         },
         {
-          label: copy.metrics.lastActiveAt,
+          label: messages.metrics.lastActiveAt,
           value: formatDateTimeCell(selectedInsights.tenant.lastActiveAt, locale)
         },
-        { label: copy.metrics.totalProducts, value: String(selectedInsights.businessMetrics.totalProducts) },
-        { label: copy.metrics.totalImages, value: String(selectedInsights.businessMetrics.totalImages) },
+        { label: messages.metrics.totalProducts, value: String(selectedInsights.businessMetrics.totalProducts) },
+        { label: messages.metrics.totalImages, value: String(selectedInsights.businessMetrics.totalImages) },
         {
-          label: copy.metrics.storageUtilization,
+          label: messages.metrics.storageUtilization,
           value: formatUtilization(selectedInsights.usage.usage.storageBytes.utilization)
         }
       ]
@@ -357,24 +267,24 @@ export default function DashboardTenantManagementPage() {
 
   return (
     <section className="page admin-page">
-      <h2 className="visually-hidden">{copy.title}</h2>
+      <h2 className="visually-hidden">{messages.title}</h2>
 
       <AdminPanel className="stack governance-toolbar-panel">
         <form className="governance-toolbar" onSubmit={handleSearchSubmit}>
           <label className="visually-hidden" htmlFor="tenant-governance-search">
-            {copy.searchPlaceholder}
+            {messages.searchPlaceholder}
           </label>
           <input
             id="tenant-governance-search"
             name="tenantSearch"
             type="search"
             autoComplete="off"
-            aria-label={copy.searchPlaceholder}
+            aria-label={messages.searchPlaceholder}
             value={searchInput}
-            placeholder={copy.searchPlaceholder}
+            placeholder={messages.searchPlaceholder}
             onChange={(event) => setSearchInput(event.target.value)}
           />
-          <button type="submit">{locale === 'zh' ? '搜索' : 'Search'}</button>
+          <button type="submit">{messages.searchAction}</button>
         </form>
         <div className="governance-scope-row">
           <div className="governance-scope-list">
@@ -386,12 +296,12 @@ export default function DashboardTenantManagementPage() {
                 aria-pressed={scope === item}
                 onClick={() => handleScopeChange(item)}
               >
-                {copy.scopes[item]}
+                {messages.scopes[item]}
               </button>
             ))}
           </div>
           <span className="muted">
-            {copy.resultCount}: {filteredTenants.length}
+            {messages.resultCount}: {filteredTenants.length}
           </span>
         </div>
       </AdminPanel>
@@ -399,17 +309,17 @@ export default function DashboardTenantManagementPage() {
       <div className="tenant-governance-workbench">
         <AdminPanel className="stack tenant-governance-list-panel">
           <div className="admin-section-head">
-            <h3>{copy.listTitle}</h3>
-            <p>{copy.listDesc}</p>
+            <h3>{messages.listTitle}</h3>
+            <p>{messages.listDesc}</p>
           </div>
 
-          {listState.loading ? <p className="muted">{copy.loading}</p> : null}
-          {!listState.loading && filteredTenants.length === 0 ? <p className="muted">{copy.empty}</p> : null}
+          {listState.loading ? <p className="muted">{messages.loading}</p> : null}
+          {!listState.loading && filteredTenants.length === 0 ? <p className="muted">{messages.empty}</p> : null}
           {listState.error ? <p className="error">{listState.error}</p> : null}
 
           <div className="tenant-governance-list">
             {filteredTenants.map((tenant) => {
-              const ownerLabel = tenant.owner?.account ?? tenant.owner?.email ?? copy.ownerMissing
+              const ownerLabel = tenant.owner?.account ?? tenant.owner?.email ?? messages.ownerMissing
               const isSelected = !isCompactViewport && tenant.id === selectedTenant?.id
 
               return (
@@ -432,22 +342,22 @@ export default function DashboardTenantManagementPage() {
                     </span>
                     <span className="inline-actions">
                       <AdminBadge tone={toPlanTone(tenant.subscription?.plan ?? 'FREE')}>
-                        {formatPlanLabel(tenant.subscription?.plan ?? 'FREE')}
+                        {formatPlanLabel(tenant.subscription?.plan ?? 'FREE', locale)}
                       </AdminBadge>
                       <AdminBadge tone={toStatusTone(tenant.subscription?.status ?? 'ACTIVE')}>
-                        {formatSubscriptionStatusLabel(tenant.subscription?.status ?? 'ACTIVE')}
+                        {formatSubscriptionStatusLabel(tenant.subscription?.status ?? 'ACTIVE', locale)}
                       </AdminBadge>
                     </span>
                   </span>
                   <span className="tenant-governance-meta">
                     <span className="tenant-governance-stat">
-                      <span className="tenant-governance-stat-label">{copy.createdAt}</span>
+                      <span className="tenant-governance-stat-label">{messages.createdAt}</span>
                       <strong className="tenant-governance-stat-value">
                         {formatCompactDateTime(tenant.createdAt, locale)}
                       </strong>
                     </span>
                     <span className="tenant-governance-stat">
-                      <span className="tenant-governance-stat-label">{copy.lastActiveAt}</span>
+                      <span className="tenant-governance-stat-label">{messages.lastActiveAt}</span>
                       <strong className="tenant-governance-stat-value">
                         {formatCompactDateTime(tenant.lastActiveAt, locale)}
                       </strong>
@@ -469,13 +379,13 @@ export default function DashboardTenantManagementPage() {
         {!isCompactViewport ? (
           <AdminPanel className="stack tenant-governance-side-panel">
             <div className="admin-section-head">
-              <h3>{copy.summaryTitle}</h3>
-              <p>{copy.summaryDesc}</p>
+              <h3>{messages.summaryTitle}</h3>
+              <p>{messages.summaryDesc}</p>
             </div>
 
-            {!selectedTenant ? <p className="muted">{copy.noSelection}</p> : null}
-            {selectedTenant && sidePanelState.loading ? <p className="muted">{copy.sideLoading}</p> : null}
-            {selectedTenant && sidePanelState.error ? <p className="error">{copy.sideError}: {sidePanelState.error}</p> : null}
+            {!selectedTenant ? <p className="muted">{messages.noSelection}</p> : null}
+            {selectedTenant && sidePanelState.loading ? <p className="muted">{messages.sideLoading}</p> : null}
+            {selectedTenant && sidePanelState.error ? <p className="error">{messages.sideError}: {sidePanelState.error}</p> : null}
 
             {selectedTenant && selectedInsights ? (
               <>
@@ -484,21 +394,21 @@ export default function DashboardTenantManagementPage() {
                     <h3>{selectedInsights.tenant.name}</h3>
                     <p className="mono">{selectedInsights.tenant.slug}</p>
                     <p className="muted">
-                      {selectedInsights.tenant.owner?.account ?? selectedInsights.tenant.owner?.email ?? copy.ownerMissing}
+                      {selectedInsights.tenant.owner?.account ?? selectedInsights.tenant.owner?.email ?? messages.ownerMissing}
                     </p>
                   </div>
                   <div className="inline-actions">
                     <AdminBadge tone={toPlanTone(selectedInsights.tenant.subscription?.plan ?? 'FREE')}>
-                      {formatPlanLabel(selectedInsights.tenant.subscription?.plan ?? 'FREE')}
+                      {formatPlanLabel(selectedInsights.tenant.subscription?.plan ?? 'FREE', locale)}
                     </AdminBadge>
                     <AdminBadge tone={toStatusTone(selectedInsights.tenant.subscription?.status ?? 'ACTIVE')}>
-                      {formatSubscriptionStatusLabel(selectedInsights.tenant.subscription?.status ?? 'ACTIVE')}
+                      {formatSubscriptionStatusLabel(selectedInsights.tenant.subscription?.status ?? 'ACTIVE', locale)}
                     </AdminBadge>
                   </div>
                 </div>
 
                 <div className="stack row-tight">
-                  <strong>{copy.allTags}</strong>
+                  <strong>{messages.allTags}</strong>
                   <div className="governance-tag-column">
                     {selectedInsights.autoTags.length === 0 ? <p className="muted">-</p> : null}
                     {selectedInsights.autoTags.map((tag) => (
@@ -519,16 +429,16 @@ export default function DashboardTenantManagementPage() {
                   ))}
                 </div>
 
-                <p className="muted">{copy.notes}</p>
+                <p className="muted">{messages.notes}</p>
 
                 <div className="stack row-tight">
-                  <strong>{copy.latestLogs}</strong>
-                  {selectedInsights.recentBusinessLogs.slice(0, 5).length === 0 ? <p className="muted">{copy.noLogs}</p> : null}
+                  <strong>{messages.latestLogs}</strong>
+                  {selectedInsights.recentBusinessLogs.slice(0, 5).length === 0 ? <p className="muted">{messages.noLogs}</p> : null}
                   <div className="tenant-side-feed">
                     {selectedInsights.recentBusinessLogs.slice(0, 5).map((log) => (
                       <div key={log.id} className="tenant-side-feed-item">
                         <div className="stack row-tight">
-                          <strong>{formatBusinessAuditActionLabel(log.action)}</strong>
+                          <strong>{formatBusinessAuditActionLabel(log.action, locale)}</strong>
                           <span className="muted">{log.resourceType}</span>
                         </div>
                         <div className="stack row-tight tenant-side-feed-meta">
@@ -541,8 +451,8 @@ export default function DashboardTenantManagementPage() {
                 </div>
 
                 <div className="stack row-tight">
-                  <strong>{copy.members}</strong>
-                  {selectedMembers.length === 0 ? <p className="muted">{copy.noMembers}</p> : null}
+                  <strong>{messages.members}</strong>
+                  {selectedMembers.length === 0 ? <p className="muted">{messages.noMembers}</p> : null}
                   <div className="tenant-side-member-list">
                     {selectedMembers.slice(0, 5).map((member) => (
                       <div key={`${member.tenantId}:${member.user.id}`} className="tenant-side-member-item">
@@ -550,24 +460,24 @@ export default function DashboardTenantManagementPage() {
                           <strong>{member.user.email}</strong>
                           <span className="muted">{member.user.name ?? '-'}</span>
                         </div>
-                        <AdminBadge tone={toRoleTone(member.role)}>{formatTenantRoleLabel(member.role)}</AdminBadge>
+                        <AdminBadge tone={toRoleTone(member.role)}>{formatTenantRoleLabel(member.role, locale)}</AdminBadge>
                       </div>
                     ))}
                   </div>
                 </div>
 
                 <div className="stack row-tight">
-                  <strong>{copy.actions}</strong>
+                  <strong>{messages.actions}</strong>
                   <div className="inline-actions">
                     <AdminActionLink href={`/dashboard/tenants/${selectedInsights.tenant.id}`}>
-                      {copy.viewDetail}
+                      {messages.viewDetail}
                     </AdminActionLink>
                     <AdminActionLink href={`/dashboard/memberships?tenantId=${selectedInsights.tenant.id}`}>
-                      {copy.openMembers}
+                      {messages.openMembers}
                     </AdminActionLink>
                   </div>
                   <span className="muted">
-                    {copy.createdAt}: {formatDateTime(selectedInsights.tenant.createdAt)}
+                    {messages.createdAt}: {formatDateTime(selectedInsights.tenant.createdAt)}
                   </span>
                 </div>
               </>

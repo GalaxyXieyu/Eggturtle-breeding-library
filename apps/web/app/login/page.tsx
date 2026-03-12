@@ -90,7 +90,7 @@ type LoginCopy = {
 
 const ACCOUNT_PATTERN = /^[a-zA-Z][a-zA-Z0-9_-]{2,30}[a-zA-Z0-9]$/;
 
-const COPY: Record<UiLocale, LoginCopy> = {
+const LOGIN_MESSAGES: Record<UiLocale, LoginCopy> = {
   zh: {
     title: '选育溯源档案',
     brandEyebrow: 'Breeding Traceability Record',
@@ -250,8 +250,8 @@ function LoginPageContent() {
   const searchParams = useSearchParams();
   const { locale } = useUiPreferences();
   const branding = usePlatformBranding();
-  const copy = {
-    ...COPY[locale],
+  const messages = {
+    ...LOGIN_MESSAGES[locale],
     title: branding.appName[locale],
     brandEyebrow: branding.appEyebrow[locale],
     subtitle: branding.appDescription[locale],
@@ -324,19 +324,19 @@ function LoginPageContent() {
 
   const loginCodeButtonLabel = useMemo(() => {
     if (sendingLoginCode) {
-      return copy.sending;
+      return messages.sending;
     }
 
     if (loginSmsCooldown > 0) {
-      return `${loginSmsCooldown}${copy.resendIn}`;
+      return `${loginSmsCooldown}${messages.resendIn}`;
     }
 
-    return loginPhoneDevCode ? copy.resendCode : copy.requestCode;
+    return loginPhoneDevCode ? messages.resendCode : messages.requestCode;
   }, [
-    copy.requestCode,
-    copy.resendCode,
-    copy.resendIn,
-    copy.sending,
+    messages.requestCode,
+    messages.resendCode,
+    messages.resendIn,
+    messages.sending,
     loginPhoneDevCode,
     loginSmsCooldown,
     sendingLoginCode,
@@ -344,19 +344,19 @@ function LoginPageContent() {
 
   const registerCodeButtonLabel = useMemo(() => {
     if (sendingRegisterCode) {
-      return copy.sending;
+      return messages.sending;
     }
 
     if (registerSmsCooldown > 0) {
-      return `${registerSmsCooldown}${copy.resendIn}`;
+      return `${registerSmsCooldown}${messages.resendIn}`;
     }
 
-    return registerDevCode ? copy.resendCode : copy.requestCode;
+    return registerDevCode ? messages.resendCode : messages.requestCode;
   }, [
-    copy.requestCode,
-    copy.resendCode,
-    copy.resendIn,
-    copy.sending,
+    messages.requestCode,
+    messages.resendCode,
+    messages.resendIn,
+    messages.sending,
     registerDevCode,
     registerSmsCooldown,
     sendingRegisterCode,
@@ -480,7 +480,7 @@ function LoginPageContent() {
   ): { ok: true; login: string } | { ok: false; message: string } {
     const compact = rawValue.trim().replace(/\s+/g, '');
     if (!compact) {
-      return { ok: false, message: copy.accountInvalid };
+      return { ok: false, message: messages.accountInvalid };
     }
 
     const normalizedPhone = parseMainlandPhone(compact);
@@ -489,16 +489,16 @@ function LoginPageContent() {
     }
 
     if (compact.includes('@')) {
-      return { ok: false, message: copy.emailLoginNotSupported };
+      return { ok: false, message: messages.emailLoginNotSupported };
     }
 
     if (/^\d+$/.test(compact)) {
-      return { ok: false, message: copy.phoneInvalid };
+      return { ok: false, message: messages.phoneInvalid };
     }
 
     const normalizedAccount = compact.toLowerCase();
     if (!ACCOUNT_PATTERN.test(normalizedAccount)) {
-      return { ok: false, message: copy.accountInvalid };
+      return { ok: false, message: messages.accountInvalid };
     }
 
     return { ok: true, login: normalizedAccount };
@@ -536,7 +536,7 @@ function LoginPageContent() {
   async function requestSmsCode(phoneNumber: string, flow: SmsFlow) {
     const normalizedPhoneNumber = parseMainlandPhone(phoneNumber);
     if (!normalizedPhoneNumber) {
-      setError(copy.phoneInvalid);
+      setError(messages.phoneInvalid);
       return;
     }
 
@@ -574,11 +574,11 @@ function LoginPageContent() {
 
       setSuccess(
         locale === 'zh'
-          ? `${copy.codeSentTo} ${normalizedPhoneNumber}，${copy.successCodeHint}`
-          : `${copy.codeSentTo} ${normalizedPhoneNumber}. ${copy.successCodeHint}`,
+          ? `${messages.codeSentTo} ${normalizedPhoneNumber}，${messages.successCodeHint}`
+          : `${messages.codeSentTo} ${normalizedPhoneNumber}. ${messages.successCodeHint}`,
       );
     } catch (requestError) {
-      setError(formatApiError(requestError, copy.unknownError, locale));
+      setError(formatApiError(requestError, messages.unknownError, locale));
     } finally {
       if (flow === 'login') {
         setSendingLoginCode(false);
@@ -618,7 +618,7 @@ function LoginPageContent() {
       await consumePendingReferralAfterAuth();
       router.replace(getPostAuthRedirect('/app'));
     } catch (requestError) {
-      setError(formatApiError(requestError, copy.unknownError, locale));
+      setError(formatApiError(requestError, messages.unknownError, locale));
     } finally {
       setSubmittingPasswordLogin(false);
     }
@@ -629,12 +629,12 @@ function LoginPageContent() {
 
     const normalizedPhoneNumber = parseMainlandPhone(loginPhoneNumber);
     if (!normalizedPhoneNumber) {
-      setError(copy.phoneInvalid);
+      setError(messages.phoneInvalid);
       return;
     }
 
     if (!/^\d{6}$/.test(loginPhoneCode)) {
-      setError(copy.codeInvalid);
+      setError(messages.codeInvalid);
       return;
     }
 
@@ -669,7 +669,7 @@ function LoginPageContent() {
         }),
       );
     } catch (requestError) {
-      setError(formatApiError(requestError, copy.unknownError, locale));
+      setError(formatApiError(requestError, messages.unknownError, locale));
     } finally {
       setSubmittingCodeLogin(false);
     }
@@ -679,23 +679,23 @@ function LoginPageContent() {
     event.preventDefault();
 
     if (!ACCOUNT_PATTERN.test(registerAccount)) {
-      setError(copy.accountInvalid);
+      setError(messages.accountInvalid);
       return;
     }
 
     const normalizedPhoneNumber = parseMainlandPhone(registerPhoneNumber);
     if (!normalizedPhoneNumber) {
-      setError(copy.phoneInvalid);
+      setError(messages.phoneInvalid);
       return;
     }
 
     if (!/^\d{6}$/.test(registerCode)) {
-      setError(copy.codeInvalid);
+      setError(messages.codeInvalid);
       return;
     }
 
     if (registerPassword !== registerConfirmPassword) {
-      setError(copy.confirmPasswordMismatch);
+      setError(messages.confirmPasswordMismatch);
       return;
     }
 
@@ -730,7 +730,7 @@ function LoginPageContent() {
         }),
       );
     } catch (requestError) {
-      setError(formatApiError(requestError, copy.unknownError, locale));
+      setError(formatApiError(requestError, messages.unknownError, locale));
     } finally {
       setSubmittingRegister(false);
     }
@@ -742,21 +742,21 @@ function LoginPageContent() {
         <section className="login-showcase">
           <div className="login-showcase-glow" aria-hidden />
           <div className="login-brand-copy">
-            <p className="login-brand-eyebrow">{copy.brandEyebrow}</p>
-            <h1>{copy.title}</h1>
-            <p className="muted">{copy.subtitle}</p>
+            <p className="login-brand-eyebrow">{messages.brandEyebrow}</p>
+            <h1>{messages.title}</h1>
+            <p className="muted">{messages.subtitle}</p>
           </div>
           <div className="login-showcase-chips">
-            <span>{copy.showcaseItemAuth}</span>
-            <span>{copy.showcaseItemTenant}</span>
-            <span>{copy.showcaseItemWorkflow}</span>
+            <span>{messages.showcaseItemAuth}</span>
+            <span>{messages.showcaseItemTenant}</span>
+            <span>{messages.showcaseItemWorkflow}</span>
           </div>
         </section>
 
         <section className="login-card">
           <div className="login-card-head">
             <div className="login-card-top">
-              <h2>{entryView === 'register' ? copy.registerTitle : copy.loginTitle}</h2>
+              <h2>{entryView === 'register' ? messages.registerTitle : messages.loginTitle}</h2>
               <UiPreferenceControls className="login-preference-controls" />
             </div>
           </div>
@@ -764,9 +764,9 @@ function LoginPageContent() {
           <div className="login-form-stack">
             {entryView === 'login' ? (
               <>
-                <p className="muted">{copy.loginSummary}</p>
+                <p className="muted">{messages.loginSummary}</p>
 
-                <div className="login-mode-toggle" aria-label={copy.modeLabel}>
+                <div className="login-mode-toggle" aria-label={messages.modeLabel}>
                   <button
                     type="button"
                     className={
@@ -775,7 +775,7 @@ function LoginPageContent() {
                     aria-pressed={loginMode === 'password'}
                     onClick={() => switchLoginMode('password')}
                   >
-                    {copy.modePassword}
+                    {messages.modePassword}
                   </button>
                   <button
                     type="button"
@@ -783,17 +783,17 @@ function LoginPageContent() {
                     aria-pressed={loginMode === 'code'}
                     onClick={() => switchLoginMode('code')}
                   >
-                    {copy.modeCode}
+                    {messages.modeCode}
                   </button>
                 </div>
 
                 {loginMode === 'password' ? (
                   <form className="login-panel" onSubmit={handlePasswordLogin}>
-                    <p className="muted">{copy.passwordHint}</p>
+                    <p className="muted">{messages.passwordHint}</p>
 
                     <div>
                       <label htmlFor="password-login-identifier">
-                        {copy.passwordIdentifierLabel}
+                        {messages.passwordIdentifierLabel}
                       </label>
                       <input
                         id="password-login-identifier"
@@ -801,7 +801,7 @@ function LoginPageContent() {
                         type="text"
                         autoComplete="username"
                         value={loginIdentifier}
-                        placeholder={copy.passwordIdentifierPlaceholder}
+                        placeholder={messages.passwordIdentifierPlaceholder}
                         onChange={(event) => setLoginIdentifier(event.target.value)}
                         onBlur={() => {
                           const compact = loginIdentifier.trim().replace(/\s+/g, '');
@@ -825,14 +825,14 @@ function LoginPageContent() {
                     </div>
 
                     <div>
-                      <label htmlFor="password-login-password">{copy.passwordLabel}</label>
+                      <label htmlFor="password-login-password">{messages.passwordLabel}</label>
                       <input
                         id="password-login-password"
                         name="password"
                         type="password"
                         autoComplete="current-password"
                         value={loginPassword}
-                        placeholder={copy.passwordPlaceholder}
+                        placeholder={messages.passwordPlaceholder}
                         onChange={(event) => setLoginPassword(event.target.value)}
                         disabled={!hydrated || isBusy}
                         required
@@ -840,16 +840,16 @@ function LoginPageContent() {
                     </div>
 
                     <button type="submit" disabled={!hydrated || isBusy}>
-                      {submittingPasswordLogin ? copy.loggingIn : copy.passwordLogin}
+                      {submittingPasswordLogin ? messages.loggingIn : messages.passwordLogin}
                     </button>
                   </form>
                 ) : (
                   <form className="login-panel" onSubmit={handleCodeLogin}>
-                    <h2>{copy.codeLoginTitle}</h2>
-                    <p>{copy.codeLoginHint}</p>
+                    <h2>{messages.codeLoginTitle}</h2>
+                    <p>{messages.codeLoginHint}</p>
 
                     <div>
-                      <label htmlFor="login-phone">{copy.phoneLabel}</label>
+                      <label htmlFor="login-phone">{messages.phoneLabel}</label>
                       <input
                         id="login-phone"
                         name="phoneNumber"
@@ -858,7 +858,7 @@ function LoginPageContent() {
                         inputMode="numeric"
                         maxLength={11}
                         value={loginPhoneNumber}
-                        placeholder={copy.phonePlaceholder}
+                        placeholder={messages.phonePlaceholder}
                         onChange={(event) =>
                           setLoginPhoneNumber(normalizePhone(event.target.value))
                         }
@@ -868,7 +868,7 @@ function LoginPageContent() {
                     </div>
 
                     <div>
-                      <label htmlFor="login-code">{copy.verificationCode}</label>
+                      <label htmlFor="login-code">{messages.verificationCode}</label>
                       <input
                         id="login-code"
                         name="code"
@@ -877,7 +877,7 @@ function LoginPageContent() {
                         inputMode="numeric"
                         maxLength={6}
                         value={loginPhoneCode}
-                        placeholder={copy.codePlaceholder}
+                        placeholder={messages.codePlaceholder}
                         onChange={(event) =>
                           setLoginPhoneCode(event.target.value.replace(/\D/g, '').slice(0, 6))
                         }
@@ -888,7 +888,7 @@ function LoginPageContent() {
 
                     {loginPhoneDevCode ? (
                       <p className="login-dev-code">
-                        {copy.devCode}
+                        {messages.devCode}
                         <code>{loginPhoneDevCode}</code>
                       </p>
                     ) : null}
@@ -903,7 +903,7 @@ function LoginPageContent() {
                         {loginCodeButtonLabel}
                       </button>
                       <button type="submit" disabled={!hydrated || isBusy}>
-                        {submittingCodeLogin ? copy.loggingIn : copy.modeCode}
+                        {submittingCodeLogin ? messages.loggingIn : messages.modeCode}
                       </button>
                     </div>
                   </form>
@@ -915,24 +915,24 @@ function LoginPageContent() {
                     className="login-secondary-cta"
                     onClick={() => switchEntryView('register')}
                   >
-                    {copy.switchToRegister}
+                    {messages.switchToRegister}
                   </button>
                 </div>
               </>
             ) : (
               <form className="login-panel" onSubmit={handleRegister}>
-                <p>{copy.registerHint}</p>
-                <p className="muted">{copy.registerSummary}</p>
+                <p>{messages.registerHint}</p>
+                <p className="muted">{messages.registerSummary}</p>
 
                 <div>
-                  <label htmlFor="register-account">{copy.registerAccountLabel}</label>
+                  <label htmlFor="register-account">{messages.registerAccountLabel}</label>
                   <input
                     id="register-account"
                     name="account"
                     type="text"
                     autoComplete="username"
                     value={registerAccount}
-                    placeholder={copy.registerAccountPlaceholder}
+                    placeholder={messages.registerAccountPlaceholder}
                     onChange={(event) => setRegisterAccount(normalizeAccount(event.target.value))}
                     disabled={!hydrated || isBusy}
                     required
@@ -940,14 +940,14 @@ function LoginPageContent() {
                 </div>
 
                 <div>
-                  <label htmlFor="register-password">{copy.registerPasswordLabel}</label>
+                  <label htmlFor="register-password">{messages.registerPasswordLabel}</label>
                   <input
                     id="register-password"
                     name="password"
                     type="password"
                     autoComplete="new-password"
                     value={registerPassword}
-                    placeholder={copy.passwordPlaceholder}
+                    placeholder={messages.passwordPlaceholder}
                     onChange={(event) => setRegisterPassword(event.target.value)}
                     disabled={!hydrated || isBusy}
                     required
@@ -956,7 +956,7 @@ function LoginPageContent() {
 
                 <div>
                   <label htmlFor="register-password-confirm">
-                    {copy.registerConfirmPasswordLabel}
+                    {messages.registerConfirmPasswordLabel}
                   </label>
                   <input
                     id="register-password-confirm"
@@ -964,7 +964,7 @@ function LoginPageContent() {
                     type="password"
                     autoComplete="new-password"
                     value={registerConfirmPassword}
-                    placeholder={copy.registerConfirmPasswordPlaceholder}
+                    placeholder={messages.registerConfirmPasswordPlaceholder}
                     onChange={(event) => setRegisterConfirmPassword(event.target.value)}
                     disabled={!hydrated || isBusy}
                     required
@@ -972,7 +972,7 @@ function LoginPageContent() {
                 </div>
 
                 <div>
-                  <label htmlFor="register-phone">{copy.phoneLabel}</label>
+                  <label htmlFor="register-phone">{messages.phoneLabel}</label>
                   <input
                     id="register-phone"
                     name="phoneNumber"
@@ -981,7 +981,7 @@ function LoginPageContent() {
                     inputMode="numeric"
                     maxLength={11}
                     value={registerPhoneNumber}
-                    placeholder={copy.phonePlaceholder}
+                    placeholder={messages.phonePlaceholder}
                     onChange={(event) => setRegisterPhoneNumber(normalizePhone(event.target.value))}
                     disabled={!hydrated || isBusy}
                     required
@@ -989,7 +989,7 @@ function LoginPageContent() {
                 </div>
 
                 <div>
-                  <label htmlFor="register-code">{copy.verificationCode}</label>
+                  <label htmlFor="register-code">{messages.verificationCode}</label>
                   <input
                     id="register-code"
                     name="code"
@@ -998,7 +998,7 @@ function LoginPageContent() {
                     inputMode="numeric"
                     maxLength={6}
                     value={registerCode}
-                    placeholder={copy.codePlaceholder}
+                    placeholder={messages.codePlaceholder}
                     onChange={(event) =>
                       setRegisterCode(event.target.value.replace(/\D/g, '').slice(0, 6))
                     }
@@ -1009,7 +1009,7 @@ function LoginPageContent() {
 
                 {registerDevCode ? (
                   <p className="login-dev-code">
-                    {copy.devCode}
+                    {messages.devCode}
                     <code>{registerDevCode}</code>
                   </p>
                 ) : null}
@@ -1024,7 +1024,7 @@ function LoginPageContent() {
                     {registerCodeButtonLabel}
                   </button>
                   <button type="submit" disabled={!hydrated || isBusy}>
-                    {submittingRegister ? copy.registering : copy.registerSubmit}
+                    {submittingRegister ? messages.registering : messages.registerSubmit}
                   </button>
                 </div>
 
@@ -1034,7 +1034,7 @@ function LoginPageContent() {
                     className="login-secondary-cta"
                     onClick={() => switchEntryView('login')}
                   >
-                    {copy.switchToLogin}
+                    {messages.switchToLogin}
                   </button>
                 </div>
               </form>

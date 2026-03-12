@@ -1,5 +1,7 @@
+import { ErrorCode } from '@eggturtle/shared';
 import { NextRequest, NextResponse } from 'next/server';
 
+import { createErrorResponse, unavailableResponse } from '@/lib/api-error-response';
 import {
   clearSessionCookie,
   getAdminApiBaseUrl,
@@ -15,12 +17,12 @@ type RouteContext = {
 async function proxyRequest(request: NextRequest, context: RouteContext) {
   const token = getSessionToken();
   if (!token) {
-    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    return createErrorResponse(401, ErrorCode.Unauthorized, 'Unauthorized.');
   }
 
   const path = context.params.path?.join('/');
   if (!path) {
-    return NextResponse.json({ message: 'Admin proxy path is required.' }, { status: 400 });
+    return createErrorResponse(400, ErrorCode.InvalidRequestPayload, 'Invalid request.');
   }
 
   const url = `${getAdminApiBaseUrl()}/admin/${path}${request.nextUrl.search}`;
@@ -74,7 +76,7 @@ async function proxyRequest(request: NextRequest, context: RouteContext) {
 
     return response;
   } catch {
-    return NextResponse.json({ message: 'Admin API proxy request failed.' }, { status: 502 });
+    return unavailableResponse();
   }
 }
 

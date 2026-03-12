@@ -10,45 +10,12 @@ import {
 import { useUiPreferences } from '@/components/ui-preferences';
 import { apiRequest } from '@/lib/api-client';
 import { formatUnknownError } from '@/lib/formatters';
+import { FORCE_PASSWORD_RESET_MESSAGES } from '@/lib/locales/shell';
 
 type ForcePasswordResetDialogProps = {
   currentUserEmail: string;
   open: boolean;
 };
-
-const COPY = {
-  zh: {
-    title: '先修改初始密码',
-    description: '这是系统初始化的临时管理员密码。继续使用后台前，请先改成你自己的密码。',
-    currentPassword: '当前密码',
-    currentPasswordPlaceholder: '请输入当前临时密码',
-    newPassword: '新密码',
-    newPasswordPlaceholder: '请输入新的后台密码',
-    confirmPassword: '确认新密码',
-    confirmPasswordPlaceholder: '请再次输入新密码',
-    passwordMismatch: '两次输入的新密码不一致。',
-    save: '保存并继续',
-    saving: '保存中…',
-    accountLabel: '当前账号',
-    unknownError: '修改密码失败，请稍后重试。'
-  },
-  en: {
-    title: 'Change the bootstrap password first',
-    description:
-      'This is the temporary admin password created during bootstrap. Change it before continuing to use the console.',
-    currentPassword: 'Current password',
-    currentPasswordPlaceholder: 'Enter the temporary password',
-    newPassword: 'New password',
-    newPasswordPlaceholder: 'Enter the new admin password',
-    confirmPassword: 'Confirm new password',
-    confirmPasswordPlaceholder: 'Enter the new password again',
-    passwordMismatch: 'The two new password entries do not match.',
-    save: 'Save and continue',
-    saving: 'Saving…',
-    accountLabel: 'Current account',
-    unknownError: 'Failed to update password. Please try again.'
-  }
-} as const;
 
 export function ForcePasswordResetDialog({
   currentUserEmail,
@@ -56,7 +23,7 @@ export function ForcePasswordResetDialog({
 }: ForcePasswordResetDialogProps) {
   const router = useRouter();
   const { locale } = useUiPreferences();
-  const copy = COPY[locale];
+  const messages = FORCE_PASSWORD_RESET_MESSAGES[locale];
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -72,7 +39,7 @@ export function ForcePasswordResetDialog({
     event.preventDefault();
 
     if (newPassword !== confirmPassword) {
-      setError(copy.passwordMismatch);
+      setError(messages.passwordMismatch);
       return;
     }
 
@@ -94,7 +61,7 @@ export function ForcePasswordResetDialog({
       setDismissed(true);
       router.refresh();
     } catch (requestError) {
-      setError(formatUnknownError(requestError, { fallback: copy.unknownError, locale }));
+      setError(formatUnknownError(requestError, { fallback: messages.unknownError, locale }));
     } finally {
       setSubmitting(false);
     }
@@ -110,51 +77,51 @@ export function ForcePasswordResetDialog({
       >
         <div className="force-password-reset-head">
           <div className="stack">
-            <strong>{copy.accountLabel}</strong>
+            <strong>{messages.accountLabel}</strong>
             <span>{currentUserEmail}</span>
           </div>
           <div className="stack">
-            <h2 id="force-password-reset-title">{copy.title}</h2>
-            <p>{copy.description}</p>
+            <h2 id="force-password-reset-title">{messages.title}</h2>
+            <p>{messages.description}</p>
           </div>
         </div>
 
         <form className="force-password-reset-form" onSubmit={handleSubmit}>
           <div className="settings-form-group force-password-reset-fields">
             <label className="settings-form-field">
-              <span>{copy.currentPassword}</span>
+              <span>{messages.currentPassword}</span>
               <input
                 type="password"
                 autoComplete="current-password"
                 value={currentPassword}
                 onChange={(event) => setCurrentPassword(event.target.value)}
-                placeholder={copy.currentPasswordPlaceholder}
+                placeholder={messages.currentPasswordPlaceholder}
                 disabled={submitting}
                 required
               />
             </label>
 
             <label className="settings-form-field">
-              <span>{copy.newPassword}</span>
+              <span>{messages.newPassword}</span>
               <input
                 type="password"
                 autoComplete="new-password"
                 value={newPassword}
                 onChange={(event) => setNewPassword(event.target.value)}
-                placeholder={copy.newPasswordPlaceholder}
+                placeholder={messages.newPasswordPlaceholder}
                 disabled={submitting}
                 required
               />
             </label>
 
             <label className="settings-form-field">
-              <span>{copy.confirmPassword}</span>
+              <span>{messages.confirmPassword}</span>
               <input
                 type="password"
                 autoComplete="new-password"
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}
-                placeholder={copy.confirmPasswordPlaceholder}
+                placeholder={messages.confirmPasswordPlaceholder}
                 disabled={submitting}
                 required
               />
@@ -165,7 +132,7 @@ export function ForcePasswordResetDialog({
 
           <div className="settings-form-actions">
             <button type="submit" disabled={submitting}>
-              {submitting ? copy.saving : copy.save}
+              {submitting ? messages.saving : messages.save}
             </button>
           </div>
         </form>

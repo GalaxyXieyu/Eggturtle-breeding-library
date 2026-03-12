@@ -6,6 +6,7 @@ import { KeyRound, LogOut, Smartphone, UserRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useUiPreferences } from '@/components/ui-preferences';
 import {
   MobileSettingsCard as SettingsCard,
   MobileSettingsEditorPanel as AccountEditorPanel,
@@ -17,6 +18,7 @@ import {
   formatDate,
   maskPhoneNumber,
 } from '@/app/app/[tenantSlug]/account/account-page-utils';
+import { ACCOUNT_PROFILE_MESSAGES } from '@/lib/locales/account';
 
 type AccountProfileOverviewProps = {
   boundPhoneNumber: string | null;
@@ -109,22 +111,24 @@ export default function AccountProfileOverview({
   sendingPhoneCode,
   securityQuestionOptions,
 }: AccountProfileOverviewProps) {
+  const { locale } = useUiPreferences();
+  const messages = ACCOUNT_PROFILE_MESSAGES[locale];
   const [activeEditor, setActiveEditor] = useState<EditorKey>(null);
 
-  const phoneSummary = boundPhoneNumber ? maskPhoneNumber(boundPhoneNumber) : '未绑定手机号';
+  const phoneSummary = boundPhoneNumber ? maskPhoneNumber(boundPhoneNumber) : messages.phoneSummaryEmpty;
   const passwordSummary = passwordUpdatedAt
-    ? `最近更新：${formatDate(passwordUpdatedAt)}`
-    : '尚未设置登录密码';
+    ? messages.passwordSummaryUpdated(formatDate(passwordUpdatedAt, locale))
+    : messages.passwordSummaryEmpty;
   const securitySummary = securityQuestionDraft.trim()
     ? securityQuestionDraft.trim()
-    : '尚未设置密保';
+    : messages.securitySummaryEmpty;
   const loginAccountDetail = useMemo(() => {
     const parts = [loginAccountHint];
     if (profileCreatedAt) {
-      parts.push(`创建于 ${formatDate(profileCreatedAt)}`);
+      parts.push(messages.createdAt(formatDate(profileCreatedAt, locale)));
     }
     return parts.filter(Boolean).join(' · ');
-  }, [loginAccountHint, profileCreatedAt]);
+  }, [messages, locale, loginAccountHint, profileCreatedAt]);
 
   function toggleEditor(nextEditor: Exclude<EditorKey, null>) {
     setActiveEditor((current) => (current === nextEditor ? null : nextEditor));
@@ -135,40 +139,40 @@ export default function AccountProfileOverview({
       <div className="pointer-events-none absolute inset-x-0 top-0 h-48 bg-[radial-gradient(circle_at_top_right,rgba(255,212,0,0.16),transparent_36%),radial-gradient(circle_at_top_left,rgba(255,255,255,0.9),transparent_34%)]" />
       <MobileSettingsHeader
         className="relative"
-        title="我的资料"
+        title={messages.title}
         titleAs="h2"
-        description="先看当前信息，再点某一项进去修改。"
+        description={messages.description}
       />
 
       <SettingsCard>
         <AccountSettingRow
           icon={<UserRound size={16} />}
-          label="登录账号"
+          label={messages.loginAccountLabel}
           summary={loginAccountValue}
           detail={loginAccountDetail}
         />
         <AccountSettingRow
           active={activeEditor === 'name'}
           icon={<UserRound size={16} />}
-          label="显示名称 / 昵称"
-          summary={nameDraft.trim() || '未设置显示名称'}
-          detail="用于页面展示和团队成员识别。"
+          label={messages.displayNameLabel}
+          summary={nameDraft.trim() || messages.displayNameEmpty}
+          detail={messages.displayNameDetail}
           onClick={() => toggleEditor('name')}
         />
         {activeEditor === 'name' ? (
           <AccountEditorPanel onClose={() => setActiveEditor(null)}>
             <div className="space-y-2">
-              <Label htmlFor="account-name">显示名称 / 昵称</Label>
+              <Label htmlFor="account-name">{messages.displayNameLabel}</Label>
               <Input
                 id="account-name"
                 value={nameDraft}
-                placeholder="例如：Siri 的龟舍"
+                placeholder={messages.displayNamePlaceholder}
                 onChange={(event) => onNameDraftChange(event.target.value)}
               />
             </div>
             <div className="flex justify-end">
               <Button disabled={savingProfile} onClick={() => void onSaveProfile()}>
-                {savingProfile ? '保存中…' : '保存资料'}
+                {savingProfile ? messages.savingProfile : messages.saveProfile}
               </Button>
             </div>
           </AccountEditorPanel>
@@ -177,38 +181,38 @@ export default function AccountProfileOverview({
         <AccountSettingRow
           active={activeEditor === 'phone'}
           icon={<Smartphone size={16} />}
-          label="绑定手机号"
+          label={messages.phoneLabel}
           summary={phoneSummary}
-          detail="点击修改手机号、发送验证码或更换绑定。"
+          detail={messages.phoneDetail}
           onClick={() => toggleEditor('phone')}
         />
         {activeEditor === 'phone' ? (
           <AccountEditorPanel onClose={() => setActiveEditor(null)}>
             <div className="space-y-2">
-              <Label htmlFor="account-phone">手机号</Label>
+              <Label htmlFor="account-phone">{messages.phoneFieldLabel}</Label>
               <Input
                 id="account-phone"
                 value={phoneDraft}
                 inputMode="numeric"
                 maxLength={11}
-                placeholder="请输入 11 位手机号"
+                placeholder={messages.phonePlaceholder}
                 onChange={(event) =>
                   onPhoneDraftChange(event.target.value.replace(/\D/g, '').slice(0, 11))
                 }
               />
               <p className="text-xs text-neutral-500">
-                当前绑定：{boundPhoneNumber ? maskPhoneNumber(boundPhoneNumber) : '未绑定'}
+                {messages.phoneBoundLabel(boundPhoneNumber ? maskPhoneNumber(boundPhoneNumber) : messages.phoneUnbound)}
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="account-phone-code">短信验证码</Label>
+              <Label htmlFor="account-phone-code">{messages.phoneCodeLabel}</Label>
               <div className="flex gap-2">
                 <Input
                   id="account-phone-code"
                   value={phoneCodeDraft}
                   inputMode="numeric"
                   maxLength={6}
-                  placeholder="请输入 6 位验证码"
+                  placeholder={messages.phoneCodePlaceholder}
                   onChange={(event) =>
                     onPhoneCodeDraftChange(event.target.value.replace(/\D/g, '').slice(0, 6))
                   }
@@ -220,23 +224,23 @@ export default function AccountProfileOverview({
                   onClick={() => void onSendPhoneCode()}
                 >
                   {sendingPhoneCode
-                    ? '发送中…'
+                    ? messages.sending
                     : phoneCodeCooldown > 0
                       ? `${phoneCodeCooldown}s`
-                      : '发送'}
+                      : messages.send}
                 </Button>
               </div>
             </div>
             {isReplacingBoundPhone ? (
               <div className="space-y-2">
-                <Label htmlFor="account-old-phone-code">原手机号验证码</Label>
+                <Label htmlFor="account-old-phone-code">{messages.oldPhoneCodeLabel}</Label>
                 <div className="flex gap-2">
                   <Input
                     id="account-old-phone-code"
                     value={oldPhoneCodeDraft}
                     inputMode="numeric"
                     maxLength={6}
-                    placeholder="请输入原手机号收到的 6 位验证码"
+                    placeholder={messages.oldPhoneCodePlaceholder}
                     onChange={(event) =>
                       onOldPhoneCodeDraftChange(event.target.value.replace(/\D/g, '').slice(0, 6))
                     }
@@ -248,17 +252,17 @@ export default function AccountProfileOverview({
                     onClick={() => void onSendOldPhoneCode()}
                   >
                     {sendingOldPhoneCode
-                      ? '发送中…'
+                      ? messages.sending
                       : oldPhoneCodeCooldown > 0
                         ? `${oldPhoneCodeCooldown}s`
-                        : '发送'}
+                        : messages.send}
                   </Button>
                 </div>
               </div>
             ) : null}
             <div className="flex justify-end">
               <Button disabled={savingPhoneBinding} onClick={() => void onBindPhone()}>
-                {savingPhoneBinding ? '绑定中…' : '绑定手机号'}
+                {savingPhoneBinding ? messages.bindingPhone : messages.bindPhone}
               </Button>
             </div>
           </AccountEditorPanel>
@@ -269,40 +273,40 @@ export default function AccountProfileOverview({
         <AccountSettingRow
           active={activeEditor === 'password'}
           icon={<KeyRound size={16} />}
-          label="登录密码"
+          label={messages.passwordLabel}
           summary={passwordSummary}
-          detail="点击修改密码；已有密码时需先填写当前密码。"
+          detail={messages.passwordDetail}
           onClick={() => toggleEditor('password')}
         />
         {activeEditor === 'password' ? (
           <AccountEditorPanel onClose={() => setActiveEditor(null)}>
             <div className="space-y-2">
-              <Label htmlFor="current-password">当前密码</Label>
+              <Label htmlFor="current-password">{messages.currentPasswordLabel}</Label>
               <Input
                 id="current-password"
                 type="password"
                 value={currentPassword}
-                placeholder="已有密码时必填"
+                placeholder={messages.currentPasswordPlaceholder}
                 onChange={(event) => onCurrentPasswordChange(event.target.value)}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="new-password">新密码</Label>
+              <Label htmlFor="new-password">{messages.newPasswordLabel}</Label>
               <Input
                 id="new-password"
                 type="password"
                 value={newPassword}
-                placeholder="至少 8 位"
+                placeholder={messages.newPasswordPlaceholder}
                 onChange={(event) => onNewPasswordChange(event.target.value)}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirm-password">确认新密码</Label>
+              <Label htmlFor="confirm-password">{messages.confirmPasswordLabel}</Label>
               <Input
                 id="confirm-password"
                 type="password"
                 value={confirmPassword}
-                placeholder="再次输入新密码"
+                placeholder={messages.confirmPasswordPlaceholder}
                 onChange={(event) => onConfirmPasswordChange(event.target.value)}
               />
             </div>
@@ -312,7 +316,7 @@ export default function AccountProfileOverview({
                 disabled={savingPassword}
                 onClick={() => void onSavePassword()}
               >
-                {savingPassword ? '更新中…' : '更新密码'}
+                {savingPassword ? messages.updatingPassword : messages.updatePassword}
               </Button>
             </div>
           </AccountEditorPanel>
@@ -321,15 +325,15 @@ export default function AccountProfileOverview({
         <AccountSettingRow
           active={activeEditor === 'security'}
           icon={<KeyRound size={16} />}
-          label="密保信息"
+          label={messages.securityLabel}
           summary={securitySummary}
-          detail="用于手机号不可用时找回账号。"
+          detail={messages.securityDetail}
           onClick={() => toggleEditor('security')}
         />
         {activeEditor === 'security' ? (
           <AccountEditorPanel onClose={() => setActiveEditor(null)}>
             <div className="space-y-2">
-              <Label htmlFor="security-question-select">密保问题</Label>
+              <Label htmlFor="security-question-select">{messages.securityQuestionLabel}</Label>
               <select
                 id="security-question-select"
                 className="h-10 rounded-md border border-neutral-300 bg-white px-3 text-sm text-neutral-900"
@@ -341,23 +345,23 @@ export default function AccountProfileOverview({
                     {item}
                   </option>
                 ))}
-                <option value={CUSTOM_SECURITY_QUESTION_VALUE}>自定义问题</option>
+                <option value={CUSTOM_SECURITY_QUESTION_VALUE}>{messages.securityQuestionCustom}</option>
               </select>
               {selectedSecurityQuestion === CUSTOM_SECURITY_QUESTION_VALUE ? (
                 <Input
                   id="security-question-custom"
                   value={securityQuestionDraft}
-                  placeholder="请输入自定义密保问题"
+                  placeholder={messages.securityQuestionCustomPlaceholder}
                   onChange={(event) => onSecurityQuestionDraftChange(event.target.value)}
                 />
               ) : null}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="security-answer">密保答案</Label>
+              <Label htmlFor="security-answer">{messages.securityAnswerLabel}</Label>
               <Input
                 id="security-answer"
                 value={securityAnswerDraft}
-                placeholder="至少 2 个字符"
+                placeholder={messages.securityAnswerPlaceholder}
                 onChange={(event) => onSecurityAnswerDraftChange(event.target.value)}
               />
             </div>
@@ -367,7 +371,7 @@ export default function AccountProfileOverview({
                 disabled={savingSecurity}
                 onClick={() => void onSaveSecurity()}
               >
-                {savingSecurity ? '保存中…' : '保存密保'}
+                {savingSecurity ? messages.savingSecurity : messages.saveSecurity}
               </Button>
             </div>
           </AccountEditorPanel>
@@ -382,7 +386,7 @@ export default function AccountProfileOverview({
             onClick={onLogout}
           >
             <LogOut size={16} />
-            <span>退出登录</span>
+            <span>{messages.logout}</span>
           </Button>
         </div>
       </SettingsCard>

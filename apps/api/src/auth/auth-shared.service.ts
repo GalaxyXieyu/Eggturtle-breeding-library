@@ -226,8 +226,8 @@ export class AuthSharedService {
 
   throwInvalidCredentials(): never {
     throw new UnauthorizedException({
-      message: 'Login identifier or password is incorrect.',
-      errorCode: ErrorCode.Unauthorized,
+      message: 'Authentication failed.',
+      errorCode: ErrorCode.AuthInvalidCredentials,
     });
   }
 

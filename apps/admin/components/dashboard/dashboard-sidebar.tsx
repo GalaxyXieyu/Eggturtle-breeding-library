@@ -10,27 +10,11 @@ import {
   type DashboardNavItem
 } from '@/components/dashboard/nav-config';
 import { usePlatformBranding } from '@/lib/branding-client';
+import { DASHBOARD_SIDEBAR_MESSAGES } from '@/lib/locales/shell';
 
 type DashboardSidebarProps = {
   collapsed: boolean;
 };
-
-const SIDEBAR_COPY = {
-  zh: {
-    asideAriaLabel: '后台导航',
-    navAriaLabel: '后台主导航',
-    brandTitle: '选育溯源档案 平台后台',
-    brandSubtitle: '跨用户运维控制台',
-    hint: '后台权限由服务端会话与超级管理员权限双重校验。'
-  },
-  en: {
-    asideAriaLabel: 'Admin navigation',
-    navAriaLabel: 'Admin primary navigation',
-    brandTitle: 'Breeding Traceability Record Admin Console',
-    brandSubtitle: 'Cross-tenant operations control',
-    hint: 'Access control is enforced by session validation and super-admin permissions.'
-  }
-} as const;
 
 export function DashboardSidebar({ collapsed }: DashboardSidebarProps) {
   const pathname = usePathname();
@@ -43,23 +27,23 @@ export function DashboardSidebar({ collapsed }: DashboardSidebarProps) {
       .join('')
       .slice(0, 3)
       .toUpperCase() || 'BTR';
-  const copy = {
-    ...SIDEBAR_COPY[locale],
+  const messages = {
+    ...DASHBOARD_SIDEBAR_MESSAGES[locale],
     brandTitle: branding.adminTitle[locale],
     brandSubtitle: branding.adminSubtitle[locale],
   };
 
   return (
-    <aside className="dashboard-sidebar" aria-label={copy.asideAriaLabel}>
+    <aside className="dashboard-sidebar" aria-label={messages.asideAriaLabel}>
       <div className="sidebar-brand">
         <span className="sidebar-brand-logo">{brandMark}</span>
         <div className="sidebar-brand-copy">
-          <strong>{copy.brandTitle}</strong>
-          <span>{copy.brandSubtitle}</span>
+          <strong>{messages.brandTitle}</strong>
+          <span>{messages.brandSubtitle}</span>
         </div>
       </div>
 
-      <nav className="sidebar-nav" aria-label={copy.navAriaLabel}>
+      <nav className="sidebar-nav" aria-label={messages.navAriaLabel}>
         {dashboardNavGroups.map((group) => (
           <section key={group.id} className="sidebar-nav-group" aria-label={group.title[locale]}>
             <p className="sidebar-nav-group-title">{group.title[locale]}</p>
@@ -87,7 +71,7 @@ export function DashboardSidebar({ collapsed }: DashboardSidebarProps) {
       </nav>
 
       <div className="sidebar-footer">
-        <p className="sidebar-hint enabled">{copy.hint}</p>
+        <p className="sidebar-hint enabled">{messages.hint}</p>
       </div>
     </aside>
   );

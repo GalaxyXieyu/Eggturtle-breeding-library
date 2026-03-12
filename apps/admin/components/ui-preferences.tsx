@@ -23,22 +23,27 @@ const DEFAULT_THEME: UiTheme = 'light';
 
 const UiPreferencesContext = createContext<UiPreferencesContextValue | null>(null);
 
-const CONTROLS_COPY = {
+const UI_PREFERENCE_MESSAGES = {
   zh: {
+    localeLabel: '语言',
     themeLabel: '主题',
+    localeZh: '中文',
+    localeEn: 'English',
     themeLight: '日间',
     themeDark: '夜间'
   },
   en: {
+    localeLabel: 'Language',
     themeLabel: 'Theme',
+    localeZh: 'Chinese',
+    localeEn: 'English',
     themeLight: 'Light',
     themeDark: 'Dark'
   }
 } as const;
 
 function normalizeLocale(value: string | null): UiLocale {
-  void value;
-  return DEFAULT_LOCALE;
+  return value === 'en' ? 'en' : 'zh';
 }
 
 function normalizeTheme(value: string | null): UiTheme {
@@ -82,9 +87,8 @@ export function UiPreferencesProvider({ children }: { children: ReactNode }) {
     applyDocumentPreferences(locale, theme);
   }, [hydrated, locale, theme]);
 
-  const setLocale = useCallback((_nextLocale: UiLocale) => {
-    void _nextLocale;
-    setLocaleState(DEFAULT_LOCALE);
+  const setLocale = useCallback((nextLocale: UiLocale) => {
+    setLocaleState(nextLocale);
   }, []);
 
   const setTheme = useCallback((nextTheme: UiTheme) => {
@@ -120,14 +124,20 @@ type UiPreferenceControlsProps = {
 };
 
 export function UiPreferenceControls({ className }: UiPreferenceControlsProps) {
-  const { locale, theme, setTheme } = useUiPreferences();
-  const copy = CONTROLS_COPY[locale];
-  const themeValue = theme === 'light' ? copy.themeLight : copy.themeDark;
+  const { locale, setLocale, theme, setTheme } = useUiPreferences();
+  const messages = UI_PREFERENCE_MESSAGES[locale];
+  const localeValue = locale === 'zh' ? messages.localeZh : messages.localeEn;
+  const themeValue = theme === 'light' ? messages.themeLight : messages.themeDark;
 
   return (
     <div className={`pref-controls${className ? ` ${className}` : ''}`}>
       <PreferenceToggleButton
-        ariaLabel={`${copy.themeLabel}: ${themeValue}`}
+        ariaLabel={`${messages.localeLabel}: ${localeValue}`}
+        icon="locale"
+        onClick={() => setLocale(locale === 'zh' ? 'en' : 'zh')}
+      />
+      <PreferenceToggleButton
+        ariaLabel={`${messages.themeLabel}: ${themeValue}`}
         icon={theme === 'light' ? 'theme-light' : 'theme-dark'}
         onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
       />
@@ -137,7 +147,7 @@ export function UiPreferenceControls({ className }: UiPreferenceControlsProps) {
 
 type PreferenceToggleButtonProps = {
   ariaLabel: string;
-  icon: 'theme-light' | 'theme-dark';
+  icon: 'locale' | 'theme-light' | 'theme-dark';
   onClick: () => void;
 };
 
@@ -152,10 +162,19 @@ function PreferenceToggleButton({ ariaLabel, icon, onClick }: PreferenceToggleBu
 }
 
 type PreferenceIconProps = {
-  type: 'theme-light' | 'theme-dark';
+  type: 'locale' | 'theme-light' | 'theme-dark';
 };
 
 function PreferenceIcon({ type }: PreferenceIconProps) {
+  if (type === 'locale') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden width="14" height="14">
+        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="1.7" />
+        <path d="M3 12h18M12 3a14 14 0 0 0 0 18M12 3a14 14 0 0 1 0 18" fill="none" stroke="currentColor" strokeWidth="1.5" />
+      </svg>
+    );
+  }
+
   if (type === 'theme-light') {
     return (
       <svg viewBox="0 0 24 24" aria-hidden width="14" height="14">

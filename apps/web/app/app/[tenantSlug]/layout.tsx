@@ -73,7 +73,7 @@ const ENABLE_SHARE_NAV_ENTRY = false;
 const ENABLE_FLOATING_SHARE_BUTTON = true;
 // 侧边栏继续隐藏系列入口；移动端底部导航单独保留系列入口。
 const ENABLE_SERIES_ENTRY = false;
-const SHELL_COPY = {
+const SHELL_MESSAGES = {
   zh: {
     workspace: '用户工作台',
     controlCenter: '控制中心',
@@ -115,15 +115,15 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
   const [setupRequired, setSetupRequired] = useState(false);
   const [setupCheckReady, setSetupCheckReady] = useState(false);
   const { locale } = useUiPreferences();
-  const copy = SHELL_COPY[locale];
+  const messages = SHELL_MESSAGES[locale];
   const tenantBranding = useResolvedTenantBranding(tenantSlug);
   const displayTenantName = useMemo(
     () =>
       formatTenantDisplayName(
         tenantBranding.resolved.displayName || tenantSlug,
-        tenantBranding.platform.defaultTenantName[locale] || copy.defaultTenant,
+        tenantBranding.platform.defaultTenantName[locale] || messages.defaultTenant,
       ),
-    [copy.defaultTenant, locale, tenantBranding.platform.defaultTenantName, tenantBranding.resolved.displayName, tenantSlug],
+    [messages.defaultTenant, locale, tenantBranding.platform.defaultTenantName, tenantBranding.resolved.displayName, tenantSlug],
   );
 
   const shouldRenderLayoutFloatingShare =
@@ -292,14 +292,14 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
         <aside className="hidden w-[272px] flex-col overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-[0_8px_26px_rgba(0,0,0,0.08)] dark:border-neutral-800 dark:bg-neutral-950/96 dark:shadow-[0_20px_40px_rgba(0,0,0,0.45)] lg:flex">
           <div className="border-b border-neutral-200 px-6 py-5 dark:border-neutral-800">
             <p className="text-xs uppercase tracking-[0.28em] text-neutral-500 dark:text-neutral-400">
-              {copy.workspace}
+              {messages.workspace}
             </p>
             <div className="mt-2 flex items-center gap-2">
               <p className="text-3xl font-semibold leading-none text-neutral-900 dark:text-neutral-100">
                 {displayTenantName}
               </p>
               <span className="inline-flex items-center rounded-full border border-[#FFD400]/45 bg-[#FFD400]/20 px-2 py-0.5 text-[11px] font-semibold text-neutral-900 dark:border-[#FFD400]/35 dark:bg-[#FFD400]/16 dark:text-[#ffe8a6]">
-                {planLoading ? copy.planLoading : formatPlanBadgeLabel(currentPlan, locale)}
+                {planLoading ? messages.planLoading : formatPlanBadgeLabel(currentPlan, locale)}
               </span>
             </div>
           </div>
@@ -345,7 +345,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
               onClick={handleLogout}
             >
               <LogOut size={16} />
-              <span>{copy.logout}</span>
+              <span>{messages.logout}</span>
             </Button>
 
             <div className="mt-2 hidden sm:block">

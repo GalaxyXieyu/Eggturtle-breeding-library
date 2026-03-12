@@ -19,7 +19,7 @@ type PageState = {
 
 type AppIntent = 'dashboard' | 'account' | 'subscription';
 
-const COPY = {
+const TENANT_ENTRY_MESSAGES = {
   zh: {
     title: '正在进入工作台',
     subtitle: '正在解析用户上下文。',
@@ -47,7 +47,7 @@ const COPY = {
 export default function AppEntryPage() {
   const router = useRouter();
   const { locale } = useUiPreferences();
-  const copy = COPY[locale];
+  const messages = TENANT_ENTRY_MESSAGES[locale];
   const [state, setState] = useState<PageState>({
     loading: true,
     error: null
@@ -77,7 +77,7 @@ export default function AppEntryPage() {
           if (!isCancelled) {
             setState({
               loading: false,
-              error: copy.noTenantContext
+              error: messages.noTenantContext
             });
           }
           return;
@@ -90,7 +90,7 @@ export default function AppEntryPage() {
         }
       } catch (error) {
         if (!isCancelled) {
-          setState({ loading: false, error: formatError(error, copy.unknownError) });
+          setState({ loading: false, error: formatError(error, messages.unknownError) });
         }
       }
     }
@@ -100,7 +100,7 @@ export default function AppEntryPage() {
     return () => {
       isCancelled = true;
     };
-  }, [copy.noTenantContext, copy.unknownError, router]);
+  }, [messages.noTenantContext, messages.unknownError, router]);
 
   return (
     <main className="workspace-shell tenant-entry-shell">
@@ -109,20 +109,20 @@ export default function AppEntryPage() {
 
         <div className="card panel stack tenant-entry-card" aria-live="polite">
           <header className="stack tenant-entry-header">
-            <h1>{copy.title}</h1>
-            <p className="muted">{state.loading ? copy.loadingDetail : copy.subtitle}</p>
+            <h1>{messages.title}</h1>
+            <p className="muted">{state.loading ? messages.loadingDetail : messages.subtitle}</p>
           </header>
 
           {state.loading ? (
             <div className="tenant-entry-loading stack" role="status">
               <div className="tenant-entry-status">
                 <span className="tenant-entry-ping" aria-hidden />
-                <span>{copy.loading}</span>
+                <span>{messages.loading}</span>
               </div>
               <div className="tenant-entry-progress" aria-hidden>
                 <span />
               </div>
-              <p className="tenant-entry-stage-label">{copy.loadingStage}</p>
+              <p className="tenant-entry-stage-label">{messages.loadingStage}</p>
             </div>
           ) : null}
 
@@ -137,10 +137,10 @@ export default function AppEntryPage() {
                   router.push('/login');
                 }}
               >
-                {copy.retryLogin}
+                {messages.retryLogin}
               </button>
               <button type="button" className="secondary" onClick={() => router.push('/login')}>
-                {copy.backToLogin}
+                {messages.backToLogin}
               </button>
             </div>
           ) : null}

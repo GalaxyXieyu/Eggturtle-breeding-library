@@ -12,6 +12,7 @@ import {
 import { useUiPreferences } from '@/components/ui-preferences';
 import { getAdminActivityOverview } from '@/lib/api-client';
 import { formatUnknownError } from '@/lib/formatters';
+import { DASHBOARD_ANALYTICS_MESSAGES } from '@/lib/locales/dashboard-pages';
 
 type PageState = {
   loading: boolean;
@@ -19,56 +20,9 @@ type PageState = {
   data: AdminActivityOverviewResponse | null;
 };
 
-const COPY = {
-  zh: {
-    eyebrow: '数据分析',
-    title: '活跃度看板',
-    description: '按窗口查看 DAU/WAU/MAU、活跃用户和 7 天留存，支持回溯趋势与口径说明。',
-    metricDau: 'DAU',
-    metricWau: 'WAU',
-    metricMau: 'MAU',
-    metricActiveTenants: '活跃用户(7d)',
-    metricRetention: '用户留存(7d)',
-    retentionMeta: '前 7 天活跃且最近 7 天仍活跃',
-    trendTitle: '按日趋势',
-    trendDesc: '用于观察活跃波动与用户健康度变化。',
-    thDate: '日期',
-    thDau: 'DAU',
-    thActiveTenants: '活跃用户',
-    thDauTrend: 'DAU 趋势',
-    thTenantTrend: '用户趋势',
-    definitionsTitle: '指标口径',
-    loading: '加载活跃度数据中...',
-    empty: '暂无活跃度数据。',
-    unknownError: '加载活跃度数据失败。'
-  },
-  en: {
-    eyebrow: 'Platform Analytics',
-    title: 'Activity Analytics',
-    description: 'Track DAU/WAU/MAU, active tenants, and 7-day retention with trend visibility and metric definitions.',
-    metricDau: 'DAU',
-    metricWau: 'WAU',
-    metricMau: 'MAU',
-    metricActiveTenants: 'Active Tenants (7d)',
-    metricRetention: 'Tenant Retention (7d)',
-    retentionMeta: 'Tenants active in previous 7d and still active in latest 7d',
-    trendTitle: 'Daily Trend',
-    trendDesc: 'Monitor engagement shifts and tenant health over time.',
-    thDate: 'Date',
-    thDau: 'DAU',
-    thActiveTenants: 'Active Tenants',
-    thDauTrend: 'DAU Trend',
-    thTenantTrend: 'Tenant Trend',
-    definitionsTitle: 'Metric Definitions',
-    loading: 'Loading activity analytics...',
-    empty: 'No activity data available.',
-    unknownError: 'Failed to load activity analytics.'
-  }
-} as const;
-
 export default function DashboardAnalyticsPage() {
   const { locale } = useUiPreferences();
-  const copy = COPY[locale];
+  const messages = DASHBOARD_ANALYTICS_MESSAGES[locale];
   const [window, setWindow] = useState<AdminActivityOverviewWindow>('30d');
   const [state, setState] = useState<PageState>({
     loading: true,
@@ -104,7 +58,7 @@ export default function DashboardAnalyticsPage() {
 
         setState({
           loading: false,
-          error: formatUnknownError(error, { fallback: copy.unknownError }),
+          error: formatUnknownError(error, { fallback: messages.unknownError, locale }),
           data: null
         });
       }
@@ -115,7 +69,7 @@ export default function DashboardAnalyticsPage() {
     return () => {
       cancelled = true;
     };
-  }, [copy.unknownError, window]);
+  }, [locale, messages.unknownError, window]);
 
   const trendScaleMax = useMemo(() => {
     if (!state.data || state.data.trend.length === 0) {
@@ -131,9 +85,9 @@ export default function DashboardAnalyticsPage() {
   return (
     <section className="page admin-page">
       <AdminPageHeader
-        eyebrow={copy.eyebrow}
-        title={copy.title}
-        description={copy.description}
+        eyebrow={messages.eyebrow}
+        title={messages.title}
+        description={messages.description}
         actions={(
           <div className="inline-actions">
             <button
@@ -154,39 +108,39 @@ export default function DashboardAnalyticsPage() {
         )}
       />
 
-      {state.loading ? <p className="muted">{copy.loading}</p> : null}
-      {!state.loading && !state.data ? <p className="muted">{copy.empty}</p> : null}
+      {state.loading ? <p className="muted">{messages.loading}</p> : null}
+      {!state.loading && !state.data ? <p className="muted">{messages.empty}</p> : null}
 
       {state.data ? (
         <>
           <div className="admin-metrics-grid">
-            <AdminMetricCard label={copy.metricDau} value={state.data.kpis.dau} />
-            <AdminMetricCard label={copy.metricWau} value={state.data.kpis.wau} />
-            <AdminMetricCard label={copy.metricMau} value={state.data.kpis.mau} />
+            <AdminMetricCard label={messages.metricDau} value={state.data.kpis.dau} />
+            <AdminMetricCard label={messages.metricWau} value={state.data.kpis.wau} />
+            <AdminMetricCard label={messages.metricMau} value={state.data.kpis.mau} />
             <AdminMetricCard
-              label={copy.metricActiveTenants}
+              label={messages.metricActiveTenants}
               value={state.data.kpis.activeTenants7d}
             />
             <AdminMetricCard
-              label={copy.metricRetention}
+              label={messages.metricRetention}
               value={formatPercent(state.data.kpis.tenantRetention7d)}
-              meta={copy.retentionMeta}
+              meta={messages.retentionMeta}
             />
           </div>
 
           <AdminPanel className="stack">
             <div className="admin-section-head">
-              <h3>{copy.trendTitle}</h3>
-              <p>{copy.trendDesc}</p>
+              <h3>{messages.trendTitle}</h3>
+              <p>{messages.trendDesc}</p>
             </div>
             <AdminTableFrame>
               <thead>
                 <tr>
-                  <th>{copy.thDate}</th>
-                  <th>{copy.thDau}</th>
-                  <th>{copy.thActiveTenants}</th>
-                  <th>{copy.thDauTrend}</th>
-                  <th>{copy.thTenantTrend}</th>
+                  <th>{messages.thDate}</th>
+                  <th>{messages.thDau}</th>
+                  <th>{messages.thActiveTenants}</th>
+                  <th>{messages.thDauTrend}</th>
+                  <th>{messages.thTenantTrend}</th>
                 </tr>
               </thead>
               <tbody>
@@ -213,7 +167,7 @@ export default function DashboardAnalyticsPage() {
 
           <AdminPanel className="stack">
             <div className="admin-section-head">
-              <h3>{copy.definitionsTitle}</h3>
+              <h3>{messages.definitionsTitle}</h3>
             </div>
             <p className="muted">{state.data.definitions.activeTenant}</p>
             <p className="muted">{state.data.definitions.tenantRetention7d}</p>

@@ -25,7 +25,7 @@ const DEFAULT_THEME: UiTheme = 'light';
 
 const UiPreferencesContext = createContext<UiPreferencesContextValue | null>(null);
 
-const CONTROLS_COPY = {
+const CONTROL_MESSAGES = {
   zh: {
     localeLabel: '语言',
     themeLabel: '主题',
@@ -127,19 +127,19 @@ type UiPreferenceControlsProps = {
 
 export function UiPreferenceControls({ className }: UiPreferenceControlsProps) {
   const { locale, setLocale, theme, setTheme } = useUiPreferences();
-  const copy = CONTROLS_COPY[locale];
-  const localeValue = locale === 'zh' ? copy.localeZh : copy.localeEn;
-  const themeValue = theme === 'light' ? copy.themeLight : copy.themeDark;
+  const messages = CONTROL_MESSAGES[locale];
+  const localeValue = locale === 'zh' ? messages.localeZh : messages.localeEn;
+  const themeValue = theme === 'light' ? messages.themeLight : messages.themeDark;
 
   return (
     <div className={cn('ui-pref-controls', className)}>
       <PreferenceToggleButton
-        ariaLabel={`${copy.localeLabel}: ${localeValue}`}
+        ariaLabel={`${messages.localeLabel}: ${localeValue}`}
         icon="locale"
         onClick={() => setLocale(locale === 'zh' ? 'en' : 'zh')}
       />
       <PreferenceToggleButton
-        ariaLabel={`${copy.themeLabel}: ${themeValue}`}
+        ariaLabel={`${messages.themeLabel}: ${themeValue}`}
         icon={theme === 'light' ? 'theme-light' : 'theme-dark'}
         onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
       />

@@ -19,12 +19,13 @@ import {
   type SubscriptionOrder,
   type TenantSubscription,
 } from '@eggturtle/shared';
-import { CheckCircle2, Clock3, ShieldCheck, Wallet } from 'lucide-react';
+import { CheckCircle2, Clock3, ShieldCheck, Sparkles, Wallet, X } from 'lucide-react';
 
 import ReferralPromoCard from '@/components/referral-promo-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { modalCloseButtonClass } from '@/components/ui/floating-actions';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { buildInteractivePillClass } from '@/components/ui/pill';
@@ -96,6 +97,7 @@ export default function SubscriptionPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [purchasePlan, setPurchasePlan] = useState<PayableTenantSubscriptionPlan | null>(null);
+  const [planDetail, setPlanDetail] = useState<PlanTier | null>(null);
   const [purchaseDuration, setPurchaseDuration] = useState<SubscriptionDurationDays>(30);
   const [paying, setPaying] = useState(false);
   const [lastOrderNo, setLastOrderNo] = useState<string | null>(null);
@@ -104,6 +106,22 @@ export default function SubscriptionPage() {
   const [isWechat, setIsWechat] = useState<boolean | null>(null);
   const currentPlan = normalizePlan(subscription?.plan);
   const currentMeta = PLAN_META[currentPlan];
+  const recommendedPlan = resolveRecommendedPlan(currentPlan);
+  const recommendedMeta = PLAN_META[recommendedPlan];
+  const recommendationCopy = buildRecommendationCopy(currentPlan);
+  const recommendationMonthlyPrice = SUBSCRIPTION_PRICE_BOOK[recommendedPlan][30];
+  const planDetailMeta = planDetail ? PLAN_META[planDetail] : null;
+  const payableDetailPlan =
+    planDetail === 'BASIC' || planDetail === 'PRO' ? planDetail : null;
+  const planDetailMonthlyPrice = payableDetailPlan ? SUBSCRIPTION_PRICE_BOOK[payableDetailPlan][30] : 0;
+  const planDetailIsCurrent = planDetail === currentPlan;
+  const returnPath = useMemo(() => {
+    const query = searchParams.toString();
+    if (pathname) {
+      return query ? `${pathname}?${query}` : pathname;
+    }
+    return `/app/${tenantSlug}/subscription`;
+  }, [pathname, searchParams, tenantSlug]);
 
   const refreshSubscription = useCallback(async () => {
     if (!tenantSlug) {
@@ -172,14 +190,14 @@ export default function SubscriptionPage() {
     const response = await apiRequest('/auth/wechat/authorize-url', {
       method: 'POST',
       body: {
-        returnPath: pathname || `/app/${tenantSlug}/subscription`,
+        returnPath,
       },
       requestSchema: createWechatAuthorizeUrlRequestSchema,
       responseSchema: createWechatAuthorizeUrlResponseSchema,
     });
 
     window.location.assign(response.authorizeUrl);
-  }, [pathname, tenantSlug]);
+  }, [returnPath, tenantSlug]);
 
   const pollOrderStatus = useCallback(async (orderNo: string) => {
     const startedAt = Date.now();
@@ -365,7 +383,28 @@ export default function SubscriptionPage() {
               <CardDescription className="mt-2 text-sm text-neutral-600">{currentMeta.summary}</CardDescription>
             </div>
           </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <CardContent className="space-y-4 sm:hidden">
+            <div className="flex flex-wrap gap-2 text-xs text-neutral-700">
+              {currentMeta.perks.map((item) => (
+                <span key={item} className="rounded-full bg-neutral-100 px-2.5 py-1 text-neutral-700">
+                  {item}
+                </span>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <MetricCard label="产品容量" value={`${SUBSCRIPTION_PLAN_PRODUCT_LIMITS[currentPlan]} 只`} />
+              <MetricCard label="图片额度" value={toDisplayValue(subscription?.maxImages)} />
+              <MetricCard label="分享额度" value={toDisplayValue(subscription?.maxShares)} />
+              <MetricCard label="存储额度" value={toDisplayBytes(subscription?.maxStorageBytes)} />
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-neutral-500">
+              <span>到期时间：{formatSubscriptionDate(subscription?.expiresAt ?? null)}</span>
+              <Button type="button" size="sm" variant="secondary" onClick={() => setPlanDetail(currentPlan)}>
+                查看详情
+              </Button>
+            </div>
+          </CardContent>
+          <CardContent className="hidden gap-4 sm:grid sm:grid-cols-2 xl:grid-cols-4">
             <MetricCard label="产品容量" value={`${SUBSCRIPTION_PLAN_PRODUCT_LIMITS[currentPlan]} 只`} />
             <MetricCard label="图片额度" value={toDisplayValue(subscription?.maxImages)} />
             <MetricCard label="分享额度" value={toDisplayValue(subscription?.maxShares)} />
@@ -400,83 +439,144 @@ export default function SubscriptionPage() {
         </Card>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-3">
-        {(['FREE', 'BASIC', 'PRO'] as const).map((plan) => {
-          const meta = PLAN_META[plan];
-          const isCurrent = currentPlan === plan;
-          const isPayable = plan !== 'FREE';
-          const monthlyPrice = plan === 'FREE' ? 0 : SUBSCRIPTION_PRICE_BOOK[plan][30];
-
-          return (
-            <Card
-              key={plan}
-              className={[
-                'rounded-3xl border bg-white shadow-sm transition',
-                plan === 'PRO' ? 'border-[#FFD400]/70 shadow-[0_12px_40px_rgba(255,212,0,0.14)]' : 'border-neutral-200',
-              ].join(' ')}
+      <section className="rounded-3xl border border-neutral-200/80 bg-[linear-gradient(130deg,rgba(255,248,217,0.9),rgba(255,255,255,0.96))] p-4 shadow-sm sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="space-y-1">
+            <p className="inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700">
+              <Sparkles size={12} />
+              推荐续费
+            </p>
+            <p className="text-lg font-black text-neutral-900">{recommendedMeta.name}</p>
+            <p className="text-sm text-neutral-600">{recommendationCopy}</p>
+          </div>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
+            <p className="text-sm font-semibold text-neutral-900">
+              {formatCurrency(recommendationMonthlyPrice)} / 30 天
+            </p>
+            <Button
+              type="button"
+              variant="primary"
+              className="w-full sm:w-auto"
+              disabled={paying || isWechat !== true}
+              onClick={() => {
+                setPurchasePlan(recommendedPlan);
+                setPurchaseDuration(30);
+                setError(null);
+                setMessage(null);
+              }}
             >
-              <CardHeader className="space-y-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <CardTitle className="text-xl font-black text-neutral-900">{meta.name}</CardTitle>
-                    <CardDescription className="mt-1 text-sm text-neutral-600">{meta.summary}</CardDescription>
+              {isWechat !== true ? '请在微信内打开' : buildPurchaseButtonLabel(currentPlan, recommendedPlan)}
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-lg font-bold text-neutral-900">可升级套餐</p>
+            <p className="text-sm text-neutral-600 sm:hidden">左右滑动查看不同套餐</p>
+          </div>
+        </div>
+        <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible xl:grid-cols-3">
+          {(['FREE', 'BASIC', 'PRO'] as const).map((plan) => {
+            const meta = PLAN_META[plan];
+            const isCurrent = currentPlan === plan;
+            const isPayable = plan !== 'FREE';
+            const isRecommended = plan === recommendedPlan;
+            const monthlyPrice = plan === 'FREE' ? 0 : SUBSCRIPTION_PRICE_BOOK[plan][30];
+            const badgeLabel = isCurrent ? '当前' : isRecommended ? '推荐' : meta.badge;
+            const badgeVariant = isCurrent ? 'success' : isRecommended ? 'accent' : 'default';
+
+            return (
+              <Card
+                key={plan}
+                className={[
+                  'min-w-[78vw] snap-start rounded-3xl border bg-white shadow-sm transition sm:min-w-0',
+                  plan === 'PRO' ? 'border-[#FFD400]/70 shadow-[0_12px_40px_rgba(255,212,0,0.14)]' : 'border-neutral-200',
+                  isRecommended && !isCurrent ? 'ring-2 ring-[#FFD400]/40' : '',
+                ].join(' ')}
+              >
+                <CardHeader className="space-y-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <CardTitle className="text-xl font-black text-neutral-900">{meta.name}</CardTitle>
+                      <CardDescription className="mt-1 text-sm text-neutral-600">{meta.summary}</CardDescription>
+                    </div>
+                    <Badge variant={badgeVariant}>{badgeLabel}</Badge>
                   </div>
-                  <Badge variant={plan === 'PRO' ? 'accent' : isCurrent ? 'success' : 'default'}>{isCurrent ? '当前' : meta.badge}</Badge>
-                </div>
-                <div>
-                  <p className="text-3xl font-black text-neutral-900">{plan === 'FREE' ? '¥0' : formatCurrency(monthlyPrice)}</p>
-                  <p className="mt-1 text-sm text-neutral-500">{plan === 'FREE' ? '永久免费体验' : '30 天参考价，支持 30 / 90 / 365 天购买'}</p>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="rounded-2xl bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
-                  产品容量：<span className="font-semibold text-neutral-900">{SUBSCRIPTION_PLAN_PRODUCT_LIMITS[plan]} 只</span>
-                </div>
-                <ul className="space-y-2 text-sm text-neutral-700">
-                  {meta.perks.map((item) => (
-                    <li key={item} className="flex items-start gap-2">
-                      <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[#FFD400]" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-                {isPayable ? (
-                  <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">价目表</p>
-                    <div className="mt-3 grid grid-cols-3 gap-2 text-sm text-neutral-700">
-                      {DURATION_OPTIONS.map((days) => (
-                        <div key={days} className="rounded-2xl bg-white px-3 py-2 text-center ring-1 ring-neutral-200">
-                          <p className="font-semibold text-neutral-900">{days} 天</p>
-                          <p>{formatCurrency(SUBSCRIPTION_PRICE_BOOK[plan][days])}</p>
-                        </div>
+                  <div>
+                    <p className="text-3xl font-black text-neutral-900">{plan === 'FREE' ? '¥0' : formatCurrency(monthlyPrice)}</p>
+                    <p className="mt-1 text-sm text-neutral-500">{plan === 'FREE' ? '永久免费体验' : '30 天参考价，支持 30 / 90 / 365 天购买'}</p>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3 sm:hidden">
+                    <div className="rounded-2xl bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
+                      产品容量：<span className="font-semibold text-neutral-900">{SUBSCRIPTION_PLAN_PRODUCT_LIMITS[plan]} 只</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2 text-xs text-neutral-700">
+                      {meta.perks.map((item) => (
+                        <span key={item} className="rounded-full bg-neutral-100 px-2.5 py-1">
+                          {item}
+                        </span>
                       ))}
                     </div>
+                    <Button type="button" variant="secondary" className="w-full" onClick={() => setPlanDetail(plan)}>
+                      查看详情
+                    </Button>
                   </div>
-                ) : null}
-                {isPayable ? (
-                  <Button
-                    type="button"
-                    variant={plan === 'PRO' ? 'primary' : 'default'}
-                    className="w-full"
-                    disabled={paying || isWechat !== true}
-                    onClick={() => {
-                      setPurchasePlan(plan);
-                      setPurchaseDuration(30);
-                      setError(null);
-                      setMessage(null);
-                    }}
-                  >
-                    {isWechat !== true ? '请在微信内打开' : buildPurchaseButtonLabel(currentPlan, plan)}
-                  </Button>
-                ) : (
-                  <Button type="button" variant="secondary" className="w-full" disabled>
-                    当前默认可用
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
+                  <div className="hidden space-y-4 sm:block">
+                    <div className="rounded-2xl bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
+                      产品容量：<span className="font-semibold text-neutral-900">{SUBSCRIPTION_PLAN_PRODUCT_LIMITS[plan]} 只</span>
+                    </div>
+                    <ul className="space-y-2 text-sm text-neutral-700">
+                      {meta.perks.map((item) => (
+                        <li key={item} className="flex items-start gap-2">
+                          <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[#FFD400]" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    {isPayable ? (
+                      <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">价目表</p>
+                        <div className="mt-3 grid grid-cols-3 gap-2 text-sm text-neutral-700">
+                          {DURATION_OPTIONS.map((days) => (
+                            <div key={days} className="rounded-2xl bg-white px-3 py-2 text-center ring-1 ring-neutral-200">
+                              <p className="font-semibold text-neutral-900">{days} 天</p>
+                              <p>{formatCurrency(SUBSCRIPTION_PRICE_BOOK[plan][days])}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                    {isPayable ? (
+                      <Button
+                        type="button"
+                        variant={plan === 'PRO' ? 'primary' : 'default'}
+                        className="w-full"
+                        disabled={paying || isWechat !== true}
+                        onClick={() => {
+                          setPurchasePlan(plan);
+                          setPurchaseDuration(30);
+                          setError(null);
+                          setMessage(null);
+                        }}
+                      >
+                        {isWechat !== true ? '请在微信内打开' : buildPurchaseButtonLabel(currentPlan, plan)}
+                      </Button>
+                    ) : (
+                      <Button type="button" variant="secondary" className="w-full" disabled>
+                        当前默认可用
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[1fr_0.9fr]">
@@ -504,6 +604,111 @@ export default function SubscriptionPage() {
 
         <ReferralPromoCard tenantSlug={tenantSlug} />
       </section>
+
+      {planDetail ? (
+        <div
+          className="fixed inset-0 z-[55] flex items-end justify-center bg-black/50 p-0 backdrop-blur-sm sm:items-center sm:p-6"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setPlanDetail(null)}
+        >
+          <section
+            className="w-full max-w-xl rounded-t-[28px] border border-neutral-200 bg-white p-4 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] shadow-2xl sm:rounded-[28px] sm:p-6"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neutral-500">套餐详情</p>
+                <p className="text-xl font-black text-neutral-900">{planDetailMeta?.name}</p>
+                <p className="text-sm text-neutral-600">{planDetailMeta?.summary}</p>
+                <div className="flex flex-wrap gap-2">
+                  {planDetailIsCurrent ? <Badge variant="success">当前套餐</Badge> : null}
+                  {planDetail === recommendedPlan ? <Badge variant="accent">推荐</Badge> : null}
+                </div>
+              </div>
+              <button type="button" className={modalCloseButtonClass} aria-label="关闭" onClick={() => setPlanDetail(null)}>
+                <X size={18} strokeWidth={2.5} aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="mt-5 space-y-4">
+              <div className="rounded-2xl bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
+                产品容量：<span className="font-semibold text-neutral-900">{SUBSCRIPTION_PLAN_PRODUCT_LIMITS[planDetail ?? currentPlan]} 只</span>
+              </div>
+              <ul className="space-y-2 text-sm text-neutral-700">
+                {planDetailMeta?.perks.map((item) => (
+                  <li key={item} className="flex items-start gap-2">
+                    <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[#FFD400]" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {planDetailIsCurrent ? (
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <MetricCard label="图片额度" value={toDisplayValue(subscription?.maxImages)} />
+                <MetricCard label="分享额度" value={toDisplayValue(subscription?.maxShares)} />
+                <MetricCard label="存储额度" value={toDisplayBytes(subscription?.maxStorageBytes)} />
+                <MetricCard label="到期时间" value={formatSubscriptionDate(subscription?.expiresAt ?? null)} />
+              </div>
+            ) : null}
+
+            {payableDetailPlan ? (
+              <div className="mt-5 rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">价目表</p>
+                <div className="mt-3 grid grid-cols-3 gap-2 text-sm text-neutral-700">
+                  {DURATION_OPTIONS.map((days) => (
+                    <div key={days} className="rounded-2xl bg-white px-3 py-2 text-center ring-1 ring-neutral-200">
+                      <p className="font-semibold text-neutral-900">{days} 天</p>
+                      <p>{formatCurrency(SUBSCRIPTION_PRICE_BOOK[payableDetailPlan][days])}</p>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-3 text-xs text-neutral-500">价格为参考展示，最终以支付页为准。</p>
+              </div>
+            ) : null}
+
+            {payableDetailPlan ? (
+              <div className="mt-5 rounded-2xl border border-[#FFD400]/40 bg-[#FFFBE6] px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">30 天参考价</p>
+                <p className="mt-2 text-2xl font-black text-neutral-900">{formatCurrency(planDetailMonthlyPrice)}</p>
+              </div>
+            ) : null}
+
+            {payableDetailPlan && isWechat !== true ? (
+              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                当前不是微信浏览器，无法调起 JSAPI 支付。请在微信内打开后再继续。
+              </div>
+            ) : null}
+
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button type="button" variant="secondary" onClick={() => setPlanDetail(null)}>
+                关闭
+              </Button>
+              {payableDetailPlan ? (
+                <Button
+                  type="button"
+                  variant={payableDetailPlan === 'PRO' ? 'primary' : 'default'}
+                  disabled={paying || isWechat !== true}
+                  onClick={() => {
+                    if (!payableDetailPlan) {
+                      return;
+                    }
+                    setPlanDetail(null);
+                    setPurchasePlan(payableDetailPlan);
+                    setPurchaseDuration(30);
+                    setError(null);
+                    setMessage(null);
+                  }}
+                >
+                  {isWechat !== true ? '请在微信内打开' : buildPurchaseButtonLabel(currentPlan, payableDetailPlan)}
+                </Button>
+              ) : null}
+            </div>
+          </section>
+        </div>
+      ) : null}
 
       {purchasePlan ? (
         <div
@@ -657,6 +862,30 @@ function formatStatusLabel(status: TenantSubscription['status'] | null | undefin
   }
 
   return '未配置';
+}
+
+function resolveRecommendedPlan(currentPlan: PlanTier): PayableTenantSubscriptionPlan {
+  if (currentPlan === 'PRO') {
+    return 'PRO';
+  }
+
+  if (currentPlan === 'BASIC') {
+    return 'PRO';
+  }
+
+  return 'BASIC';
+}
+
+function buildRecommendationCopy(currentPlan: PlanTier) {
+  if (currentPlan === 'FREE') {
+    return '升级基础版，解锁完整血统溯源与更高配额。';
+  }
+
+  if (currentPlan === 'BASIC') {
+    return '升级专业版，获得证书、水印与品牌化展示能力。';
+  }
+
+  return '当前已是最高等级，续费即可保持权益不断档。';
 }
 
 function buildPurchaseButtonLabel(currentPlan: PlanTier, targetPlan: PayableTenantSubscriptionPlan) {

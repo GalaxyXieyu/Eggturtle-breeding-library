@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 import { useUiPreferences } from '@/components/ui-preferences';
+import { DASHBOARD_SETTINGS_TAB_MESSAGES } from '@/lib/locales/shell';
 
 const TAB_ITEMS = [
   {
@@ -21,26 +22,11 @@ const TAB_ITEMS = [
   },
 ] as const;
 
-const COPY = {
-  zh: {
-    settingsNav: '设置二级导航',
-    signingOut: '退出中...',
-    signOut: '退出登录',
-    signOutConfirm: '确定要退出登录吗？'
-  },
-  en: {
-    settingsNav: 'Settings navigation',
-    signingOut: 'Signing out...',
-    signOut: 'Sign Out',
-    signOutConfirm: 'Are you sure you want to sign out?'
-  }
-} as const;
-
 export function DashboardSettingsTabs() {
   const pathname = usePathname();
   const router = useRouter();
   const { locale } = useUiPreferences();
-  const copy = COPY[locale];
+  const messages = DASHBOARD_SETTINGS_TAB_MESSAGES[locale];
   const [signingOut, setSigningOut] = useState(false);
 
   async function handleSignOut() {
@@ -48,7 +34,7 @@ export function DashboardSettingsTabs() {
       return;
     }
 
-    if (!confirm(copy.signOutConfirm)) {
+    if (!confirm(messages.signOutConfirm)) {
       return;
     }
 
@@ -69,7 +55,7 @@ export function DashboardSettingsTabs() {
   }
 
   return (
-    <nav className="dashboard-settings-tabs" aria-label={copy.settingsNav}>
+    <nav className="dashboard-settings-tabs" aria-label={messages.settingsNav}>
       <div className="dashboard-settings-tabs-list" role="tablist">
         {TAB_ITEMS.map((item) => {
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -92,7 +78,7 @@ export function DashboardSettingsTabs() {
           onClick={handleSignOut}
           disabled={signingOut}
         >
-          {signingOut ? copy.signingOut : copy.signOut}
+          {signingOut ? messages.signingOut : messages.signOut}
         </button>
       </div>
     </nav>

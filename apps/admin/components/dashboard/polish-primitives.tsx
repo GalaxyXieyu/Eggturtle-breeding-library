@@ -45,17 +45,17 @@ type AdminSectionNavProps = {
   ariaLabel?: string;
 };
 
-type BilingualCopy = {
+type BilingualMessages = {
   zh: string;
   en: string;
 };
 
 type AdminPlaceholderRouteProps = {
-  title: BilingualCopy;
-  description: BilingualCopy;
-  panelTitle?: BilingualCopy;
-  panelDescription?: BilingualCopy;
-  emptyState: BilingualCopy;
+  title: BilingualMessages;
+  description: BilingualMessages;
+  panelTitle?: BilingualMessages;
+  panelDescription?: BilingualMessages;
+  emptyState: BilingualMessages;
   milestone?: string;
 };
 
@@ -159,8 +159,8 @@ export function AdminPlaceholderRoute({
   emptyState,
   milestone = 'T6x'
 }: AdminPlaceholderRouteProps) {
-  const defaultPanelTitle: BilingualCopy = { zh: '功能占位', en: 'Feature Placeholder' };
-  const defaultPanelDescription: BilingualCopy = {
+  const defaultPanelTitle: BilingualMessages = { zh: '功能占位', en: 'Feature Placeholder' };
+  const defaultPanelDescription: BilingualMessages = {
     zh: '该治理域页面正在建设中，将在后续迭代补齐。',
     en: 'This governance-domain page is under construction and will be completed in a follow-up iteration.'
   };
@@ -169,16 +169,16 @@ export function AdminPlaceholderRoute({
     <section className="page admin-page">
       <AdminPageHeader
         eyebrow="EggTurtle Admin / 治理域占位"
-        title={formatBilingualCopy(title)}
-        description={formatBilingualCopy(description)}
+        title={formatBilingualMessage(title)}
+        description={formatBilingualMessage(description)}
       />
 
       <AdminPanel className="stack">
         <div className="admin-section-head">
-          <h3>{formatBilingualCopy(panelTitle ?? defaultPanelTitle)}</h3>
-          <p>{formatBilingualCopy(panelDescription ?? defaultPanelDescription)}</p>
+          <h3>{formatBilingualMessage(panelTitle ?? defaultPanelTitle)}</h3>
+          <p>{formatBilingualMessage(panelDescription ?? defaultPanelDescription)}</p>
         </div>
-        <p className="muted">{formatBilingualCopy(emptyState)}</p>
+        <p className="muted">{formatBilingualMessage(emptyState)}</p>
         <p className="muted">
           {`尚未实现，后续在 ${milestone} 补齐。 / Not implemented yet, planned for completion in ${milestone}.`}
         </p>
@@ -187,6 +187,6 @@ export function AdminPlaceholderRoute({
   );
 }
 
-function formatBilingualCopy(copy: BilingualCopy) {
-  return `${copy.zh} / ${copy.en}`;
+function formatBilingualMessage(messages: BilingualMessages) {
+  return `${messages.zh} / ${messages.en}`;
 }

@@ -52,8 +52,8 @@ export class AuthIdentityService {
 
     if (!user) {
       throw new UnauthorizedException({
-        message: 'Email code login is only available for existing accounts.',
-        errorCode: ErrorCode.Unauthorized,
+        message: 'Authentication failed.',
+        errorCode: ErrorCode.AuthInvalidCredentials,
       });
     }
 
@@ -99,15 +99,15 @@ export class AuthIdentityService {
 
     if (purpose === 'login' && !user) {
       throw new UnauthorizedException({
-        message: 'Phone number is not registered.',
-        errorCode: ErrorCode.Unauthorized,
+        message: 'Authentication failed.',
+        errorCode: ErrorCode.AuthPhoneNotRegistered,
       });
     }
 
     if (purpose === 'register' && user && this.authSharedService.isRegisteredPhoneAccount(user, shadowEmail)) {
       throw new ConflictException({
-        message: 'Phone number is already registered.',
-        errorCode: ErrorCode.InvalidRequestPayload,
+        message: 'Registration failed.',
+        errorCode: ErrorCode.AuthPhoneAlreadyRegistered,
       });
     }
 
@@ -230,8 +230,8 @@ export class AuthIdentityService {
 
       if (!existingUser) {
         throw new UnauthorizedException({
-          message: 'Email code login is only available for existing accounts.',
-          errorCode: ErrorCode.Unauthorized,
+          message: 'Authentication failed.',
+          errorCode: ErrorCode.AuthInvalidCredentials,
         });
       }
 
@@ -372,8 +372,8 @@ export class AuthIdentityService {
 
         if (!user) {
           throw new UnauthorizedException({
-            message: 'Phone number is not registered.',
-            errorCode: ErrorCode.Unauthorized,
+            message: 'Authentication failed.',
+            errorCode: ErrorCode.AuthPhoneNotRegistered,
           });
         }
 
@@ -389,13 +389,13 @@ export class AuthIdentityService {
             },
           });
 
-          if (existingBinding && existingBinding.phoneNumber !== phoneNumber) {
-            throw new UnauthorizedException({
-              message: 'Phone number is not allowed for this account.',
-              errorCode: ErrorCode.Unauthorized,
-            });
+            if (existingBinding && existingBinding.phoneNumber !== phoneNumber) {
+              throw new UnauthorizedException({
+                message: 'Authentication failed.',
+                errorCode: ErrorCode.AuthPhoneNotAllowed,
+              });
+            }
           }
-        }
 
         await tx.userPhoneBinding.upsert({
           where: {
@@ -491,8 +491,8 @@ export class AuthIdentityService {
     } catch (error) {
       if (this.authSharedService.isUserPhoneBindingConflict(error)) {
         throw new ConflictException({
-          message: 'Phone number is already bound to another account.',
-          errorCode: ErrorCode.InvalidRequestPayload,
+          message: 'Request failed.',
+          errorCode: ErrorCode.AuthPhoneBound,
         });
       }
 
@@ -602,15 +602,15 @@ export class AuthIdentityService {
 
         if (accountCollision && accountCollision.id !== user?.id) {
           throw new ConflictException({
-            message: 'Account is already taken.',
-            errorCode: ErrorCode.InvalidRequestPayload,
+            message: 'Registration failed.',
+            errorCode: ErrorCode.AuthAccountTaken,
           });
         }
 
         if (user && this.authSharedService.isRegisteredPhoneAccount(user, shadowEmail)) {
           throw new ConflictException({
-            message: 'Phone number is already registered.',
-            errorCode: ErrorCode.InvalidRequestPayload,
+            message: 'Registration failed.',
+            errorCode: ErrorCode.AuthPhoneAlreadyRegistered,
           });
         }
 
@@ -750,8 +750,8 @@ export class AuthIdentityService {
 
       if (this.authSharedService.isUserPhoneBindingConflict(error)) {
         throw new ConflictException({
-          message: 'Phone number is already bound to another account.',
-          errorCode: ErrorCode.InvalidRequestPayload,
+          message: 'Request failed.',
+          errorCode: ErrorCode.AuthPhoneBound,
         });
       }
 

@@ -1,5 +1,7 @@
+import { ErrorCode } from '@eggturtle/shared';
 import { NextRequest, NextResponse } from 'next/server';
 
+import { createErrorResponse, unavailableResponse } from '@/lib/api-error-response';
 import {
   ADMIN_ACCESS_COOKIE_NAME,
   clearAdminSessionCookieOptions,
@@ -37,38 +39,25 @@ async function handleProxyRequest(request: NextRequest, context: RouteContext) {
   const token = request.cookies.get(ADMIN_ACCESS_COOKIE_NAME)?.value;
 
   if (!token) {
-    return clearCookie(
-      NextResponse.json(
-        {
-          message: 'Missing admin session.'
-        },
-        { status: 401 }
-      )
-    );
+    return clearCookie(createErrorResponse(401, ErrorCode.Unauthorized, 'Unauthorized.'));
   }
 
   const validationResult = await validateAdminAccessToken(token);
 
   if (!validationResult.ok) {
     return clearCookie(
-      NextResponse.json(
-        {
-          message: validationResult.status === 403 ? 'Admin access denied.' : 'Invalid admin session.'
-        },
-        { status: validationResult.status === 403 ? 403 : 401 }
-      )
+      createErrorResponse(
+        validationResult.status === 403 ? 403 : validationResult.status === 503 ? 503 : 401,
+        validationResult.errorCode,
+        validationResult.message,
+      ),
     );
   }
 
   const [firstSegment] = context.params.path;
 
   if (firstSegment !== 'admin') {
-    return NextResponse.json(
-      {
-        message: 'Not found.'
-      },
-      { status: 404 }
-    );
+    return createErrorResponse(404, null, 'Not found.');
   }
 
   const upstreamPath = context.params.path.join('/');
@@ -85,28 +74,32 @@ async function handleProxyRequest(request: NextRequest, context: RouteContext) {
 
   const requestBody = hasRequestBody(request.method) ? await request.text() : undefined;
 
-  const upstreamResponse = await fetch(upstreamUrl, {
-    method: request.method,
-    headers,
-    body: requestBody,
-    cache: 'no-store'
-  });
+  try {
+    const upstreamResponse = await fetch(upstreamUrl, {
+      method: request.method,
+      headers,
+      body: requestBody,
+      cache: 'no-store'
+    });
 
-  const responseBody = await upstreamResponse.text();
-  const response = new NextResponse(responseBody, {
-    status: upstreamResponse.status
-  });
+    const responseBody = await upstreamResponse.text();
+    const response = new NextResponse(responseBody, {
+      status: upstreamResponse.status
+    });
 
-  const responseContentType = upstreamResponse.headers.get('content-type');
-  if (responseContentType) {
-    response.headers.set('Content-Type', responseContentType);
+    const responseContentType = upstreamResponse.headers.get('content-type');
+    if (responseContentType) {
+      response.headers.set('Content-Type', responseContentType);
+    }
+
+    if (upstreamResponse.status === 401) {
+      response.cookies.set(ADMIN_ACCESS_COOKIE_NAME, '', clearAdminSessionCookieOptions());
+    }
+
+    return response;
+  } catch {
+    return unavailableResponse();
   }
-
-  if (upstreamResponse.status === 401) {
-    response.cookies.set(ADMIN_ACCESS_COOKIE_NAME, '', clearAdminSessionCookieOptions());
-  }
-
-  return response;
 }
 
 function clearCookie(response: NextResponse) {

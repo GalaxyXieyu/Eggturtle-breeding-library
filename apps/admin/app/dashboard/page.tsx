@@ -27,6 +27,7 @@ import {
 } from '@/lib/api-client';
 import { formatAuditActionLabel, formatPlanLabel } from '@/lib/admin-labels';
 import { formatDateTime, formatUnknownError } from '@/lib/formatters';
+import { DASHBOARD_OVERVIEW_MESSAGES } from '@/lib/locales/dashboard-pages';
 
 type OverviewState = {
   loading: boolean;
@@ -40,100 +41,9 @@ type OverviewState = {
 
 type MobileOverviewSection = 'trend' | 'revenue' | 'usage' | 'records';
 
-const COPY = {
-  zh: {
-    eyebrow: '平台数据',
-    title: '数据',
-    description: '把平台关键指标、到期风险、存储风险和最新治理记录收在同一个总览里。',
-    tenantTotal: '用户总数',
-    activeTenants: '7天活跃用户',
-    monthlyActiveUsers: '30天活跃用户',
-    monthlyRevenue: 'MRR',
-    totalStorage: '总存储',
-    expiringSoon: '即将到期',
-    noOwner: '无 Owner',
-    recentOps: '最新治理记录',
-    trendTitle: '活跃趋势',
-    trendDesc: '用最近 30 天的日活与活跃用户数判断平台热度变化。',
-    revenueTitle: '套餐与营收',
-    revenueDesc: '把付费结构、即将到期名单和 MRR 放在一起看。',
-    usageTitle: '存储与风险',
-    usageDesc: '优先发现接近上限、高利用率和高占用用户。',
-    recordsTitle: '最新平台记录',
-    recordsDesc: '这里保留后台治理日志，便于追溯最近的治理动作。',
-    activeUsers7d: '活跃用户(7d)',
-    retention7d: '7日留存',
-    dau: 'DAU',
-    wau: 'WAU',
-    mau: 'MAU',
-    arr: 'ARR',
-    payingTenants: '付费用户',
-    nearLimit: '接近上限',
-    exceeded: '已超限',
-    topStorage: '存储 Top 5',
-    upcomingRenewals: '即将到期提醒',
-    noneUpcoming: '未来 7 天暂无到期用户。',
-    noneTopStorage: '暂无存储风险用户。',
-    noAudit: '当前暂无治理记录。',
-    viewUsers: '进入用户工作台',
-    viewRecords: '查看全部记录',
-    viewTenant: '查看用户',
-    action: '动作',
-    actor: '操作者',
-    tenant: '用户',
-    time: '时间',
-    loading: '加载数据中...',
-    unknownError: '加载数据失败。'
-  },
-  en: {
-    eyebrow: 'Platform Data',
-    title: 'Data',
-    description: 'Keep core metrics, renewal risk, storage risk, and latest governance records in one overview.',
-    tenantTotal: 'Tenants',
-    activeTenants: 'Active Tenants (7d)',
-    monthlyActiveUsers: 'Monthly Active Users',
-    monthlyRevenue: 'MRR',
-    totalStorage: 'Total Storage',
-    expiringSoon: 'Expiring Soon',
-    noOwner: 'No Owner',
-    recentOps: 'Recent Records',
-    trendTitle: 'Activity Trend',
-    trendDesc: 'Track the last 30 days of DAU and active-tenant movement.',
-    revenueTitle: 'Plans & Revenue',
-    revenueDesc: 'See paid mix, upcoming renewals, and MRR in one place.',
-    usageTitle: 'Storage & Risk',
-    usageDesc: 'Spot near-limit, exceeded, and heavy-usage tenants quickly.',
-    recordsTitle: 'Latest Governance Records',
-    recordsDesc: 'Keep recent back-office governance actions visible for traceability.',
-    activeUsers7d: 'Active Tenants (7d)',
-    retention7d: '7d Retention',
-    dau: 'DAU',
-    wau: 'WAU',
-    mau: 'MAU',
-    arr: 'ARR',
-    payingTenants: 'Paying Tenants',
-    nearLimit: 'Near Limit',
-    exceeded: 'Exceeded',
-    topStorage: 'Top 5 Storage',
-    upcomingRenewals: 'Upcoming Renewals',
-    noneUpcoming: 'No tenants expire in the next 7 days.',
-    noneTopStorage: 'No storage-risk tenants yet.',
-    noAudit: 'No governance records yet.',
-    viewUsers: 'Open user workspace',
-    viewRecords: 'View all records',
-    viewTenant: 'Open tenant',
-    action: 'Action',
-    actor: 'Actor',
-    tenant: 'Tenant',
-    time: 'Time',
-    loading: 'Loading data overview...',
-    unknownError: 'Failed to load data overview.'
-  }
-} as const;
-
 export default function DashboardOverviewPage() {
   const { locale } = useUiPreferences();
-  const copy = COPY[locale];
+  const messages = DASHBOARD_OVERVIEW_MESSAGES[locale];
   const [state, setState] = useState<OverviewState>({
     loading: true,
     error: null,
@@ -190,7 +100,7 @@ export default function DashboardOverviewPage() {
         setState((previous) => ({
           ...previous,
           loading: false,
-          error: formatUnknownError(error, { fallback: copy.unknownError })
+          error: formatUnknownError(error, { fallback: messages.unknownError, locale })
         }));
       }
     }
@@ -200,7 +110,7 @@ export default function DashboardOverviewPage() {
     return () => {
       cancelled = true;
     };
-  }, [copy.unknownError]);
+  }, [locale, messages.unknownError]);
 
   const expiringSoonTenants = useMemo(
     () =>
@@ -222,12 +132,12 @@ export default function DashboardOverviewPage() {
 
   const mobileSectionTabs = useMemo(
     () => [
-      { key: 'trend' as const, label: copy.trendTitle },
-      { key: 'revenue' as const, label: copy.revenueTitle },
-      { key: 'usage' as const, label: copy.usageTitle },
-      { key: 'records' as const, label: copy.recordsTitle }
+      { key: 'trend' as const, label: messages.trendTitle },
+      { key: 'revenue' as const, label: messages.revenueTitle },
+      { key: 'usage' as const, label: messages.usageTitle },
+      { key: 'records' as const, label: messages.recordsTitle }
     ],
-    [copy]
+    [messages.recordsTitle, messages.revenueTitle, messages.trendTitle, messages.usageTitle]
   );
 
   function handleMobileSectionChange(nextSection: MobileOverviewSection) {
@@ -239,7 +149,7 @@ export default function DashboardOverviewPage() {
 
   return (
     <section className="page admin-page">
-      <h2 className="visually-hidden">{copy.title}</h2>
+      <h2 className="visually-hidden">{messages.title}</h2>
 
       <nav
         className="data-overview-section-nav"
@@ -263,61 +173,61 @@ export default function DashboardOverviewPage() {
 
       <div className="admin-metrics-grid">
         <AdminMetricCard
-          label={copy.tenantTotal}
+          label={messages.tenantTotal}
           value={state.tenants.length}
-          meta={<AdminActionLink href="/dashboard/tenant-management">{copy.viewUsers}</AdminActionLink>}
+          meta={<AdminActionLink href="/dashboard/tenant-management">{messages.viewUsers}</AdminActionLink>}
         />
         <AdminMetricCard
-          label={copy.activeTenants}
+          label={messages.activeTenants}
           value={state.activityOverview?.kpis.activeTenants7d ?? '-'}
-          meta={<span>{copy.retention7d}: {formatPercent(state.activityOverview?.kpis.tenantRetention7d ?? null)}</span>}
+          meta={<span>{messages.retention7d}: {formatPercent(state.activityOverview?.kpis.tenantRetention7d ?? null)}</span>}
         />
         <AdminMetricCard
-          label={copy.monthlyActiveUsers}
+          label={messages.monthlyActiveUsers}
           value={state.activityOverview?.kpis.mau ?? '-'}
-          meta={<span>{copy.wau}: {state.activityOverview?.kpis.wau ?? '-'} · {copy.dau}: {state.activityOverview?.kpis.dau ?? '-'}</span>}
+          meta={<span>{messages.wau}: {state.activityOverview?.kpis.wau ?? '-'} · {messages.dau}: {state.activityOverview?.kpis.dau ?? '-'}</span>}
         />
         <AdminMetricCard
-          label={copy.monthlyRevenue}
+          label={messages.monthlyRevenue}
           value={formatCurrency(state.revenueOverview?.kpis.mrrCents ?? null, locale)}
-          meta={<span>{copy.payingTenants}: {state.revenueOverview?.kpis.payingTenantCount ?? '-'}</span>}
+          meta={<span>{messages.payingTenants}: {state.revenueOverview?.kpis.payingTenantCount ?? '-'}</span>}
         />
         <AdminMetricCard
-          label={copy.totalStorage}
+          label={messages.totalStorage}
           value={formatBytes(state.usageOverview?.summary.totalStorageBytes ?? null)}
-          meta={<span>{copy.nearLimit}: {state.usageOverview?.summary.nearLimitTenantCount ?? '-'} · {copy.exceeded}: {state.usageOverview?.summary.exceededTenantCount ?? '-'}</span>}
+          meta={<span>{messages.nearLimit}: {state.usageOverview?.summary.nearLimitTenantCount ?? '-'} · {messages.exceeded}: {state.usageOverview?.summary.exceededTenantCount ?? '-'}</span>}
         />
-        <AdminMetricCard label={copy.expiringSoon} value={expiringSoonTenants.length} />
-        <AdminMetricCard label={copy.noOwner} value={noOwnerCount} />
+        <AdminMetricCard label={messages.expiringSoon} value={expiringSoonTenants.length} />
+        <AdminMetricCard label={messages.noOwner} value={noOwnerCount} />
         <AdminMetricCard
-          label={copy.recentOps}
+          label={messages.recentOps}
           value={state.logs.length}
-          meta={<AdminActionLink href="/dashboard/settings/audit-logs">{copy.viewRecords}</AdminActionLink>}
+          meta={<AdminActionLink href="/dashboard/settings/audit-logs">{messages.viewRecords}</AdminActionLink>}
         />
       </div>
 
       <div ref={detailSectionsRef} className="data-overview-grid">
         <AdminPanel className={`stack data-overview-panel${activeMobileSection === 'trend' ? ' is-active' : ''}`}>
           <div className="admin-section-head">
-            <h3>{copy.trendTitle}</h3>
-            <p>{copy.trendDesc}</p>
+            <h3>{messages.trendTitle}</h3>
+            <p>{messages.trendDesc}</p>
           </div>
 
           <div className="data-overview-micro-grid">
             <div className="data-overview-micro-card">
-              <span>{copy.dau}</span>
+              <span>{messages.dau}</span>
               <strong>{state.activityOverview?.kpis.dau ?? '-'}</strong>
             </div>
             <div className="data-overview-micro-card">
-              <span>{copy.wau}</span>
+              <span>{messages.wau}</span>
               <strong>{state.activityOverview?.kpis.wau ?? '-'}</strong>
             </div>
             <div className="data-overview-micro-card">
-              <span>{copy.mau}</span>
+              <span>{messages.mau}</span>
               <strong>{state.activityOverview?.kpis.mau ?? '-'}</strong>
             </div>
             <div className="data-overview-micro-card">
-              <span>{copy.retention7d}</span>
+              <span>{messages.retention7d}</span>
               <strong>{formatPercent(state.activityOverview?.kpis.tenantRetention7d ?? null)}</strong>
             </div>
           </div>
@@ -329,8 +239,8 @@ export default function DashboardOverviewPage() {
                 <div className="admin-trend-bar data-trend-bar">
                   <span style={{ width: `${Math.max((Math.max(item.dau, item.activeTenants) / activityTrendMax) * 100, 4)}%` }} />
                 </div>
-                <span>{copy.dau}: {item.dau}</span>
-                <span>{copy.activeUsers7d}: {item.activeTenants}</span>
+                <span>{messages.dau}: {item.dau}</span>
+                <span>{messages.activeUsers7d}: {item.activeTenants}</span>
               </div>
             ))}
           </div>
@@ -338,16 +248,16 @@ export default function DashboardOverviewPage() {
 
         <AdminPanel className={`stack data-overview-panel${activeMobileSection === 'revenue' ? ' is-active' : ''}`}>
           <div className="admin-section-head">
-            <h3>{copy.revenueTitle}</h3>
-            <p>{copy.revenueDesc}</p>
+            <h3>{messages.revenueTitle}</h3>
+            <p>{messages.revenueDesc}</p>
           </div>
 
           <div className="data-overview-list">
             {(state.revenueOverview?.planBreakdown ?? []).map((plan) => (
               <div key={plan.plan} className="data-overview-row">
                 <div className="stack row-tight">
-                  <strong>{formatPlanLabel(plan.plan)}</strong>
-                  <span className="muted">{copy.payingTenants}: {plan.payingTenantCount}</span>
+                  <strong>{formatPlanLabel(plan.plan, locale)}</strong>
+                  <span className="muted">{messages.payingTenants}: {plan.payingTenantCount}</span>
                 </div>
                 <AdminBadge tone={plan.plan === 'PRO' ? 'accent' : plan.plan === 'BASIC' ? 'info' : 'neutral'}>
                   {formatCurrency(plan.mrrCents, locale)}
@@ -357,8 +267,8 @@ export default function DashboardOverviewPage() {
           </div>
 
           <div className="stack row-tight">
-            <strong>{copy.upcomingRenewals}</strong>
-            {expiringSoonTenants.length === 0 ? <p className="muted">{copy.noneUpcoming}</p> : null}
+            <strong>{messages.upcomingRenewals}</strong>
+            {expiringSoonTenants.length === 0 ? <p className="muted">{messages.noneUpcoming}</p> : null}
             <div className="data-overview-list">
               {expiringSoonTenants.map((tenant) => (
                 <div key={tenant.id} className="data-overview-row">
@@ -366,7 +276,7 @@ export default function DashboardOverviewPage() {
                     <strong>{tenant.name}</strong>
                     <span className="mono">{tenant.slug}</span>
                   </div>
-                  <AdminActionLink href={`/dashboard/tenants/${tenant.id}`}>{copy.viewTenant}</AdminActionLink>
+                  <AdminActionLink href={`/dashboard/tenants/${tenant.id}`}>{messages.viewTenant}</AdminActionLink>
                 </div>
               ))}
             </div>
@@ -375,32 +285,32 @@ export default function DashboardOverviewPage() {
 
         <AdminPanel className={`stack data-overview-panel${activeMobileSection === 'usage' ? ' is-active' : ''}`}>
           <div className="admin-section-head">
-            <h3>{copy.usageTitle}</h3>
-            <p>{copy.usageDesc}</p>
+            <h3>{messages.usageTitle}</h3>
+            <p>{messages.usageDesc}</p>
           </div>
 
           <div className="data-overview-micro-grid">
             <div className="data-overview-micro-card">
-              <span>{copy.totalStorage}</span>
+              <span>{messages.totalStorage}</span>
               <strong>{formatBytes(state.usageOverview?.summary.totalStorageBytes ?? null)}</strong>
             </div>
             <div className="data-overview-micro-card">
-              <span>{copy.nearLimit}</span>
+              <span>{messages.nearLimit}</span>
               <strong>{state.usageOverview?.summary.nearLimitTenantCount ?? '-'}</strong>
             </div>
             <div className="data-overview-micro-card">
-              <span>{copy.exceeded}</span>
+              <span>{messages.exceeded}</span>
               <strong>{state.usageOverview?.summary.exceededTenantCount ?? '-'}</strong>
             </div>
             <div className="data-overview-micro-card">
-              <span>{copy.payingTenants}</span>
+              <span>{messages.payingTenants}</span>
               <strong>{state.revenueOverview?.kpis.payingTenantCount ?? '-'}</strong>
             </div>
           </div>
 
           <div className="stack row-tight">
-            <strong>{copy.topStorage}</strong>
-            {(state.usageOverview?.topTenants.length ?? 0) === 0 ? <p className="muted">{copy.noneTopStorage}</p> : null}
+            <strong>{messages.topStorage}</strong>
+            {(state.usageOverview?.topTenants.length ?? 0) === 0 ? <p className="muted">{messages.noneTopStorage}</p> : null}
             <div className="data-overview-list">
               {(state.usageOverview?.topTenants ?? []).map((tenant) => (
                 <div key={tenant.tenantId} className="data-overview-row">
@@ -420,28 +330,28 @@ export default function DashboardOverviewPage() {
 
         <AdminPanel className={`stack data-overview-panel data-overview-span-full${activeMobileSection === 'records' ? ' is-active' : ''}`}>
           <div className="admin-section-head">
-            <h3>{copy.recordsTitle}</h3>
-            <p>{copy.recordsDesc}</p>
+            <h3>{messages.recordsTitle}</h3>
+            <p>{messages.recordsDesc}</p>
           </div>
 
-          {state.logs.length === 0 ? <p className="muted">{copy.noAudit}</p> : null}
+          {state.logs.length === 0 ? <p className="muted">{messages.noAudit}</p> : null}
           {state.logs.length > 0 ? (
             <>
               <div className="data-record-list">
                 {state.logs.map((log) => (
                   <article key={`mobile-${log.id}`} className="data-record-item">
                     <div className="data-record-head">
-                      <strong>{formatAuditActionLabel(log.action)}</strong>
+                      <strong>{formatAuditActionLabel(log.action, locale)}</strong>
                       <span className="data-record-time">{formatDateTime(log.createdAt)}</span>
                     </div>
                     <div className="data-record-grid">
                       <div className="stack row-tight">
-                        <span className="data-record-label">{copy.actor}</span>
+                        <span className="data-record-label">{messages.actor}</span>
                         <span>{log.actorUserEmail ?? '-'}</span>
                         <span className="mono">{log.actorUserId}</span>
                       </div>
                       <div className="stack row-tight">
-                        <span className="data-record-label">{copy.tenant}</span>
+                        <span className="data-record-label">{messages.tenant}</span>
                         <span>{log.targetTenantSlug ?? '-'}</span>
                         <span className="mono">{log.targetTenantId ?? '-'}</span>
                       </div>
@@ -454,16 +364,16 @@ export default function DashboardOverviewPage() {
                 <AdminTableFrame>
                   <thead>
                     <tr>
-                      <th>{copy.action}</th>
-                      <th>{copy.actor}</th>
-                      <th>{copy.tenant}</th>
-                      <th>{copy.time}</th>
+                      <th>{messages.action}</th>
+                      <th>{messages.actor}</th>
+                      <th>{messages.tenant}</th>
+                      <th>{messages.time}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {state.logs.map((log) => (
                       <tr key={log.id}>
-                        <td>{formatAuditActionLabel(log.action)}</td>
+                        <td>{formatAuditActionLabel(log.action, locale)}</td>
                         <td>
                           <div className="stack row-tight">
                             <span>{log.actorUserEmail ?? '-'}</span>
@@ -487,7 +397,7 @@ export default function DashboardOverviewPage() {
         </AdminPanel>
       </div>
 
-      {state.loading ? <p className="muted">{copy.loading}</p> : null}
+      {state.loading ? <p className="muted">{messages.loading}</p> : null}
       {state.error ? <p className="error">{state.error}</p> : null}
     </section>
   );

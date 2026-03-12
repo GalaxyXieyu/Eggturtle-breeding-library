@@ -1,12 +1,19 @@
-import { NextResponse } from 'next/server';
+import { ErrorCode } from '@eggturtle/shared';
 import { passwordLoginRequestSchema, passwordLoginResponseSchema } from '@eggturtle/shared/auth';
 
+import {
+  createErrorResponse,
+  createStandardErrorResponse,
+  invalidRequestResponse,
+  parseErrorPayload,
+} from '@/lib/api-error-response';
 import {
   applySessionCookie,
   clearSessionCookie,
   getAdminApiBaseUrl,
   resolveSessionFromToken
 } from '@/lib/server-session';
+import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
@@ -24,79 +31,28 @@ export async function POST(request: Request) {
       cache: 'no-store'
     });
 
-    const body = await parseJsonBody(upstreamResponse);
+    const body = await parseErrorPayload(upstreamResponse);
 
     if (!upstreamResponse.ok) {
-      return withClearedSessionCookie(
-        NextResponse.json(
-          {
-            message: pickErrorMessage(body, `请求失败（${upstreamResponse.status}）`)
-          },
-          { status: upstreamResponse.status }
-        )
-      );
+      return withClearedSessionCookie(createStandardErrorResponse(upstreamResponse.status, body));
     }
 
     const { accessToken } = passwordLoginResponseSchema.parse(body);
     const session = await resolveSessionFromToken(accessToken);
 
     if (!session || !session.user.isSuperAdmin) {
-      return withClearedSessionCookie(
-        NextResponse.json(
-          {
-            message: '后台访问未授权。'
-          },
-          { status: 403 }
-        )
-      );
+      return withClearedSessionCookie(createErrorResponse(403, ErrorCode.Forbidden, 'Forbidden.'));
     }
 
     const response = NextResponse.json(session);
     applySessionCookie(response, accessToken);
     return response;
   } catch {
-    return withClearedSessionCookie(
-      NextResponse.json(
-        {
-          message: '请求参数无效。'
-        },
-        { status: 400 }
-      )
-    );
+    return withClearedSessionCookie(invalidRequestResponse());
   }
 }
 
 function withClearedSessionCookie(response: NextResponse) {
   clearSessionCookie(response);
   return response;
-}
-
-async function parseJsonBody(response: Response) {
-  const text = await response.text();
-
-  if (!text) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(text) as unknown;
-  } catch {
-    return { message: text };
-  }
-}
-
-function pickErrorMessage(payload: unknown, fallback: string) {
-  if (!payload || typeof payload !== 'object') {
-    return fallback;
-  }
-
-  if ('message' in payload && typeof payload.message === 'string') {
-    return payload.message;
-  }
-
-  if ('error' in payload && typeof payload.error === 'string') {
-    return payload.error;
-  }
-
-  return fallback;
 }

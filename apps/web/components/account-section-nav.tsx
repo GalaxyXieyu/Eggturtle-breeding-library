@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 
+import { useUiPreferences } from '@/components/ui-preferences';
+import { ACCOUNT_NAV_MESSAGES } from '@/lib/locales/account';
 import { cn } from '@/lib/utils';
 
 type AccountSectionNavActive = 'profile' | 'subscription' | 'referral' | 'certificates';
@@ -11,33 +13,40 @@ type AccountSectionNavProps = {
   tenantSlug: string;
 };
 
-const NAV_ITEMS: Array<{ key: AccountSectionNavActive; label: string; href: (tenantSlug: string) => string }> = [
-  {
-    key: 'profile',
-    label: '账号',
-    href: (tenantSlug) => `/app/${tenantSlug}/account`,
-  },
-  {
-    key: 'subscription',
-    label: '订阅',
-    href: (tenantSlug) => `/app/${tenantSlug}/account?tab=subscription`,
-  },
-  {
-    key: 'referral',
-    label: '邀请',
-    href: (tenantSlug) => `/app/${tenantSlug}/account?tab=referral`,
-  },
-  {
-    key: 'certificates',
-    label: '证书',
-    href: (tenantSlug) => `/app/${tenantSlug}/certificates`,
-  },
-];
-
 export function AccountSectionNav({ active, tenantSlug }: AccountSectionNavProps) {
+  const { locale } = useUiPreferences();
+  const messages = ACCOUNT_NAV_MESSAGES[locale];
+
+  const navItems: Array<{
+    key: AccountSectionNavActive;
+    label: string;
+    href: (nextTenantSlug: string) => string;
+  }> = [
+    {
+      key: 'profile',
+      label: messages.profile,
+      href: (nextTenantSlug) => `/app/${nextTenantSlug}/account`,
+    },
+    {
+      key: 'subscription',
+      label: messages.subscription,
+      href: (nextTenantSlug) => `/app/${nextTenantSlug}/account?tab=subscription`,
+    },
+    {
+      key: 'referral',
+      label: messages.referral,
+      href: (nextTenantSlug) => `/app/${nextTenantSlug}/account?tab=referral`,
+    },
+    {
+      key: 'certificates',
+      label: messages.certificates,
+      href: (nextTenantSlug) => `/app/${nextTenantSlug}/certificates`,
+    },
+  ];
+
   return (
     <section className="flex flex-wrap gap-2">
-      {NAV_ITEMS.map((item) => {
+      {navItems.map((item) => {
         const selected = item.key === active;
         return (
           <Link

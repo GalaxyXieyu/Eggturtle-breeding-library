@@ -1,6 +1,15 @@
-import { ApiError } from '@/lib/api-client';
+import { ErrorCode } from '@eggturtle/shared';
 
-type ErrorLocale = 'zh' | 'en';
+import type { UiLocale } from '@/components/ui-preferences';
+import { ApiError } from '@/lib/api-client';
+import {
+  ADMIN_ERROR_MESSAGES,
+  GENERIC_ERROR_MESSAGES,
+  NETWORK_ERROR_MESSAGES,
+  VALIDATION_FIELD_MESSAGES,
+} from '@/lib/locales/error-messages';
+
+type ErrorLocale = UiLocale;
 
 type FormatUnknownErrorOptions = {
   fallback?: string;
@@ -16,31 +25,48 @@ type ValidationIssue = {
   received?: unknown;
 };
 
-export function formatDateTime(value: string) {
+export function formatDateTime(value: string, locale: ErrorLocale = 'zh') {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
     return value;
   }
 
-  return date.toLocaleString();
+  return date.toLocaleString(locale === 'zh' ? 'zh-CN' : 'en-US');
 }
 
 export function formatUnknownError(error: unknown, options: FormatUnknownErrorOptions = {}) {
-  const locale = options.locale ?? 'zh';
-  const fallback = options.fallback ?? (locale === 'zh' ? '未知错误' : 'Unknown error');
-  const rawMessage = extractRawErrorMessage(error);
+  const locale = resolveLocale(options.locale);
+  const fallback = options.fallback ?? GENERIC_ERROR_MESSAGES[locale];
 
+  const errorCode = extractErrorCode(error);
+  if (errorCode) {
+    const mapped = ADMIN_ERROR_MESSAGES[locale][errorCode as ErrorCode];
+    if (mapped) {
+      return mapped;
+    }
+  }
+
+  const rawMessage = extractRawErrorMessage(error);
   if (!rawMessage) {
     return fallback;
   }
 
-  const resolvedMessage = toBusinessErrorMessage(rawMessage, locale) ?? fallback;
-
-  if (options.includeErrorCode && error instanceof ApiError && error.errorCode) {
-    return `${resolvedMessage} (errorCode: ${error.errorCode})`;
+  const validationMessage = resolveValidationMessage(rawMessage, locale);
+  if (validationMessage) {
+    return validationMessage;
   }
 
-  return resolvedMessage;
+  const networkMessage = toNetworkErrorMessage(rawMessage, locale);
+  if (networkMessage) {
+    return networkMessage;
+  }
+
+  const compatibilityMessage = toCompatibilityMessage(rawMessage, locale);
+  if (compatibilityMessage) {
+    return compatibilityMessage;
+  }
+
+  return fallback;
 }
 
 function extractRawErrorMessage(error: unknown) {
@@ -55,95 +81,81 @@ function extractRawErrorMessage(error: unknown) {
   return null;
 }
 
-function toBusinessErrorMessage(rawMessage: string, locale: ErrorLocale) {
+function extractErrorCode(error: unknown) {
+  if (error instanceof ApiError) {
+    if (error.errorCode) {
+      return error.errorCode;
+    }
+
+    if (error.status === 401) {
+      return ErrorCode.Unauthorized;
+    }
+
+    if (error.status === 403) {
+      return ErrorCode.Forbidden;
+    }
+  }
+
+  return null;
+}
+
+function resolveLocale(locale?: ErrorLocale): ErrorLocale {
+  if (locale === 'zh' || locale === 'en') {
+    return locale;
+  }
+
+  if (typeof document !== 'undefined') {
+    const docLocale = document.documentElement.dataset.locale ?? document.body.dataset.locale;
+    if (docLocale === 'en') {
+      return 'en';
+    }
+  }
+
+  return 'zh';
+}
+
+function toNetworkErrorMessage(rawMessage: string, locale: ErrorLocale) {
+  if (/failed to fetch|fetch failed|networkerror|network request failed|load failed/i.test(rawMessage)) {
+    return NETWORK_ERROR_MESSAGES[locale].network;
+  }
+
+  if (/timeout|timed out/i.test(rawMessage)) {
+    return NETWORK_ERROR_MESSAGES[locale].timeout;
+  }
+
+  return null;
+}
+
+function toCompatibilityMessage(rawMessage: string, locale: ErrorLocale) {
   const message = rawMessage.trim();
-  const validationMessage = resolveValidationMessage(message, locale);
-  if (validationMessage) {
-    return validationMessage;
-  }
-
-  if (/failed to fetch|fetch failed|networkerror|network request failed|load failed/i.test(message)) {
-    return locale === 'zh'
-      ? '网络请求失败，请检查网络连接后重试。'
-      : 'Network request failed. Please check your connection and try again.';
-  }
-
-  if (/timeout|timed out/i.test(message)) {
-    return locale === 'zh' ? '请求超时，请稍后重试。' : 'Request timed out. Please try again later.';
-  }
-
-  if (
-    message.includes('后台访问未授权。') ||
-    message.includes('Admin access denied.') ||
-    message.includes('This account does not have super-admin access.') ||
-    message.includes('User is not in the super-admin allowlist.')
-  ) {
-    return locale === 'zh'
-      ? '当前账号没有后台超级管理员权限，请使用超级管理员账号登录。'
-      : 'This account does not have super-admin access.';
-  }
-
-  if (
-    message.includes('Unauthorized') ||
-    message.includes('Invalid admin session.') ||
-    message.includes('Missing admin session.')
-  ) {
-    return locale === 'zh' ? '登录状态已失效，请重新登录。' : 'Your admin session has expired. Please sign in again.';
-  }
-
-  if (message.includes('Login identifier or password is incorrect.')) {
-    return locale === 'zh'
-      ? '账号名 / 手机号 / 邮箱或密码不正确，请重新输入。'
-      : 'The account, phone number, email, or password is incorrect.';
-  }
-
-  if (message.includes('Code is invalid.')) {
-    return locale === 'zh' ? '验证码不正确，请重新输入。' : 'The verification code is invalid.';
-  }
-
-  if (message.includes('Code is expired.')) {
-    return locale === 'zh' ? '验证码已过期，请重新获取。' : 'The verification code has expired.';
-  }
-
-  if (message.includes('Current password is incorrect.')) {
-    return locale === 'zh' ? '当前密码不正确，请重新输入。' : 'The current password is incorrect.';
-  }
-
-  if (message.includes('New password must be different from current password.')) {
-    return locale === 'zh'
-      ? '新密码不能与当前密码相同。'
-      : 'The new password must be different from the current password.';
-  }
-
-  if (message.includes('Email code login is only available for existing accounts.')) {
-    return locale === 'zh'
-      ? '该邮箱尚未开通后台账号，请先确认管理员身份后再登录。'
-      : 'Email code sign-in is only available for existing admin accounts.';
-  }
-
-  if (message.includes('Phone number is not registered.')) {
-    return locale === 'zh'
-      ? '该手机号尚未绑定后台账号，请先确认超级管理员手机号绑定。'
-      : 'This phone number is not bound to an admin account.';
-  }
-
-  if (message.includes('Invalid request payload.')) {
-    return locale === 'zh'
-      ? '提交的信息不完整或格式不正确，请检查后重试。'
-      : 'The submitted data is incomplete or invalid. Please review it and try again.';
-  }
 
   if (/^request failed with status \d+/i.test(message)) {
-    return locale === 'zh' ? '请求失败，请稍后重试。' : message;
+    return GENERIC_ERROR_MESSAGES[locale];
   }
 
-  return translateKnownValidationText(message, locale) ?? message;
+  if (
+    message.includes('Invalid admin session.') ||
+    message.includes('Missing admin session.') ||
+    message.includes('Unauthorized.')
+  ) {
+    return ADMIN_ERROR_MESSAGES[locale][ErrorCode.Unauthorized] ?? GENERIC_ERROR_MESSAGES[locale];
+  }
+
+  if (message.includes('Admin access denied.') || message.includes('Forbidden.')) {
+    return ADMIN_ERROR_MESSAGES[locale][ErrorCode.Forbidden] ?? GENERIC_ERROR_MESSAGES[locale];
+  }
+
+  if (message.includes('Service unavailable.')) {
+    return ADMIN_ERROR_MESSAGES[locale][ErrorCode.ApiUnavailable] ?? GENERIC_ERROR_MESSAGES[locale];
+  }
+
+  return null;
 }
 
 function resolveValidationMessage(rawMessage: string, locale: ErrorLocale) {
   const parsedPayload = tryParseJson(rawMessage);
   if (!parsedPayload) {
-    return null;
+    return translateKnownValidationText(rawMessage.trim(), locale);
   }
 
   const firstIssue = extractFirstIssue(parsedPayload);
@@ -229,16 +241,7 @@ function resolveFieldLabel(path: unknown, locale: ErrorLocale) {
     return locale === 'zh' ? '输入内容' : 'The input';
   }
 
-  const labels: Record<string, { zh: string; en: string }> = {
-    account: { zh: '账号名', en: 'Account' },
-    login: { zh: '账号名、手机号或邮箱', en: 'Account, phone, or email' },
-    email: { zh: '邮箱', en: 'Email' },
-    password: { zh: '密码', en: 'Password' },
-    phoneNumber: { zh: '手机号', en: 'Phone number' },
-    code: { zh: '验证码', en: 'Verification code' }
-  };
-
-  return labels[key]?.[locale] ?? (locale === 'zh' ? '输入内容' : 'The input');
+  return VALIDATION_FIELD_MESSAGES[locale][key] ?? (locale === 'zh' ? '输入内容' : 'The input');
 }
 
 function translateKnownValidationText(message: string, locale: ErrorLocale) {

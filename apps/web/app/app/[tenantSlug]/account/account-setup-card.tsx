@@ -10,12 +10,13 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useUiPreferences } from '@/components/ui-preferences';
 import {
   CUSTOM_SECURITY_QUESTION_VALUE,
-  SECURITY_QUESTION_OPTIONS,
   maskPhoneNumber,
   type SetupRequirements,
 } from '@/app/app/[tenantSlug]/account/account-page-utils';
+import { ACCOUNT_SETUP_MESSAGES } from '@/lib/locales/account';
 
 type AccountSetupCardProps = {
   setupChecklistItems: string[];
@@ -24,6 +25,7 @@ type AccountSetupCardProps = {
   boundPhoneNumber: string | null;
   setupRequirements: SetupRequirements;
   selectedSecurityQuestion: string;
+  securityQuestionOptions: string[];
   securityQuestionDraft: string;
   securityAnswerDraft: string;
   nameDraft: string;
@@ -47,6 +49,7 @@ export default function AccountSetupCard({
   boundPhoneNumber,
   setupRequirements,
   selectedSecurityQuestion,
+  securityQuestionOptions,
   securityQuestionDraft,
   securityAnswerDraft,
   nameDraft,
@@ -62,14 +65,17 @@ export default function AccountSetupCard({
   onSecurityAnswerDraftChange,
   onCompleteSetup,
 }: AccountSetupCardProps) {
+  const { locale } = useUiPreferences();
+  const messages = ACCOUNT_SETUP_MESSAGES[locale];
+
   return (
     <Card className="overflow-hidden rounded-3xl border-[#FFD400]/75 bg-[linear-gradient(145deg,rgba(255,247,213,0.96),rgba(255,255,255,0.98))]">
       <CardHeader className="space-y-3">
-        <CardTitle className="text-2xl text-neutral-900">完成首次登录设置</CardTitle>
+        <CardTitle className="text-2xl text-neutral-900">{messages.title}</CardTitle>
         <CardDescription className="text-neutral-700">
           {setupChecklistItems.length > 0
-            ? `仅需补全 ${setupChecklistItems.join('、')}，完成后即可进入工作台。`
-            : '账号资料已完整，正在为你进入工作台。'}
+            ? messages.checklist(setupChecklistItems.join(locale === 'zh' ? '、' : ', '))
+            : messages.ready}
         </CardDescription>
         {setupChecklistItems.length > 0 ? (
           <div className="flex flex-wrap gap-2">
@@ -78,7 +84,8 @@ export default function AccountSetupCard({
                 key={item}
                 className="rounded-full border border-[#e1bb35] bg-white/80 px-3 py-1 text-xs font-semibold text-[#7a5b00]"
               >
-                待完成：{item}
+                {messages.pendingPrefix}
+                {item}
               </span>
             ))}
           </div>
@@ -86,105 +93,105 @@ export default function AccountSetupCard({
       </CardHeader>
       <CardContent className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <div className="grid gap-2">
-          <Label htmlFor="setup-login-account">登录账号</Label>
+          <Label htmlFor="setup-login-account">{messages.loginAccountLabel}</Label>
           <Input id="setup-login-account" value={loginAccountValue} disabled />
           <p className="text-xs text-neutral-500">{loginAccountHint}</p>
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="setup-bound-phone">已绑定手机号</Label>
+          <Label htmlFor="setup-bound-phone">{messages.boundPhoneLabel}</Label>
           <Input
             id="setup-bound-phone"
-            value={boundPhoneNumber ? maskPhoneNumber(boundPhoneNumber) : '未绑定'}
+            value={boundPhoneNumber ? maskPhoneNumber(boundPhoneNumber) : messages.boundPhoneUnbound}
             disabled
           />
-          <p className="text-xs text-neutral-500">手机号可用于“手机号 + 密码 / 验证码”登录。</p>
+          <p className="text-xs text-neutral-500">{messages.boundPhoneHint}</p>
         </div>
 
         {setupRequirements.needsDisplayName ? (
           <div className="grid gap-2 xl:col-span-2">
-            <Label htmlFor="setup-name">显示名称（必填）</Label>
+            <Label htmlFor="setup-name">{messages.displayNameLabel}</Label>
             <Input
               id="setup-name"
               value={nameDraft}
-              placeholder="例如：Siri 的龟舍"
+              placeholder={messages.displayNamePlaceholder}
               onChange={(event) => onNameDraftChange(event.target.value)}
             />
-            <p className="text-xs text-neutral-500">显示名称用于团队识别与页面展示，可后续随时修改。</p>
+            <p className="text-xs text-neutral-500">{messages.displayNameHint}</p>
           </div>
         ) : (
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50/90 px-4 py-3 text-sm text-emerald-700 xl:col-span-2">
-            显示名称已准备好，后续可在“账号”页继续修改昵称。
+            {messages.displayNameDone}
           </div>
         )}
 
         {setupRequirements.needsPassword ? (
           <>
             <div className="grid gap-2">
-              <Label htmlFor="setup-password">登录密码（必填）</Label>
+              <Label htmlFor="setup-password">{messages.passwordLabel}</Label>
               <Input
                 id="setup-password"
                 type="password"
                 value={newPassword}
-                placeholder="至少 8 位"
+                placeholder={messages.passwordPlaceholder}
                 onChange={(event) => onNewPasswordChange(event.target.value)}
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="setup-password-confirm">确认密码（必填）</Label>
+              <Label htmlFor="setup-password-confirm">{messages.confirmPasswordLabel}</Label>
               <Input
                 id="setup-password-confirm"
                 type="password"
                 value={confirmPassword}
-                placeholder="再次输入密码"
+                placeholder={messages.confirmPasswordPlaceholder}
                 onChange={(event) => onConfirmPasswordChange(event.target.value)}
               />
             </div>
           </>
         ) : (
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50/90 px-4 py-3 text-sm text-emerald-700 xl:col-span-2">
-            登录密码已创建，可直接使用“账号/手机号 + 密码”登录。
+            {messages.passwordDone}
           </div>
         )}
 
         {setupRequirements.needsSecurity ? (
           <>
             <div className="grid gap-2 xl:col-span-2">
-              <Label htmlFor="setup-security-question-select">密保问题（必填）</Label>
+              <Label htmlFor="setup-security-question-select">{messages.securityQuestionLabel}</Label>
               <select
                 id="setup-security-question-select"
                 className="h-10 rounded-md border border-neutral-300 bg-white px-3 text-sm text-neutral-900"
                 value={selectedSecurityQuestion}
                 onChange={(event) => onSelectedSecurityQuestionChange(event.target.value)}
               >
-                {SECURITY_QUESTION_OPTIONS.map((item) => (
+                {securityQuestionOptions.map((item) => (
                   <option key={`setup-security-option-${item}`} value={item}>
                     {item}
                   </option>
                 ))}
-                <option value={CUSTOM_SECURITY_QUESTION_VALUE}>自定义问题</option>
+                <option value={CUSTOM_SECURITY_QUESTION_VALUE}>{messages.securityQuestionCustom}</option>
               </select>
               {selectedSecurityQuestion === CUSTOM_SECURITY_QUESTION_VALUE ? (
                 <Input
                   id="setup-security-question-custom"
                   value={securityQuestionDraft}
-                  placeholder="请输入自定义密保问题"
+                  placeholder={messages.securityQuestionCustomPlaceholder}
                   onChange={(event) => onSecurityQuestionDraftChange(event.target.value)}
                 />
               ) : null}
             </div>
             <div className="grid gap-2 xl:col-span-2">
-              <Label htmlFor="setup-security-answer">密保答案（必填）</Label>
+              <Label htmlFor="setup-security-answer">{messages.securityAnswerLabel}</Label>
               <Input
                 id="setup-security-answer"
                 value={securityAnswerDraft}
-                placeholder="至少 2 个字符"
+                placeholder={messages.securityAnswerPlaceholder}
                 onChange={(event) => onSecurityAnswerDraftChange(event.target.value)}
               />
             </div>
           </>
         ) : (
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50/90 px-4 py-3 text-sm text-emerald-700 xl:col-span-2">
-            密保信息已完善，当前账号无需补充其他首次设置项。
+            {messages.securityDone}
           </div>
         )}
 
@@ -195,7 +202,7 @@ export default function AccountSetupCard({
             disabled={completingSetup}
             onClick={onCompleteSetup}
           >
-            {completingSetup ? '提交中…' : setupSubmitLabel}
+            {completingSetup ? messages.submitting : setupSubmitLabel}
           </Button>
         </div>
       </CardContent>

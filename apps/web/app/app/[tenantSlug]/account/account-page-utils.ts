@@ -1,6 +1,14 @@
 import type { MeProfile } from '@eggturtle/shared';
 
+import type { UiLocale } from '@/components/ui-preferences';
+
 import { formatApiError } from '@/lib/error-utils';
+import {
+  ACCOUNT_LOGIN_ACCOUNT_MESSAGES,
+  ACCOUNT_SECURITY_QUESTIONS,
+  ACCOUNT_SETUP_LABELS,
+  ACCOUNT_SETUP_SUBMIT_LABELS,
+} from '@/lib/locales/account';
 
 export type AccountTab = 'profile' | 'subscription' | 'referral';
 
@@ -12,13 +20,6 @@ export type SetupRequirements = {
 
 export const CUSTOM_SECURITY_QUESTION_VALUE = '__custom__';
 
-export const SECURITY_QUESTION_OPTIONS = [
-  '我第一只宠物的名字是？',
-  '我最常去的城市是？',
-  '我小学班主任的姓名是？',
-  '我母亲的姓名是？',
-  '我父亲的姓名是？',
-] as const;
 
 export const EMPTY_SETUP_REQUIREMENTS: SetupRequirements = {
   needsDisplayName: false,
@@ -37,89 +38,88 @@ export function resolveProfileSetupRequirements(
   };
 }
 
-export function formatLoginAccount(account: string | null | undefined, boundPhoneNumber: string | null) {
+export function getSecurityQuestionOptions(locale: UiLocale) {
+  return ACCOUNT_SECURITY_QUESTIONS[locale];
+}
+
+export function formatLoginAccount(
+  account: string | null | undefined,
+  boundPhoneNumber: string | null,
+  locale: UiLocale,
+) {
   if (account) {
     return account;
   }
 
   if (boundPhoneNumber) {
-    return `仅手机号登录 (${maskPhoneNumber(boundPhoneNumber)})`;
+    return ACCOUNT_LOGIN_ACCOUNT_MESSAGES[locale].phoneOnly(maskPhoneNumber(boundPhoneNumber));
   }
 
   return '-';
 }
 
-export function describeLoginAccount(account: string | null | undefined, boundPhoneNumber: string | null) {
+export function describeLoginAccount(
+  account: string | null | undefined,
+  boundPhoneNumber: string | null,
+  locale: UiLocale,
+) {
   if (account) {
-    return '该账号用于“账号 + 密码”登录，当前不支持直接修改。';
+    return ACCOUNT_LOGIN_ACCOUNT_MESSAGES[locale].accountHint;
   }
 
   if (boundPhoneNumber) {
-    return `当前请使用手机号 ${maskPhoneNumber(boundPhoneNumber)} 登录。`;
+    return ACCOUNT_LOGIN_ACCOUNT_MESSAGES[locale].phoneHint(maskPhoneNumber(boundPhoneNumber));
   }
 
-  return '当前未设置独立登录账号，请先绑定手机号登录。';
+  return ACCOUNT_LOGIN_ACCOUNT_MESSAGES[locale].missingHint;
 }
 
-export function getSetupChecklistItems(setupRequirements: SetupRequirements) {
+export function getSetupChecklistItems(setupRequirements: SetupRequirements, locale: UiLocale) {
+  const labels = ACCOUNT_SETUP_LABELS[locale];
   const items: string[] = [];
 
   if (setupRequirements.needsDisplayName) {
-    items.push('显示名称');
+    items.push(labels.displayName);
   }
   if (setupRequirements.needsPassword) {
-    items.push('登录密码');
+    items.push(labels.password);
   }
   if (setupRequirements.needsSecurity) {
-    items.push('密保信息');
+    items.push(labels.security);
   }
 
   return items;
 }
 
-export function getSetupSubmitLabel(setupRequirements: SetupRequirements) {
+export function getSetupSubmitLabel(setupRequirements: SetupRequirements, locale: UiLocale) {
+  const labels = ACCOUNT_SETUP_SUBMIT_LABELS[locale];
   if (
     setupRequirements.needsSecurity &&
     !setupRequirements.needsDisplayName &&
     !setupRequirements.needsPassword
   ) {
-    return '保存密保并进入工作台';
+    return labels.securityOnly;
   }
   if (
     setupRequirements.needsPassword &&
     !setupRequirements.needsDisplayName &&
     !setupRequirements.needsSecurity
   ) {
-    return '保存密码并进入工作台';
+    return labels.passwordOnly;
   }
   if (
     setupRequirements.needsDisplayName &&
     !setupRequirements.needsPassword &&
     !setupRequirements.needsSecurity
   ) {
-    return '保存资料并进入工作台';
+    return labels.profileOnly;
   }
 
-  return '完成设置并进入工作台';
+  return labels.all;
 }
 
-export function toBusinessSetupError(error: unknown) {
-  const rawMessage = formatApiError(error);
-
-  if (
-    rawMessage.includes('Password must be at least 8 characters') ||
-    rawMessage.includes('newPassword')
-  ) {
-    return '登录密码至少 8 位，建议使用“字母+数字”的组合。';
-  }
-  if (rawMessage.includes('question')) {
-    return '请先选择或填写一个密保问题。';
-  }
-  if (rawMessage.includes('answer')) {
-    return '请填写密保答案（至少 2 个字），用于手机号不可用时找回账号。';
-  }
-
-  return rawMessage;
+export function toBusinessSetupError(error: unknown, locale: UiLocale) {
+  return formatApiError(error, undefined, locale);
 }
 
 export function normalizeAccountTab(value: string | null): AccountTab {
@@ -141,7 +141,7 @@ export function maskPhoneNumber(phoneNumber: string): string {
   return `${phoneNumber.slice(0, 3)}****${phoneNumber.slice(-4)}`;
 }
 
-export function formatDate(value: string | null | undefined) {
+export function formatDate(value: string | null | undefined, locale?: UiLocale) {
   if (!value) {
     return '-';
   }
@@ -151,5 +151,8 @@ export function formatDate(value: string | null | undefined) {
     return value;
   }
 
-  return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+  const localeCode = locale === 'en' ? 'en-US' : 'zh-CN';
+
+  return `${date.toLocaleDateString(localeCode)} ${date.toLocaleTimeString(localeCode)}`;
+
 }

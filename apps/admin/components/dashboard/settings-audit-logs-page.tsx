@@ -15,11 +15,13 @@ import {
 import {
   AdminBadge,
   AdminPanel,
-    AdminTableFrame
+  AdminTableFrame
 } from '@/components/dashboard/polish-primitives';
+import { useUiPreferences } from '@/components/ui-preferences';
 import { formatAuditActionLabel } from '@/lib/admin-labels';
 import { apiRequest } from '@/lib/api-client';
 import { formatDateTime, formatUnknownError } from '@/lib/formatters';
+import { SETTINGS_AUDIT_MESSAGES } from '@/lib/locales/settings-pages';
 
 type PageState = {
   loading: boolean;
@@ -44,6 +46,8 @@ const EXPORT_ROW_LIMIT = 2000;
 const actionOptions = Object.values(SuperAdminAuditAction);
 
 export default function DashboardAuditLogsPage() {
+  const { locale } = useUiPreferences();
+  const messages = SETTINGS_AUDIT_MESSAGES[locale];
   const [tenants, setTenants] = useState<AdminTenant[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
@@ -141,7 +145,7 @@ export default function DashboardAuditLogsPage() {
           setState((previous) => ({
             ...previous,
             loading: false,
-            error: formatUnknownError(error),
+            error: formatUnknownError(error, { fallback: messages.unknownError, locale }),
             logs: []
           }));
         }
@@ -153,7 +157,7 @@ export default function DashboardAuditLogsPage() {
     return () => {
       cancelled = true;
     };
-  }, [filtersApplied, state.page, state.pageSize]);
+  }, [filtersApplied, locale, messages.unknownError, state.page, state.pageSize]);
 
   useEffect(() => {
     if (!isFilterDrawerOpen) {
@@ -183,9 +187,11 @@ export default function DashboardAuditLogsPage() {
     () =>
       buildAppliedFilterChips(filtersApplied, {
         tenants,
-        users
+        users,
+        locale,
+        messages
       }),
-    [filtersApplied, tenants, users]
+    [filtersApplied, locale, messages, tenants, users]
   );
 
   function handleFilterSubmit(event: FormEvent<HTMLFormElement>) {
@@ -212,34 +218,34 @@ export default function DashboardAuditLogsPage() {
 
   return (
     <section className="page admin-page settings-audit-page">
-      <h2 className="visually-hidden">设置</h2>
+      <h2 className="visually-hidden">{messages.pageTitle}</h2>
 
       <AdminPanel className="stack settings-mobile-hero">
         <div className="stack row-tight settings-mobile-hero-copy">
-          <span className="admin-eyebrow">平台设置</span>
-          <h3>操作记录</h3>
-          <p>快速查看平台级治理动作，并按目标、操作者、动作与时间范围筛选。</p>
+          <span className="admin-eyebrow">{messages.mobileEyebrow}</span>
+          <h3>{messages.mobileTitle}</h3>
+          <p>{messages.mobileDesc}</p>
         </div>
 
-        <div className="settings-mobile-summary" aria-label="设置概览">
+        <div className="settings-mobile-summary" aria-label={messages.mobileSummary}>
           <div className="settings-mobile-stat">
-            <span className="settings-mobile-stat-label">日志数</span>
+            <span className="settings-mobile-stat-label">{messages.totalLogs}</span>
             <strong className="settings-mobile-stat-value">{state.total}</strong>
           </div>
           <div className="settings-mobile-stat">
-            <span className="settings-mobile-stat-label">当前页</span>
+            <span className="settings-mobile-stat-label">{messages.currentPage}</span>
             <strong className="settings-mobile-stat-value">
               {state.page}/{Math.max(state.totalPages, 1)}
             </strong>
           </div>
           <div className="settings-mobile-stat">
-            <span className="settings-mobile-stat-label">筛选项</span>
+            <span className="settings-mobile-stat-label">{messages.filterCount}</span>
             <strong className="settings-mobile-stat-value">{appliedFilterCount}</strong>
           </div>
         </div>
 
         {appliedFilterChips.length > 0 ? (
-          <div className="settings-filter-summary" aria-label="当前筛选摘要">
+          <div className="settings-filter-summary" aria-label={messages.activeFilters}>
             {appliedFilterChips.map((chip) => (
               <span key={chip} className="settings-filter-chip">
                 {chip}
@@ -247,7 +253,7 @@ export default function DashboardAuditLogsPage() {
             ))}
           </div>
         ) : (
-          <p className="muted settings-mobile-summary-note">当前未应用筛选，展示最新平台操作记录。</p>
+          <p className="muted settings-mobile-summary-note">{messages.noActiveFilters}</p>
         )}
       </AdminPanel>
 
@@ -256,7 +262,7 @@ export default function DashboardAuditLogsPage() {
           data-ui="button"
           type="button"
           className="settings-filter-backdrop"
-          aria-label="关闭筛选器"
+          aria-label={messages.closeFilters}
           onClick={() => setIsFilterDrawerOpen(false)}
         />
       ) : null}
@@ -264,14 +270,14 @@ export default function DashboardAuditLogsPage() {
       <AdminPanel className={`stack admin-filter-panel settings-filter-panel${isFilterDrawerOpen ? ' is-open' : ''}`}>
         <div className="settings-filter-panel-head">
           <div className="admin-section-head">
-            <h3>筛选器</h3>
-            <p>导出与翻页都会复用当前条件，最多导出 {EXPORT_ROW_LIMIT} 行。</p>
+            <h3>{messages.filterTitle}</h3>
+            <p>{messages.filterDesc(EXPORT_ROW_LIMIT)}</p>
           </div>
           <button
             data-ui="button"
             type="button"
             className="dashboard-bottom-dock-close settings-filter-panel-close"
-            aria-label="关闭筛选器"
+            aria-label={messages.closeFilters}
             onClick={() => setIsFilterDrawerOpen(false)}
           >
             ×
@@ -281,7 +287,7 @@ export default function DashboardAuditLogsPage() {
         <form className="stack" onSubmit={handleFilterSubmit}>
           <div className="form-grid filter-grid settings-filter-grid">
             <div className="stack">
-              <label htmlFor="audit-tenant">目标用户</label>
+              <label htmlFor="audit-tenant">{messages.targetTenant}</label>
               <select
                 id="audit-tenant"
                 name="tenantId"
@@ -291,7 +297,7 @@ export default function DashboardAuditLogsPage() {
                   setFiltersDraft((previous) => ({ ...previous, tenantId: event.target.value }))
                 }
               >
-                <option value="">全部用户</option>
+                <option value="">{messages.allUsers}</option>
                 {tenants.map((tenant) => (
                   <option key={tenant.id} value={tenant.id}>
                     {tenant.name} ({tenant.slug})
@@ -301,7 +307,7 @@ export default function DashboardAuditLogsPage() {
             </div>
 
             <div className="stack">
-              <label htmlFor="audit-user">操作者</label>
+              <label htmlFor="audit-user">{messages.actor}</label>
               <select
                 id="audit-user"
                 name="actorUserId"
@@ -311,7 +317,7 @@ export default function DashboardAuditLogsPage() {
                   setFiltersDraft((previous) => ({ ...previous, actorUserId: event.target.value }))
                 }
               >
-                <option value="">全部用户</option>
+                <option value="">{messages.allUsers}</option>
                 {users.map((user) => (
                   <option key={user.id} value={user.id}>
                     {user.email}
@@ -321,7 +327,7 @@ export default function DashboardAuditLogsPage() {
             </div>
 
             <div className="stack">
-              <label htmlFor="audit-action">动作</label>
+              <label htmlFor="audit-action">{messages.action}</label>
               <select
                 id="audit-action"
                 name="action"
@@ -334,17 +340,17 @@ export default function DashboardAuditLogsPage() {
                   }))
                 }
               >
-                <option value="">全部动作</option>
+                <option value="">{messages.allActions}</option>
                 {actionOptions.map((action) => (
                   <option key={action} value={action}>
-                    {formatAuditActionLabel(action)}（{action}）
+                    {formatAuditActionLabel(action, locale)} ({action})
                   </option>
                 ))}
               </select>
             </div>
 
             <div className="stack">
-              <label htmlFor="audit-from">开始时间</label>
+              <label htmlFor="audit-from">{messages.from}</label>
               <input
                 id="audit-from"
                 name="from"
@@ -358,7 +364,7 @@ export default function DashboardAuditLogsPage() {
             </div>
 
             <div className="stack">
-              <label htmlFor="audit-to">结束时间</label>
+              <label htmlFor="audit-to">{messages.to}</label>
               <input
                 id="audit-to"
                 name="to"
@@ -373,9 +379,9 @@ export default function DashboardAuditLogsPage() {
           </div>
 
           <div className="inline-actions settings-filter-actions">
-            <button type="submit">应用筛选</button>
+            <button type="submit">{messages.applyFilters}</button>
             <button className="secondary" type="button" onClick={handleResetFilters}>
-              重置
+              {messages.resetFilters}
             </button>
           </div>
         </form>
@@ -384,49 +390,49 @@ export default function DashboardAuditLogsPage() {
       <AdminPanel className="stack settings-log-panel">
         <div className="admin-section-head settings-log-panel-head">
           <div className="stack row-tight">
-            <h3>操作记录</h3>
+            <h3>{messages.mobileTitle}</h3>
             <p>
-              总数：{state.total} · 第 {state.page}/{state.totalPages} 页
+              {messages.logsSummary(state.total, state.page, state.totalPages)}
             </p>
           </div>
-          {appliedFilterCount > 0 ? <AdminBadge tone="info">已筛选 {appliedFilterCount} 项</AdminBadge> : null}
+          {appliedFilterCount > 0 ? <AdminBadge tone="info">{messages.filtersAppliedBadge(appliedFilterCount)}</AdminBadge> : null}
         </div>
 
-        {state.loading ? <p className="muted" aria-live="polite">加载审计日志中…</p> : null}
-        {!state.loading && state.logs.length === 0 ? <p className="muted">当前筛选条件下暂无日志。</p> : null}
+        {state.loading ? <p className="muted" aria-live="polite">{messages.loading}</p> : null}
+        {!state.loading && state.logs.length === 0 ? <p className="muted">{messages.empty}</p> : null}
 
         {state.logs.length > 0 ? (
           <>
             <div className="settings-audit-mobile-list">
               {state.logs.map((log) => {
-                const metadataText = stringifyMetadata(log.metadata);
+                const metadataText = stringifyMetadata(log.metadata, messages);
 
                 return (
                   <article key={log.id} className="settings-audit-card">
                     <div className="stack row-tight settings-audit-card-main">
                       <div className="inline-actions settings-audit-card-badges">
-                        <AdminBadge tone={toAuditTone(log.action)}>{formatAuditActionLabel(log.action)}</AdminBadge>
-                        <span className="settings-audit-card-time">{formatCompactDateTime(log.createdAt)}</span>
+                        <AdminBadge tone={toAuditTone(log.action)}>{formatAuditActionLabel(log.action, locale)}</AdminBadge>
+                        <span className="settings-audit-card-time">{formatCompactDateTime(log.createdAt, locale)}</span>
                       </div>
                       <span className="mono settings-audit-card-action">{log.action}</span>
                     </div>
 
                     <div className="settings-audit-card-grid">
                       <div className="settings-audit-card-field">
-                        <span className="settings-audit-card-label">操作者</span>
-                        <strong className="settings-audit-card-value">{log.actorUserEmail ?? '系统'}</strong>
+                        <span className="settings-audit-card-label">{messages.actorLabel}</span>
+                        <strong className="settings-audit-card-value">{log.actorUserEmail ?? messages.systemActor}</strong>
                         <span className="mono settings-audit-card-meta">{log.actorUserId}</span>
                       </div>
                       <div className="settings-audit-card-field">
-                        <span className="settings-audit-card-label">目标</span>
-                        <strong className="settings-audit-card-value">{log.targetTenantSlug ?? '平台级日志'}</strong>
-                        <span className="mono settings-audit-card-meta">{log.targetTenantId ?? '无目标用户'}</span>
+                        <span className="settings-audit-card-label">{messages.targetLabel}</span>
+                        <strong className="settings-audit-card-value">{log.targetTenantSlug ?? messages.platformLog}</strong>
+                        <span className="mono settings-audit-card-meta">{log.targetTenantId ?? messages.noTargetTenant}</span>
                       </div>
                     </div>
 
                     {metadataText !== '-' ? (
                       <details className="settings-audit-metadata">
-                        <summary>查看元数据</summary>
+                        <summary>{messages.metadataSummary}</summary>
                         <pre>{metadataText}</pre>
                       </details>
                     ) : null}
@@ -438,11 +444,11 @@ export default function DashboardAuditLogsPage() {
             <AdminTableFrame className="settings-audit-table-frame">
               <thead>
                 <tr>
-                  <th>动作</th>
-                  <th>操作者</th>
-                  <th>目标用户</th>
-                  <th>元数据</th>
-                  <th>时间</th>
+                  <th>{messages.thAction}</th>
+                  <th>{messages.thActor}</th>
+                  <th>{messages.thTargetTenant}</th>
+                  <th>{messages.thMetadata}</th>
+                  <th>{messages.thTime}</th>
                 </tr>
               </thead>
               <tbody>
@@ -450,7 +456,7 @@ export default function DashboardAuditLogsPage() {
                   <tr key={log.id}>
                     <td>
                       <div className="stack row-tight">
-                        <span>{formatAuditActionLabel(log.action)}</span>
+                        <span>{formatAuditActionLabel(log.action, locale)}</span>
                         <span className="mono">{log.action}</span>
                       </div>
                     </td>
@@ -466,8 +472,8 @@ export default function DashboardAuditLogsPage() {
                         <span className="mono">{log.targetTenantId ?? '-'}</span>
                       </div>
                     </td>
-                    <td className="mono metadata-cell">{stringifyMetadata(log.metadata)}</td>
-                    <td>{formatDateTime(log.createdAt)}</td>
+                    <td className="mono metadata-cell">{stringifyMetadata(log.metadata, messages)}</td>
+                    <td>{formatDateTime(log.createdAt, locale)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -477,7 +483,7 @@ export default function DashboardAuditLogsPage() {
 
         <div className="inline-actions settings-pagination-bar">
           <p className="settings-pagination-summary">
-            第 {state.page}/{Math.max(state.totalPages, 1)} 页
+            {messages.pagination(state.page, Math.max(state.totalPages, 1))}
           </p>
           <div className="inline-actions settings-pagination-actions">
             <button
@@ -486,7 +492,7 @@ export default function DashboardAuditLogsPage() {
               disabled={!canGoPrevious}
               onClick={() => setState((previous) => ({ ...previous, page: Math.max(1, previous.page - 1) }))}
             >
-              上一页
+              {messages.previousPage}
             </button>
             <button
               className="secondary"
@@ -496,7 +502,7 @@ export default function DashboardAuditLogsPage() {
                 setState((previous) => ({ ...previous, page: Math.min(previous.totalPages, previous.page + 1) }))
               }
             >
-              下一页
+              {messages.nextPage}
             </button>
           </div>
         </div>
@@ -508,7 +514,7 @@ export default function DashboardAuditLogsPage() {
           type="button"
           className="settings-filter-fab"
           aria-expanded={false}
-          aria-label={appliedFilterCount > 0 ? `打开筛选器，当前已应用 ${appliedFilterCount} 项筛选` : '打开筛选器'}
+          aria-label={appliedFilterCount > 0 ? messages.openFiltersWithCount(appliedFilterCount) : messages.openFilters}
           onClick={() => setIsFilterDrawerOpen(true)}
         >
           <span className="settings-filter-fab-icon" aria-hidden="true">
@@ -516,7 +522,7 @@ export default function DashboardAuditLogsPage() {
               <path d="M4 5.5h12M6.5 10h7M8.5 14.5h3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
             </svg>
           </span>
-          <span className="settings-filter-fab-label">筛选</span>
+          <span className="settings-filter-fab-label">{messages.filterFabLabel}</span>
           {appliedFilterCount > 0 ? <span className="settings-filter-fab-badge">{appliedFilterCount}</span> : null}
         </button>
       ) : null}
@@ -577,6 +583,8 @@ function buildAppliedFilterChips(
   context: {
     tenants: AdminTenant[];
     users: AdminUser[];
+    locale: 'zh' | 'en';
+    messages: (typeof SETTINGS_AUDIT_MESSAGES)[keyof typeof SETTINGS_AUDIT_MESSAGES];
   }
 ) {
   const chips: string[] = [];
@@ -584,25 +592,25 @@ function buildAppliedFilterChips(
   const actor = context.users.find((item) => item.id === filters.actorUserId);
 
   if (tenant) {
-    chips.push(`目标：${tenant.name}`);
+    chips.push(context.messages.chipTarget(tenant.name));
   }
   if (actor) {
-    chips.push(`操作者：${actor.email}`);
+    chips.push(context.messages.chipActor(actor.email));
   }
   if (filters.action) {
-    chips.push(`动作：${formatAuditActionLabel(filters.action)}`);
+    chips.push(context.messages.chipAction(formatAuditActionLabel(filters.action, context.locale)));
   }
   if (filters.from) {
-    chips.push(`开始：${formatCompactDateTime(filters.from)}`);
+    chips.push(context.messages.chipFrom(formatCompactDateTime(filters.from, context.locale)));
   }
   if (filters.to) {
-    chips.push(`结束：${formatCompactDateTime(filters.to)}`);
+    chips.push(context.messages.chipTo(formatCompactDateTime(filters.to, context.locale)));
   }
 
   return chips;
 }
 
-function stringifyMetadata(metadata: unknown) {
+function stringifyMetadata(metadata: unknown, messages: (typeof SETTINGS_AUDIT_MESSAGES)[keyof typeof SETTINGS_AUDIT_MESSAGES]) {
   if (metadata === null || typeof metadata === 'undefined') {
     return '-';
   }
@@ -610,7 +618,7 @@ function stringifyMetadata(metadata: unknown) {
   try {
     return JSON.stringify(metadata, null, 2);
   } catch {
-    return '[无法序列化]';
+    return messages.metadataUnavailable;
   }
 }
 
@@ -627,7 +635,7 @@ function toIso(value: string) {
   return parsed.toISOString();
 }
 
-function formatCompactDateTime(value: string) {
+function formatCompactDateTime(value: string, locale: 'zh' | 'en') {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
     return value;
@@ -636,7 +644,7 @@ function formatCompactDateTime(value: string) {
   const now = new Date();
   const showYear = parsed.getFullYear() !== now.getFullYear();
 
-  return new Intl.DateTimeFormat('zh-CN', {
+  return new Intl.DateTimeFormat(locale === 'zh' ? 'zh-CN' : 'en-US', {
     ...(showYear ? { year: '2-digit' } : {}),
     month: 'numeric',
     day: 'numeric',
