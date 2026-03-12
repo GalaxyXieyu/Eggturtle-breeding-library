@@ -85,3 +85,6 @@ docs/evidence/
 # Local scratch
 .backup/
 apps/api/tmp/
+
+# Local certificates/keys (do not commit)
+1107415155_20260312_cert/

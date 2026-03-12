@@ -1,0 +1,4 @@
+interface:
+  display_name: "Eggturtle Ops Hub"
+  short_description: "Route EggTurtle dev, ops, and biz-ops work."
+  default_prompt: "Classify the EggTurtle request into development, operations, or business operations, then follow the matching minimal playbook, reuse existing focused skills, and avoid unnecessary skill sprawl."

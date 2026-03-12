@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useParams, usePathname, useSearchParams } from 'next/navigation';
 import {
   SUBSCRIPTION_PLAN_PRODUCT_LIMITS,
@@ -19,7 +19,7 @@ import {
   type SubscriptionOrder,
   type TenantSubscription,
 } from '@eggturtle/shared';
-import { CheckCircle2, Clock3, ShieldCheck, Sparkles, Wallet, X } from 'lucide-react';
+import { Sparkles, X } from 'lucide-react';
 
 import ReferralPromoCard from '@/components/referral-promo-card';
 import { Badge } from '@/components/ui/badge';
@@ -103,6 +103,8 @@ export default function SubscriptionPage() {
   const [lastOrderNo, setLastOrderNo] = useState<string | null>(null);
 
   const oauthResumeHandledRef = useRef(false);
+  const planDetailTitleId = useId();
+  const purchaseDialogTitleId = useId();
   const [isWechat, setIsWechat] = useState<boolean | null>(null);
   const currentPlan = normalizePlan(subscription?.plan);
   const currentMeta = PLAN_META[currentPlan];
@@ -115,6 +117,12 @@ export default function SubscriptionPage() {
     planDetail === 'BASIC' || planDetail === 'PRO' ? planDetail : null;
   const planDetailMonthlyPrice = payableDetailPlan ? SUBSCRIPTION_PRICE_BOOK[payableDetailPlan][30] : 0;
   const planDetailIsCurrent = planDetail === currentPlan;
+  const wechatEnvironment =
+    isWechat === true
+      ? { badgeVariant: 'success' as const, badgeLabel: '微信内可支付' }
+      : isWechat === false
+        ? { badgeVariant: 'warning' as const, badgeLabel: '请在微信内打开' }
+        : { badgeVariant: 'default' as const, badgeLabel: '检测支付环境中' };
   const returnPath = useMemo(() => {
     const query = searchParams.toString();
     if (pathname) {
@@ -368,7 +376,7 @@ export default function SubscriptionPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 md:px-6">
-      <section className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+      <section className="grid gap-4">
         <Card className="rounded-3xl border-neutral-200 bg-white/95 shadow-sm">
           <CardHeader className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
@@ -376,7 +384,7 @@ export default function SubscriptionPage() {
                 {formatStatusLabel(subscription?.status)}
               </Badge>
               <Badge variant="accent">当前套餐</Badge>
-              {isWechat === true ? <Badge variant="success">微信内可支付</Badge> : <Badge variant="warning">请在微信内打开</Badge>}
+              <Badge variant={wechatEnvironment.badgeVariant}>{wechatEnvironment.badgeLabel}</Badge>
             </div>
             <div>
               <CardTitle className="text-2xl font-black text-neutral-900">{currentMeta.name}</CardTitle>
@@ -416,64 +424,11 @@ export default function SubscriptionPage() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl border-neutral-200 bg-white/95 shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-xl font-black text-neutral-900">
-              <Wallet className="h-5 w-5 text-[#B8860B]" />
-              支付说明
-            </CardTitle>
-            <CardDescription>
-              一期仅支持微信内 JSAPI 支付；非微信环境保留激活码升级入口。
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-neutral-700">
-            <InfoRow icon={<ShieldCheck className="h-4 w-4" />} text="支付成功后立即或延后履约，具体取决于当前套餐与目标套餐。" />
-            <InfoRow icon={<Clock3 className="h-4 w-4" />} text="订单 30 分钟未支付会自动过期；支付成功后会自动轮询确认状态。" />
-            <InfoRow icon={<CheckCircle2 className="h-4 w-4" />} text="激活码链路继续保留，可与微信支付并行使用。" />
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800">
-              {isWechat === true
-                ? '当前检测到微信环境，可以直接发起微信支付。'
-                : '当前不是微信环境，微信支付按钮会禁用。请复制链接到微信内打开，或使用激活码升级。'}
-            </div>
-          </CardContent>
-        </Card>
-      </section>
-
-      <section className="rounded-3xl border border-neutral-200/80 bg-[linear-gradient(130deg,rgba(255,248,217,0.9),rgba(255,255,255,0.96))] p-4 shadow-sm sm:p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="space-y-1">
-            <p className="inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700">
-              <Sparkles size={12} />
-              推荐续费
-            </p>
-            <p className="text-lg font-black text-neutral-900">{recommendedMeta.name}</p>
-            <p className="text-sm text-neutral-600">{recommendationCopy}</p>
-          </div>
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
-            <p className="text-sm font-semibold text-neutral-900">
-              {formatCurrency(recommendationMonthlyPrice)} / 30 天
-            </p>
-            <Button
-              type="button"
-              variant="primary"
-              className="w-full sm:w-auto"
-              disabled={paying || isWechat !== true}
-              onClick={() => {
-                setPurchasePlan(recommendedPlan);
-                setPurchaseDuration(30);
-                setError(null);
-                setMessage(null);
-              }}
-            >
-              {isWechat !== true ? '请在微信内打开' : buildPurchaseButtonLabel(currentPlan, recommendedPlan)}
-            </Button>
-          </div>
-        </div>
       </section>
 
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
+          <div className="space-y-1">
             <p className="text-lg font-bold text-neutral-900">可升级套餐</p>
             <p className="text-sm text-neutral-600 sm:hidden">左右滑动查看不同套餐</p>
           </div>
@@ -564,7 +519,7 @@ export default function SubscriptionPage() {
                           setMessage(null);
                         }}
                       >
-                        {isWechat !== true ? '请在微信内打开' : buildPurchaseButtonLabel(currentPlan, plan)}
+                        {buildWechatActionLabel(isWechat, buildPurchaseButtonLabel(currentPlan, plan))}
                       </Button>
                     ) : (
                       <Button type="button" variant="secondary" className="w-full" disabled>
@@ -576,6 +531,38 @@ export default function SubscriptionPage() {
               </Card>
             );
           })}
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-neutral-200/80 bg-[linear-gradient(130deg,rgba(255,248,217,0.9),rgba(255,255,255,0.96))] p-4 shadow-sm sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="space-y-1">
+            <p className="inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700">
+              <Sparkles size={12} />
+              推荐续费
+            </p>
+            <p className="text-lg font-black text-neutral-900">{recommendedMeta.name}</p>
+            <p className="text-sm text-neutral-600">{recommendationCopy}</p>
+          </div>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
+            <p className="text-sm font-semibold text-neutral-900">
+              {formatCurrency(recommendationMonthlyPrice)} / 30 天
+            </p>
+            <Button
+              type="button"
+              variant="primary"
+              className="w-full sm:w-auto"
+              disabled={paying || isWechat !== true}
+              onClick={() => {
+                setPurchasePlan(recommendedPlan);
+                setPurchaseDuration(30);
+                setError(null);
+                setMessage(null);
+              }}
+            >
+              {buildWechatActionLabel(isWechat, buildPurchaseButtonLabel(currentPlan, recommendedPlan))}
+            </Button>
+          </div>
         </div>
       </section>
 
@@ -610,6 +597,7 @@ export default function SubscriptionPage() {
           className="fixed inset-0 z-[55] flex items-end justify-center bg-black/50 p-0 backdrop-blur-sm sm:items-center sm:p-6"
           role="dialog"
           aria-modal="true"
+          aria-labelledby={planDetailTitleId}
           onClick={() => setPlanDetail(null)}
         >
           <section
@@ -619,7 +607,7 @@ export default function SubscriptionPage() {
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neutral-500">套餐详情</p>
-                <p className="text-xl font-black text-neutral-900">{planDetailMeta?.name}</p>
+                <p id={planDetailTitleId} className="text-xl font-black text-neutral-900">{planDetailMeta?.name}</p>
                 <p className="text-sm text-neutral-600">{planDetailMeta?.summary}</p>
                 <div className="flex flex-wrap gap-2">
                   {planDetailIsCurrent ? <Badge variant="success">当前套餐</Badge> : null}
@@ -676,7 +664,7 @@ export default function SubscriptionPage() {
               </div>
             ) : null}
 
-            {payableDetailPlan && isWechat !== true ? (
+            {payableDetailPlan && isWechat === false ? (
               <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                 当前不是微信浏览器，无法调起 JSAPI 支付。请在微信内打开后再继续。
               </div>
@@ -702,7 +690,7 @@ export default function SubscriptionPage() {
                     setMessage(null);
                   }}
                 >
-                  {isWechat !== true ? '请在微信内打开' : buildPurchaseButtonLabel(currentPlan, payableDetailPlan)}
+                  {buildWechatActionLabel(isWechat, buildPurchaseButtonLabel(currentPlan, payableDetailPlan))}
                 </Button>
               ) : null}
             </div>
@@ -713,6 +701,9 @@ export default function SubscriptionPage() {
       {purchasePlan ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={purchaseDialogTitleId}
           onClick={() => {
             if (!paying) {
               setPurchasePlan(null);
@@ -725,7 +716,7 @@ export default function SubscriptionPage() {
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xl font-black text-neutral-900">微信支付购买 {formatPlanLabel(purchasePlan)}</p>
+                <p id={purchaseDialogTitleId} className="text-xl font-black text-neutral-900">微信支付购买 {formatPlanLabel(purchasePlan)}</p>
                 <p className="mt-1 text-sm text-neutral-600">{buildFulfillmentHint(currentPlan, purchasePlan, subscription)}</p>
               </div>
               <Button
@@ -762,7 +753,7 @@ export default function SubscriptionPage() {
               <p className="mt-1 text-sm text-neutral-700">{purchaseDuration} 天 · {formatPlanLabel(purchasePlan)} · 微信 JSAPI</p>
             </div>
 
-            {isWechat !== true ? (
+            {isWechat === false ? (
               <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                 当前不是微信浏览器，无法调起 JSAPI 支付。请在微信内打开后再继续。
               </div>
@@ -811,15 +802,6 @@ function MetricCard({ label, value }: { label: string; value: string }) {
     <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">{label}</p>
       <p className="mt-2 text-sm font-semibold text-neutral-900">{value}</p>
-    </div>
-  );
-}
-
-function InfoRow({ icon, text }: { icon: ReactNode; text: string }) {
-  return (
-    <div className="flex items-start gap-2 rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
-      <span className="mt-0.5 text-neutral-700">{icon}</span>
-      <span>{text}</span>
     </div>
   );
 }
@@ -902,6 +884,18 @@ function buildPurchaseButtonLabel(currentPlan: PlanTier, targetPlan: PayableTena
   }
 
   return `升级到${formatPlanLabel(targetPlan)}`;
+}
+
+function buildWechatActionLabel(isWechat: boolean | null, enabledLabel: string) {
+  if (isWechat === true) {
+    return enabledLabel;
+  }
+
+  if (isWechat === false) {
+    return '请在微信内打开';
+  }
+
+  return '检测支付环境中';
 }
 
 function buildFulfillmentHint(
