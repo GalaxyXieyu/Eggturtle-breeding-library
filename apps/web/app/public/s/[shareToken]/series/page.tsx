@@ -1,24 +1,31 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
+import {
+  PublicCapabilityProofSection,
+  PublicCapabilityShowcaseSection,
+  PublicConversionSection,
+  PublicQuickValueBar,
+} from '@/app/public/_public-product/components';
 import { mapTenantFeedToLegacy } from '@/app/public/_public-product/public-share-adapter';
+import { resolvePublicSharePresentation } from '@/app/public/_public-product/presentation';
 import PublicBottomDock from '@/app/public/_shared/public-bottom-dock';
 import PublicFloatingActions from '@/app/public/_shared/public-floating-actions';
+import { withPublicImageMaxEdge } from '@/app/public/_shared/public-image';
 import PublicShareErrorPanel from '@/app/public/_shared/public-share-error-panel';
 import {
+  appendPublicShareQuery,
   buildPublicShareRouteQuery,
   fetchPublicShareFromSearchParams,
   firstSearchParamValue,
   refreshPublicShareEntryLocation,
   shouldAutoRefreshShareSignature,
-  type PublicSearchParams
+  type PublicSearchParams,
 } from '@/app/public/_shared/public-share-api';
-import { withPublicImageMaxEdge } from '@/app/public/_shared/public-image';
-import SeriesCoverImage from './SeriesCoverImage';
 
 export default async function PublicShareSeriesPage({
   params,
-  searchParams
+  searchParams,
 }: {
   params: { shareToken: string };
   searchParams: PublicSearchParams;
@@ -44,7 +51,7 @@ export default async function PublicShareSeriesPage({
 
     return (
       <PublicShareErrorPanel
-        title="系列页暂不可用"
+        title="功能页暂不可用"
         message={shareResult.message}
         shareToken={params.shareToken}
         canAutoRefresh={false}
@@ -56,7 +63,7 @@ export default async function PublicShareSeriesPage({
     return (
       <main className="share-shell">
         <section className="card panel stack">
-          <h1>系列页暂不可用</h1>
+          <h1>功能页暂不可用</h1>
           <p className="notice notice-warning">该链接不是用户图鉴分享链接。</p>
         </section>
       </main>
@@ -65,15 +72,8 @@ export default async function PublicShareSeriesPage({
 
   const legacyData = mapTenantFeedToLegacy(shareResult.data);
   const seriesCounts = new Map<string, number>();
-  const seriesCoverMap = new Map<string, string>();
   for (const breeder of legacyData.breeders) {
     seriesCounts.set(breeder.seriesId, (seriesCounts.get(breeder.seriesId) ?? 0) + 1);
-    if (!seriesCoverMap.has(breeder.seriesId)) {
-      const firstImage = breeder.images[0]?.url;
-      if (firstImage) {
-        seriesCoverMap.set(breeder.seriesId, firstImage);
-      }
-    }
   }
 
   const shareRouteQuery = buildPublicShareRouteQuery(shareResult.shareId, shareResult.query);
@@ -83,82 +83,90 @@ export default async function PublicShareSeriesPage({
   }
 
   const shareQuery = shareRouteQuery.toString();
-  const petsAllHref = `/public/s/${params.shareToken}?${buildPetsQuery(shareRouteQuery).toString()}`;
-  const presentation = shareResult.data.presentation;
+  const petsAllHref = appendPublicShareQuery(`/public/s/${params.shareToken}`, shareQuery);
+  const onboardingHref = appendPublicShareQuery(`/public/s/${params.shareToken}/me#free-plan`, shareQuery);
+  const presentation = resolvePublicSharePresentation(shareResult.data.presentation);
   const contactQrImageUrl = presentation.contact.showWechatBlock ? presentation.contact.wechatQrImageUrl : null;
   const contactWechatId = presentation.contact.showWechatBlock ? presentation.contact.wechatId : null;
 
   return (
-    <div className="public-bg-page public-text-primary min-h-screen">
-      <main className="mx-auto w-full max-w-4xl px-4 pb-[calc(env(safe-area-inset-bottom)+94px)] pt-[calc(env(safe-area-inset-top)+14px)] sm:px-5">
-        <header className="public-bg-card public-border-default rounded-3xl border p-5 shadow-[0_14px_32px_rgba(0,0,0,0.08)] backdrop-blur">
-          <p className="public-text-subtle text-xs uppercase tracking-[0.28em]">Series</p>
-          <h1 className="public-text-primary mt-2 text-2xl font-semibold">按系列浏览宠物</h1>
-          <p className="public-text-muted mt-2 text-sm leading-relaxed">
-            共 {legacyData.series.length} 个系列，点击系列即可回到宠物页并带上筛选条件。
+    <div className="min-h-screen bg-gradient-to-br from-stone-100 via-white to-amber-50/40 text-black dark:from-neutral-950 dark:via-neutral-950 dark:to-neutral-900/40 dark:text-neutral-100">
+      <main className="mx-auto w-full max-w-5xl px-4 pb-[calc(env(safe-area-inset-bottom)+94px)] pt-[calc(env(safe-area-inset-top)+14px)] sm:px-5">
+        <header className="rounded-3xl border border-black/10 bg-white/92 p-5 shadow-[0_16px_36px_rgba(0,0,0,0.08)] backdrop-blur dark:border-white/10 dark:bg-neutral-900/75 sm:p-6">
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-neutral-500 dark:text-neutral-400">
+            Capabilities
           </p>
-          <Link
-            href={petsAllHref}
-            className="public-btn-secondary mt-3"
-          >
-            查看全部宠物
-          </Link>
+          <h1 className="mt-2 text-2xl font-semibold text-neutral-900 dark:text-neutral-100 sm:text-[30px]">
+            公开图鉴的功能亮点
+          </h1>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-neutral-600 dark:text-neutral-300 sm:text-[15px]">
+            “系列”已降为筛选项与兼容入口保留；这一页现在更适合用来展示这套公开图鉴真正能解决什么问题。
+          </p>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link
+              href={petsAllHref}
+              className="inline-flex min-h-10 items-center justify-center rounded-full border border-neutral-900 bg-neutral-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-neutral-800 dark:border-[#FFD400] dark:bg-[#FFD400] dark:text-neutral-900 dark:hover:bg-[#f1ca00]"
+            >
+              返回宠物页
+            </Link>
+            <Link
+              href={onboardingHref}
+              className="inline-flex min-h-10 items-center justify-center rounded-full border border-neutral-900 bg-white px-4 py-2 text-sm font-semibold text-neutral-900 transition hover:bg-neutral-100 dark:border-white/20 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800"
+            >
+              查看“我的”套餐
+            </Link>
+          </div>
         </header>
 
-        {legacyData.series.length === 0 ? (
-          <section className="public-bg-card public-border-default public-text-muted mt-4 rounded-3xl border p-5 text-sm shadow-[0_10px_24px_rgba(0,0,0,0.06)]">
-            当前分享还没有可浏览的系列。
-          </section>
-        ) : (
-          <section className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {legacyData.series.map((series) => {
-              const petsQuery = buildPetsQuery(shareRouteQuery, series.id).toString();
-              const petsHref = `/public/s/${params.shareToken}?${petsQuery}`;
-              const isActive = currentSeriesId === series.id;
-              const coverUrl = seriesCoverMap.get(series.id);
-              return (
-                <article
-                  key={series.id}
-                  className={`public-border-subtle group overflow-hidden rounded-2xl border bg-gradient-to-b from-white via-white to-neutral-50 shadow-[0_12px_24px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(15,23,42,0.12)] dark:from-neutral-900/75 dark:via-neutral-900/75 dark:to-neutral-900/60 ${
-                    isActive ? 'ring-2 ring-[#FFD400]/65' : ''
-                  }`}
-                >
-                  <div className="relative h-40 w-full">
-                    {coverUrl ? (
-                      <SeriesCoverImage
-                        coverUrl={withPublicImageMaxEdge(coverUrl, 320) ?? coverUrl}
-                        seriesName={series.name}
-                      />
-                    ) : (
-                      <div className="h-full w-full bg-gradient-to-br from-neutral-100 via-neutral-50 to-neutral-200" />
-                    )}
-                    <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/45 to-transparent" />
-                    <div className="absolute bottom-3 left-4 rounded-full bg-black/55 px-2.5 py-1 text-xs text-white">系列封面</div>
-                  </div>
+        <PublicQuickValueBar className="mt-4" />
+        <PublicCapabilityShowcaseSection className="mt-4" />
+        <PublicCapabilityProofSection className="mt-4" />
 
-                  <div className="bg-white/95 p-4 dark:bg-neutral-900/75">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="public-text-primary truncate text-[15px] font-semibold tracking-tight">{series.name}</p>
-                        <p className="public-text-muted truncate text-sm">{series.code || '系列'}</p>
-                      </div>
-                      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-800/50 dark:bg-emerald-950/50 dark:text-emerald-300">在库 {seriesCounts.get(series.id) ?? 0}</span>
-                    </div>
-                    <p className="public-text-secondary mt-2 line-clamp-2 min-h-10 text-sm leading-relaxed">{series.description || '暂无描述'}</p>
-                    <div className="mt-3 flex items-center justify-end">
-                      <Link
-                        href={petsHref}
-                        className="inline-flex rounded-full bg-neutral-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-neutral-800 dark:bg-[#FFD400] dark:text-neutral-900 dark:hover:bg-[#f1ca00]"
-                      >
-                        查看该系列宠物
-                      </Link>
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
+        {legacyData.series.length > 0 ? (
+          <section className="mt-4 rounded-3xl border border-black/10 bg-white/92 p-5 shadow-[0_12px_28px_rgba(0,0,0,0.06)] dark:border-white/10 dark:bg-neutral-900/75 sm:p-6">
+            <div className="max-w-3xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.26em] text-neutral-500 dark:text-neutral-400">
+                Series Compatibility
+              </p>
+              <h2 className="mt-2 text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
+                系列兼容入口仍保留
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-neutral-600 dark:text-neutral-300 sm:text-[15px]">
+                如果你是从旧的 `/series` 链接进入，依然可以从这里按系列回到宠物页；只是“系列”不再作为一级主模块展示。
+              </p>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              {legacyData.series.map((series) => {
+                const seriesHref = `/public/s/${params.shareToken}?${buildPetsQuery(shareRouteQuery, series.id).toString()}`;
+                const isActive = currentSeriesId === series.id;
+                return (
+                  <Link
+                    key={series.id}
+                    href={seriesHref}
+                    className={`inline-flex items-center rounded-full border px-3 py-2 text-sm font-medium transition ${
+                      isActive
+                        ? 'border-[#FFD400]/70 bg-[#FFF8D9] text-neutral-900 dark:border-[#FFD400]/45 dark:bg-[#2b2410]/70 dark:text-[#ffe8a6]'
+                        : 'border-black/10 bg-white text-neutral-700 hover:bg-neutral-50 dark:border-white/10 dark:bg-neutral-950/45 dark:text-neutral-200 dark:hover:bg-neutral-900'
+                    }`}
+                  >
+                    {series.name}
+                    <span className="ml-2 text-xs opacity-70">{seriesCounts.get(series.id) ?? 0} 只</span>
+                  </Link>
+                );
+              })}
+            </div>
           </section>
-        )}
+        ) : null}
+
+        <PublicConversionSection
+          className="mt-4"
+          primaryHref={onboardingHref}
+          primaryLabel="去“我的”看套餐"
+          secondaryHref={petsAllHref}
+          secondaryLabel="继续浏览宠物"
+        />
       </main>
 
       <PublicFloatingActions

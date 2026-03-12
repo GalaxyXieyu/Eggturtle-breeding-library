@@ -1,6 +1,6 @@
+/* eslint-disable @next/next/no-img-element */
 'use client';
 
-import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PublicSharePresentation } from '@eggturtle/shared';
 import { Search, X } from 'lucide-react';
@@ -17,6 +17,10 @@ import {
   BreederCard,
   DemoHint,
   PublicEmptyState,
+  PublicCapabilityProofSection,
+  PublicCapabilityShowcaseSection,
+  PublicConversionSection,
+  PublicQuickValueBar,
   SeriesIntroCard,
   ShareContactCard,
 } from '@/app/public/_public-product/components';
@@ -90,6 +94,8 @@ function parsePublicFeedPersistedState(raw: string | null): PublicFeedPersistedS
 function rankStatus(status: NeedMatingStatus) {
   return status === 'warning' ? 1 : 0;
 }
+
+const ALL_SERIES_ID = '';
 
 export default function PublicFeedPage({
   demo,
@@ -373,6 +379,13 @@ export default function PublicFeedPage({
         <div className="flex flex-wrap items-center gap-2">
           <div className="text-xs font-medium text-neutral-600 dark:text-neutral-300">系列</div>
           <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setSeriesId(ALL_SERIES_ID)}
+              className={buildFilterPillClass(seriesId === ALL_SERIES_ID)}
+            >
+              全部
+            </button>
             {series.map((item) => (
               <button
                 key={item.id}
@@ -505,22 +518,7 @@ export default function PublicFeedPage({
 
         <DemoHint demo={demo} />
 
-        <section className="mb-3 rounded-2xl border border-[#FFD400]/55 bg-[#FFFBE7]/90 px-4 py-3 text-sm text-neutral-800 shadow-[0_4px_16px_rgba(255,212,0,0.18)] dark:border-[#FFD400]/35 dark:bg-[#2b2410]/70 dark:text-[#ffe8a6]">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-neutral-500 dark:text-[#ffda73]">
-              想做自己的图鉴？
-            </p>
-            <Link
-              href={onboardingHref}
-              className="rounded-full bg-neutral-900 px-3 py-1 text-xs font-semibold text-white transition hover:bg-neutral-800 dark:bg-[#FFD400] dark:text-neutral-900 dark:hover:bg-[#f1ca00]"
-            >
-              去“我的”看开通权益
-            </Link>
-          </div>
-          <p className="mt-2 text-sm leading-relaxed">
-            在“我的”页可以看到免费版（可管理 10 只）与核心功能，确认后再注册开通，不影响当前浏览。
-          </p>
-        </section>
+        <PublicQuickValueBar className="mb-3" />
 
         {showMobileFilterFab ? null : (
           <div className="z-20 mb-3 border border-black/5 bg-white/95 px-3 py-3 shadow-[0_4px_20px_rgba(0,0,0,0.06)] backdrop-blur-md supports-[backdrop-filter]:bg-white/90 sm:rounded-2xl dark:border-white/10 dark:bg-neutral-900/70 supports-[backdrop-filter]:dark:bg-neutral-900/60">
@@ -616,7 +614,14 @@ export default function PublicFeedPage({
           </>
         )}
 
+        <PublicCapabilityShowcaseSection className="mt-4" />
         <ShareContactCard presentation={resolvedPresentation} className="mt-4" />
+        <PublicCapabilityProofSection className="mt-4" />
+        <PublicConversionSection
+          className="mt-4"
+          primaryHref={onboardingHref}
+          primaryLabel="去“我的”看套餐"
+        />
       </div>
       <PublicFloatingActions
         permalink={permalink}
@@ -646,11 +651,15 @@ export default function PublicFeedPage({
 }
 
 function resolveSeriesId(initialSeriesId: string | undefined, series: Series[]): string {
-  if (initialSeriesId && series.some((item) => item.id === initialSeriesId)) {
+  if (!initialSeriesId) {
+    return ALL_SERIES_ID;
+  }
+
+  if (series.some((item) => item.id === initialSeriesId)) {
     return initialSeriesId;
   }
 
-  return series[0]?.id || '';
+  return ALL_SERIES_ID;
 }
 
 function hexToRgba(hex: string, alpha: number): string {

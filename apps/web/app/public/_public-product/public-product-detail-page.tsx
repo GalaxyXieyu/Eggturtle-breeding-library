@@ -93,7 +93,7 @@ export default function PublicProductDetailPage({
               href={onboardingHref}
               className="ml-2 font-semibold text-neutral-900 underline decoration-[#FFD400]/80 underline-offset-2 dark:text-[#FFD400]"
             >
-              去“我的”看免费开通权益
+              去“我的”看套餐方案
             </Link>
             <span className="mt-1 block text-xs text-neutral-600 dark:text-[#ffdf94]">
               免费版可先管理 10 只，后续升级不影响已发布内容。

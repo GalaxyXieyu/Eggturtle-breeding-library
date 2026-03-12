@@ -31,7 +31,7 @@ export default function PublicBottomDock({
   }> = [
     {
       key: 'series',
-      label: '系列',
+      label: '功能',
       href: appendPublicShareQuery(`${basePath}/series`, shareQuery),
       icon: Layers,
     },
