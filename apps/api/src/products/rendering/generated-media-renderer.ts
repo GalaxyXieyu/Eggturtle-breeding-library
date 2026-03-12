@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
@@ -287,51 +286,6 @@ async function buildTiledBackgroundLayer(
     top: 0,
     blend: 'multiply'
   };
-}
-
-function buildPseudoQrSvg(payload: string, size: number): string {
-  const modules = 33;
-  const seed = createHash('sha256').update(payload).digest();
-  const bits: number[] = [];
-  for (const byte of seed.values()) {
-    for (let index = 0; index < 8; index += 1) {
-      bits.push((byte >> index) & 1);
-    }
-  }
-
-  const finderOrigins = [
-    [0, 0],
-    [modules - 7, 0],
-    [0, modules - 7]
-  ];
-
-  const rects: string[] = [];
-
-  const drawFinder = (ox: number, oy: number) => {
-    rects.push(`<rect x="${ox}" y="${oy}" width="7" height="7" fill="#111"/>`);
-    rects.push(`<rect x="${ox + 1}" y="${oy + 1}" width="5" height="5" fill="#fff"/>`);
-    rects.push(`<rect x="${ox + 2}" y="${oy + 2}" width="3" height="3" fill="#111"/>`);
-  };
-  for (const [ox, oy] of finderOrigins) {
-    drawFinder(ox, oy);
-  }
-
-  let bitIndex = 0;
-  for (let y = 0; y < modules; y += 1) {
-    for (let x = 0; x < modules; x += 1) {
-      const inFinder = finderOrigins.some(([ox, oy]) => x >= ox && x <= ox + 6 && y >= oy && y <= oy + 6);
-      if (inFinder || x === 6 || y === 6) {
-        continue;
-      }
-
-      if (bits[bitIndex % bits.length] === 1) {
-        rects.push(`<rect x="${x}" y="${y}" width="1" height="1" fill="#111"/>`);
-      }
-      bitIndex += 1;
-    }
-  }
-
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${modules} ${modules}">${rects.join('')}</svg>`;
 }
 
 async function createQrBuffer(payload: string, size: number): Promise<Buffer> {

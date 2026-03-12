@@ -23,14 +23,13 @@ import {
   SubscriptionOrderPaymentChannel,
   SubscriptionOrderPaymentProvider,
   SubscriptionOrderStatus,
-  TenantSubscriptionPlan,
 } from '@prisma/client';
 
 import { PrismaService } from '../prisma.service';
 import { ReferralsService } from '../referrals/referrals.service';
 import { TenantSubscriptionsService } from '../subscriptions/tenant-subscriptions.service';
 
-import { WechatPaymentNotification, WechatPayService } from './wechat-pay.service';
+import { WechatPayService } from './wechat-pay.service';
 
 type CreateOrderInput = {
   tenantId: string;

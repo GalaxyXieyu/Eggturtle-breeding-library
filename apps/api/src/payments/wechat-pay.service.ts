@@ -312,7 +312,7 @@ export class WechatPayService {
     const message = `${method}\n${canonicalPath}\n${timestamp}\n${nonce}\n${bodyText}\n`;
     const signature = this.signMessage(message);
 
-    return `WECHATPAY2-SHA256-RSA2048 mchid=\"${this.getMchId()}\",nonce_str=\"${nonce}\",timestamp=\"${timestamp}\",serial_no=\"${this.getMerchantSerialNo()}\",signature=\"${signature}\"`;
+    return `WECHATPAY2-SHA256-RSA2048 mchid="${this.getMchId()}",nonce_str="${nonce}",timestamp="${timestamp}",serial_no="${this.getMerchantSerialNo()}",signature="${signature}"`;
   }
 
   private signMessage(message: string): string {
