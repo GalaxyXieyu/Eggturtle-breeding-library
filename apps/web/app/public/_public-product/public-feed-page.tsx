@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PublicSharePresentation } from '@eggturtle/shared';
-import { Search, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 
 import { buildFilterPillClass } from '@/components/filter-pill';
 import { FloatingActionButton, modalCloseButtonClass } from '@/components/ui/floating-actions';
@@ -545,7 +545,7 @@ export default function PublicFeedPage({
                     setHeroIndex((index) => (index - 1 + heroImages.length) % heroImages.length)
                   }
                 >
-                  ‹
+                  <ChevronLeft size={18} strokeWidth={2.3} />
                 </button>
                 <button
                   type="button"
@@ -553,16 +553,16 @@ export default function PublicFeedPage({
                   className="public-carousel-btn right-3"
                   onClick={() => setHeroIndex((index) => (index + 1) % heroImages.length)}
                 >
-                  ›
+                  <ChevronRight size={18} strokeWidth={2.3} />
                 </button>
-                <div className="absolute bottom-3 right-3 z-20 flex gap-1.5 rounded-full bg-black/35 px-2.5 py-1.5 backdrop-blur-sm">
+                <div className="public-carousel-dots">
                   {heroImages.map((_, index) => (
                     <button
                       key={`hero-dot-${index}`}
                       type="button"
                       aria-label={`切换到第 ${index + 1} 张`}
                       onClick={() => setHeroIndex(index)}
-                      className={`h-1.5 rounded-full transition-all ${index === heroIndex ? 'w-5 bg-white' : 'w-1.5 bg-white/55'}`}
+                      className={`public-carousel-dot ${index === heroIndex ? 'is-active' : ''}`}
                     />
                   ))}
                 </div>

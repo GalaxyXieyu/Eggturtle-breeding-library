@@ -1,6 +1,7 @@
 import { type ProductImage } from '@eggturtle/shared';
 import { Image as ImageIcon } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ImageCarousel } from '@/components/ui/image-carousel';
 
 type BreederImageGalleryProps = {
   images: ProductImage[];
@@ -23,21 +24,20 @@ export function BreederImageGallery({ images, activeImageId, onImageClick, resol
         </CardTitle>
         <CardDescription>点击缩略图即可切换大图，排序与主图请在产品图片管理页操作。</CardDescription>
       </CardHeader>
-      <CardContent className="grid grid-cols-[repeat(auto-fill,minmax(110px,1fr))] gap-3">
-        {images.map((image) => (
-          <button
-            key={image.id}
-            type="button"
-            onClick={() => onImageClick(image.id)}
-            className={`overflow-hidden rounded-2xl border transition-all ${
-              image.id === activeImageId
-                ? 'border-[#FFD400] shadow-[0_6px_20px_rgba(255,212,0,0.25)]'
-                : 'border-neutral-200 hover:border-neutral-300'
-            }`}
-          >
-            <img src={resolveImageUrl(image.url)} alt="种龟缩略图" className="h-24 w-full object-cover" />
-          </button>
-        ))}
+      <CardContent>
+        <ImageCarousel
+          items={images.map((image) => ({
+            id: image.id,
+            src: resolveImageUrl(image.url),
+            thumbnailSrc: resolveImageUrl(image.url),
+            alt: '种龟图片',
+          }))}
+          activeId={activeImageId}
+          onSelect={onImageClick}
+          heroClassName="max-w-xl"
+          imageClassName="aspect-[5/4] object-cover"
+          emptyState={<ImageIcon size={42} />}
+        />
       </CardContent>
     </Card>
   );

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PublicSharePresentation } from '@eggturtle/shared';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { PetCard } from '@/components/pet';
 import { FamilyNodeCard } from '@/components/family-tree/FamilyNodeCard';
@@ -410,7 +411,7 @@ export function BreederCarousel({
                   disabled={currentImageIndex === 0}
                   className="public-carousel-btn left-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  ‹
+                  <ChevronLeft size={18} strokeWidth={2.3} />
                 </button>
                 <button
                   type="button"
@@ -420,7 +421,7 @@ export function BreederCarousel({
                   disabled={currentImageIndex === breeder.images.length - 1}
                   className="public-carousel-btn right-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  ›
+                  <ChevronRight size={18} strokeWidth={2.3} />
                 </button>
               </>
             ) : null}
@@ -457,22 +458,24 @@ export function BreederCarousel({
 
       {effectiveSlide === (hasSeriesIntro ? 1 : 0) && breeder.images.length > 1 ? (
         <div className="public-border-default public-bg-card border-t px-4 py-3">
-          <div className="flex gap-2 overflow-x-auto pb-1">
+          <div className="public-carousel-thumb-strip">
             {breeder.images.map((img, index) => (
               <button
                 key={img.id || `${img.url}-${index}`}
                 type="button"
-                className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-md border-2 transition-all ${index === currentImageIndex ? 'border-neutral-900 dark:border-amber-300' : 'border-transparent'}`}
+                className={`public-carousel-thumb ${index === currentImageIndex ? 'is-active' : ''}`}
                 onClick={() => setCurrentImageIndex(index)}
+                aria-label={`查看第 ${index + 1} 张图片${index === currentImageIndex ? '（当前）' : ''}`}
               >
-                <img
-                  src={withPublicImageMaxEdge(img.url, 320) ?? img.url}
-                  alt={img.alt || `${breeder.code}-${index + 1}`}
-                  className="h-full w-full object-cover"
-                  loading="lazy"
-                  decoding="async"
-                  fetchPriority="low"
-                />
+                <div className="public-carousel-thumb-frame">
+                  <img
+                    src={withPublicImageMaxEdge(img.url, 320) ?? img.url}
+                    alt={img.alt || `${breeder.code}-${index + 1}`}
+                    loading="lazy"
+                    decoding="async"
+                    fetchPriority="low"
+                  />
+                </div>
               </button>
             ))}
           </div>
