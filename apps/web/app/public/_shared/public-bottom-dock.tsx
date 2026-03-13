@@ -55,7 +55,7 @@ export default function PublicBottomDock({
 
   return (
     <nav
-      className={cn('tenant-mobile-nav fixed inset-x-0 bottom-0 z-50 lg:hidden', className)}
+      className={cn('tenant-mobile-nav fixed inset-x-0 bottom-0 z-[80] lg:hidden', className)}
       aria-label="公开分享导航"
     >
       <div className="tenant-mobile-nav-shell" aria-hidden />

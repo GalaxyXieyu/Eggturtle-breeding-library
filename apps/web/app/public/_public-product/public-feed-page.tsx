@@ -414,7 +414,7 @@ export default function PublicFeedPage({
   }, [syncDockTabInUrl]);
 
   const overlayTransitionBaseClass =
-    'fixed inset-x-0 top-0 bottom-[calc(env(safe-area-inset-bottom)+74px)] overflow-y-auto transform-gpu transition-[transform,opacity,box-shadow] duration-[420ms] ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform motion-reduce:transform-none motion-reduce:transition-none lg:bottom-0';
+    'fixed inset-x-0 top-0 bottom-0 overflow-y-auto transform-gpu transition-[transform,opacity,box-shadow] duration-[420ms] ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform motion-reduce:transform-none motion-reduce:transition-none';
 
   const getOverlayStateClass = useCallback((tab: Extract<PublicDockTab, 'series' | 'me'>) => {
     if (activeDockTab === tab) {
