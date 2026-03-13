@@ -15,6 +15,14 @@ export const subscriptionOrderStatusSchema = z.enum([
 export const subscriptionOrderPaymentProviderSchema = z.enum(['WECHAT', 'ALIPAY']);
 export const subscriptionOrderPaymentChannelSchema = z.enum(['JSAPI', 'H5']);
 export const subscriptionOrderFulfillmentModeSchema = z.enum(['IMMEDIATE', 'DEFERRED']);
+export const subscriptionOrderBehaviorEventSchema = z.enum([
+  'DIALOG_OPEN',
+  'PAY_CLICK',
+  'PAY_CANCEL',
+  'PAY_SUCCESS',
+  'PAY_FAILURE',
+  'PAY_HESITATE',
+]);
 
 export const subscriptionOrderWechatJsapiParamsSchema = z.object({
   appId: z.string().min(1),
@@ -68,6 +76,22 @@ export const cancelSubscriptionOrderResponseSchema = z.object({
   order: subscriptionOrderSchema,
 });
 
+export const trackSubscriptionOrderBehaviorRequestSchema = z.object({
+  event: subscriptionOrderBehaviorEventSchema,
+  sourcePath: z.string().trim().min(1).max(255),
+  plan: payableTenantSubscriptionPlanSchema.optional(),
+  durationDays: subscriptionDurationDaysSchema.optional(),
+  orderNo: z.string().trim().min(1).max(80).optional(),
+  entryPoint: z.string().trim().min(1).max(64).optional(),
+  stayDurationMs: z.number().int().min(0).max(24 * 60 * 60 * 1000).optional(),
+  reason: z.string().trim().min(1).max(120).optional(),
+  result: z.string().trim().min(1).max(255).optional(),
+});
+
+export const trackSubscriptionOrderBehaviorResponseSchema = z.object({
+  recorded: z.literal(true),
+});
+
 export type SubscriptionOrderStatus = z.infer<typeof subscriptionOrderStatusSchema>;
 export type SubscriptionOrderPaymentProvider = z.infer<
   typeof subscriptionOrderPaymentProviderSchema
@@ -78,6 +102,7 @@ export type SubscriptionOrderPaymentChannel = z.infer<
 export type SubscriptionOrderFulfillmentMode = z.infer<
   typeof subscriptionOrderFulfillmentModeSchema
 >;
+export type SubscriptionOrderBehaviorEvent = z.infer<typeof subscriptionOrderBehaviorEventSchema>;
 export type SubscriptionOrderWechatJsapiParams = z.infer<
   typeof subscriptionOrderWechatJsapiParamsSchema
 >;
@@ -89,4 +114,10 @@ export type CreateSubscriptionOrderResponse = z.infer<
 export type GetSubscriptionOrderResponse = z.infer<typeof getSubscriptionOrderResponseSchema>;
 export type CancelSubscriptionOrderResponse = z.infer<
   typeof cancelSubscriptionOrderResponseSchema
+>;
+export type TrackSubscriptionOrderBehaviorRequest = z.infer<
+  typeof trackSubscriptionOrderBehaviorRequestSchema
+>;
+export type TrackSubscriptionOrderBehaviorResponse = z.infer<
+  typeof trackSubscriptionOrderBehaviorResponseSchema
 >;

@@ -7,6 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  AuditAction,
   ErrorCode,
   resolveSubscriptionPriceCents,
   type CancelSubscriptionOrderResponse,
@@ -16,6 +17,9 @@ import {
   type PayableTenantSubscriptionPlan,
   type SubscriptionDurationDays,
   type SubscriptionOrder,
+  type SubscriptionOrderBehaviorEvent,
+  type TrackSubscriptionOrderBehaviorRequest,
+  type TrackSubscriptionOrderBehaviorResponse,
 } from '@eggturtle/shared';
 import {
   Prisma,
@@ -35,6 +39,12 @@ type CreateOrderInput = {
   tenantId: string;
   userId: string;
   payload: CreateSubscriptionOrderRequest;
+};
+
+type TrackBehaviorInput = {
+  tenantId: string;
+  userId: string;
+  payload: TrackSubscriptionOrderBehaviorRequest;
 };
 
 type PurchaseResolution = {
@@ -154,6 +164,24 @@ export class SubscriptionOrdersService {
         select: this.orderSelect,
       });
 
+      await this.createAuditLog(
+        {
+          tenantId: updatedOrder.tenantId,
+          actorUserId: updatedOrder.userId,
+          action: AuditAction.SubscriptionOrderCreate,
+          resourceId: updatedOrder.orderNo,
+          metadata: {
+            plan: updatedOrder.plan,
+            durationDays: updatedOrder.durationDays,
+            totalAmountCents: updatedOrder.totalAmountCents,
+            paymentChannel: updatedOrder.paymentChannel,
+            fulfillmentMode: updatedOrder.fulfillmentMode,
+            effectiveStartsAt: updatedOrder.effectiveStartsAt.toISOString(),
+          },
+        },
+        this.prisma,
+      );
+
       return {
         order: this.toApiOrder(updatedOrder),
         jsapiParams: this.wechatPayService.buildJsapiPayParams(prepayId),
@@ -169,6 +197,23 @@ export class SubscriptionOrdersService {
       });
       throw error;
     }
+  }
+
+  async trackBehavior(input: TrackBehaviorInput): Promise<TrackSubscriptionOrderBehaviorResponse> {
+    await this.createAuditLog(
+      {
+        tenantId: input.tenantId,
+        actorUserId: input.userId,
+        action: this.toBehaviorAuditAction(input.payload.event),
+        resourceId: input.payload.orderNo ?? null,
+        metadata: this.toBehaviorAuditMetadata(input.payload),
+      },
+      this.prisma,
+    );
+
+    return {
+      recorded: true,
+    };
   }
 
   async getOrder(tenantId: string, orderNo: string): Promise<GetSubscriptionOrderResponse> {
@@ -332,6 +377,26 @@ export class SubscriptionOrdersService {
         },
         tx,
       );
+
+      await this.createAuditLog(
+        {
+          tenantId: paidOrder.tenantId,
+          actorUserId: paidOrder.userId,
+          action: AuditAction.SubscriptionPaymentSuccess,
+          resourceId: paidOrder.orderNo,
+          metadata: {
+            orderNo: paidOrder.orderNo,
+            plan: paidOrder.plan,
+            durationDays: paidOrder.durationDays,
+            totalAmountCents: paidOrder.totalAmountCents,
+            paymentId: notification.transaction_id,
+            paidAt: paidAt.toISOString(),
+            fulfillmentMode: paidOrder.fulfillmentMode,
+            appliedAt: paidOrder.fulfillmentMode === SubscriptionOrderFulfillmentMode.IMMEDIATE ? paidAt.toISOString() : null,
+          },
+        },
+        tx,
+      );
     });
   }
 
@@ -390,6 +455,64 @@ export class SubscriptionOrdersService {
     }
 
     return appliedCount;
+  }
+
+  private async createAuditLog(
+    input: {
+      tenantId: string;
+      actorUserId: string;
+      action: (typeof AuditAction)[keyof typeof AuditAction];
+      resourceId?: string | null;
+      metadata?: Prisma.InputJsonValue | null;
+    },
+    db: PrismaService | Prisma.TransactionClient,
+  ) {
+    await db.auditLog.create({
+      data: {
+        tenantId: input.tenantId,
+        actorUserId: input.actorUserId,
+        action: input.action,
+        resourceType: 'subscription_payment',
+        resourceId: input.resourceId ?? null,
+        metadata: input.metadata === undefined ? undefined : input.metadata ?? Prisma.JsonNull,
+      },
+    });
+  }
+
+  private toBehaviorAuditAction(event: SubscriptionOrderBehaviorEvent) {
+    switch (event) {
+      case 'DIALOG_OPEN':
+        return AuditAction.SubscriptionPaymentDialogOpen;
+      case 'PAY_CLICK':
+        return AuditAction.SubscriptionPaymentClick;
+      case 'PAY_CANCEL':
+        return AuditAction.SubscriptionPaymentCancel;
+      case 'PAY_SUCCESS':
+        return AuditAction.SubscriptionPaymentSuccess;
+      case 'PAY_FAILURE':
+        return AuditAction.SubscriptionPaymentFailure;
+      case 'PAY_HESITATE':
+        return AuditAction.SubscriptionPaymentHesitate;
+      default:
+        return AuditAction.SubscriptionPaymentFailure;
+    }
+  }
+
+  private toBehaviorAuditMetadata(payload: TrackSubscriptionOrderBehaviorRequest): Prisma.InputJsonValue {
+    const metadata = Object.fromEntries(
+      Object.entries({
+        sourcePath: payload.sourcePath,
+        plan: payload.plan,
+        durationDays: payload.durationDays,
+        orderNo: payload.orderNo,
+        entryPoint: payload.entryPoint,
+        stayDurationMs: payload.stayDurationMs,
+        reason: payload.reason,
+        result: payload.result,
+      }).filter(([, value]) => value !== undefined),
+    );
+
+    return metadata as Prisma.InputJsonValue;
   }
 
   private async resolvePurchase(

@@ -413,12 +413,15 @@ export {
   createSubscriptionOrderRequestSchema,
   createSubscriptionOrderResponseSchema,
   getSubscriptionOrderResponseSchema,
+  subscriptionOrderBehaviorEventSchema,
   subscriptionOrderFulfillmentModeSchema,
   subscriptionOrderPaymentChannelSchema,
   subscriptionOrderPaymentProviderSchema,
   subscriptionOrderSchema,
   subscriptionOrderStatusSchema,
   subscriptionOrderWechatJsapiParamsSchema,
+  trackSubscriptionOrderBehaviorRequestSchema,
+  trackSubscriptionOrderBehaviorResponseSchema,
 } from './subscription-order';
 export type {
   CancelSubscriptionOrderResponse,
@@ -426,11 +429,14 @@ export type {
   CreateSubscriptionOrderResponse,
   GetSubscriptionOrderResponse,
   SubscriptionOrder,
+  SubscriptionOrderBehaviorEvent,
   SubscriptionOrderFulfillmentMode,
   SubscriptionOrderPaymentChannel,
   SubscriptionOrderPaymentProvider,
   SubscriptionOrderStatus,
   SubscriptionOrderWechatJsapiParams,
+  TrackSubscriptionOrderBehaviorRequest,
+  TrackSubscriptionOrderBehaviorResponse,
 } from './subscription-order';
 export {
   createTenantSubscriptionActivationCodeRequestSchema,

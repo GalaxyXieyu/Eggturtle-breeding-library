@@ -16,6 +16,8 @@ import {
   createSubscriptionOrderRequestSchema,
   createSubscriptionOrderResponseSchema,
   getSubscriptionOrderResponseSchema,
+  trackSubscriptionOrderBehaviorRequestSchema,
+  trackSubscriptionOrderBehaviorResponseSchema,
 } from '@eggturtle/shared';
 
 import { AuthGuard } from '../auth/auth.guard';
@@ -44,6 +46,21 @@ export class SubscriptionOrdersController {
     });
 
     return createSubscriptionOrderResponseSchema.parse(response);
+  }
+
+  @Post('track')
+  @HttpCode(200)
+  async trackBehavior(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
+    const tenantId = this.requireTenantId(request.tenantId);
+    const userId = this.requireUserId(request.user?.id);
+    const payload = parseOrThrow(trackSubscriptionOrderBehaviorRequestSchema, body);
+    const response = await this.subscriptionOrdersService.trackBehavior({
+      tenantId,
+      userId,
+      payload,
+    });
+
+    return trackSubscriptionOrderBehaviorResponseSchema.parse(response);
   }
 
   @Get(':orderNo')

@@ -20,6 +20,13 @@ export const AuditAction = {
   ShareCreate: 'share.create',
   ShareAccess: 'share.access',
   SubscriptionActivationRedeem: 'subscription.activation.redeem',
+  SubscriptionOrderCreate: 'subscription.order.create',
+  SubscriptionPaymentDialogOpen: 'subscription.payment.dialog_open',
+  SubscriptionPaymentClick: 'subscription.payment.click',
+  SubscriptionPaymentHesitate: 'subscription.payment.hesitate',
+  SubscriptionPaymentCancel: 'subscription.payment.cancel',
+  SubscriptionPaymentSuccess: 'subscription.payment.success',
+  SubscriptionPaymentFailure: 'subscription.payment.failure',
   AuthLogin: 'auth.login'
 } as const
 
@@ -43,6 +50,13 @@ export const auditActionSchema = z.enum([
   AuditAction.ShareCreate,
   AuditAction.ShareAccess,
   AuditAction.SubscriptionActivationRedeem,
+  AuditAction.SubscriptionOrderCreate,
+  AuditAction.SubscriptionPaymentDialogOpen,
+  AuditAction.SubscriptionPaymentClick,
+  AuditAction.SubscriptionPaymentHesitate,
+  AuditAction.SubscriptionPaymentCancel,
+  AuditAction.SubscriptionPaymentSuccess,
+  AuditAction.SubscriptionPaymentFailure,
   AuditAction.AuthLogin
 ])
 

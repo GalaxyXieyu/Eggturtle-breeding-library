@@ -13,6 +13,8 @@ import {
   meSubscriptionResponseSchema,
   redeemTenantSubscriptionActivationCodeRequestSchema,
   redeemTenantSubscriptionActivationCodeResponseSchema,
+  trackSubscriptionOrderBehaviorRequestSchema,
+  trackSubscriptionOrderBehaviorResponseSchema,
   type PayableTenantSubscriptionPlan,
   cancelSubscriptionOrderResponseSchema,
   type SubscriptionDurationDays,
@@ -37,6 +39,14 @@ type PlanTier = 'FREE' | PayableTenantSubscriptionPlan;
 type PurchaseIntent = {
   plan: PayableTenantSubscriptionPlan;
   durationDays: SubscriptionDurationDays;
+};
+
+type PurchaseEntryPoint = 'catalog' | 'recommendation' | 'plan_detail' | 'oauth_resume';
+
+type PurchaseDialogSession = {
+  openedAt: number;
+  entryPoint: PurchaseEntryPoint;
+  payClicked: boolean;
 };
 
 type WechatPayInvokeResult = {
@@ -103,6 +113,8 @@ export default function SubscriptionPage() {
   const [lastOrderNo, setLastOrderNo] = useState<string | null>(null);
 
   const oauthResumeHandledRef = useRef(false);
+  const pendingPurchaseEntryPointRef = useRef<PurchaseEntryPoint>('catalog');
+  const purchaseDialogSessionRef = useRef<PurchaseDialogSession | null>(null);
   const planDetailTitleId = useId();
   const purchaseDialogTitleId = useId();
   const [isWechat, setIsWechat] = useState<boolean | null>(null);
@@ -130,6 +142,61 @@ export default function SubscriptionPage() {
     }
     return `/app/${tenantSlug}/subscription`;
   }, [pathname, searchParams, tenantSlug]);
+  const sourcePath = pathname ?? `/app/${tenantSlug}/subscription`;
+
+  const trackSubscriptionBehavior = useCallback(async (payload: {
+    event: 'DIALOG_OPEN' | 'PAY_CLICK' | 'PAY_CANCEL' | 'PAY_SUCCESS' | 'PAY_FAILURE' | 'PAY_HESITATE';
+    plan?: PayableTenantSubscriptionPlan;
+    durationDays?: SubscriptionDurationDays;
+    orderNo?: string;
+    entryPoint?: PurchaseEntryPoint;
+    stayDurationMs?: number;
+    reason?: string;
+    result?: string;
+  }) => {
+    if (!getAccessToken()) {
+      return;
+    }
+
+    try {
+      await apiRequest('/subscriptions/orders/track', {
+        method: 'POST',
+        body: {
+          sourcePath,
+          ...payload,
+        },
+        requestSchema: trackSubscriptionOrderBehaviorRequestSchema,
+        responseSchema: trackSubscriptionOrderBehaviorResponseSchema,
+      });
+    } catch {
+      // ignore tracking failures
+    }
+  }, [sourcePath]);
+
+  const openPurchaseDialog = useCallback((plan: PayableTenantSubscriptionPlan, entryPoint: PurchaseEntryPoint) => {
+    pendingPurchaseEntryPointRef.current = entryPoint;
+    setPurchasePlan(plan);
+    setPurchaseDuration(30);
+    setError(null);
+    setMessage(null);
+  }, []);
+
+  const closePurchaseDialog = useCallback((reason: string) => {
+    const session = purchaseDialogSessionRef.current;
+    if (purchasePlan && !paying && session && !session.payClicked) {
+      void trackSubscriptionBehavior({
+        event: 'PAY_HESITATE',
+        plan: purchasePlan,
+        durationDays: purchaseDuration,
+        entryPoint: session.entryPoint,
+        stayDurationMs: Math.max(0, Date.now() - session.openedAt),
+        reason,
+      });
+    }
+
+    purchaseDialogSessionRef.current = null;
+    setPurchasePlan(null);
+  }, [paying, purchaseDuration, purchasePlan, trackSubscriptionBehavior]);
 
   const refreshSubscription = useCallback(async () => {
     if (!tenantSlug) {
@@ -147,6 +214,32 @@ export default function SubscriptionPage() {
   useEffect(() => {
     setIsWechat(isWechatBrowser());
   }, []);
+
+  useEffect(() => {
+    if (!purchasePlan) {
+      purchaseDialogSessionRef.current = null;
+      return;
+    }
+
+    if (purchaseDialogSessionRef.current) {
+      return;
+    }
+
+    const session: PurchaseDialogSession = {
+      openedAt: Date.now(),
+      entryPoint: pendingPurchaseEntryPointRef.current,
+      payClicked: false,
+    };
+    purchaseDialogSessionRef.current = session;
+
+    void trackSubscriptionBehavior({
+      event: 'DIALOG_OPEN',
+      plan: purchasePlan,
+      durationDays: purchaseDuration,
+      entryPoint: session.entryPoint,
+      stayDurationMs: 0,
+    });
+  }, [purchaseDuration, purchasePlan, trackSubscriptionBehavior]);
 
   useEffect(() => {
     if (!tenantSlug) {
@@ -220,6 +313,7 @@ export default function SubscriptionPage() {
         clearPendingPurchaseIntent();
         await refreshSubscription().catch(() => null);
         setMessage(buildPaidOrderMessage(order));
+        purchaseDialogSessionRef.current = null;
         setPurchasePlan(null);
         setLastOrderNo(order.orderNo);
         return order;
@@ -254,6 +348,20 @@ export default function SubscriptionPage() {
       return;
     }
 
+    const session = purchaseDialogSessionRef.current;
+    if (session) {
+      session.payClicked = true;
+      void trackSubscriptionBehavior({
+        event: 'PAY_CLICK',
+        plan: intent.plan,
+        durationDays: intent.durationDays,
+        entryPoint: session.entryPoint,
+        stayDurationMs: Math.max(0, Date.now() - session.openedAt),
+      });
+    }
+
+    let createdOrderNo: string | undefined;
+
     persistPendingPurchaseIntent(intent);
     setPaying(true);
     setError(null);
@@ -274,6 +382,7 @@ export default function SubscriptionPage() {
         responseSchema: createSubscriptionOrderResponseSchema,
       });
 
+      createdOrderNo = created.order.orderNo;
       setLastOrderNo(created.order.orderNo);
       const bridge = await waitForWeixinJsBridge();
       const invokeResult = await invokeWechatPay(created.jsapiParams, bridge);
@@ -286,11 +395,33 @@ export default function SubscriptionPage() {
       }
 
       if (normalizedResult.endsWith(':cancel')) {
+        void trackSubscriptionBehavior({
+          event: 'PAY_CANCEL',
+          plan: intent.plan,
+          durationDays: intent.durationDays,
+          orderNo: created.order.orderNo,
+          entryPoint: session?.entryPoint,
+          stayDurationMs: session ? Math.max(0, Date.now() - session.openedAt) : undefined,
+          reason: 'wechat_bridge_cancel',
+          result: invokeResult.err_msg,
+        });
+        purchaseDialogSessionRef.current = null;
+        setPurchasePlan(null);
         setMessage('你已取消支付，本次订单已停止。');
         await cancelOrderBestEffort(created.order.orderNo);
         return;
       }
 
+      void trackSubscriptionBehavior({
+        event: 'PAY_FAILURE',
+        plan: intent.plan,
+        durationDays: intent.durationDays,
+        orderNo: created.order.orderNo,
+        entryPoint: session?.entryPoint,
+        stayDurationMs: session ? Math.max(0, Date.now() - session.openedAt) : undefined,
+        reason: 'wechat_bridge_failure',
+        result: invokeResult.err_msg,
+      });
       setError(normalizedResult ? `微信支付未完成：${invokeResult.err_msg}` : '微信支付未完成，请稍后重试。');
     } catch (requestError) {
       if (requestError instanceof ApiError && requestError.errorCode === 'WECHAT_OAUTH_REQUIRED') {
@@ -299,16 +430,36 @@ export default function SubscriptionPage() {
           await redirectToWechatAuthorize(intent);
           return;
         } catch (oauthError) {
+          void trackSubscriptionBehavior({
+            event: 'PAY_FAILURE',
+            plan: intent.plan,
+            durationDays: intent.durationDays,
+            orderNo: createdOrderNo,
+            entryPoint: session?.entryPoint,
+            stayDurationMs: session ? Math.max(0, Date.now() - session.openedAt) : undefined,
+            reason: 'wechat_oauth_redirect_failed',
+            result: formatError(oauthError).slice(0, 255),
+          });
           setError(formatError(oauthError));
           return;
         }
       }
 
+      void trackSubscriptionBehavior({
+        event: 'PAY_FAILURE',
+        plan: intent.plan,
+        durationDays: intent.durationDays,
+        orderNo: createdOrderNo,
+        entryPoint: session?.entryPoint,
+        stayDurationMs: session ? Math.max(0, Date.now() - session.openedAt) : undefined,
+        reason: requestError instanceof ApiError ? (requestError.errorCode ?? 'payment_request_failed') : 'payment_request_failed',
+        result: formatError(requestError).slice(0, 255),
+      });
       setError(formatError(requestError));
     } finally {
       setPaying(false);
     }
-  }, [isWechat, pollOrderStatus, redirectToWechatAuthorize, tenantSlug]);
+  }, [isWechat, pollOrderStatus, redirectToWechatAuthorize, tenantSlug, trackSubscriptionBehavior]);
 
   useEffect(() => {
     if (!wechatAuthStatus || loading || oauthResumeHandledRef.current || isWechat === null) {
@@ -330,6 +481,7 @@ export default function SubscriptionPage() {
       return;
     }
 
+    pendingPurchaseEntryPointRef.current = 'oauth_resume';
     setPurchasePlan(pendingIntent.plan);
     setPurchaseDuration(pendingIntent.durationDays);
     setMessage('微信授权已完成，正在恢复支付流程…');
@@ -362,6 +514,7 @@ export default function SubscriptionPage() {
 
       setSubscription(response.subscription);
       setActivationCode('');
+      purchaseDialogSessionRef.current = null;
       setPurchasePlan(null);
       clearPendingPurchaseIntent();
       setMessage(`套餐已更新为${formatPlanLabel(response.subscription.plan)}。`);
@@ -513,10 +666,7 @@ export default function SubscriptionPage() {
                         className="w-full"
                         disabled={paying || isWechat !== true}
                         onClick={() => {
-                          setPurchasePlan(plan);
-                          setPurchaseDuration(30);
-                          setError(null);
-                          setMessage(null);
+                          openPurchaseDialog(plan, 'catalog');
                         }}
                       >
                         {buildWechatActionLabel(isWechat, buildPurchaseButtonLabel(currentPlan, plan))}
@@ -554,10 +704,7 @@ export default function SubscriptionPage() {
               className="w-full sm:w-auto"
               disabled={paying || isWechat !== true}
               onClick={() => {
-                setPurchasePlan(recommendedPlan);
-                setPurchaseDuration(30);
-                setError(null);
-                setMessage(null);
+                openPurchaseDialog(recommendedPlan, 'recommendation');
               }}
             >
               {buildWechatActionLabel(isWechat, buildPurchaseButtonLabel(currentPlan, recommendedPlan))}
@@ -684,10 +831,7 @@ export default function SubscriptionPage() {
                       return;
                     }
                     setPlanDetail(null);
-                    setPurchasePlan(payableDetailPlan);
-                    setPurchaseDuration(30);
-                    setError(null);
-                    setMessage(null);
+                    openPurchaseDialog(payableDetailPlan, 'plan_detail');
                   }}
                 >
                   {buildWechatActionLabel(isWechat, buildPurchaseButtonLabel(currentPlan, payableDetailPlan))}
@@ -706,7 +850,7 @@ export default function SubscriptionPage() {
           aria-labelledby={purchaseDialogTitleId}
           onClick={() => {
             if (!paying) {
-              setPurchasePlan(null);
+              closePurchaseDialog('mask_close');
             }
           }}
         >
@@ -724,7 +868,7 @@ export default function SubscriptionPage() {
                 variant="secondary"
                 size="sm"
                 disabled={paying}
-                onClick={() => setPurchasePlan(null)}
+                onClick={() => closePurchaseDialog('dialog_close_button')}
               >
                 关闭
               </Button>
@@ -760,7 +904,7 @@ export default function SubscriptionPage() {
             ) : null}
 
             <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <Button type="button" variant="secondary" disabled={paying} onClick={() => setPurchasePlan(null)}>
+              <Button type="button" variant="secondary" disabled={paying} onClick={() => closePurchaseDialog('dialog_cancel_button')}>
                 取消
               </Button>
               <Button

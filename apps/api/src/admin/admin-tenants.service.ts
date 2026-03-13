@@ -133,12 +133,23 @@ const RECENT_LOG_EXCLUDED_ACTIONS = new Set<AuditActionType>([
   AuditAction.ShareAccess,
   AuditAction.AuthLogin
 ]);
+const NON_BUSINESS_ACTIVITY_ACTIONS = new Set<AuditActionType>([
+  AuditAction.ShareAccess,
+  AuditAction.AuthLogin,
+  AuditAction.SubscriptionOrderCreate,
+  AuditAction.SubscriptionPaymentDialogOpen,
+  AuditAction.SubscriptionPaymentClick,
+  AuditAction.SubscriptionPaymentHesitate,
+  AuditAction.SubscriptionPaymentCancel,
+  AuditAction.SubscriptionPaymentSuccess,
+  AuditAction.SubscriptionPaymentFailure
+]);
 const UPLOAD_ACTIONS = new Set<AuditActionType>([
   AuditAction.ProductImageUpload,
   AuditAction.SaleSubjectMediaUpload
 ]);
 const BUSINESS_ACTIVITY_ACTIONS = (Object.values(AuditAction) as AuditActionType[]).filter(
-  (action) => action !== AuditAction.ShareAccess && action !== AuditAction.AuthLogin
+  (action) => !NON_BUSINESS_ACTIVITY_ACTIONS.has(action)
 );
 
 @Injectable()
