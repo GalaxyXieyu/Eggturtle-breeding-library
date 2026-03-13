@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 
+import PublicShareMePage from '@/app/public/_shared/public-share-me-page';
 import PublicShareErrorPanel from '@/app/public/_shared/public-share-error-panel';
 import {
   buildPublicShareRouteQuery,
@@ -22,7 +23,7 @@ export default async function PublicShareMeRoute({
   if (!hasSidParam) {
     const location = await refreshPublicShareEntryLocation(params.shareToken);
     if (location) {
-      redirect(`${location}${location.includes('?') ? '&' : '?'}tab=me`);
+      redirect(rewritePublicShareLocation(location, params.shareToken));
     }
   }
 
@@ -32,7 +33,7 @@ export default async function PublicShareMeRoute({
     if (shouldAutoRefreshShareSignature(shareResult.status, shareResult.errorCode)) {
       const location = await refreshPublicShareEntryLocation(params.shareToken);
       if (location) {
-        redirect(`${location}${location.includes('?') ? '&' : '?'}tab=me`);
+        redirect(rewritePublicShareLocation(location, params.shareToken));
       }
     }
 
@@ -62,7 +63,21 @@ export default async function PublicShareMeRoute({
   if (seriesId) {
     shareRouteQuery.set('series', seriesId);
   }
-  shareRouteQuery.set('tab', 'me');
+  const shareQuery = shareRouteQuery.toString();
 
-  redirect(`/public/s/${params.shareToken}?${shareRouteQuery.toString()}`);
+  return (
+    <PublicShareMePage
+      shareToken={params.shareToken}
+      shareQuery={shareQuery}
+      presentation={shareResult.data.presentation}
+      embedded={false}
+    />
+  );
+}
+
+function rewritePublicShareLocation(location: string, shareToken: string) {
+  const resolved = new URL(location, 'http://public-share.local');
+  resolved.pathname = `/public/s/${shareToken}/me`;
+  resolved.searchParams.delete('tab');
+  return `${resolved.pathname}${resolved.search}${resolved.hash}`;
 }

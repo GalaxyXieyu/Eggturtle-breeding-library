@@ -21,9 +21,14 @@ export default async function PublicShareFeedPage({
 }) {
   const sidValue = firstSearchParamValue(searchParams.sid);
   const hasSidParam = typeof sidValue === 'string' && sidValue.trim().length > 0;
+  const requestedTab = firstSearchParamValue(searchParams.tab)?.trim();
+  const requestedSeriesId = firstSearchParamValue(searchParams.series)?.trim();
   if (!hasSidParam) {
     const location = await refreshPublicShareEntryLocation(params.shareToken);
     if (location) {
+      if (requestedTab === 'series' || requestedTab === 'me') {
+        redirect(rewritePublicShareLocation(location, params.shareToken, requestedTab, requestedSeriesId));
+      }
       redirect(location);
     }
   }
@@ -34,6 +39,9 @@ export default async function PublicShareFeedPage({
     if (shouldAutoRefreshShareSignature(shareResult.status, shareResult.errorCode)) {
       const location = await refreshPublicShareEntryLocation(params.shareToken);
       if (location) {
+        if (requestedTab === 'series' || requestedTab === 'me') {
+          redirect(rewritePublicShareLocation(location, params.shareToken, requestedTab, requestedSeriesId));
+        }
         redirect(location);
       }
     }
@@ -61,15 +69,12 @@ export default async function PublicShareFeedPage({
 
   const legacyData = mapTenantFeedToLegacy(shareResult.data);
   const shareRouteQuery = buildPublicShareRouteQuery(shareResult.shareId, shareResult.query);
-  const seriesId = firstSearchParamValue(searchParams.series)?.trim();
-  const requestedTab = firstSearchParamValue(searchParams.tab)?.trim();
-  const initialTab = requestedTab === 'series' || requestedTab === 'me' ? requestedTab : 'pets';
-  if (seriesId) {
-    shareRouteQuery.set('series', seriesId);
+  if (requestedSeriesId) {
+    shareRouteQuery.set('series', requestedSeriesId);
   }
 
-  if (initialTab !== 'pets') {
-    shareRouteQuery.set('tab', initialTab);
+  if (requestedTab === 'series' || requestedTab === 'me') {
+    redirect(`/public/s/${params.shareToken}/${requestedTab}?${shareRouteQuery.toString()}`);
   }
 
   const shareQuery = shareRouteQuery.toString();
@@ -79,12 +84,26 @@ export default async function PublicShareFeedPage({
       demo={false}
       shareToken={params.shareToken}
       shareQuery={shareQuery}
-      initialSeriesId={seriesId}
-      initialTab={initialTab}
+      initialSeriesId={requestedSeriesId}
       series={legacyData.series}
       breeders={legacyData.breeders}
       presentation={shareResult.data.presentation}
       tenantSlug={shareResult.data.tenant.slug}
     />
   );
+}
+
+function rewritePublicShareLocation(
+  location: string,
+  shareToken: string,
+  tab: 'series' | 'me',
+  seriesId?: string,
+) {
+  const resolved = new URL(location, 'http://public-share.local');
+  resolved.pathname = `/public/s/${shareToken}/${tab}`;
+  resolved.searchParams.delete('tab');
+  if (seriesId) {
+    resolved.searchParams.set('series', seriesId);
+  }
+  return `${resolved.pathname}${resolved.search}${resolved.hash}`;
 }

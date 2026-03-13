@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation';
 
+import { mapTenantFeedToLegacy } from '@/app/public/_public-product/public-share-adapter';
 import PublicShareErrorPanel from '@/app/public/_shared/public-share-error-panel';
+import PublicShareSeriesPageRedesign from '@/app/public/s/[shareToken]/series/page-redesign';
 import {
   buildPublicShareRouteQuery,
   fetchPublicShareFromSearchParams,
@@ -22,7 +24,7 @@ export default async function PublicShareSeriesPage({
   if (!hasSidParam) {
     const location = await refreshPublicShareEntryLocation(params.shareToken);
     if (location) {
-      redirect(location);
+      redirect(rewritePublicShareLocation(location, params.shareToken));
     }
   }
 
@@ -32,7 +34,7 @@ export default async function PublicShareSeriesPage({
     if (shouldAutoRefreshShareSignature(shareResult.status, shareResult.errorCode)) {
       const location = await refreshPublicShareEntryLocation(params.shareToken);
       if (location) {
-        redirect(location);
+        redirect(rewritePublicShareLocation(location, params.shareToken));
       }
     }
 
@@ -57,8 +59,29 @@ export default async function PublicShareSeriesPage({
     );
   }
 
+  const legacyData = mapTenantFeedToLegacy(shareResult.data);
   const shareRouteQuery = buildPublicShareRouteQuery(shareResult.shareId, shareResult.query);
-  shareRouteQuery.set('tab', 'series');
+  const seriesId = firstSearchParamValue(searchParams.series)?.trim();
+  if (seriesId) {
+    shareRouteQuery.set('series', seriesId);
+  }
+  const shareQuery = shareRouteQuery.toString();
 
-  redirect(`/public/s/${params.shareToken}?${shareRouteQuery.toString()}`);
+  return (
+    <PublicShareSeriesPageRedesign
+      shareToken={params.shareToken}
+      shareQuery={shareQuery}
+      presentation={shareResult.data.presentation}
+      breeders={legacyData.breeders}
+      series={legacyData.series}
+      embedded={false}
+    />
+  );
+}
+
+function rewritePublicShareLocation(location: string, shareToken: string) {
+  const resolved = new URL(location, 'http://public-share.local');
+  resolved.pathname = `/public/s/${shareToken}/series`;
+  resolved.searchParams.delete('tab');
+  return `${resolved.pathname}${resolved.search}${resolved.hash}`;
 }

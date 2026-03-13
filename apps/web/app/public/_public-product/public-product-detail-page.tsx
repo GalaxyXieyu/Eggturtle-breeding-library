@@ -80,7 +80,7 @@ export default function PublicProductDetailPage({
     typeof window !== 'undefined' && window.location?.origin
       ? `${window.location.origin}/public/s/${shareToken}/products/${breederId}`
       : `/public/s/${shareToken}/products/${breederId}`;
-  const onboardingHref = appendPublicShareQuery(`/public/s/${shareToken}?tab=me#free-plan`, shareQuery);
+  const onboardingHref = appendPublicShareQuery(`/public/s/${shareToken}/me#free-plan`, shareQuery);
 
   return (
     <div className="public-bg-page public-text-primary min-h-screen">

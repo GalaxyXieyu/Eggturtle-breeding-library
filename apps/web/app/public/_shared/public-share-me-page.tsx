@@ -88,8 +88,8 @@ export default function PublicShareMePage({
   const permalink = useMemo(
     () =>
       typeof window !== 'undefined' && window.location?.origin
-        ? `${window.location.origin}/public/s/${shareToken}?tab=me`
-        : `/public/s/${shareToken}?tab=me`,
+        ? `${window.location.origin}/public/s/${shareToken}/me`
+        : `/public/s/${shareToken}/me`,
     [shareToken],
   );
 
