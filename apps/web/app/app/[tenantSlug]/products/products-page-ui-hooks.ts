@@ -30,7 +30,8 @@ function resolveNextMobileFilterFabVisibility(
 ) {
   if (topFilter) {
     const rect = topFilter.getBoundingClientRect();
-    const bottom = rect.height > 0 ? rect.bottom : rect.top + MOBILE_FILTER_FAB_TOP_FILTER_FALLBACK_HEIGHT;
+    const bottom =
+      rect.height > 0 ? rect.bottom : rect.top + MOBILE_FILTER_FAB_TOP_FILTER_FALLBACK_HEIGHT;
 
     if (bottom <= MOBILE_FILTER_FAB_SHOW_TOP_FILTER_BOTTOM) {
       return true;
@@ -56,7 +57,7 @@ function resolveNextMobileFilterFabVisibility(
 
 type UseProductsPageUiEffectsInput = {
   isFilterPopoverOpen: boolean;
-  setIsFilterPopoverOpen: Dispatch<SetStateAction<boolean>>;
+  onRequestFilterPopoverClose: () => void;
   mobileTopFilterRef: RefObject<HTMLDivElement>;
   setShowMobileFilterFab: Dispatch<SetStateAction<boolean>>;
   setIsMobileFilterLayout: Dispatch<SetStateAction<boolean>>;
@@ -64,7 +65,7 @@ type UseProductsPageUiEffectsInput = {
 
 export function useProductsPageUiEffects({
   isFilterPopoverOpen,
-  setIsFilterPopoverOpen,
+  onRequestFilterPopoverClose,
   mobileTopFilterRef,
   setShowMobileFilterFab,
   setIsMobileFilterLayout,
@@ -81,17 +82,17 @@ export function useProductsPageUiEffects({
       if (target instanceof Element && target.closest('[data-products-filter-root="true"]')) {
         return;
       }
-      setIsFilterPopoverOpen(false);
+      onRequestFilterPopoverClose();
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        setIsFilterPopoverOpen(false);
+        onRequestFilterPopoverClose();
       }
     };
 
     const handleScroll = () => {
-      setIsFilterPopoverOpen(false);
+      onRequestFilterPopoverClose();
     };
 
     // Use bubble phase so inner buttons can handle onClick first.
@@ -113,7 +114,7 @@ export function useProductsPageUiEffects({
       document.removeEventListener('keydown', handleKeyDown);
       scrollTarget.removeEventListener('scroll', handleScroll);
     };
-  }, [isFilterPopoverOpen, setIsFilterPopoverOpen]);
+  }, [isFilterPopoverOpen, onRequestFilterPopoverClose]);
 
   useEffect(() => {
     let rafId: number | null = null;

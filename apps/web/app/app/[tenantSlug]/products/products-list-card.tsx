@@ -10,6 +10,7 @@ import { buildFilterPillClass } from '@/components/filter-pill';
 import { PetCard } from '@/components/pet';
 import type { ProductSeriesOption } from '@/components/product-drawer';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import {
   SEX_FILTER_OPTIONS,
   STATUS_FILTER_OPTIONS,
@@ -39,6 +40,9 @@ type ProductsListCardProps = {
     placement: 'above' | 'below',
     options?: { toggle?: boolean },
   ) => void;
+  onSearchInputChange: (value: string) => void;
+  onSearchInputCommit: () => void;
+  onResetFilters: () => void;
   onClearSearch: () => void;
   onSexFilterChange: (value: string) => void;
   onSeriesFilterChange: (value: string) => void;
@@ -67,6 +71,9 @@ export default function ProductsListCard({
   total,
   loadMoreSentinelRef,
   onOpenFilter,
+  onSearchInputChange,
+  onSearchInputCommit,
+  onResetFilters,
   onClearSearch,
   onSexFilterChange,
   onSeriesFilterChange,
@@ -144,7 +151,9 @@ export default function ProductsListCard({
         {options?.showMoreButton && hasMoreSeriesOptions ? (
           <button
             type="button"
-            className={buildFilterPillClass(false, { className: `${className ?? ''} font-medium`.trim() })}
+            className={buildFilterPillClass(false, {
+              className: `${className ?? ''} font-medium`.trim(),
+            })}
             onClick={(event) => options.onMoreClick?.(event)}
           >
             更多…
@@ -158,7 +167,9 @@ export default function ProductsListCard({
     <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
       <CardContent className="space-y-4 px-3 pt-6 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-600">
-          <span className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5">{listStatsLabel}</span>
+          <span className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5">
+            {listStatsLabel}
+          </span>
         </div>
 
         {!showMobileFilterFab ? (
@@ -190,6 +201,33 @@ export default function ProductsListCard({
                 <div className="flex min-w-0 max-w-full flex-1 gap-2 overflow-x-auto overscroll-x-contain pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {renderStatusPills('status-top', 'shrink-0')}
                 </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="min-w-0 flex-1">
+                  <Input
+                    type="text"
+                    placeholder="按编号 / 名称 / 描述搜索"
+                    value={searchInput}
+                    className="h-9"
+                    onChange={(event) => onSearchInputChange(event.target.value)}
+                    onBlur={onSearchInputCommit}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        onSearchInputCommit();
+                        event.currentTarget.blur();
+                      }
+                    }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-neutral-200 bg-white px-4 text-sm font-medium text-neutral-700 transition hover:border-neutral-300 hover:bg-neutral-50"
+                  onClick={onResetFilters}
+                >
+                  清空
+                </button>
               </div>
             </div>
           </div>
@@ -239,7 +277,9 @@ export default function ProductsListCard({
         {loading ? <p className="text-sm text-neutral-600">正在加载宠物预览...</p> : null}
         {!loading && visibleItems.length === 0 ? (
           <p className="text-sm text-neutral-500">
-            {hasMore ? '当前筛选在已加载数据中暂无命中，正在继续加载更多...' : '暂无产品，或当前筛选条件未命中结果。'}
+            {hasMore
+              ? '当前筛选在已加载数据中暂无命中，正在继续加载更多...'
+              : '暂无产品，或当前筛选条件未命中结果。'}
           </p>
         ) : null}
 
@@ -252,7 +292,10 @@ export default function ProductsListCard({
                 code={item.code}
                 coverImageUrl={
                   item.coverImageUrl
-                    ? withAuthenticatedImageMaxEdge(resolveAuthenticatedAssetUrl(item.coverImageUrl), 320)
+                    ? withAuthenticatedImageMaxEdge(
+                        resolveAuthenticatedAssetUrl(item.coverImageUrl),
+                        320,
+                      )
                     : null
                 }
                 coverFallbackImageUrl="/images/mg_01.jpg"
@@ -298,8 +341,12 @@ export default function ProductsListCard({
           </div>
         ) : null}
 
-        {!loading && isLoadingMore ? <p className="text-center text-sm text-neutral-500">正在加载更多...</p> : null}
-        {!loading && hasMore ? <div ref={loadMoreSentinelRef} className="h-2 w-full" aria-hidden="true" /> : null}
+        {!loading && isLoadingMore ? (
+          <p className="text-center text-sm text-neutral-500">正在加载更多...</p>
+        ) : null}
+        {!loading && hasMore ? (
+          <div ref={loadMoreSentinelRef} className="h-2 w-full" aria-hidden="true" />
+        ) : null}
         {!loading && visibleItems.length > 0 && !hasMore ? (
           <p className="text-center text-xs text-neutral-400">已展示全部 {total} 条</p>
         ) : null}

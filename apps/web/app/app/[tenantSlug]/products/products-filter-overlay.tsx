@@ -25,10 +25,11 @@ type ProductsFilterOverlayProps = {
   seriesOptions: ProductSeriesOption[];
   hasMoreSeriesOptions: boolean;
   onSearchInputChange: (value: string) => void;
+  onSearchInputCommit: () => void;
   onSexFilterChange: (value: string) => void;
   onStatusFilterChange: (value: string) => void;
   onSeriesFilterChange: (value: string) => void;
-  onClose: () => void;
+  onApplyAndClose: () => void;
   onReset: () => void;
 };
 
@@ -45,17 +46,22 @@ export default function ProductsFilterOverlay({
   seriesOptions,
   hasMoreSeriesOptions,
   onSearchInputChange,
+  onSearchInputCommit,
   onSexFilterChange,
   onStatusFilterChange,
   onSeriesFilterChange,
-  onClose,
+  onApplyAndClose,
   onReset,
 }: ProductsFilterOverlayProps) {
   if (!isOpen) {
     return null;
   }
 
-  const activeFilterCount = Number(Boolean(searchInput.trim())) + Number(Boolean(sexFilter)) + Number(Boolean(statusFilter)) + Number(Boolean(seriesFilterId));
+  const activeFilterCount =
+    Number(Boolean(searchInput.trim())) +
+    Number(Boolean(sexFilter)) +
+    Number(Boolean(statusFilter)) +
+    Number(Boolean(seriesFilterId));
 
   const renderSexPills = () => {
     return SEX_FILTER_OPTIONS.map((item) => {
@@ -129,6 +135,14 @@ export default function ProductsFilterOverlay({
           value={searchInput}
           className="h-9"
           onChange={(event) => onSearchInputChange(event.target.value)}
+          onBlur={onSearchInputCommit}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              onSearchInputCommit();
+              event.currentTarget.blur();
+            }
+          }}
         />
       </div>
 
@@ -154,7 +168,8 @@ export default function ProductsFilterOverlay({
             <option value="">更多系列（全部）</option>
             {seriesOptions.map((item) => {
               const label = item.name?.trim() || item.code;
-              const optionText = item.code && item.code !== label ? `${label} · ${item.code}` : label;
+              const optionText =
+                item.code && item.code !== label ? `${label} · ${item.code}` : label;
               return (
                 <option key={`series-option-${item.id}`} value={item.id}>
                   {optionText}
@@ -166,12 +181,14 @@ export default function ProductsFilterOverlay({
       </div>
 
       <div className="flex items-center justify-between gap-2 border-t border-neutral-200 pt-2 dark:border-white/10">
-        <span className="text-xs text-neutral-500 dark:text-neutral-400">点选即应用，输入关键词会在 200ms 后同步列表。</span>
+        <span className="text-xs text-neutral-500 dark:text-neutral-400">
+          点选后在失焦、点完成或点空白处时统一应用。
+        </span>
         <div className="flex gap-2">
           <Button type="button" size="sm" variant="secondary" onClick={onReset}>
             清空
           </Button>
-          <Button type="button" size="sm" variant="secondary" onClick={onClose}>
+          <Button type="button" size="sm" variant="secondary" onClick={onApplyAndClose}>
             完成
           </Button>
         </div>
@@ -186,7 +203,7 @@ export default function ProductsFilterOverlay({
         role="dialog"
         aria-modal="true"
         aria-label="筛选宠物"
-        onClick={onClose}
+        onClick={onApplyAndClose}
       >
         <div
           className="mx-auto w-[min(92vw,38rem)] max-h-[86vh] overflow-y-auto rounded-3xl border border-neutral-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,245,236,0.95))] p-4 shadow-2xl dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(23,23,23,0.98),rgba(10,10,10,0.96))]"
@@ -195,10 +212,18 @@ export default function ProductsFilterOverlay({
         >
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>
-              <p className="text-base font-semibold text-neutral-900 dark:text-neutral-100">筛选宠物</p>
-              <p className="text-xs text-neutral-600 dark:text-neutral-400">选择条件后会实时更新列表。</p>
+              <p className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
+                筛选宠物
+              </p>
+              <p className="text-xs text-neutral-600 dark:text-neutral-400">
+                先调整条件，失焦或完成后再刷新列表。
+              </p>
             </div>
-            <div className={buildFilterPillClass(activeFilterCount > 0, { className: 'shrink-0 text-[11px]' })}>
+            <div
+              className={buildFilterPillClass(activeFilterCount > 0, {
+                className: 'shrink-0 text-[11px]',
+              })}
+            >
               {activeFilterCount > 0 ? `已选 ${activeFilterCount} 项` : '全部结果'}
             </div>
           </div>
@@ -223,7 +248,12 @@ export default function ProductsFilterOverlay({
           };
 
   return (
-    <div className={placementClass} style={placementStyle} data-products-filter-root="true" role="dialog">
+    <div
+      className={placementClass}
+      style={placementStyle}
+      data-products-filter-root="true"
+      role="dialog"
+    >
       {panelBody}
     </div>
   );

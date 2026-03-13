@@ -30,10 +30,7 @@ import ProductDrawer, {
 import TenantFloatingShareButton from '@/components/tenant-floating-share-button';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import {
-  FloatingActionButton,
-  FloatingActionDock,
-} from '@/components/ui/floating-actions';
+import { FloatingActionButton, FloatingActionDock } from '@/components/ui/floating-actions';
 import {
   DEFAULT_LIST_QUERY,
   compareProducts,
@@ -97,6 +94,13 @@ type ProductsPagePersistedState = {
   nextPage: number;
   hasMore: boolean;
   scrollY: number;
+};
+
+type ProductFilterDraftState = {
+  searchInput: string;
+  sexFilter: string;
+  seriesFilterId: string;
+  statusFilter: string;
 };
 
 function buildProductsStateKey(tenantSlug: string, filterQuery: string): string {
@@ -203,22 +207,30 @@ export default function TenantProductsPage() {
   });
   const stateStorageKey = useMemo(
     () => buildProductsStateKey(tenantSlug, filterQueryKey),
-    [tenantSlug, filterQueryKey]
+    [tenantSlug, filterQueryKey],
   );
   const editingProduct = useMemo(
     () => items.find((item) => item.id === editingProductId) ?? null,
     [editingProductId, items],
   );
-  const shareHeroSignature = useMemo(() => sharePreview.heroImages.join('|'), [sharePreview.heroImages]);
+  const shareHeroSignature = useMemo(
+    () => sharePreview.heroImages.join('|'),
+    [sharePreview.heroImages],
+  );
   const shareHeroImageUrl = resolveAuthenticatedAssetUrl(
     sharePreview.heroImages[shareHeroIndex] ??
       sharePreview.heroImages[0] ??
       DEFAULT_SHARE_PREVIEW_HERO,
   );
+  const appliedSearchInput = listQuery.search;
+  const appliedSexFilter = listQuery.sex;
+  const appliedSeriesFilterId = listQuery.seriesId;
+  const appliedStatusFilter = listQuery.status;
+  const previewStatusFilter = isFilterPopoverOpen ? appliedStatusFilter : statusFilter;
   const sharePosterImageUrls = useMemo(() => {
     const sourceItems =
-      statusFilter.length > 0
-        ? items.filter((item) => item.needMatingStatus === statusFilter)
+      previewStatusFilter.length > 0
+        ? items.filter((item) => item.needMatingStatus === previewStatusFilter)
         : items;
     const visibleCoverUrls = sourceItems
       .map((item) => item.coverImageUrl?.trim() ?? '')
@@ -230,15 +242,11 @@ export default function TenantProductsPage() {
     }
 
     const fallbackHeroUrls = Array.from(
-      new Set(
-        sharePreview.heroImages
-          .map((item) => item.trim())
-          .filter(Boolean),
-      ),
+      new Set(sharePreview.heroImages.map((item) => item.trim()).filter(Boolean)),
     ).slice(0, 10);
 
     return fallbackHeroUrls.map((item) => resolveAuthenticatedAssetUrl(item));
-  }, [items, sharePreview.heroImages, statusFilter]);
+  }, [items, previewStatusFilter, sharePreview.heroImages]);
   const shareOverlayColor = hexToRgba(sharePreview.brandSecondary, 0.4);
 
   useEffect(() => {
@@ -263,14 +271,6 @@ export default function TenantProductsPage() {
     };
   }, [sharePreview.heroImages]);
 
-  useProductsPageUiEffects({
-    isFilterPopoverOpen,
-    setIsFilterPopoverOpen,
-    mobileTopFilterRef,
-    setShowMobileFilterFab,
-    setIsMobileFilterLayout,
-  });
-
   const [meta, setMeta] = useState<ListMeta>({
     page: 1,
     pageSize: LIST_PAGE_SIZE,
@@ -278,10 +278,10 @@ export default function TenantProductsPage() {
     totalPages: 1,
   });
   const isDraftQuerySyncedWithUrl =
-    searchInput.trim() === listQuery.search &&
-    sexFilter.trim() === listQuery.sex &&
-    seriesFilterId.trim() === listQuery.seriesId &&
-    statusFilter.trim() === listQuery.status;
+    searchInput.trim() === appliedSearchInput &&
+    sexFilter.trim() === appliedSexFilter &&
+    seriesFilterId.trim() === appliedSeriesFilterId &&
+    statusFilter.trim() === appliedStatusFilter;
 
   const persistProductsState = useCallback(
     (scrollY: number) => {
@@ -317,7 +317,7 @@ export default function TenantProductsPage() {
       sexFilter,
       stateStorageKey,
       statusFilter,
-    ]
+    ],
   );
 
   draftFiltersRef.current = {
@@ -375,7 +375,6 @@ export default function TenantProductsPage() {
     );
   }, [router, searchParams, tenantSlug]);
 
-
   const replaceListQuery = useCallback(
     (nextQuery: ProductsListQuery) => {
       const nextParams = new URLSearchParams();
@@ -428,6 +427,116 @@ export default function TenantProductsPage() {
     },
     [isDemoMode, router, searchParams, tenantSlug],
   );
+
+  const buildQueryFromDraft = useCallback(
+    (draft: ProductFilterDraftState): ProductsListQuery => {
+      return {
+        ...listQuery,
+        page: 1,
+        pageSize: LIST_PAGE_SIZE,
+        search: draft.searchInput.trim(),
+        sex: draft.sexFilter.trim(),
+        seriesId: draft.seriesFilterId.trim(),
+        status: draft.statusFilter.trim(),
+        sortBy: 'code',
+        sortDir: 'asc',
+      };
+    },
+    [listQuery],
+  );
+
+  const applyFilterDraft = useCallback(
+    (draft: ProductFilterDraftState, options?: { closePopover?: boolean }) => {
+      const nextQuery = buildQueryFromDraft(draft);
+      const hasChanged =
+        nextQuery.search !== listQuery.search ||
+        nextQuery.sex !== listQuery.sex ||
+        nextQuery.seriesId !== listQuery.seriesId ||
+        nextQuery.status !== listQuery.status ||
+        nextQuery.sortBy !== listQuery.sortBy ||
+        nextQuery.sortDir !== listQuery.sortDir;
+
+      setError(null);
+      setMessage(null);
+      setContinueEditProductId(null);
+
+      if (options?.closePopover) {
+        setIsFilterPopoverOpen(false);
+      }
+
+      if (!hasChanged) {
+        return;
+      }
+
+      isInternalUpdateRef.current = true;
+      replaceListQuery(nextQuery);
+    },
+    [buildQueryFromDraft, listQuery, replaceListQuery],
+  );
+
+  const applyCurrentFilterDraft = useCallback(
+    (options?: { closePopover?: boolean }) => {
+      applyFilterDraft(
+        {
+          searchInput,
+          sexFilter,
+          seriesFilterId,
+          statusFilter,
+        },
+        options,
+      );
+    },
+    [applyFilterDraft, searchInput, seriesFilterId, sexFilter, statusFilter],
+  );
+
+  const updateFilterDraft = useCallback(
+    (
+      nextDraftPatch: Partial<ProductFilterDraftState>,
+      options?: { apply?: boolean; closePopover?: boolean },
+    ) => {
+      const nextDraft: ProductFilterDraftState = {
+        searchInput:
+          nextDraftPatch.searchInput !== undefined ? nextDraftPatch.searchInput : searchInput,
+        sexFilter: nextDraftPatch.sexFilter !== undefined ? nextDraftPatch.sexFilter : sexFilter,
+        seriesFilterId:
+          nextDraftPatch.seriesFilterId !== undefined
+            ? nextDraftPatch.seriesFilterId
+            : seriesFilterId,
+        statusFilter:
+          nextDraftPatch.statusFilter !== undefined ? nextDraftPatch.statusFilter : statusFilter,
+      };
+
+      if (nextDraftPatch.searchInput !== undefined) {
+        setSearchInput(nextDraftPatch.searchInput);
+      }
+      if (nextDraftPatch.sexFilter !== undefined) {
+        setSexFilter(nextDraftPatch.sexFilter);
+      }
+      if (nextDraftPatch.seriesFilterId !== undefined) {
+        setSeriesFilterId(nextDraftPatch.seriesFilterId);
+      }
+      if (nextDraftPatch.statusFilter !== undefined) {
+        setStatusFilter(nextDraftPatch.statusFilter);
+      }
+
+      if (options?.apply) {
+        applyFilterDraft(nextDraft, { closePopover: options.closePopover });
+      } else if (options?.closePopover) {
+        setIsFilterPopoverOpen(false);
+      }
+    },
+    [applyFilterDraft, searchInput, seriesFilterId, sexFilter, statusFilter],
+  );
+
+  useProductsPageUiEffects({
+    isFilterPopoverOpen,
+    onRequestFilterPopoverClose: () => {
+      applyCurrentFilterDraft({ closePopover: true });
+    },
+    mobileTopFilterRef,
+    setShowMobileFilterFab,
+    setIsMobileFilterLayout,
+  });
 
   const loadProductsPage = useCallback(
     async (query: ProductsListQuery, page: number): Promise<ProductsPagePayload> => {
@@ -835,7 +944,7 @@ export default function TenantProductsPage() {
     let rafId: number | null = null;
     const scrollTarget =
       typeof document !== 'undefined'
-        ? document.querySelector<HTMLElement>('[data-tenant-scroll-root="true"]') ?? window
+        ? (document.querySelector<HTMLElement>('[data-tenant-scroll-root="true"]') ?? window)
         : null;
 
     if (!scrollTarget) {
@@ -849,7 +958,8 @@ export default function TenantProductsPage() {
 
       rafId = window.requestAnimationFrame(() => {
         rafId = null;
-        const scrollY = scrollTarget instanceof Window ? scrollTarget.scrollY : scrollTarget.scrollTop;
+        const scrollY =
+          scrollTarget instanceof Window ? scrollTarget.scrollY : scrollTarget.scrollTop;
         persistProductsState(scrollY);
       });
     };
@@ -872,7 +982,7 @@ export default function TenantProductsPage() {
 
     const scrollTarget =
       typeof document !== 'undefined'
-        ? document.querySelector<HTMLElement>('[data-tenant-scroll-root="true"]') ?? window
+        ? (document.querySelector<HTMLElement>('[data-tenant-scroll-root="true"]') ?? window)
         : null;
 
     if (!scrollTarget) {
@@ -881,63 +991,28 @@ export default function TenantProductsPage() {
 
     const scrollY = scrollTarget instanceof Window ? scrollTarget.scrollY : scrollTarget.scrollTop;
     persistProductsState(scrollY);
-  }, [searchInput, sexFilter, seriesFilterId, statusFilter, items, nextPage, hasMore, hasHydratedState, persistProductsState]);
-
-  const buildDraftQuery = useCallback(() => {
-    return {
-      ...listQuery,
-      page: 1,
-      pageSize: LIST_PAGE_SIZE,
-      search: searchInput.trim(),
-      sex: sexFilter.trim(),
-      seriesId: seriesFilterId.trim(),
-      status: statusFilter.trim(),
-      sortBy: 'code' as const,
-      sortDir: 'asc' as const,
-    };
-  }, [listQuery, searchInput, seriesFilterId, sexFilter, statusFilter]);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      const nextQuery = buildDraftQuery();
-      const hasChanged =
-        nextQuery.search !== listQuery.search ||
-        nextQuery.sex !== listQuery.sex ||
-        nextQuery.seriesId !== listQuery.seriesId ||
-        nextQuery.status !== listQuery.status ||
-        nextQuery.sortBy !== listQuery.sortBy ||
-        nextQuery.sortDir !== listQuery.sortDir;
-
-      if (!hasChanged) {
-        return;
-      }
-
-      setError(null);
-      setMessage(null);
-      setContinueEditProductId(null);
-      isInternalUpdateRef.current = true;
-      replaceListQuery(nextQuery);
-    }, 200);
-
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, [buildDraftQuery, listQuery, replaceListQuery]);
+  }, [
+    searchInput,
+    sexFilter,
+    seriesFilterId,
+    statusFilter,
+    items,
+    nextPage,
+    hasMore,
+    hasHydratedState,
+    persistProductsState,
+  ]);
 
   function handleResetSearch() {
-    setSearchInput('');
-    setSexFilter('');
-    setSeriesFilterId('');
-    setStatusFilter('');
-    setError(null);
-    setMessage(null);
-    setContinueEditProductId(null);
-    setIsFilterPopoverOpen(false);
-
-    replaceListQuery({
-      ...DEFAULT_LIST_QUERY,
-      pageSize: LIST_PAGE_SIZE,
-    });
+    updateFilterDraft(
+      {
+        searchInput: '',
+        sexFilter: '',
+        seriesFilterId: '',
+        statusFilter: '',
+      },
+      { apply: true, closePopover: true },
+    );
   }
 
   function openEdit(productId: string) {
@@ -998,10 +1073,13 @@ export default function TenantProductsPage() {
           maleCount: currentStats.maleCount + (normalizedSex === 'male' ? 1 : 0),
           femaleCount: currentStats.femaleCount + (normalizedSex === 'female' ? 1 : 0),
           unknownCount:
-            currentStats.unknownCount + (normalizedSex === 'male' || normalizedSex === 'female' ? 0 : 1),
+            currentStats.unknownCount +
+            (normalizedSex === 'male' || normalizedSex === 'female' ? 0 : 1),
           needMatingCount:
-            currentStats.needMatingCount + (result.product.needMatingStatus === 'need_mating' ? 1 : 0),
-          warningCount: currentStats.warningCount + (result.product.needMatingStatus === 'warning' ? 1 : 0),
+            currentStats.needMatingCount +
+            (result.product.needMatingStatus === 'need_mating' ? 1 : 0),
+          warningCount:
+            currentStats.warningCount + (result.product.needMatingStatus === 'warning' ? 1 : 0),
         };
       });
       return;
@@ -1016,32 +1094,41 @@ export default function TenantProductsPage() {
   const hasMoreSeriesOptions = seriesOptions.length > quickSeriesOptions.length;
 
   const activeFilterCount =
-    (searchInput.trim() ? 1 : 0) +
-    (sexFilter ? 1 : 0) +
-    (seriesFilterId ? 1 : 0) +
-    (statusFilter ? 1 : 0);
+    (appliedSearchInput ? 1 : 0) +
+    (appliedSexFilter ? 1 : 0) +
+    (appliedSeriesFilterId ? 1 : 0) +
+    (appliedStatusFilter ? 1 : 0);
 
   const selectedSeriesLabel = useMemo(() => {
-    if (!seriesFilterId) {
+    if (!appliedSeriesFilterId) {
       return null;
     }
 
-    return formatSeriesLabelById(seriesFilterId, seriesOptions);
-  }, [seriesFilterId, seriesOptions]);
+    return formatSeriesLabelById(appliedSeriesFilterId, seriesOptions);
+  }, [appliedSeriesFilterId, seriesOptions]);
   const listStatsLabel = useMemo(() => {
     const base = `${listStats.maleCount}公${listStats.femaleCount}母 今年已产${listStats.yearEggCount}蛋 ${listStats.needMatingCount}只待交配`;
     if (listStats.warningCount > 0) {
       return `${base} ⚠️${listStats.warningCount}只超时未交配`;
     }
     return base;
-  }, [listStats.femaleCount, listStats.maleCount, listStats.needMatingCount, listStats.warningCount, listStats.yearEggCount]);
+  }, [
+    listStats.femaleCount,
+    listStats.maleCount,
+    listStats.needMatingCount,
+    listStats.warningCount,
+    listStats.yearEggCount,
+  ]);
   const selectedStatusLabel = useMemo(() => {
-    if (!statusFilter) {
+    if (!appliedStatusFilter) {
       return null;
     }
 
-    return STATUS_FILTER_OPTIONS.find((item) => item.value === statusFilter)?.label ?? statusFilter;
-  }, [statusFilter]);
+    return (
+      STATUS_FILTER_OPTIONS.find((item) => item.value === appliedStatusFilter)?.label ??
+      appliedStatusFilter
+    );
+  }, [appliedStatusFilter]);
   const dashboardDrilldownTags = useMemo(() => {
     if (searchParams.get('from') !== 'dashboard') {
       return [];
@@ -1058,15 +1145,15 @@ export default function TenantProductsPage() {
       tags.push(metricLabel);
     }
 
-    if (sexFilter) {
-      if (sexFilter === 'female') {
+    if (appliedSexFilter) {
+      if (appliedSexFilter === 'female') {
         tags.push('母龟');
-      } else if (sexFilter === 'male') {
+      } else if (appliedSexFilter === 'male') {
         tags.push('公龟');
-      } else if (sexFilter === 'unknown') {
+      } else if (appliedSexFilter === 'unknown') {
         tags.push('性别未知');
       } else {
-        tags.push(`性别 ${sexFilter}`);
+        tags.push(`性别 ${appliedSexFilter}`);
       }
     }
 
@@ -1076,12 +1163,18 @@ export default function TenantProductsPage() {
     if (selectedSeriesLabel) {
       tags.push(`系列 ${selectedSeriesLabel}`);
     }
-    if (searchInput.trim()) {
-      tags.push(`关键词“${searchInput.trim()}”`);
+    if (appliedSearchInput) {
+      tags.push(`关键词“${appliedSearchInput}”`);
     }
 
     return tags;
-  }, [searchInput, searchParams, selectedSeriesLabel, selectedStatusLabel, sexFilter]);
+  }, [
+    appliedSearchInput,
+    appliedSexFilter,
+    searchParams,
+    selectedSeriesLabel,
+    selectedStatusLabel,
+  ]);
   const dashboardDrilldownHint = useMemo(() => {
     if (searchParams.get('from') !== 'dashboard') {
       return null;
@@ -1093,12 +1186,12 @@ export default function TenantProductsPage() {
     return `来源看板：已套用 ${dashboardDrilldownTags.join(' + ')}`;
   }, [dashboardDrilldownTags, searchParams]);
   const visibleItems = useMemo(() => {
-    if (!statusFilter) {
+    if (!previewStatusFilter) {
       return items;
     }
 
-    return items.filter((item) => item.needMatingStatus === statusFilter);
-  }, [items, statusFilter]);
+    return items.filter((item) => item.needMatingStatus === previewStatusFilter);
+  }, [items, previewStatusFilter]);
 
   const filterPopoverAnchorRef = useRef<HTMLElement | null>(null);
   const [filterPopoverAnchorRect, setFilterPopoverAnchorRect] = useState<DOMRect | null>(null);
@@ -1208,10 +1301,17 @@ export default function TenantProductsPage() {
           total={meta.total}
           loadMoreSentinelRef={loadMoreSentinelRef}
           onOpenFilter={openFilterPopover}
-          onClearSearch={() => setSearchInput('')}
-          onSexFilterChange={setSexFilter}
-          onSeriesFilterChange={setSeriesFilterId}
-          onStatusFilterChange={setStatusFilter}
+          onSearchInputChange={(value) => updateFilterDraft({ searchInput: value })}
+          onSearchInputCommit={() => applyCurrentFilterDraft()}
+          onResetFilters={handleResetSearch}
+          onClearSearch={() => updateFilterDraft({ searchInput: '' }, { apply: true })}
+          onSexFilterChange={(value) => updateFilterDraft({ sexFilter: value }, { apply: true })}
+          onSeriesFilterChange={(value) =>
+            updateFilterDraft({ seriesFilterId: value }, { apply: true })
+          }
+          onStatusFilterChange={(value) =>
+            updateFilterDraft({ statusFilter: value }, { apply: true })
+          }
           onOpenEdit={openEdit}
           onOpenPreviewDetail={openPreviewDetail}
         />
@@ -1292,11 +1392,12 @@ export default function TenantProductsPage() {
         quickSeriesOptions={quickSeriesOptions}
         seriesOptions={seriesOptions}
         hasMoreSeriesOptions={hasMoreSeriesOptions}
-        onSearchInputChange={setSearchInput}
-        onSexFilterChange={setSexFilter}
-        onStatusFilterChange={setStatusFilter}
-        onSeriesFilterChange={setSeriesFilterId}
-        onClose={() => setIsFilterPopoverOpen(false)}
+        onSearchInputChange={(value) => updateFilterDraft({ searchInput: value })}
+        onSearchInputCommit={() => applyCurrentFilterDraft()}
+        onSexFilterChange={(value) => updateFilterDraft({ sexFilter: value })}
+        onStatusFilterChange={(value) => updateFilterDraft({ statusFilter: value })}
+        onSeriesFilterChange={(value) => updateFilterDraft({ seriesFilterId: value })}
+        onApplyAndClose={() => applyCurrentFilterDraft({ closePopover: true })}
         onReset={handleResetSearch}
       />
 
