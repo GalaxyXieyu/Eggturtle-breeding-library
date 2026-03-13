@@ -61,6 +61,15 @@ export function FamilyTreeView({ tree, openBreederDetail }: FamilyTreeViewProps)
   const children = tree.children;
   const childNodes = children.length > 0 ? children : [null];
 
+  // Check if we have any grandparents
+  const hasGrandparents =
+    tree.paternalGrandfather ||
+    tree.paternalGrandmother ||
+    tree.maternalGrandfather ||
+    tree.maternalGrandmother;
+
+  const layoutClassName = hasGrandparents ? 'min-w-[32rem] grid-cols-5' : 'min-w-[20rem] grid-cols-3';
+
   return (
     <Card className="rounded-3xl border-black/5 bg-white p-4 shadow-[0_8px_24px_rgba(0,0,0,0.06)] sm:p-5">
       <div className="mb-4 flex items-center gap-2">
@@ -71,10 +80,47 @@ export function FamilyTreeView({ tree, openBreederDetail }: FamilyTreeViewProps)
 
       <div className="space-y-4 rounded-3xl border border-neutral-200 bg-neutral-50/35 p-4 sm:p-5">
         <div className="overflow-x-auto pb-1">
-          <div className="grid min-w-[20rem] grid-cols-3 items-start gap-3 rounded-2xl border border-neutral-200 bg-white/70 p-4 sm:min-w-0 sm:gap-5">
+          <div
+            className={`grid items-start gap-3 rounded-2xl border border-neutral-200 bg-white/70 p-4 sm:min-w-0 sm:gap-5 ${layoutClassName}`}
+          >
+            {hasGrandparents ? (
+              <div className="flex flex-col items-center gap-2">
+                <div className="flex items-center gap-1 text-[11px] font-semibold text-neutral-600">
+                  <span>祖父母辈</span>
+                </div>
+                <div className="flex w-full flex-col items-center gap-2">
+                  <div className="w-full space-y-1">
+                    <p className="text-center text-[10px] font-medium text-neutral-500">父系</p>
+                    <TreeCard
+                      node={tree.paternalGrandfather}
+                      onOpen={openBreederDetail}
+                      className="w-[6rem] sm:w-[6.5rem]"
+                    />
+                    <TreeCard
+                      node={tree.paternalGrandmother}
+                      onOpen={openBreederDetail}
+                      className="w-[6rem] sm:w-[6.5rem]"
+                    />
+                  </div>
+                  <div className="w-full space-y-1">
+                    <p className="text-center text-[10px] font-medium text-neutral-500">母系</p>
+                    <TreeCard
+                      node={tree.maternalGrandfather}
+                      onOpen={openBreederDetail}
+                      className="w-[6rem] sm:w-[6.5rem]"
+                    />
+                    <TreeCard
+                      node={tree.maternalGrandmother}
+                      onOpen={openBreederDetail}
+                      className="w-[6rem] sm:w-[6.5rem]"
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
             <div className="flex flex-col items-center gap-2">
               <div className="flex items-center gap-1 text-[11px] font-semibold text-neutral-600">
-                <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-neutral-200 text-[10px] text-neutral-700">1</span>
                 <span>父母辈</span>
               </div>
               <div className="flex flex-col items-center gap-2">
@@ -85,14 +131,12 @@ export function FamilyTreeView({ tree, openBreederDetail }: FamilyTreeViewProps)
 
             <div className="flex flex-col items-center gap-2">
               <div className="flex items-center gap-1 text-[11px] font-semibold text-amber-700">
-                <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-amber-100 text-[10px] text-amber-700">2</span>
                 <span>当前</span>
               </div>
               <TreeCard node={tree.self} onOpen={openBreederDetail} highlight className="w-[7.5rem] sm:w-[8rem]" />
 
               <div className="w-full space-y-1.5 pt-1">
                 <div className="flex items-center justify-center gap-1 text-[10px] font-semibold text-neutral-500">
-                  <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-neutral-200 text-[10px] text-neutral-600">+</span>
                   <span>{relatedMatesState.hasExtendedList ? '配偶 / 关联母龟' : '配偶'}</span>
                 </div>
 
@@ -133,7 +177,6 @@ export function FamilyTreeView({ tree, openBreederDetail }: FamilyTreeViewProps)
 
             <div className="flex flex-col items-center gap-2">
               <div className="flex items-center gap-1 text-[11px] font-semibold text-neutral-600">
-                <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-neutral-200 text-[10px] text-neutral-700">3</span>
                 <span>子代</span>
               </div>
               <div className="flex w-full flex-col items-center gap-2">
@@ -150,6 +193,8 @@ export function FamilyTreeView({ tree, openBreederDetail }: FamilyTreeViewProps)
                 <p className="text-[10px] font-medium text-neutral-500">共 {children.length} 只子代</p>
               ) : null}
             </div>
+
+            {hasGrandparents ? <div aria-hidden className="hidden sm:block" /> : null}
           </div>
         </div>
       </div>

@@ -304,6 +304,11 @@ export const productFamilyTreeSchema = z.object({
   mate: productFamilyTreeNodeSchema.nullable(),
   mates: z.array(productFamilyTreeMateSchema),
   children: z.array(productFamilyTreeNodeSchema),
+  // Grandparents
+  paternalGrandfather: productFamilyTreeNodeSchema.nullable().optional(), // 祖父 (父本的父本)
+  paternalGrandmother: productFamilyTreeNodeSchema.nullable().optional(), // 祖母 (父本的母本)
+  maternalGrandfather: productFamilyTreeNodeSchema.nullable().optional(), // 外祖父 (母本的父本)
+  maternalGrandmother: productFamilyTreeNodeSchema.nullable().optional(), // 外祖母 (母本的母本)
   links: z.object({
     sire: productFamilyTreeLinkSchema.nullable(),
     dam: productFamilyTreeLinkSchema.nullable(),

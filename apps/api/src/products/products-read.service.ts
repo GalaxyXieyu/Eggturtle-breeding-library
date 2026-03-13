@@ -384,6 +384,15 @@ export class ProductsReadService {
       this.listMatchedFemaleProductsForMale(tenantId, product, mateCodeCandidates),
     ]);
 
+    // Fetch grandparents
+    const [paternalGrandfather, paternalGrandmother, maternalGrandfather, maternalGrandmother] =
+      await Promise.all([
+        sire ? this.findProductByCode(tenantId, sire.sireCode) : Promise.resolve(null),
+        sire ? this.findProductByCode(tenantId, sire.damCode) : Promise.resolve(null),
+        dam ? this.findProductByCode(tenantId, dam.sireCode) : Promise.resolve(null),
+        dam ? this.findProductByCode(tenantId, dam.damCode) : Promise.resolve(null),
+      ]);
+
     const needMatingSummaryByProductId = await this.loadNeedMatingSummaryByProductIds(
       tenantId,
       relatedFemales.map((item) => item.id),
@@ -408,7 +417,18 @@ export class ProductsReadService {
     });
 
     const coverImageUrlByProductId = await this.loadFamilyTreeCoverImageUrls(
-      [product, sire, dam, mate, ...children, ...sortedRelatedFemales]
+      [
+        product,
+        sire,
+        dam,
+        mate,
+        ...children,
+        ...sortedRelatedFemales,
+        paternalGrandfather,
+        paternalGrandmother,
+        maternalGrandfather,
+        maternalGrandmother,
+      ]
         .filter((item): item is PrismaProduct => Boolean(item))
         .map((item) => item.id),
     );
@@ -429,14 +449,18 @@ export class ProductsReadService {
         };
       }),
       children: children.map((child) => this.toFamilyTreeNode(child, coverImageUrlByProductId)),
+      paternalGrandfather: this.toFamilyTreeNodeOrNull(paternalGrandfather, coverImageUrlByProductId),
+      paternalGrandmother: this.toFamilyTreeNodeOrNull(paternalGrandmother, coverImageUrlByProductId),
+      maternalGrandfather: this.toFamilyTreeNodeOrNull(maternalGrandfather, coverImageUrlByProductId),
+      maternalGrandmother: this.toFamilyTreeNodeOrNull(maternalGrandmother, coverImageUrlByProductId),
       links: {
         sire: this.toFamilyTreeLink(product.sireCode, sire, coverImageUrlByProductId),
         dam: this.toFamilyTreeLink(product.damCode, dam, coverImageUrlByProductId),
         mate: this.toFamilyTreeLink(currentMateCode, mate, coverImageUrlByProductId),
       },
       limitations: isMale
-        ? '当前家族谱系按竖向展示自己、直属父母、关联母龟与直系子代；关联母龟按待交配优先级与天数排序。'
-        : '当前家族谱系仅展示自己、直属父母、当前配偶与直系子代。',
+        ? '当前家族谱系优先展示自己、直属父母；如存在可追溯数据，会补充祖父母、关联母龟与直系子代，关联母龟按待交配优先级与天数排序。'
+        : '当前家族谱系优先展示自己、直属父母；如存在可追溯数据，会补充祖父母、当前配偶与直系子代。',
     };
   }
 

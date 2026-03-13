@@ -626,8 +626,8 @@ export class SharesPublicService {
         mate: this.toPublicFamilyTreeLink(currentMateCode, mate)
       },
       limitations: isMale
-        ? '当前家族谱系按竖向展示自己、直属父母、关联母龟与直系子代；关联母龟按待交配优先级与天数排序。'
-        : '当前家族谱系仅展示自己、直属父母、当前配偶与直系子代。'
+        ? '当前家族谱系优先展示自己、直属父母；如存在可追溯数据，会补充祖父母、关联母龟与直系子代，关联母龟按待交配优先级与天数排序。'
+        : '当前家族谱系优先展示自己、直属父母；如存在可追溯数据，会补充祖父母、当前配偶与直系子代。'
     };
   }
 

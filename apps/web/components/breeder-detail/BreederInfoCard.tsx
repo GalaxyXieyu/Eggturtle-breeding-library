@@ -174,7 +174,7 @@ export function BreederInfoCard({
                     type="button"
                     data-ui="button"
                     onClick={() => onImageClick(image.id)}
-                    className={`overflow-hidden rounded-2xl border bg-white transition-all ${
+                    className={`overflow-hidden rounded-xl border bg-white transition-all ${
                       image.id === activeImageId
                         ? 'border-[#FFD400] shadow-[0_6px_20px_rgba(255,212,0,0.25)]'
                         : 'border-neutral-200 hover:border-neutral-300'
@@ -248,20 +248,22 @@ export function BreederInfoCard({
                 编辑资料
               </Button>
             ) : null}
-            <Button variant="outline" className="bg-white" onClick={onOpenCertificateDrawer} disabled={actionsDisabled}>
-              <FileBadge2 size={16} />
-              生成证书
-            </Button>
             {breeder?.sex?.toLowerCase() === 'female' ? (
-              <Button
-                variant="outline"
-                className="bg-white"
-                onClick={onOpenCouplePhotoDrawer}
-                disabled={actionsDisabled || generatingCouplePhoto}
-              >
-                {generatingCouplePhoto ? <Loader2 size={16} className="animate-spin" /> : <HeartHandshake size={16} />}
-                {generatingCouplePhoto ? '生成中...' : '生成夫妻图'}
-              </Button>
+              <>
+                <Button variant="outline" className="bg-white" onClick={onOpenCertificateDrawer} disabled={actionsDisabled}>
+                  <FileBadge2 size={16} />
+                  生成证书
+                </Button>
+                <Button
+                  variant="outline"
+                  className="bg-white"
+                  onClick={onOpenCouplePhotoDrawer}
+                  disabled={actionsDisabled || generatingCouplePhoto}
+                >
+                  {generatingCouplePhoto ? <Loader2 size={16} className="animate-spin" /> : <HeartHandshake size={16} />}
+                  {generatingCouplePhoto ? '生成中...' : '生成夫妻图'}
+                </Button>
+              </>
             ) : null}
           </div>
           {actionErrorMessage ? (
