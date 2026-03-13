@@ -62,8 +62,14 @@ export default async function PublicShareFeedPage({
   const legacyData = mapTenantFeedToLegacy(shareResult.data);
   const shareRouteQuery = buildPublicShareRouteQuery(shareResult.shareId, shareResult.query);
   const seriesId = firstSearchParamValue(searchParams.series)?.trim();
+  const requestedTab = firstSearchParamValue(searchParams.tab)?.trim();
+  const initialTab = requestedTab === 'series' || requestedTab === 'me' ? requestedTab : 'pets';
   if (seriesId) {
     shareRouteQuery.set('series', seriesId);
+  }
+
+  if (initialTab !== 'pets') {
+    shareRouteQuery.set('tab', initialTab);
   }
 
   const shareQuery = shareRouteQuery.toString();
@@ -74,6 +80,7 @@ export default async function PublicShareFeedPage({
       shareToken={params.shareToken}
       shareQuery={shareQuery}
       initialSeriesId={seriesId}
+      initialTab={initialTab}
       series={legacyData.series}
       breeders={legacyData.breeders}
       presentation={shareResult.data.presentation}

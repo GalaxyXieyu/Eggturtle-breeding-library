@@ -13,6 +13,8 @@ type PublicBottomDockProps = {
   shareQuery?: string;
   activeTab: PublicDockTab;
   className?: string;
+  clientTabKeys?: PublicDockTab[];
+  onTabChange?: (tab: PublicDockTab) => void;
 };
 
 export default function PublicBottomDock({
@@ -20,6 +22,8 @@ export default function PublicBottomDock({
   shareQuery,
   activeTab,
   className,
+  clientTabKeys = [],
+  onTabChange,
 }: PublicBottomDockProps) {
   const basePath = `/public/s/${shareToken}`;
 
@@ -44,7 +48,7 @@ export default function PublicBottomDock({
     {
       key: 'me',
       label: '我的',
-      href: appendPublicShareQuery(`${basePath}/me`, shareQuery),
+      href: appendPublicShareQuery(`${basePath}?tab=me`, shareQuery),
       icon: UserRound,
     },
   ];
@@ -59,26 +63,37 @@ export default function PublicBottomDock({
         {tabs.map((item) => {
           const active = activeTab === item.key;
           const Icon = item.icon;
+          const linkClassName = cn(
+            'tenant-mobile-nav-link',
+            active
+              ? 'is-active'
+              : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200',
+          );
+          const content = (
+            <span className="tenant-mobile-nav-stack">
+              <span className="tenant-mobile-nav-icon">
+                <Icon className="tenant-mobile-nav-icon-glyph" />
+              </span>
+              <span className="tenant-mobile-nav-label">{item.label}</span>
+            </span>
+          );
 
           return (
             <li key={item.key} className="tenant-mobile-nav-item list-none">
-              <Link
-                href={item.href}
-                aria-label={item.label}
-                className={cn(
-                  'tenant-mobile-nav-link',
-                  active
-                    ? 'is-active'
-                    : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200',
-                )}
-              >
-                <span className="tenant-mobile-nav-stack">
-                  <span className="tenant-mobile-nav-icon">
-                    <Icon className="tenant-mobile-nav-icon-glyph" />
-                  </span>
-                  <span className="tenant-mobile-nav-label">{item.label}</span>
-                </span>
-              </Link>
+              {clientTabKeys.includes(item.key) && onTabChange ? (
+                <button
+                  type="button"
+                  aria-label={item.label}
+                  className={linkClassName}
+                  onClick={() => onTabChange(item.key)}
+                >
+                  {content}
+                </button>
+              ) : (
+                <Link href={item.href} aria-label={item.label} className={linkClassName}>
+                  {content}
+                </Link>
+              )}
             </li>
           );
         })}

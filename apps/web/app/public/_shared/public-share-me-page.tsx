@@ -20,6 +20,7 @@ type PublicShareMePageProps = {
   shareToken: string;
   shareQuery?: string;
   presentation?: PublicSharePresentation | null;
+  embedded?: boolean;
 };
 
 type PlanTier = 'FREE' | 'BASIC' | 'PRO';
@@ -64,7 +65,12 @@ const DECISION_POINTS = [
   '访客先在公开页看到能力，再进入后台会更顺。',
 ];
 
-export default function PublicShareMePage({ shareToken, shareQuery, presentation }: PublicShareMePageProps) {
+export default function PublicShareMePage({
+  shareToken,
+  shareQuery,
+  presentation,
+  embedded = false,
+}: PublicShareMePageProps) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const resolvedPresentation = resolvePublicSharePresentation(presentation);
   const brandPrimary = resolvedPresentation.theme.brandPrimary;
@@ -82,8 +88,8 @@ export default function PublicShareMePage({ shareToken, shareQuery, presentation
   const permalink = useMemo(
     () =>
       typeof window !== 'undefined' && window.location?.origin
-        ? `${window.location.origin}/public/s/${shareToken}/me`
-        : `/public/s/${shareToken}/me`,
+        ? `${window.location.origin}/public/s/${shareToken}?tab=me`
+        : `/public/s/${shareToken}?tab=me`,
     [shareToken],
   );
 
@@ -95,9 +101,10 @@ export default function PublicShareMePage({ shareToken, shareQuery, presentation
   const loginHref = `/login?source=share&next=${encodeURIComponent(SHARE_SOURCE_NEXT)}`;
   const backToPetsHref = appendPublicShareQuery(`/public/s/${shareToken}`, shareQuery);
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-stone-100 via-white to-amber-50/40 text-black dark:from-neutral-950 dark:via-neutral-950 dark:to-neutral-900/40 dark:text-neutral-100">
-      <main className="mx-auto w-full max-w-5xl px-4 pb-[calc(env(safe-area-inset-bottom)+94px)] pt-[calc(env(safe-area-inset-top)+14px)] sm:px-5">
+  const mainContent = (
+    <main
+      className={`mx-auto w-full max-w-5xl px-4 ${embedded ? 'pb-6 pt-4' : 'pb-[calc(env(safe-area-inset-bottom)+94px)] pt-[calc(env(safe-area-inset-top)+14px)]'} sm:px-5`}
+    >
         <section className="grid gap-4 rounded-3xl border border-black/10 bg-white/92 p-5 shadow-[0_16px_36px_rgba(0,0,0,0.08)] backdrop-blur dark:border-white/10 dark:bg-neutral-900/75 sm:p-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(18rem,0.95fr)] lg:items-center">
           <div>
             <p className="text-xs uppercase tracking-[0.28em] text-neutral-500 dark:text-neutral-400">My</p>
@@ -272,7 +279,16 @@ export default function PublicShareMePage({ shareToken, shareQuery, presentation
             <ArrowRight size={14} />
           </Link>
         </section>
-      </main>
+    </main>
+  );
+
+  if (embedded) {
+    return <div className="min-h-full bg-transparent text-black dark:text-neutral-100">{mainContent}</div>;
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-stone-100 via-white to-amber-50/40 text-black dark:from-neutral-950 dark:via-neutral-950 dark:to-neutral-900/40 dark:text-neutral-100">
+      {mainContent}
 
       <PublicFloatingActions
         permalink={permalink}

@@ -1782,143 +1782,6 @@ button.auth-action {
   font-size: 14px;
 }
 
-.tenant-entry-shell {
-  min-height: calc(100dvh - 128px);
-  place-items: center;
-}
-
-.tenant-entry-stage {
-  position: relative;
-  width: min(560px, 100%);
-}
-
-.tenant-entry-glow {
-  position: absolute;
-  inset: -26% -18% auto;
-  height: 240px;
-  border-radius: 999px;
-  background: radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.26), rgba(59, 130, 246, 0));
-  pointer-events: none;
-}
-
-.tenant-entry-card {
-  position: relative;
-  z-index: 1;
-  gap: 16px;
-  border-radius: 16px;
-  border-color: #dbe4f0;
-  background: linear-gradient(145deg, #ffffff, #f8fbff);
-  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
-  padding: 20px;
-}
-
-.tenant-entry-header h1 {
-  margin: 0;
-  font-size: 24px;
-  letter-spacing: -0.02em;
-}
-
-.tenant-entry-header .muted {
-  line-height: 1.55;
-}
-
-.tenant-entry-loading {
-  gap: 12px;
-}
-
-.tenant-entry-status {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: #1f2937;
-  font-weight: 600;
-}
-
-.tenant-entry-ping {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  background: #1d4ed8;
-  box-shadow: 0 0 0 rgba(29, 78, 216, 0.42);
-  animation: tenant-entry-ping 1.7s ease-out infinite;
-}
-
-.tenant-entry-progress {
-  height: 8px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: #e6eef8;
-}
-
-.tenant-entry-progress > span {
-  display: block;
-  width: 38%;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #1d4ed8, #22c55e, #1d4ed8);
-  background-size: 200% 100%;
-  animation: tenant-entry-progress 1.4s linear infinite;
-}
-
-.tenant-entry-stage-label {
-  margin: 0;
-  color: #6b7280;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-@keyframes tenant-entry-ping {
-  0% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(29, 78, 216, 0.42);
-  }
-
-  70% {
-    transform: scale(1.05);
-    box-shadow: 0 0 0 10px rgba(29, 78, 216, 0);
-  }
-
-  100% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(29, 78, 216, 0);
-  }
-}
-
-@keyframes tenant-entry-progress {
-  0% {
-    transform: translateX(-45%);
-    background-position: 0 0;
-  }
-
-  100% {
-    transform: translateX(165%);
-    background-position: 200% 0;
-  }
-}
-
-@media (max-width: 720px) {
-  .tenant-entry-shell {
-    min-height: 0;
-  }
-
-  .tenant-entry-card {
-    border-radius: 14px;
-    padding: 16px;
-  }
-
-  .tenant-entry-header h1 {
-    font-size: 21px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .tenant-entry-ping,
-  .tenant-entry-progress > span {
-    animation: none;
-  }
-}
-
 @keyframes skeletonShimmer {
   0% {
     background-position: 200% 0;
@@ -2363,6 +2226,14 @@ button.auth-action {
 }
 
 .tenant-mobile-nav-link {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  background: transparent;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;

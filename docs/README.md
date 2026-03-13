@@ -44,3 +44,8 @@
   - `apps/web/components/filter-pill.ts`
   - `apps/web/components/pet/*`
 - 不再新增“平行口径文档”，优先在现有 6 份文档内迭代。
+
+## 自动化补充文档
+
+- [openclaw/openclaw-daily-summary.md](./openclaw/openclaw-daily-summary.md)
+  - Eggturtle 每日 22:30 OpenClaw 日报方案、脚本与 cron 注册方式

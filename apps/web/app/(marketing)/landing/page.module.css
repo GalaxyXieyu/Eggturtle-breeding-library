@@ -1,0 +1,486 @@
+/* Landing Page - 黑白黄现代简约主题 */
+
+/* ===== 全局容器 ===== */
+.container {
+  min-height: 100vh;
+  background-color: #0a0a0a;
+  color: #ffffff;
+  font-family: var(--font-sans, 'Inter', sans-serif);
+  overflow-x: hidden;
+}
+
+/* ===== Hero Section ===== */
+.hero {
+  position: relative;
+  min-height: 100svh;
+  display: flex;
+  align-items: center;
+  padding: 5rem 1.5rem 4rem;
+  overflow: hidden;
+}
+
+.heroGlow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255, 212, 0, 0.18), transparent 60%);
+  pointer-events: none;
+}
+
+.heroContent {
+  position: relative;
+  z-index: 1;
+  max-width: 72rem;
+  margin: 0 auto;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 3rem;
+  align-items: center;
+}
+
+@media (min-width: 1024px) {
+  .heroContent {
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+  }
+}
+
+.heroText {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.heroTitle {
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: #ffffff;
+}
+
+.heroTitleAccent {
+  color: #FFD400;
+}
+
+.heroSubtitle {
+  font-size: clamp(1rem, 2vw, 1.2rem);
+  line-height: 1.7;
+  color: #a3a3a3;
+}
+
+.heroCta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+}
+
+.ctaPrimary {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.875rem 2rem;
+  background: #FFD400;
+  color: #0a0a0a;
+  font-weight: 700;
+  font-size: 1rem;
+  border-radius: 9999px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 0 0 rgba(255, 212, 0, 0);
+}
+
+.ctaPrimary:hover {
+  background: #ffe033;
+  box-shadow: 0 8px 32px rgba(255, 212, 0, 0.35);
+  transform: translateY(-1px);
+}
+
+.ctaSecondary {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.875rem 1.5rem;
+  color: #a3a3a3;
+  font-weight: 500;
+  font-size: 1rem;
+  border-radius: 9999px;
+  text-decoration: none;
+  border: 1px solid #262626;
+  transition: all 0.2s ease;
+}
+
+.ctaSecondary:hover {
+  color: #ffffff;
+  border-color: #404040;
+  background: #1a1a1a;
+}
+
+.heroImage {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.heroImageInner {
+  width: 100%;
+  max-width: 480px;
+  height: auto;
+  border-radius: 1.5rem;
+  object-fit: cover;
+  aspect-ratio: 1;
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+/* ===== Section 通用 ===== */
+.sectionHeader {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.sectionTitle {
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  margin-bottom: 0.75rem;
+}
+
+.sectionSubtitle {
+  font-size: 1.1rem;
+  color: #737373;
+}
+
+/* ===== Features Section ===== */
+.features {
+  padding: 6rem 1.5rem;
+  max-width: 72rem;
+  margin: 0 auto;
+}
+
+.featureGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .featureGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .featureGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.featureCard {
+  background: #111111;
+  border: 1px solid #1f1f1f;
+  border-radius: 1.25rem;
+  padding: 2rem;
+  transition: all 0.25s ease;
+}
+
+.featureCard:hover {
+  border-color: rgba(255, 212, 0, 0.3);
+  box-shadow: 0 8px 32px rgba(255, 212, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+.featureIcon {
+  width: 3rem;
+  height: 3rem;
+  background: rgba(255, 212, 0, 0.1);
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFD400;
+  margin-bottom: 1.25rem;
+}
+
+.featureTitle {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 0.625rem;
+}
+
+.featureDesc {
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: #737373;
+}
+
+/* ===== Screenshots Section ===== */
+.screenshots {
+  padding: 6rem 1.5rem;
+  background: #050505;
+}
+
+.screenshots .sectionHeader {
+  max-width: 72rem;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 3rem;
+}
+
+.screenshotGrid {
+  max-width: 72rem;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .screenshotGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.screenshotCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.screenshotImageWrapper {
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 1px solid #1f1f1f;
+  background: #111111;
+  aspect-ratio: 4/3;
+}
+
+.screenshotImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+
+.screenshotCard:hover .screenshotImage {
+  transform: scale(1.03);
+}
+
+.screenshotLabel {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #737373;
+  text-align: center;
+}
+
+/* ===== Pricing Section ===== */
+.pricing {
+  padding: 6rem 1.5rem;
+  max-width: 72rem;
+  margin: 0 auto;
+}
+
+.pricingGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .pricingGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .pricingGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.pricingCard {
+  position: relative;
+  background: #111111;
+  border: 1px solid #1f1f1f;
+  border-radius: 1.5rem;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  transition: all 0.25s ease;
+}
+
+.pricingCard:hover {
+  transform: translateY(-2px);
+}
+
+.pricingCardHighlight {
+  border-color: #FFD400;
+  background: #111111;
+  box-shadow: 0 0 0 1px rgba(255, 212, 0, 0.2), 0 16px 48px rgba(255, 212, 0, 0.1);
+}
+
+.pricingBadge {
+  position: absolute;
+  top: -0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #FFD400;
+  color: #0a0a0a;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.25rem 0.875rem;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+
+.pricingName {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.pricingPrice {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+}
+
+.pricingPriceAmount {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.03em;
+}
+
+.pricingPriceUnit {
+  font-size: 0.9375rem;
+  color: #737373;
+}
+
+.pricingFeatures {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.pricingFeature {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-size: 0.9375rem;
+  color: #a3a3a3;
+}
+
+.pricingFeatureIcon {
+  color: #FFD400;
+  flex-shrink: 0;
+}
+
+.pricingCtaPrimary {
+  display: block;
+  text-align: center;
+  padding: 0.875rem;
+  background: #FFD400;
+  color: #0a0a0a;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  border-radius: 0.75rem;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.pricingCtaPrimary:hover {
+  background: #ffe033;
+  box-shadow: 0 4px 16px rgba(255, 212, 0, 0.3);
+}
+
+.pricingCtaSecondary {
+  display: block;
+  text-align: center;
+  padding: 0.875rem;
+  background: transparent;
+  color: #a3a3a3;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  border-radius: 0.75rem;
+  text-decoration: none;
+  border: 1px solid #262626;
+  transition: all 0.2s ease;
+}
+
+.pricingCtaSecondary:hover {
+  color: #ffffff;
+  border-color: #404040;
+  background: #1a1a1a;
+}
+
+/* ===== CTA Section ===== */
+.cta {
+  padding: 8rem 1.5rem;
+  text-align: center;
+  background: linear-gradient(to bottom, #0a0a0a, #050505);
+  position: relative;
+  overflow: hidden;
+}
+
+.cta::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 60% 60% at 50% 50%, rgba(255, 212, 0, 0.08), transparent 70%);
+  pointer-events: none;
+}
+
+.ctaTitle {
+  position: relative;
+  font-size: clamp(1.75rem, 4vw, 2.75rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  margin-bottom: 1rem;
+}
+
+.ctaSubtitle {
+  position: relative;
+  font-size: 1.125rem;
+  color: #737373;
+  margin-bottom: 2.5rem;
+}
+
+.ctaButton {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 1rem 2.5rem;
+  background: #FFD400;
+  color: #0a0a0a;
+  font-weight: 700;
+  font-size: 1.0625rem;
+  border-radius: 9999px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 8px 32px rgba(255, 212, 0, 0.25);
+}
+
+.ctaButton:hover {
+  background: #ffe033;
+  box-shadow: 0 12px 40px rgba(255, 212, 0, 0.4);
+  transform: translateY(-2px);
+}
+
+/* ===== Footer ===== */
+.footer {
+  padding: 2rem 1.5rem;
+  border-top: 1px solid #1a1a1a;
+  text-align: center;
+}
+
+.footerText {
+  font-size: 0.875rem;
+  color: #525252;
+}

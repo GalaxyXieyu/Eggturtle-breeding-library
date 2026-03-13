@@ -2,6 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
+import { listProductsResponseSchema } from '@eggturtle/shared';
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams } from 'next/navigation';
@@ -9,7 +10,7 @@ import { Copy, Download, QrCode, Share2, X } from 'lucide-react';
 import QRCode from 'qrcode';
 
 import { copyTextWithFallback } from '@/lib/browser-share';
-import { resolveAuthenticatedAssetUrl } from '@/lib/api-client';
+import { apiRequest, resolveAuthenticatedAssetUrl } from '@/lib/api-client';
 import { useResolvedTenantBranding } from '@/lib/branding-client';
 import { formatApiError } from '@/lib/error-utils';
 import {
@@ -31,6 +32,7 @@ type TenantShareDialogTriggerProps = {
   previewImageUrl?: string | null;
   posterImageUrls?: string[];
   posterVariant?: TenantSharePosterVariant;
+  assetSource?: 'provided' | 'presentation';
   missingTenantMessage?: string;
   className?: string;
 };
@@ -43,6 +45,7 @@ export default function TenantShareDialogTrigger({
   previewImageUrl,
   posterImageUrls,
   posterVariant,
+  assetSource,
   missingTenantMessage = '当前用户上下文未就绪，暂时无法生成分享链接。',
   className,
 }: TenantShareDialogTriggerProps) {
@@ -67,9 +70,14 @@ export default function TenantShareDialogTrigger({
   const [posterRetrySeed, setPosterRetrySeed] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [presentationPreviewImageUrl, setPresentationPreviewImageUrl] = useState<string | null>(null);
+  const [presentationPosterImageUrls, setPresentationPosterImageUrls] = useState<string[]>([]);
+  const [presentationAssetsPending, setPresentationAssetsPending] = useState(false);
   const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
   const shareRequestIdRef = useRef(0);
   const shareAbortControllerRef = useRef<AbortController | null>(null);
+  const presentationRequestIdRef = useRef(0);
+  const presentationAbortControllerRef = useRef<AbortController | null>(null);
   const posterRequestIdRef = useRef(0);
   const openSessionIdRef = useRef(0);
   const mountedRef = useRef(true);
@@ -126,15 +134,55 @@ export default function TenantShareDialogTrigger({
 
     return typeof normalizedIntent === 'object' ? 'detail' : 'generic';
   }, [normalizedIntent, posterVariant]);
+  const shouldUsePresentationAssets = useMemo(
+    () => assetSource === 'presentation' || (!assetSource && resolvedPosterVariant !== 'detail'),
+    [assetSource, resolvedPosterVariant],
+  );
 
   const cancelShareRequest = useCallback(() => {
     shareAbortControllerRef.current?.abort();
     shareAbortControllerRef.current = null;
   }, []);
 
+  const cancelPresentationRequest = useCallback(() => {
+    presentationAbortControllerRef.current?.abort();
+    presentationAbortControllerRef.current = null;
+  }, []);
+
+  const normalizedPresentationPosterImageUrls = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          presentationPosterImageUrls
+            .map((item) => item.trim())
+            .filter(Boolean)
+            .map((item) => resolveAuthenticatedAssetUrl(item)),
+        ),
+      ),
+    [presentationPosterImageUrls],
+  );
+  const resolvedPreviewImageUrl = useMemo(() => {
+    if (!shouldUsePresentationAssets) {
+      return normalizedPreviewImageUrl;
+    }
+
+    return presentationPreviewImageUrl ?? normalizedPreviewImageUrl;
+  }, [normalizedPreviewImageUrl, presentationPreviewImageUrl, shouldUsePresentationAssets]);
+  const resolvedPosterImageUrls = useMemo(() => {
+    if (!shouldUsePresentationAssets) {
+      return normalizedPosterImageUrls;
+    }
+
+    return normalizedPresentationPosterImageUrls.length > 0
+      ? normalizedPresentationPosterImageUrls
+      : normalizedPosterImageUrls;
+  }, [normalizedPosterImageUrls, normalizedPresentationPosterImageUrls, shouldUsePresentationAssets]);
+
   const resetPreviewState = useCallback(() => {
     cancelShareRequest();
+    cancelPresentationRequest();
     shareRequestIdRef.current += 1;
+    presentationRequestIdRef.current += 1;
     posterRequestIdRef.current += 1;
     setPending(false);
     setLink('');
@@ -142,8 +190,11 @@ export default function TenantShareDialogTrigger({
     setPosterDataUrl(null);
     setPosterPending(false);
     setPosterRetrySeed(0);
+    setPresentationPreviewImageUrl(null);
+    setPresentationPosterImageUrls([]);
+    setPresentationAssetsPending(false);
     setError(null);
-  }, [cancelShareRequest]);
+  }, [cancelPresentationRequest, cancelShareRequest]);
 
   const handleClose = useCallback(() => {
     openSessionIdRef.current += 1;
@@ -228,6 +279,77 @@ export default function TenantShareDialogTrigger({
     [cancelShareRequest, missingTenantMessage, normalizedIntent],
   );
 
+  const preparePresentationAssets = useCallback(
+    async (sessionId: number) => {
+      if (!shouldUsePresentationAssets) {
+        setPresentationAssetsPending(false);
+        return;
+      }
+
+      const requestId = presentationRequestIdRef.current + 1;
+      presentationRequestIdRef.current = requestId;
+      cancelPresentationRequest();
+      const abortController = new AbortController();
+      presentationAbortControllerRef.current = abortController;
+      setPresentationAssetsPending(true);
+
+      try {
+        const response = await apiRequest('/products?page=1&pageSize=12&sortBy=updatedAt&sortDir=desc', {
+          signal: abortController.signal,
+          responseSchema: listProductsResponseSchema,
+        });
+
+        const heroImages = Array.from(
+          new Set(
+            response.products
+              .map((item) => item.coverImageUrl?.trim() ?? '')
+              .filter(Boolean),
+          ),
+        );
+
+        if (
+          !mountedRef.current ||
+          openSessionIdRef.current !== sessionId ||
+          presentationRequestIdRef.current !== requestId
+        ) {
+          return;
+        }
+
+        setPresentationPreviewImageUrl(heroImages[0] ?? null);
+        setPresentationPosterImageUrls(heroImages);
+      } catch (currentError) {
+        if (abortController.signal.aborted) {
+          return;
+        }
+
+        if (
+          !mountedRef.current ||
+          openSessionIdRef.current !== sessionId ||
+          presentationRequestIdRef.current !== requestId
+        ) {
+          return;
+        }
+
+        console.error('[Share] Failed to load unified product cover assets:', currentError);
+        setPresentationPreviewImageUrl(null);
+        setPresentationPosterImageUrls([]);
+      } finally {
+        if (presentationAbortControllerRef.current === abortController) {
+          presentationAbortControllerRef.current = null;
+        }
+
+        if (
+          mountedRef.current &&
+          openSessionIdRef.current === sessionId &&
+          presentationRequestIdRef.current === requestId
+        ) {
+          setPresentationAssetsPending(false);
+        }
+      }
+    },
+    [cancelPresentationRequest, shouldUsePresentationAssets],
+  );
+
   useEffect(() => {
     mountedRef.current = true;
     setPortalRoot(document.body);
@@ -236,11 +358,13 @@ export default function TenantShareDialogTrigger({
       mountedRef.current = false;
       setPortalRoot(null);
       cancelShareRequest();
+      cancelPresentationRequest();
       openSessionIdRef.current += 1;
       shareRequestIdRef.current += 1;
+      presentationRequestIdRef.current += 1;
       posterRequestIdRef.current += 1;
     };
-  }, [cancelShareRequest]);
+  }, [cancelPresentationRequest, cancelShareRequest]);
 
   useEffect(() => {
     if (!notice) {
@@ -258,7 +382,8 @@ export default function TenantShareDialogTrigger({
 
     const sessionId = openSessionIdRef.current;
     void prepareShareAssets(sessionId);
-  }, [intentKey, open, prepareShareAssets]);
+    void preparePresentationAssets(sessionId);
+  }, [intentKey, open, preparePresentationAssets, prepareShareAssets]);
 
   useEffect(() => {
     if (!open) {
@@ -308,7 +433,7 @@ export default function TenantShareDialogTrigger({
   }, [link]);
 
   useEffect(() => {
-    if (!open || !qrDataUrl) {
+    if (!open || !qrDataUrl || presentationAssetsPending) {
       setPosterPending(false);
       return;
     }
@@ -326,8 +451,8 @@ export default function TenantShareDialogTrigger({
       qrDataUrl,
       brandTitleZh: platformAppNameZh,
       brandTitleEn: platformAppNameEn,
-      previewImageUrl: normalizedPreviewImageUrl,
-      posterImageUrls: normalizedPosterImageUrls,
+      previewImageUrl: resolvedPreviewImageUrl,
+      posterImageUrls: resolvedPosterImageUrls,
       variant: resolvedPosterVariant,
     };
 
@@ -387,13 +512,14 @@ export default function TenantShareDialogTrigger({
   }, [
     cardSubtitle,
     cardTitle,
-    normalizedPosterImageUrls,
     open,
     platformAppNameEn,
     platformAppNameZh,
-    normalizedPreviewImageUrl,
+    presentationAssetsPending,
     qrDataUrl,
+    resolvedPosterImageUrls,
     resolvedPosterVariant,
+    resolvedPreviewImageUrl,
     posterRetrySeed,
   ]);
 
@@ -485,7 +611,7 @@ export default function TenantShareDialogTrigger({
             >
               <div
                 className={cn(
-                  'relative flex max-h-[min(94dvh,920px)] w-full max-w-none flex-col overflow-hidden rounded-t-[32px] border border-neutral-200 bg-white p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-0 text-neutral-900 shadow-2xl sm:max-h-[min(88vh,920px)] sm:max-w-[min(88vw,36rem)] sm:rounded-[32px] sm:p-5 sm:pt-0',
+                  'relative flex max-h-[min(97dvh,980px)] w-full max-w-none flex-col overflow-hidden rounded-t-[32px] border border-neutral-200 bg-white p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-0 text-neutral-900 shadow-2xl sm:max-h-[min(92vh,980px)] sm:max-w-[min(88vw,36rem)] sm:rounded-[32px] sm:p-5 sm:pt-0',
                   className,
                 )}
                 onClick={(event) => event.stopPropagation()}
@@ -522,21 +648,21 @@ export default function TenantShareDialogTrigger({
                 <div className="relative z-10 flex flex-none justify-center py-1 sm:py-2">
                   <div className="flex w-full items-center justify-center overflow-hidden rounded-2xl border border-neutral-200 bg-gradient-to-b from-neutral-50 to-white p-2.5 sm:rounded-3xl sm:p-4">
                     {pending ? (
-                      <div className="mx-auto flex aspect-[9/16] h-[min(36dvh,14rem)] max-h-[14rem] w-auto max-w-full flex-col items-center justify-center gap-3 rounded-[24px] border border-neutral-200 bg-white px-4 text-center text-sm text-neutral-600 shadow-sm sm:h-[min(66vh,38rem)] sm:max-h-[38rem] sm:gap-4 sm:rounded-[28px] sm:px-6">
+                      <div className="mx-auto flex aspect-[9/16] h-[min(48dvh,22rem)] max-h-[22rem] w-auto max-w-full flex-col items-center justify-center gap-3 rounded-[24px] border border-neutral-200 bg-white px-4 text-center text-sm text-neutral-600 shadow-sm sm:h-[min(72vh,42rem)] sm:max-h-[42rem] sm:gap-4 sm:rounded-[28px] sm:px-6">
                         <span className="inline-flex h-12 w-12 animate-pulse items-center justify-center rounded-full bg-neutral-900 text-[#FFD400]">
                           <Share2 size={18} aria-hidden="true" />
                         </span>
                         正在生成分享链接…
                       </div>
                     ) : posterPending ? (
-                      <div className="mx-auto flex aspect-[9/16] h-[min(36dvh,14rem)] max-h-[14rem] w-auto max-w-full flex-col items-center justify-center gap-3 rounded-[24px] border border-neutral-200 bg-white px-4 text-center text-sm text-neutral-600 shadow-sm sm:h-[min(66vh,38rem)] sm:max-h-[38rem] sm:gap-4 sm:rounded-[28px] sm:px-6">
+                      <div className="mx-auto flex aspect-[9/16] h-[min(48dvh,22rem)] max-h-[22rem] w-auto max-w-full flex-col items-center justify-center gap-3 rounded-[24px] border border-neutral-200 bg-white px-4 text-center text-sm text-neutral-600 shadow-sm sm:h-[min(72vh,42rem)] sm:max-h-[42rem] sm:gap-4 sm:rounded-[28px] sm:px-6">
                         <span className="inline-flex h-12 w-12 animate-pulse items-center justify-center rounded-full bg-neutral-900 text-[#FFD400]">
                           <QrCode size={20} aria-hidden="true" />
                         </span>
                         正在渲染分享海报…
                       </div>
                     ) : posterDataUrl ? (
-                      <div className="mx-auto flex aspect-[9/16] h-[min(36dvh,14rem)] max-h-[14rem] w-auto max-w-full items-center justify-center rounded-[24px] border border-neutral-200 bg-white p-1 shadow-xl sm:h-[min(66vh,38rem)] sm:max-h-[38rem] sm:rounded-[28px] sm:p-1.5">
+                      <div className="mx-auto flex aspect-[9/16] h-[min(48dvh,22rem)] max-h-[22rem] w-auto max-w-full items-center justify-center rounded-[24px] border border-neutral-200 bg-white p-1 shadow-xl sm:h-[min(72vh,42rem)] sm:max-h-[42rem] sm:rounded-[28px] sm:p-1.5">
                         <img
                           src={posterDataUrl}
                           alt="分享卡片预览"
@@ -544,7 +670,7 @@ export default function TenantShareDialogTrigger({
                         />
                       </div>
                     ) : (
-                      <div className="mx-auto flex aspect-[9/16] h-[min(36dvh,14rem)] max-h-[14rem] w-auto max-w-full flex-col items-center justify-center gap-3 rounded-[24px] border border-neutral-200 bg-white px-4 text-center text-sm text-neutral-500 shadow-sm sm:h-[min(66vh,38rem)] sm:max-h-[38rem] sm:gap-4 sm:rounded-[28px] sm:px-6">
+                      <div className="mx-auto flex aspect-[9/16] h-[min(48dvh,22rem)] max-h-[22rem] w-auto max-w-full flex-col items-center justify-center gap-3 rounded-[24px] border border-neutral-200 bg-white px-4 text-center text-sm text-neutral-500 shadow-sm sm:h-[min(72vh,42rem)] sm:max-h-[42rem] sm:gap-4 sm:rounded-[28px] sm:px-6">
                         <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 text-neutral-400">
                           <QrCode size={24} aria-hidden="true" />
                         </span>
@@ -823,12 +949,13 @@ async function generateDetailSharePoster(payload: SharePosterPayload): Promise<s
   const imageY = 34;
   const imageWidth = width - 68;
   const imageHeight = 1160;
+  const detailImageUrls = resolvePosterImageUrls(payload);
 
-  if (payload.previewImageUrl) {
-    try {
-      const heroImage = await loadImage(payload.previewImageUrl);
-      drawCoverImage(ctx, heroImage, imageX, imageY, imageWidth, imageHeight, 44);
-    } catch {
+  if (detailImageUrls.length > 0) {
+    const detailImages = await loadImages(detailImageUrls);
+    if (detailImages.length > 0) {
+      drawPosterCollage(ctx, detailImages, imageX, imageY, imageWidth, imageHeight);
+    } else {
       drawHeroFallback(ctx, imageX, imageY, imageWidth, imageHeight, payload);
     }
   } else {
@@ -1014,15 +1141,13 @@ async function drawGenericPosterHero(
   width: number,
   height: number,
 ) {
-  const imageUrls = Array.from(
-    new Set([payload.previewImageUrl, ...(payload.posterImageUrls ?? [])].filter(Boolean)),
-  ).slice(0, 3) as string[];
+  const imageUrls = resolvePosterImageUrls(payload);
 
   console.log('[Poster] Drawing hero with', imageUrls.length, 'image URLs');
 
   if (imageUrls.length === 0) {
-    console.log('[Poster] No images, using fallback');
-    drawHeroFallback(ctx, x, y, width, height, payload);
+    console.log('[Poster] No images, using unified generic collage fallback');
+    drawUnifiedGenericPosterHero(ctx, [], x, y, width, height);
     return;
   }
 
@@ -1031,14 +1156,20 @@ async function drawGenericPosterHero(
   console.log('[Poster] Loaded', images.length, 'images successfully');
 
   if (images.length === 0) {
-    console.log('[Poster] All images failed to load, using fallback');
-    drawHeroFallback(ctx, x, y, width, height, payload);
+    console.log('[Poster] All images failed to load, using unified generic collage fallback');
+    drawUnifiedGenericPosterHero(ctx, [], x, y, width, height);
     return;
   }
 
-  console.log('[Poster] Drawing collage...');
-  drawPosterCollage(ctx, images, x, y, width, height);
-  console.log('[Poster] Collage drawn');
+  console.log('[Poster] Drawing unified generic collage...');
+  drawUnifiedGenericPosterHero(ctx, images, x, y, width, height);
+  console.log('[Poster] Unified generic collage drawn');
+}
+
+function resolvePosterImageUrls(payload: SharePosterPayload): string[] {
+  return Array.from(
+    new Set([payload.previewImageUrl, ...(payload.posterImageUrls ?? [])].filter(Boolean)),
+  ).slice(0, 3) as string[];
 }
 
 function drawPosterCollage(
@@ -1198,6 +1329,155 @@ function drawPosterCollage(
       currentY += rowHeight + gap;
     }
   }
+
+  ctx.restore();
+}
+
+function drawUnifiedGenericPosterHero(
+  ctx: CanvasRenderingContext2D,
+  images: HTMLImageElement[],
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+) {
+  const heroGradient = ctx.createLinearGradient(x, y, x + width, y + height);
+  heroGradient.addColorStop(0, '#fafaf9');
+  heroGradient.addColorStop(0.5, '#f5f5f4');
+  heroGradient.addColorStop(1, '#e7e5e4');
+  ctx.fillStyle = heroGradient;
+  roundedRect(ctx, x, y, width, height, 32);
+  ctx.fill();
+
+  ctx.strokeStyle = 'rgba(255,212,0,0.15)';
+  ctx.lineWidth = 3;
+  roundedRect(ctx, x, y, width, height, 32);
+  ctx.stroke();
+
+  const padding = 8;
+  const gap = 8;
+  const innerX = x + padding;
+  const innerY = y + padding;
+  const innerWidth = width - padding * 2;
+  const innerHeight = height - padding * 2;
+  const mainWidth = innerWidth * 0.6;
+  const sideWidth = innerWidth - mainWidth - gap;
+  const sideHeight = (innerHeight - gap) / 2;
+  const slotImages = createUnifiedHeroSlotImages(images);
+
+  ctx.save();
+  roundedRect(ctx, x, y, width, height, 32);
+  ctx.clip();
+
+  drawGenericHeroSlot(ctx, slotImages[0] ?? null, innerX, innerY, mainWidth, innerHeight, 20, [
+    '#fef3c7',
+    '#f59e0b',
+  ]);
+  drawGenericHeroSlot(
+    ctx,
+    slotImages[1] ?? null,
+    innerX + mainWidth + gap,
+    innerY,
+    sideWidth,
+    sideHeight,
+    16,
+    ['#e2e8f0', '#94a3b8'],
+  );
+  drawGenericHeroSlot(
+    ctx,
+    slotImages[2] ?? null,
+    innerX + mainWidth + gap,
+    innerY + sideHeight + gap,
+    sideWidth,
+    sideHeight,
+    16,
+    ['#fde68a', '#92400e'],
+  );
+
+  ctx.restore();
+}
+
+function createUnifiedHeroSlotImages(images: HTMLImageElement[]) {
+  if (images.length === 0) {
+    return [null, null, null];
+  }
+
+  return Array.from({ length: 3 }, (_, index) => images[index % images.length] ?? null);
+}
+
+function drawGenericHeroSlot(
+  ctx: CanvasRenderingContext2D,
+  image: HTMLImageElement | null,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+  fallbackColors: [string, string],
+) {
+  if (image) {
+    drawCoverImage(ctx, image, x, y, width, height, radius);
+  } else {
+    drawGenericHeroSlotFallback(ctx, x, y, width, height, radius, fallbackColors);
+  }
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.12)';
+  ctx.shadowBlur = 15;
+  ctx.shadowOffsetY = 6;
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 4;
+  roundedRect(ctx, x, y, width, height, radius);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawGenericHeroSlotFallback(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+  colors: [string, string],
+) {
+  const gradient = ctx.createLinearGradient(x, y, x + width, y + height);
+  gradient.addColorStop(0, colors[0]);
+  gradient.addColorStop(1, colors[1]);
+  ctx.fillStyle = gradient;
+  roundedRect(ctx, x, y, width, height, radius);
+  ctx.fill();
+
+  ctx.save();
+  roundedRect(ctx, x, y, width, height, radius);
+  ctx.clip();
+
+  const lineInset = Math.max(14, width * 0.12);
+  const lineWidth = width - lineInset * 2;
+  const titleY = y + Math.max(22, height * 0.16);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.38)';
+  roundedRect(ctx, x + lineInset, titleY, lineWidth, 14, 7);
+  ctx.fill();
+  roundedRect(ctx, x + lineInset, titleY + 26, lineWidth * 0.78, 11, 5.5);
+  ctx.fill();
+  roundedRect(ctx, x + lineInset, titleY + 48, lineWidth * 0.56, 11, 5.5);
+  ctx.fill();
+
+  drawGlowCircle(
+    ctx,
+    x + width * 0.82,
+    y + height * 0.22,
+    Math.max(width, height) * 0.28,
+    'rgba(255,255,255,0.18)',
+  );
+  drawGlowCircle(
+    ctx,
+    x + width * 0.18,
+    y + height * 0.84,
+    Math.max(width, height) * 0.22,
+    'rgba(17,24,39,0.12)',
+  );
 
   ctx.restore();
 }

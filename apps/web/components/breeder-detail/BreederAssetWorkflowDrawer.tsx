@@ -72,6 +72,8 @@ type BreederAssetWorkflowDrawerProps = {
   confirmingCertificate: boolean;
   uploadingSubjectMedia: boolean;
   assetError: string | null;
+  sharePreviewImageUrl?: string | null;
+  sharePosterImageUrls?: string[];
   studio: CertificateStudioState;
   setStudio: Dispatch<SetStateAction<CertificateStudioState>>;
   onPreviewCertificate: () => Promise<void>;
@@ -104,6 +106,8 @@ export function BreederAssetWorkflowDrawer({
   confirmingCertificate,
   uploadingSubjectMedia,
   assetError,
+  sharePreviewImageUrl,
+  sharePosterImageUrls,
   studio,
   setStudio,
   onPreviewCertificate,
@@ -464,6 +468,8 @@ export function BreederAssetWorkflowDrawer({
                           intent={shareIntent}
                           title={`${breederName || '当前种龟'}分享`}
                           subtitle="扫码查看该种龟公开详情页，或复制链接直接转发。"
+                          previewImageUrl={sharePreviewImageUrl}
+                          posterImageUrls={sharePosterImageUrls}
                           posterVariant="detail"
                           trigger={({ onClick, pending }) => (
                             <button

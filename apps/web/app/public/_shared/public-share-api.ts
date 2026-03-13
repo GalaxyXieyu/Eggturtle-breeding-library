@@ -152,8 +152,8 @@ async function fetchPublicShare(
   const response = await fetch(requestUrl.toString(), {
     cache: 'force-cache',
     next: {
-      revalidate: resolvePublicShareRevalidateSeconds()
-    }
+      revalidate: resolvePublicShareRevalidateSeconds(),
+    },
   });
 
   const payload = await safeJson(response);
@@ -245,6 +245,7 @@ function resolvePublicShareRevalidateSeconds(): number {
 
   return Math.floor(parsed);
 }
+
 
 export async function refreshPublicShareEntryLocation(
   shareToken: string,

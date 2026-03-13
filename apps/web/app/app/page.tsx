@@ -11,6 +11,7 @@ import {
   type ShareSource,
 } from '@/lib/post-auth-redirect';
 import { resolveCurrentTenantSlug } from '@/lib/tenant-session';
+import WorkspaceLoadingState from '@/components/ui/workspace-loading-state';
 
 type PageState = {
   error: string | null;
@@ -23,9 +24,8 @@ const TENANT_ENTRY_MESSAGES = {
   zh: {
     title: '正在进入工作台',
     subtitle: '正在解析用户上下文。',
-    loading: '正在解析用户信息...',
+    loading: '正在进入工作台…',
     loadingDetail: '正在同步用户权限与工作台配置，通常只需几秒。',
-    loadingStage: '连接工作台服务',
     noTenantContext: '当前账号未绑定用户，请重新登录后重试。',
     retryLogin: '重新登录',
     backToLogin: '返回登录',
@@ -34,9 +34,8 @@ const TENANT_ENTRY_MESSAGES = {
   en: {
     title: 'Entering Workspace',
     subtitle: 'Resolving tenant context.',
-    loading: 'Resolving tenant information...',
+    loading: 'Opening workspace…',
     loadingDetail: 'Syncing tenant permissions and workspace settings. This should only take a few seconds.',
-    loadingStage: 'Connecting workspace services',
     noTenantContext: 'No tenant is bound to this account. Please sign in again.',
     retryLogin: 'Sign in again',
     backToLogin: 'Back to login',
@@ -54,8 +53,17 @@ export default function AppEntryPage() {
   });
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const source = normalizeShareSource(params.get('source'));
+
     if (!getAccessToken()) {
-      router.replace('/login');
+      const nextPath = `${window.location.pathname}${window.location.search}`;
+      const loginUrl = new URL('/login', window.location.origin);
+      if (source === 'share') {
+        loginUrl.searchParams.set('source', 'share');
+      }
+      loginUrl.searchParams.set('next', nextPath);
+      router.replace(`${loginUrl.pathname}?${loginUrl.searchParams.toString()}`);
       return;
     }
 
@@ -63,22 +71,23 @@ export default function AppEntryPage() {
 
     async function resolveRoute() {
       try {
-        const params = new URLSearchParams(window.location.search);
         const safeNext = sanitizeInternalNext(params.get('next'));
         if (safeNext) {
           router.replace(safeNext);
           return;
         }
 
-        const source = normalizeShareSource(params.get('source'));
         const intent = normalizeAppIntent(params.get('intent'));
         const tenantSlug = await resolveCurrentTenantSlug();
         if (!tenantSlug) {
           if (!isCancelled) {
-            setState({
-              loading: false,
-              error: messages.noTenantContext
-            });
+            clearAccessToken();
+            const loginUrl = new URL('/login', window.location.origin);
+            if (source === 'share') {
+              loginUrl.searchParams.set('source', 'share');
+            }
+            loginUrl.searchParams.set('next', `${window.location.pathname}${window.location.search}`);
+            router.replace(`${loginUrl.pathname}?${loginUrl.searchParams.toString()}`);
           }
           return;
         }
@@ -102,48 +111,54 @@ export default function AppEntryPage() {
     };
   }, [messages.noTenantContext, messages.unknownError, router]);
 
+  if (state.loading) {
+    return (
+      <main className="pb-16 sm:pb-8">
+        <WorkspaceLoadingState
+          eyebrow="Workspace"
+          title={messages.title}
+          detail={messages.loadingDetail}
+          status={messages.loading}
+        />
+      </main>
+    );
+  }
+
   return (
-    <main className="workspace-shell tenant-entry-shell">
-      <section className="tenant-entry-stage">
-        <div className="tenant-entry-glow" aria-hidden />
+    <main className="space-y-4 pb-16 sm:pb-8">
+      <section className="mx-auto flex min-h-[calc(100vh-8rem)] w-full max-w-[35rem] items-center justify-center">
+        <div className="w-full rounded-[2rem] border border-red-200/80 bg-white p-6 shadow-[0_24px_80px_rgba(28,25,23,0.08)] sm:p-7">
+          <div className="space-y-2">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-stone-400">Workspace</p>
+            <h1 className="text-2xl font-semibold tracking-tight text-stone-950 sm:text-3xl">{messages.title}</h1>
+            <p className="text-sm leading-6 text-stone-500">{messages.subtitle}</p>
+          </div>
 
-        <div className="card panel stack tenant-entry-card" aria-live="polite">
-          <header className="stack tenant-entry-header">
-            <h1>{messages.title}</h1>
-            <p className="muted">{state.loading ? messages.loadingDetail : messages.subtitle}</p>
-          </header>
-
-          {state.loading ? (
-            <div className="tenant-entry-loading stack" role="status">
-              <div className="tenant-entry-status">
-                <span className="tenant-entry-ping" aria-hidden />
-                <span>{messages.loading}</span>
-              </div>
-              <div className="tenant-entry-progress" aria-hidden>
-                <span />
-              </div>
-              <p className="tenant-entry-stage-label">{messages.loadingStage}</p>
-            </div>
+          {state.error ? (
+            <p className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+              {state.error}
+            </p>
           ) : null}
 
-          {state.error ? <p className="notice notice-error">{state.error}</p> : null}
-
-          {!state.loading && state.error ? (
-            <div className="row">
-              <button
-                type="button"
-                onClick={() => {
-                  clearAccessToken();
-                  router.push('/login');
-                }}
-              >
-                {messages.retryLogin}
-              </button>
-              <button type="button" className="secondary" onClick={() => router.push('/login')}>
-                {messages.backToLogin}
-              </button>
-            </div>
-          ) : null}
+          <div className="mt-5 flex flex-wrap gap-3">
+            <button
+              type="button"
+              className="inline-flex min-h-11 items-center justify-center rounded-full bg-neutral-900 px-5 py-2 text-sm font-semibold text-white transition hover:bg-neutral-800"
+              onClick={() => {
+                clearAccessToken();
+                router.push('/login');
+              }}
+            >
+              {messages.retryLogin}
+            </button>
+            <button
+              type="button"
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-neutral-300 bg-white px-5 py-2 text-sm font-semibold text-neutral-900 transition hover:bg-neutral-50"
+              onClick={() => router.push('/login')}
+            >
+              {messages.backToLogin}
+            </button>
+          </div>
         </div>
       </section>
     </main>

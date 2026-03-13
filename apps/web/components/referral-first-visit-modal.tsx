@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Copy, Sparkles, X } from 'lucide-react';
 
 import { copyTextWithFallback } from '@/lib/browser-share';
@@ -17,9 +18,16 @@ const OPEN_DELAY_MS = 60_000;
 
 export default function ReferralFirstVisitModal({ tenantSlug }: { tenantSlug: string }) {
   const [open, setOpen] = useState(false);
+  const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [overview, setOverview] = useState<Awaited<ReturnType<typeof fetchMyReferralOverview>> | null>(null);
+
+  useEffect(() => {
+    setPortalRoot(document.body);
+
+    return () => setPortalRoot(null);
+  }, []);
 
   useEffect(() => {
     if (!tenantSlug || isReferralPromoDismissed(tenantSlug)) {
@@ -74,6 +82,22 @@ export default function ReferralFirstVisitModal({ tenantSlug }: { tenantSlug: st
     };
   }, [notice]);
 
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        markReferralPromoDismissed(tenantSlug);
+        setOpen(false);
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [open, tenantSlug]);
+
   const shareUrl = useMemo(() => resolveReferralShareUrl(overview), [overview]);
   const firstUploadDays = overview?.rules.firstProductInviteeDays ?? 7;
 
@@ -96,14 +120,22 @@ export default function ReferralFirstVisitModal({ tenantSlug }: { tenantSlug: st
     setOpen(false);
   }
 
-  if (!open) {
+  if (!open || !portalRoot) {
     return null;
   }
 
-  return (
-    <div className="fixed inset-0 z-[90] bg-black/55 p-3 sm:flex sm:items-center sm:justify-center sm:p-4">
-      <button type="button" aria-label="关闭邀请奖励弹层" className="absolute inset-0" onClick={handleClose} />
-      <div className="relative mx-auto w-full max-w-md rounded-[28px] border border-white/40 bg-white p-5 shadow-[0_24px_68px_rgba(0,0,0,0.28)]">
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-label="邀请奖励弹层"
+      onClick={handleClose}
+    >
+      <div
+        className="relative w-full max-w-md rounded-[28px] border border-white/40 bg-white p-5 shadow-[0_24px_68px_rgba(0,0,0,0.28)]"
+        onClick={(event) => event.stopPropagation()}
+      >
         <button
           type="button"
           aria-label="关闭邀请奖励弹层"
@@ -165,6 +197,7 @@ export default function ReferralFirstVisitModal({ tenantSlug }: { tenantSlug: st
         ) : null}
         {error ? <p className="mt-2 text-xs text-amber-700">{error}</p> : null}
       </div>
-    </div>
+    </div>,
+    portalRoot,
   );
 }

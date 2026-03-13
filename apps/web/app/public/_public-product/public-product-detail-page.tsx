@@ -80,7 +80,7 @@ export default function PublicProductDetailPage({
     typeof window !== 'undefined' && window.location?.origin
       ? `${window.location.origin}/public/s/${shareToken}/products/${breederId}`
       : `/public/s/${shareToken}/products/${breederId}`;
-  const onboardingHref = appendPublicShareQuery(`/public/s/${shareToken}/me#free-plan`, shareQuery);
+  const onboardingHref = appendPublicShareQuery(`/public/s/${shareToken}?tab=me#free-plan`, shareQuery);
 
   return (
     <div className="public-bg-page public-text-primary min-h-screen">
@@ -181,7 +181,7 @@ export default function PublicProductDetailPage({
               />
 
               <div className="flex flex-col space-y-4">
-                <div className="flex flex-1 flex-col overflow-hidden rounded-3xl border border-black/5 bg-white/90 shadow-[0_12px_30px_rgba(0,0,0,0.08)] dark:border-white/10 dark:bg-neutral-900/75">
+                <div className="flex flex-1 flex-col overflow-hidden rounded-3xl border border-white/70 bg-white/75 shadow-[0_12px_30px_rgba(0,0,0,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-neutral-900/75">
                   <div className="p-5 sm:p-6">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">

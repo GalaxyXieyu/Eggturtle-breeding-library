@@ -7,20 +7,17 @@ import { Search, X } from 'lucide-react';
 
 import { buildFilterPillClass } from '@/components/filter-pill';
 import { FloatingActionButton, modalCloseButtonClass } from '@/components/ui/floating-actions';
-import PublicBottomDock from '@/app/public/_shared/public-bottom-dock';
+import PublicBottomDock, { type PublicDockTab } from '@/app/public/_shared/public-bottom-dock';
+import PublicShareMePage from '@/app/public/_shared/public-share-me-page';
+import PublicShareSeriesPageRedesign from '@/app/public/s/[shareToken]/series/page-redesign';
 import PublicFloatingActions from '@/app/public/_shared/public-floating-actions';
 import { withPublicImageMaxEdge } from '@/app/public/_shared/public-image';
-import { appendPublicShareQuery } from '@/app/public/_shared/public-share-api';
 
 import type { Breeder, NeedMatingStatus, Series } from '@/app/public/_public-product/types';
 import {
   BreederCard,
   DemoHint,
   PublicEmptyState,
-  PublicCapabilityProofSection,
-  PublicCapabilityShowcaseSection,
-  PublicConversionSection,
-  PublicQuickValueBar,
   SeriesIntroCard,
   ShareContactCard,
 } from '@/app/public/_public-product/components';
@@ -31,6 +28,7 @@ type Props = {
   shareToken: string;
   shareQuery?: string;
   initialSeriesId?: string;
+  initialTab?: PublicDockTab;
   series: Series[];
   breeders: Breeder[];
   presentation?: PublicSharePresentation | null;
@@ -102,6 +100,7 @@ export default function PublicFeedPage({
   shareToken,
   shareQuery,
   initialSeriesId,
+  initialTab,
   series,
   breeders,
   presentation,
@@ -111,6 +110,7 @@ export default function PublicFeedPage({
   const [sex, setSex] = useState<'all' | 'male' | 'female'>('all');
   const [status, setStatus] = useState<'all' | NeedMatingStatus>('all');
   const [showMobileFilterFab, setShowMobileFilterFab] = useState(false);
+  const [activeDockTab, setActiveDockTab] = useState<PublicDockTab>(initialTab ?? 'pets');
   const [isMobileFilterModalOpen, setIsMobileFilterModalOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_BREEDERS);
   const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
@@ -133,6 +133,24 @@ export default function PublicFeedPage({
   const [heroIndex, setHeroIndex] = useState(0);
   const [heroImageLoaded, setHeroImageLoaded] = useState(false);
   const heroImageRef = useRef<HTMLImageElement | null>(null);
+
+  useEffect(() => {
+    const nextDockTab = initialTab ?? 'pets';
+    setActiveDockTab(nextDockTab);
+  }, [initialTab]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined' || activeDockTab === 'pets') {
+      return undefined;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [activeDockTab]);
 
   useEffect(() => {
     setHeroIndex(0);
@@ -371,7 +389,44 @@ export default function PublicFeedPage({
       ? `${window.location.origin}/public/s/${shareToken}`
       : `/public/s/${shareToken}`;
   const homeHref = tenantSlug ? `/app/${tenantSlug}` : '/app';
-  const onboardingHref = appendPublicShareQuery(`/public/s/${shareToken}/me#free-plan`, shareQuery);
+
+  const syncDockTabInUrl = useCallback((nextTab: PublicDockTab) => {
+    if (demo || typeof window === 'undefined') {
+      return;
+    }
+
+    const currentUrl = new URL(window.location.href);
+    if (nextTab === 'series') {
+      currentUrl.searchParams.set('tab', 'series');
+    } else if (nextTab === 'me') {
+      currentUrl.searchParams.set('tab', 'me');
+    } else {
+      currentUrl.searchParams.delete('tab');
+    }
+
+    window.history.replaceState(null, '', currentUrl.toString());
+  }, [demo]);
+
+  const handleDockTabChange = useCallback((nextTab: PublicDockTab) => {
+    setIsMobileFilterModalOpen(false);
+    setActiveDockTab(nextTab);
+    syncDockTabInUrl(nextTab);
+  }, [syncDockTabInUrl]);
+
+  const overlayTransitionBaseClass =
+    'fixed inset-x-0 top-0 bottom-[calc(env(safe-area-inset-bottom)+74px)] overflow-y-auto transform-gpu transition-[transform,opacity,box-shadow] duration-[420ms] ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform motion-reduce:transform-none motion-reduce:transition-none lg:bottom-0';
+
+  const getOverlayStateClass = useCallback((tab: Extract<PublicDockTab, 'series' | 'me'>) => {
+    if (activeDockTab === tab) {
+      return 'z-[60] translate-x-0 opacity-100 pointer-events-auto shadow-[-18px_0_42px_rgba(15,23,42,0.18)]';
+    }
+
+    if (tab === 'series') {
+      return 'z-[55] -translate-x-full opacity-100 pointer-events-none shadow-none';
+    }
+
+    return 'z-[55] translate-x-full opacity-100 pointer-events-none shadow-none';
+  }, [activeDockTab]);
 
   function renderFilterContent() {
     return (
@@ -518,8 +573,6 @@ export default function PublicFeedPage({
 
         <DemoHint demo={demo} />
 
-        <PublicQuickValueBar className="mb-3" />
-
         {showMobileFilterFab ? null : (
           <div className="z-20 mb-3 border border-black/5 bg-white/95 px-3 py-3 shadow-[0_4px_20px_rgba(0,0,0,0.06)] backdrop-blur-md supports-[backdrop-filter]:bg-white/90 sm:rounded-2xl dark:border-white/10 dark:bg-neutral-900/70 supports-[backdrop-filter]:dark:bg-neutral-900/60">
             {renderFilterContent()}
@@ -614,38 +667,63 @@ export default function PublicFeedPage({
           </>
         )}
 
-        <PublicCapabilityShowcaseSection className="mt-4" />
         <ShareContactCard presentation={resolvedPresentation} className="mt-4" />
-        <PublicCapabilityProofSection className="mt-4" />
-        <PublicConversionSection
-          className="mt-4"
-          primaryHref={onboardingHref}
-          primaryLabel="去“我的”看套餐"
+      </div>
+      {activeDockTab === 'pets' ? (
+        <PublicFloatingActions
+          permalink={permalink}
+          homeHref={homeHref}
+          showHomeButton={false}
+          tenantQrImageUrl={contactQrImageUrl}
+          tenantWechatId={contactWechatId}
+          shareCardTitle={resolvedPresentation.feedTitle}
+          shareCardSubtitle={resolvedPresentation.feedSubtitle}
+          shareCardPrimaryColor={brandPrimary}
+          shareCardSecondaryColor={brandSecondary}
+          shareCardHeroImageUrl={heroImages[heroIndex] ?? heroImages[0] ?? null}
+        >
+          {showMobileFilterFab ? (
+            <FloatingActionButton
+              className="lg:hidden"
+              aria-label="打开筛选"
+              onClick={() => setIsMobileFilterModalOpen(true)}
+            >
+              <Search size={18} />
+            </FloatingActionButton>
+          ) : null}
+        </PublicFloatingActions>
+      ) : null}
+      <div
+        aria-hidden={activeDockTab !== 'series'}
+        className={`${overlayTransitionBaseClass} bg-white ${getOverlayStateClass('series')}`}
+      >
+        <PublicShareSeriesPageRedesign
+          shareToken={shareToken}
+          shareQuery={shareQuery}
+          presentation={presentation}
+          breeders={breeders}
+          series={series}
+          embedded
         />
       </div>
-      <PublicFloatingActions
-        permalink={permalink}
-        homeHref={homeHref}
-        showHomeButton={false}
-        tenantQrImageUrl={contactQrImageUrl}
-        tenantWechatId={contactWechatId}
-        shareCardTitle={resolvedPresentation.feedTitle}
-        shareCardSubtitle={resolvedPresentation.feedSubtitle}
-        shareCardPrimaryColor={brandPrimary}
-        shareCardSecondaryColor={brandSecondary}
-        shareCardHeroImageUrl={heroImages[heroIndex] ?? heroImages[0] ?? null}
+      <div
+        aria-hidden={activeDockTab !== 'me'}
+        className={`${overlayTransitionBaseClass} bg-gradient-to-br from-stone-100 via-white to-amber-50/40 dark:from-neutral-950 dark:via-neutral-950 dark:to-neutral-900/40 ${getOverlayStateClass('me')}`}
       >
-        {showMobileFilterFab ? (
-          <FloatingActionButton
-            className="lg:hidden"
-            aria-label="打开筛选"
-            onClick={() => setIsMobileFilterModalOpen(true)}
-          >
-            <Search size={18} />
-          </FloatingActionButton>
-        ) : null}
-      </PublicFloatingActions>
-      <PublicBottomDock shareToken={shareToken} shareQuery={shareQuery} activeTab="pets" />
+        <PublicShareMePage
+          shareToken={shareToken}
+          shareQuery={shareQuery}
+          presentation={presentation}
+          embedded
+        />
+      </div>
+      <PublicBottomDock
+        shareToken={shareToken}
+        shareQuery={shareQuery}
+        activeTab={activeDockTab}
+        clientTabKeys={['series', 'pets', 'me']}
+        onTabChange={handleDockTabChange}
+      />
     </div>
   );
 }

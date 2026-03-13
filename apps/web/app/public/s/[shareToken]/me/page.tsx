@@ -1,19 +1,18 @@
 import { redirect } from 'next/navigation';
 
 import PublicShareErrorPanel from '@/app/public/_shared/public-share-error-panel';
-import PublicShareMePage from '@/app/public/_shared/public-share-me-page';
 import {
   buildPublicShareRouteQuery,
   fetchPublicShareFromSearchParams,
   firstSearchParamValue,
   refreshPublicShareEntryLocation,
   shouldAutoRefreshShareSignature,
-  type PublicSearchParams
+  type PublicSearchParams,
 } from '@/app/public/_shared/public-share-api';
 
 export default async function PublicShareMeRoute({
   params,
-  searchParams
+  searchParams,
 }: {
   params: { shareToken: string };
   searchParams: PublicSearchParams;
@@ -23,7 +22,7 @@ export default async function PublicShareMeRoute({
   if (!hasSidParam) {
     const location = await refreshPublicShareEntryLocation(params.shareToken);
     if (location) {
-      redirect(location);
+      redirect(`${location}${location.includes('?') ? '&' : '?'}tab=me`);
     }
   }
 
@@ -33,7 +32,7 @@ export default async function PublicShareMeRoute({
     if (shouldAutoRefreshShareSignature(shareResult.status, shareResult.errorCode)) {
       const location = await refreshPublicShareEntryLocation(params.shareToken);
       if (location) {
-        redirect(location);
+        redirect(`${location}${location.includes('?') ? '&' : '?'}tab=me`);
       }
     }
 
@@ -63,12 +62,7 @@ export default async function PublicShareMeRoute({
   if (seriesId) {
     shareRouteQuery.set('series', seriesId);
   }
+  shareRouteQuery.set('tab', 'me');
 
-  return (
-    <PublicShareMePage
-      shareToken={params.shareToken}
-      shareQuery={shareRouteQuery.toString()}
-      presentation={shareResult.data.presentation}
-    />
-  );
+  redirect(`/public/s/${params.shareToken}?${shareRouteQuery.toString()}`);
 }

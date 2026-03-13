@@ -440,7 +440,7 @@ export default function ProductCreateDrawer({
     }
 
     if (uploaded.length === 0) {
-      return { imageFailures: imageFailures + orderedPendingImages.length };
+      return { imageFailures };
     }
 
     const desiredMainLocalId =

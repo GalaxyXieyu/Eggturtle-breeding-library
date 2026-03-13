@@ -442,6 +442,7 @@ export default function SharePresentationPage() {
                   subtitle={preview.feedSubtitle}
                   previewImageUrl={preview.heroImages[0] ?? null}
                   posterImageUrls={preview.heroImages}
+                  assetSource="provided"
                   trigger={({ onClick, pending }) => (
                     <Button
                       type="button"

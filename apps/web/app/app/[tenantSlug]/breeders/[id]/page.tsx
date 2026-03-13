@@ -359,6 +359,19 @@ export default function BreederDetailPage() {
     const fallbackImage = currentBreeder?.coverImageUrl?.trim();
     return fallbackImage ? resolveAuthenticatedAssetUrl(fallbackImage) : null;
   }, [activeImage?.url, currentBreeder?.coverImageUrl]);
+  const detailSharePosterImageUrls = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          [
+            activeImage?.url?.trim(),
+            ...data.images.map((image) => image.url?.trim()),
+            currentBreeder?.coverImageUrl?.trim(),
+          ].filter((item): item is string => Boolean(item)),
+        ),
+      ),
+    [activeImage?.url, currentBreeder?.coverImageUrl, data.images],
+  );
   const seriesLabel = useMemo(() => {
     const seriesId = currentBreeder?.seriesId?.trim();
     if (!seriesId) {
@@ -756,6 +769,8 @@ export default function BreederDetailPage() {
           confirmingCertificate={certificateStudioHandlers.confirmingCertificate}
           uploadingSubjectMedia={certificateStudioHandlers.uploadingSubjectMedia}
           assetError={certificateStudioHandlers.assetError}
+          sharePreviewImageUrl={detailSharePreviewImage}
+          sharePosterImageUrls={detailSharePosterImageUrls}
           studio={studio}
           setStudio={setStudio}
           onPreviewCertificate={certificateStudioHandlers.handlePreviewCertificate}
@@ -781,6 +796,7 @@ export default function BreederDetailPage() {
           title={detailShareTitle}
           subtitle="扫码查看该种龟公开详情页，或复制链接直接转发。"
           previewImageUrl={detailSharePreviewImage}
+          posterImageUrls={detailSharePosterImageUrls}
           posterVariant="detail"
           className="lg:hidden"
         />

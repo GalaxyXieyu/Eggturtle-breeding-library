@@ -32,6 +32,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { buildInteractivePillClass } from '@/components/ui/pill';
 import { ApiError, apiRequest, getAccessToken } from '@/lib/api-client';
+import { copyTextWithFallback } from '@/lib/browser-share';
 import { switchTenantBySlug } from '@/lib/tenant-session';
 
 type PlanTier = 'FREE' | PayableTenantSubscriptionPlan;
@@ -72,7 +73,10 @@ const PENDING_PURCHASE_STORAGE_KEY = 'eggturtle.subscription.pending-purchase.v1
 const ORDER_POLL_INTERVAL_MS = 2_000;
 const ORDER_POLL_TIMEOUT_MS = 60_000;
 
-const PLAN_META: Record<PlanTier, { name: string; summary: string; perks: string[]; badge: string }> = {
+const PLAN_META: Record<
+  PlanTier,
+  { name: string; summary: string; perks: string[]; badge: string }
+> = {
   FREE: {
     name: '免费版',
     summary: '适合刚开始建档的个人或小规模龟场。',
@@ -106,6 +110,7 @@ export default function SubscriptionPage() {
   const [redeeming, setRedeeming] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [externalWechatNotice, setExternalWechatNotice] = useState<string | null>(null);
   const [purchasePlan, setPurchasePlan] = useState<PayableTenantSubscriptionPlan | null>(null);
   const [planDetail, setPlanDetail] = useState<PlanTier | null>(null);
   const [purchaseDuration, setPurchaseDuration] = useState<SubscriptionDurationDays>(30);
@@ -125,16 +130,17 @@ export default function SubscriptionPage() {
   const recommendationCopy = buildRecommendationCopy(currentPlan);
   const recommendationMonthlyPrice = SUBSCRIPTION_PRICE_BOOK[recommendedPlan][30];
   const planDetailMeta = planDetail ? PLAN_META[planDetail] : null;
-  const payableDetailPlan =
-    planDetail === 'BASIC' || planDetail === 'PRO' ? planDetail : null;
-  const planDetailMonthlyPrice = payableDetailPlan ? SUBSCRIPTION_PRICE_BOOK[payableDetailPlan][30] : 0;
+  const payableDetailPlan = planDetail === 'BASIC' || planDetail === 'PRO' ? planDetail : null;
+  const planDetailMonthlyPrice = payableDetailPlan
+    ? SUBSCRIPTION_PRICE_BOOK[payableDetailPlan][30]
+    : 0;
   const planDetailIsCurrent = planDetail === currentPlan;
   const wechatEnvironment =
     isWechat === true
       ? { badgeVariant: 'success' as const, badgeLabel: '微信内可支付' }
       : isWechat === false
-        ? { badgeVariant: 'warning' as const, badgeLabel: '请在微信内打开' }
-        : { badgeVariant: 'default' as const, badgeLabel: '检测支付环境中' };
+        ? { badgeVariant: 'warning' as const, badgeLabel: '需在微信中支付' }
+        : { badgeVariant: 'default' as const, badgeLabel: '检测支付环境中…' };
   const returnPath = useMemo(() => {
     const query = searchParams.toString();
     if (pathname) {
@@ -144,59 +150,104 @@ export default function SubscriptionPage() {
   }, [pathname, searchParams, tenantSlug]);
   const sourcePath = pathname ?? `/app/${tenantSlug}/subscription`;
 
-  const trackSubscriptionBehavior = useCallback(async (payload: {
-    event: 'DIALOG_OPEN' | 'PAY_CLICK' | 'PAY_CANCEL' | 'PAY_SUCCESS' | 'PAY_FAILURE' | 'PAY_HESITATE';
-    plan?: PayableTenantSubscriptionPlan;
-    durationDays?: SubscriptionDurationDays;
-    orderNo?: string;
-    entryPoint?: PurchaseEntryPoint;
-    stayDurationMs?: number;
-    reason?: string;
-    result?: string;
-  }) => {
-    if (!getAccessToken()) {
+  const trackSubscriptionBehavior = useCallback(
+    async (payload: {
+      event:
+        | 'DIALOG_OPEN'
+        | 'PAY_CLICK'
+        | 'PAY_CANCEL'
+        | 'PAY_SUCCESS'
+        | 'PAY_FAILURE'
+        | 'PAY_HESITATE';
+      plan?: PayableTenantSubscriptionPlan;
+      durationDays?: SubscriptionDurationDays;
+      orderNo?: string;
+      entryPoint?: PurchaseEntryPoint;
+      stayDurationMs?: number;
+      reason?: string;
+      result?: string;
+    }) => {
+      if (!getAccessToken()) {
+        return;
+      }
+
+      try {
+        await apiRequest('/subscriptions/orders/track', {
+          method: 'POST',
+          body: {
+            sourcePath,
+            ...payload,
+          },
+          requestSchema: trackSubscriptionOrderBehaviorRequestSchema,
+          responseSchema: trackSubscriptionOrderBehaviorResponseSchema,
+        });
+      } catch {
+        // ignore tracking failures
+      }
+    },
+    [sourcePath],
+  );
+
+  const openPurchaseDialog = useCallback(
+    (plan: PayableTenantSubscriptionPlan, entryPoint: PurchaseEntryPoint) => {
+      pendingPurchaseEntryPointRef.current = entryPoint;
+      setPurchasePlan(plan);
+      setPurchaseDuration(30);
+      setExternalWechatNotice(null);
+      setError(null);
+      setMessage(null);
+    },
+    [],
+  );
+
+  const copyCurrentPageLinkForWechat = useCallback(async () => {
+    const currentUrl = resolveCurrentPageUrlForWechatOpen();
+    if (!currentUrl) {
       return;
     }
 
-    try {
-      await apiRequest('/subscriptions/orders/track', {
-        method: 'POST',
-        body: {
-          sourcePath,
-          ...payload,
-        },
-        requestSchema: trackSubscriptionOrderBehaviorRequestSchema,
-        responseSchema: trackSubscriptionOrderBehaviorResponseSchema,
-      });
-    } catch {
-      // ignore tracking failures
+    const copied = await copyTextWithFallback(currentUrl);
+    if (copied) {
+      setExternalWechatNotice('链接已复制，回到微信粘贴发送后重新打开即可继续支付。');
+      setError(null);
+      return;
     }
-  }, [sourcePath]);
 
-  const openPurchaseDialog = useCallback((plan: PayableTenantSubscriptionPlan, entryPoint: PurchaseEntryPoint) => {
-    pendingPurchaseEntryPointRef.current = entryPoint;
-    setPurchasePlan(plan);
-    setPurchaseDuration(30);
-    setError(null);
-    setMessage(null);
+    setExternalWechatNotice(null);
+    setError('复制失败，请手动复制当前页面链接后到微信打开。');
   }, []);
 
-  const closePurchaseDialog = useCallback((reason: string) => {
-    const session = purchaseDialogSessionRef.current;
-    if (purchasePlan && !paying && session && !session.payClicked) {
-      void trackSubscriptionBehavior({
-        event: 'PAY_HESITATE',
-        plan: purchasePlan,
-        durationDays: purchaseDuration,
-        entryPoint: session.entryPoint,
-        stayDurationMs: Math.max(0, Date.now() - session.openedAt),
-        reason,
-      });
-    }
+  const handlePlanAction = useCallback(
+    (plan: PayableTenantSubscriptionPlan, entryPoint: PurchaseEntryPoint) => {
+      if (isWechat === false) {
+        void copyCurrentPageLinkForWechat();
+        return;
+      }
 
-    purchaseDialogSessionRef.current = null;
-    setPurchasePlan(null);
-  }, [paying, purchaseDuration, purchasePlan, trackSubscriptionBehavior]);
+      openPurchaseDialog(plan, entryPoint);
+    },
+    [copyCurrentPageLinkForWechat, isWechat, openPurchaseDialog],
+  );
+
+  const closePurchaseDialog = useCallback(
+    (reason: string) => {
+      const session = purchaseDialogSessionRef.current;
+      if (purchasePlan && !paying && session && !session.payClicked) {
+        void trackSubscriptionBehavior({
+          event: 'PAY_HESITATE',
+          plan: purchasePlan,
+          durationDays: purchaseDuration,
+          entryPoint: session.entryPoint,
+          stayDurationMs: Math.max(0, Date.now() - session.openedAt),
+          reason,
+        });
+      }
+
+      purchaseDialogSessionRef.current = null;
+      setPurchasePlan(null);
+    },
+    [paying, purchaseDuration, purchasePlan, trackSubscriptionBehavior],
+  );
 
   const refreshSubscription = useCallback(async () => {
     if (!tenantSlug) {
@@ -214,6 +265,20 @@ export default function SubscriptionPage() {
   useEffect(() => {
     setIsWechat(isWechatBrowser());
   }, []);
+
+  useEffect(() => {
+    if (!externalWechatNotice || typeof window === 'undefined') {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setExternalWechatNotice(null);
+    }, 3200);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [externalWechatNotice]);
 
   useEffect(() => {
     if (!purchasePlan) {
@@ -285,181 +350,202 @@ export default function SubscriptionPage() {
     };
   }, [tenantSlug]);
 
-  const redirectToWechatAuthorize = useCallback(async (intent: PurchaseIntent) => {
-    persistPendingPurchaseIntent(intent);
-    await switchTenantBySlug(tenantSlug);
-    const response = await apiRequest('/auth/wechat/authorize-url', {
-      method: 'POST',
-      body: {
-        returnPath,
-      },
-      requestSchema: createWechatAuthorizeUrlRequestSchema,
-      responseSchema: createWechatAuthorizeUrlResponseSchema,
-    });
-
-    window.location.assign(response.authorizeUrl);
-  }, [returnPath, tenantSlug]);
-
-  const pollOrderStatus = useCallback(async (orderNo: string) => {
-    const startedAt = Date.now();
-
-    while (Date.now() - startedAt <= ORDER_POLL_TIMEOUT_MS) {
-      const response = await apiRequest(`/subscriptions/orders/${encodeURIComponent(orderNo)}`, {
-        responseSchema: cancelSubscriptionOrderResponseSchema,
-      });
-      const order = response.order;
-
-      if (order.status === 'PAID') {
-        clearPendingPurchaseIntent();
-        await refreshSubscription().catch(() => null);
-        setMessage(buildPaidOrderMessage(order));
-        purchaseDialogSessionRef.current = null;
-        setPurchasePlan(null);
-        setLastOrderNo(order.orderNo);
-        return order;
-      }
-
-      if (order.status === 'CANCELLED') {
-        throw new Error('订单已取消，请重新发起支付。');
-      }
-
-      if (order.status === 'EXPIRED') {
-        throw new Error('订单已过期，请重新发起支付。');
-      }
-
-      if (order.status === 'REFUNDED') {
-        throw new Error('订单已退款，请联系管理员确认订阅状态。');
-      }
-
-      await sleep(ORDER_POLL_INTERVAL_MS);
-    }
-
-    setMessage('支付结果确认中，请稍后刷新页面查看最新订阅状态。');
-    return null;
-  }, [refreshSubscription]);
-
-  const startWechatPayment = useCallback(async (intent: PurchaseIntent) => {
-    if (!tenantSlug) {
-      return;
-    }
-
-    if (isWechat !== true) {
-      setError('微信支付一期仅支持微信内 JSAPI，请在微信内打开本页；激活码入口仍可继续使用。');
-      return;
-    }
-
-    const session = purchaseDialogSessionRef.current;
-    if (session) {
-      session.payClicked = true;
-      void trackSubscriptionBehavior({
-        event: 'PAY_CLICK',
-        plan: intent.plan,
-        durationDays: intent.durationDays,
-        entryPoint: session.entryPoint,
-        stayDurationMs: Math.max(0, Date.now() - session.openedAt),
-      });
-    }
-
-    let createdOrderNo: string | undefined;
-
-    persistPendingPurchaseIntent(intent);
-    setPaying(true);
-    setError(null);
-    setMessage(null);
-    setLastOrderNo(null);
-
-    try {
+  const redirectToWechatAuthorize = useCallback(
+    async (intent: PurchaseIntent) => {
+      persistPendingPurchaseIntent(intent);
       await switchTenantBySlug(tenantSlug);
-
-      const created = await apiRequest('/subscriptions/orders', {
+      const response = await apiRequest('/auth/wechat/authorize-url', {
         method: 'POST',
         body: {
-          plan: intent.plan,
-          durationDays: intent.durationDays,
-          paymentChannel: 'JSAPI',
+          returnPath,
         },
-        requestSchema: createSubscriptionOrderRequestSchema,
-        responseSchema: createSubscriptionOrderResponseSchema,
+        requestSchema: createWechatAuthorizeUrlRequestSchema,
+        responseSchema: createWechatAuthorizeUrlResponseSchema,
       });
 
-      createdOrderNo = created.order.orderNo;
-      setLastOrderNo(created.order.orderNo);
-      const bridge = await waitForWeixinJsBridge();
-      const invokeResult = await invokeWechatPay(created.jsapiParams, bridge);
-      const normalizedResult = (invokeResult.err_msg ?? '').toLowerCase();
+      window.location.assign(response.authorizeUrl);
+    },
+    [returnPath, tenantSlug],
+  );
 
-      if (normalizedResult.endsWith(':ok')) {
-        setMessage('支付已提交，正在确认订单状态…');
-        await pollOrderStatus(created.order.orderNo);
+  const pollOrderStatus = useCallback(
+    async (orderNo: string) => {
+      const startedAt = Date.now();
+
+      while (Date.now() - startedAt <= ORDER_POLL_TIMEOUT_MS) {
+        const response = await apiRequest(`/subscriptions/orders/${encodeURIComponent(orderNo)}`, {
+          responseSchema: cancelSubscriptionOrderResponseSchema,
+        });
+        const order = response.order;
+
+        if (order.status === 'PAID') {
+          clearPendingPurchaseIntent();
+          await refreshSubscription().catch(() => null);
+          setMessage(buildPaidOrderMessage(order));
+          purchaseDialogSessionRef.current = null;
+          setPurchasePlan(null);
+          setLastOrderNo(order.orderNo);
+          return order;
+        }
+
+        if (order.status === 'CANCELLED') {
+          throw new Error('订单已取消，请重新发起支付。');
+        }
+
+        if (order.status === 'EXPIRED') {
+          throw new Error('订单已过期，请重新发起支付。');
+        }
+
+        if (order.status === 'REFUNDED') {
+          throw new Error('订单已退款，请联系管理员确认订阅状态。');
+        }
+
+        await sleep(ORDER_POLL_INTERVAL_MS);
+      }
+
+      setMessage('支付结果确认中，请稍后刷新页面查看最新订阅状态。');
+      return null;
+    },
+    [refreshSubscription],
+  );
+
+  const startWechatPayment = useCallback(
+    async (intent: PurchaseIntent) => {
+      if (!tenantSlug) {
         return;
       }
 
-      if (normalizedResult.endsWith(':cancel')) {
+      if (isWechat !== true) {
+        setError(
+          '微信支付仅支持微信内 JSAPI。请先复制当前页面链接，回到微信打开后再继续；激活码入口仍可继续使用。',
+        );
+        return;
+      }
+
+      const session = purchaseDialogSessionRef.current;
+      if (session) {
+        session.payClicked = true;
         void trackSubscriptionBehavior({
-          event: 'PAY_CANCEL',
+          event: 'PAY_CLICK',
+          plan: intent.plan,
+          durationDays: intent.durationDays,
+          entryPoint: session.entryPoint,
+          stayDurationMs: Math.max(0, Date.now() - session.openedAt),
+        });
+      }
+
+      let createdOrderNo: string | undefined;
+
+      persistPendingPurchaseIntent(intent);
+      setPaying(true);
+      setError(null);
+      setMessage(null);
+      setLastOrderNo(null);
+
+      try {
+        await switchTenantBySlug(tenantSlug);
+
+        const created = await apiRequest('/subscriptions/orders', {
+          method: 'POST',
+          body: {
+            plan: intent.plan,
+            durationDays: intent.durationDays,
+            paymentChannel: 'JSAPI',
+          },
+          requestSchema: createSubscriptionOrderRequestSchema,
+          responseSchema: createSubscriptionOrderResponseSchema,
+        });
+
+        createdOrderNo = created.order.orderNo;
+        setLastOrderNo(created.order.orderNo);
+        const bridge = await waitForWeixinJsBridge();
+        const invokeResult = await invokeWechatPay(created.jsapiParams, bridge);
+        const normalizedResult = (invokeResult.err_msg ?? '').toLowerCase();
+
+        if (normalizedResult.endsWith(':ok')) {
+          setMessage('支付已提交，正在确认订单状态…');
+          await pollOrderStatus(created.order.orderNo);
+          return;
+        }
+
+        if (normalizedResult.endsWith(':cancel')) {
+          void trackSubscriptionBehavior({
+            event: 'PAY_CANCEL',
+            plan: intent.plan,
+            durationDays: intent.durationDays,
+            orderNo: created.order.orderNo,
+            entryPoint: session?.entryPoint,
+            stayDurationMs: session ? Math.max(0, Date.now() - session.openedAt) : undefined,
+            reason: 'wechat_bridge_cancel',
+            result: invokeResult.err_msg,
+          });
+          purchaseDialogSessionRef.current = null;
+          setPurchasePlan(null);
+          setMessage('你已取消支付，本次订单已停止。');
+          await cancelOrderBestEffort(created.order.orderNo);
+          return;
+        }
+
+        void trackSubscriptionBehavior({
+          event: 'PAY_FAILURE',
           plan: intent.plan,
           durationDays: intent.durationDays,
           orderNo: created.order.orderNo,
           entryPoint: session?.entryPoint,
           stayDurationMs: session ? Math.max(0, Date.now() - session.openedAt) : undefined,
-          reason: 'wechat_bridge_cancel',
+          reason: 'wechat_bridge_failure',
           result: invokeResult.err_msg,
         });
-        purchaseDialogSessionRef.current = null;
-        setPurchasePlan(null);
-        setMessage('你已取消支付，本次订单已停止。');
-        await cancelOrderBestEffort(created.order.orderNo);
-        return;
-      }
-
-      void trackSubscriptionBehavior({
-        event: 'PAY_FAILURE',
-        plan: intent.plan,
-        durationDays: intent.durationDays,
-        orderNo: created.order.orderNo,
-        entryPoint: session?.entryPoint,
-        stayDurationMs: session ? Math.max(0, Date.now() - session.openedAt) : undefined,
-        reason: 'wechat_bridge_failure',
-        result: invokeResult.err_msg,
-      });
-      setError(normalizedResult ? `微信支付未完成：${invokeResult.err_msg}` : '微信支付未完成，请稍后重试。');
-    } catch (requestError) {
-      if (requestError instanceof ApiError && requestError.errorCode === 'WECHAT_OAUTH_REQUIRED') {
-        try {
-          setMessage('正在跳转微信授权，完成后会自动回到当前订阅页继续支付。');
-          await redirectToWechatAuthorize(intent);
-          return;
-        } catch (oauthError) {
-          void trackSubscriptionBehavior({
-            event: 'PAY_FAILURE',
-            plan: intent.plan,
-            durationDays: intent.durationDays,
-            orderNo: createdOrderNo,
-            entryPoint: session?.entryPoint,
-            stayDurationMs: session ? Math.max(0, Date.now() - session.openedAt) : undefined,
-            reason: 'wechat_oauth_redirect_failed',
-            result: formatError(oauthError).slice(0, 255),
-          });
-          setError(formatError(oauthError));
-          return;
+        setError(
+          normalizedResult
+            ? `微信支付未完成：${invokeResult.err_msg}`
+            : '微信支付未完成，请稍后重试。',
+        );
+      } catch (requestError) {
+        if (
+          requestError instanceof ApiError &&
+          requestError.errorCode === 'WECHAT_OAUTH_REQUIRED'
+        ) {
+          try {
+            setMessage('正在跳转微信授权，完成后会自动回到当前订阅页继续支付。');
+            await redirectToWechatAuthorize(intent);
+            return;
+          } catch (oauthError) {
+            void trackSubscriptionBehavior({
+              event: 'PAY_FAILURE',
+              plan: intent.plan,
+              durationDays: intent.durationDays,
+              orderNo: createdOrderNo,
+              entryPoint: session?.entryPoint,
+              stayDurationMs: session ? Math.max(0, Date.now() - session.openedAt) : undefined,
+              reason: 'wechat_oauth_redirect_failed',
+              result: formatError(oauthError).slice(0, 255),
+            });
+            setError(formatError(oauthError));
+            return;
+          }
         }
-      }
 
-      void trackSubscriptionBehavior({
-        event: 'PAY_FAILURE',
-        plan: intent.plan,
-        durationDays: intent.durationDays,
-        orderNo: createdOrderNo,
-        entryPoint: session?.entryPoint,
-        stayDurationMs: session ? Math.max(0, Date.now() - session.openedAt) : undefined,
-        reason: requestError instanceof ApiError ? (requestError.errorCode ?? 'payment_request_failed') : 'payment_request_failed',
-        result: formatError(requestError).slice(0, 255),
-      });
-      setError(formatError(requestError));
-    } finally {
-      setPaying(false);
-    }
-  }, [isWechat, pollOrderStatus, redirectToWechatAuthorize, tenantSlug, trackSubscriptionBehavior]);
+        void trackSubscriptionBehavior({
+          event: 'PAY_FAILURE',
+          plan: intent.plan,
+          durationDays: intent.durationDays,
+          orderNo: createdOrderNo,
+          entryPoint: session?.entryPoint,
+          stayDurationMs: session ? Math.max(0, Date.now() - session.openedAt) : undefined,
+          reason:
+            requestError instanceof ApiError
+              ? (requestError.errorCode ?? 'payment_request_failed')
+              : 'payment_request_failed',
+          result: formatError(requestError).slice(0, 255),
+        });
+        setError(formatError(requestError));
+      } finally {
+        setPaying(false);
+      }
+    },
+    [isWechat, pollOrderStatus, redirectToWechatAuthorize, tenantSlug, trackSubscriptionBehavior],
+  );
 
   useEffect(() => {
     if (!wechatAuthStatus || loading || oauthResumeHandledRef.current || isWechat === null) {
@@ -525,7 +611,9 @@ export default function SubscriptionPage() {
     }
   }
 
-  const paymentPreviewPrice = purchasePlan ? SUBSCRIPTION_PRICE_BOOK[purchasePlan][purchaseDuration] : 0;
+  const paymentPreviewPrice = purchasePlan
+    ? SUBSCRIPTION_PRICE_BOOK[purchasePlan][purchaseDuration]
+    : 0;
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 md:px-6">
@@ -540,44 +628,74 @@ export default function SubscriptionPage() {
               <Badge variant={wechatEnvironment.badgeVariant}>{wechatEnvironment.badgeLabel}</Badge>
             </div>
             <div>
-              <CardTitle className="text-2xl font-black text-neutral-900">{currentMeta.name}</CardTitle>
-              <CardDescription className="mt-2 text-sm text-neutral-600">{currentMeta.summary}</CardDescription>
+              <CardTitle className="text-2xl font-black text-neutral-900">
+                {currentMeta.name}
+              </CardTitle>
+              <CardDescription className="mt-2 text-sm text-neutral-600">
+                {currentMeta.summary}
+              </CardDescription>
             </div>
           </CardHeader>
           <CardContent className="space-y-4 sm:hidden">
             <div className="flex flex-wrap gap-2 text-xs text-neutral-700">
               {currentMeta.perks.map((item) => (
-                <span key={item} className="rounded-full bg-neutral-100 px-2.5 py-1 text-neutral-700">
+                <span
+                  key={item}
+                  className="rounded-full bg-neutral-100 px-2.5 py-1 text-neutral-700"
+                >
                   {item}
                 </span>
               ))}
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <MetricCard label="产品容量" value={`${SUBSCRIPTION_PLAN_PRODUCT_LIMITS[currentPlan]} 只`} />
+              <MetricCard
+                label="产品容量"
+                value={`${SUBSCRIPTION_PLAN_PRODUCT_LIMITS[currentPlan]} 只`}
+              />
               <MetricCard label="图片额度" value={toDisplayValue(subscription?.maxImages)} />
               <MetricCard label="分享额度" value={toDisplayValue(subscription?.maxShares)} />
               <MetricCard label="存储额度" value={toDisplayBytes(subscription?.maxStorageBytes)} />
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-neutral-500">
               <span>到期时间：{formatSubscriptionDate(subscription?.expiresAt ?? null)}</span>
-              <Button type="button" size="sm" variant="secondary" onClick={() => setPlanDetail(currentPlan)}>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => setPlanDetail(currentPlan)}
+              >
                 查看详情
               </Button>
             </div>
           </CardContent>
           <CardContent className="hidden gap-4 sm:grid sm:grid-cols-2 xl:grid-cols-4">
-            <MetricCard label="产品容量" value={`${SUBSCRIPTION_PLAN_PRODUCT_LIMITS[currentPlan]} 只`} />
+            <MetricCard
+              label="产品容量"
+              value={`${SUBSCRIPTION_PLAN_PRODUCT_LIMITS[currentPlan]} 只`}
+            />
             <MetricCard label="图片额度" value={toDisplayValue(subscription?.maxImages)} />
             <MetricCard label="分享额度" value={toDisplayValue(subscription?.maxShares)} />
             <MetricCard label="存储额度" value={toDisplayBytes(subscription?.maxStorageBytes)} />
-            <MetricCard label="生效时间" value={formatSubscriptionDate(subscription?.startsAt ?? null)} />
-            <MetricCard label="到期时间" value={formatSubscriptionDate(subscription?.expiresAt ?? null)} />
+            <MetricCard
+              label="生效时间"
+              value={formatSubscriptionDate(subscription?.startsAt ?? null)}
+            />
+            <MetricCard
+              label="到期时间"
+              value={formatSubscriptionDate(subscription?.expiresAt ?? null)}
+            />
             <MetricCard label="当前状态" value={formatStatusLabel(subscription?.status)} />
             <MetricCard label="最近订单" value={lastOrderNo ?? '暂无'} />
           </CardContent>
         </Card>
-
       </section>
+
+      {isWechat === false ? (
+        <ExternalWechatHint
+          notice={externalWechatNotice}
+          onCopyLink={() => void copyCurrentPageLinkForWechat()}
+        />
+      ) : null}
 
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -601,27 +719,40 @@ export default function SubscriptionPage() {
                 key={plan}
                 className={[
                   'min-w-[78vw] snap-start rounded-3xl border bg-white shadow-sm transition sm:min-w-0',
-                  plan === 'PRO' ? 'border-[#FFD400]/70 shadow-[0_12px_40px_rgba(255,212,0,0.14)]' : 'border-neutral-200',
+                  plan === 'PRO'
+                    ? 'border-[#FFD400]/70 shadow-[0_12px_40px_rgba(255,212,0,0.14)]'
+                    : 'border-neutral-200',
                   isRecommended && !isCurrent ? 'ring-2 ring-[#FFD400]/40' : '',
                 ].join(' ')}
               >
                 <CardHeader className="space-y-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <CardTitle className="text-xl font-black text-neutral-900">{meta.name}</CardTitle>
-                      <CardDescription className="mt-1 text-sm text-neutral-600">{meta.summary}</CardDescription>
+                      <CardTitle className="text-xl font-black text-neutral-900">
+                        {meta.name}
+                      </CardTitle>
+                      <CardDescription className="mt-1 text-sm text-neutral-600">
+                        {meta.summary}
+                      </CardDescription>
                     </div>
                     <Badge variant={badgeVariant}>{badgeLabel}</Badge>
                   </div>
                   <div>
-                    <p className="text-3xl font-black text-neutral-900">{plan === 'FREE' ? '¥0' : formatCurrency(monthlyPrice)}</p>
-                    <p className="mt-1 text-sm text-neutral-500">{plan === 'FREE' ? '永久免费体验' : '30 天参考价，支持 30 / 90 / 365 天购买'}</p>
+                    <p className="text-3xl font-black text-neutral-900">
+                      {plan === 'FREE' ? '¥0' : formatCurrency(monthlyPrice)}
+                    </p>
+                    <p className="mt-1 text-sm text-neutral-500">
+                      {plan === 'FREE' ? '永久免费体验' : '30 天参考价，支持 30 / 90 / 365 天购买'}
+                    </p>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3 sm:hidden">
                     <div className="rounded-2xl bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
-                      产品容量：<span className="font-semibold text-neutral-900">{SUBSCRIPTION_PLAN_PRODUCT_LIMITS[plan]} 只</span>
+                      产品容量：
+                      <span className="font-semibold text-neutral-900">
+                        {SUBSCRIPTION_PLAN_PRODUCT_LIMITS[plan]} 只
+                      </span>
                     </div>
                     <div className="flex flex-wrap gap-2 text-xs text-neutral-700">
                       {meta.perks.map((item) => (
@@ -630,13 +761,21 @@ export default function SubscriptionPage() {
                         </span>
                       ))}
                     </div>
-                    <Button type="button" variant="secondary" className="w-full" onClick={() => setPlanDetail(plan)}>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="w-full"
+                      onClick={() => setPlanDetail(plan)}
+                    >
                       查看详情
                     </Button>
                   </div>
                   <div className="hidden space-y-4 sm:block">
                     <div className="rounded-2xl bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
-                      产品容量：<span className="font-semibold text-neutral-900">{SUBSCRIPTION_PLAN_PRODUCT_LIMITS[plan]} 只</span>
+                      产品容量：
+                      <span className="font-semibold text-neutral-900">
+                        {SUBSCRIPTION_PLAN_PRODUCT_LIMITS[plan]} 只
+                      </span>
                     </div>
                     <ul className="space-y-2 text-sm text-neutral-700">
                       {meta.perks.map((item) => (
@@ -648,10 +787,15 @@ export default function SubscriptionPage() {
                     </ul>
                     {isPayable ? (
                       <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">价目表</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
+                          价目表
+                        </p>
                         <div className="mt-3 grid grid-cols-3 gap-2 text-sm text-neutral-700">
                           {DURATION_OPTIONS.map((days) => (
-                            <div key={days} className="rounded-2xl bg-white px-3 py-2 text-center ring-1 ring-neutral-200">
+                            <div
+                              key={days}
+                              className="rounded-2xl bg-white px-3 py-2 text-center ring-1 ring-neutral-200"
+                            >
                               <p className="font-semibold text-neutral-900">{days} 天</p>
                               <p>{formatCurrency(SUBSCRIPTION_PRICE_BOOK[plan][days])}</p>
                             </div>
@@ -664,12 +808,15 @@ export default function SubscriptionPage() {
                         type="button"
                         variant={plan === 'PRO' ? 'primary' : 'default'}
                         className="w-full"
-                        disabled={paying || isWechat !== true}
+                        disabled={paying || isWechat === null}
                         onClick={() => {
-                          openPurchaseDialog(plan, 'catalog');
+                          handlePlanAction(plan, 'catalog');
                         }}
                       >
-                        {buildWechatActionLabel(isWechat, buildPurchaseButtonLabel(currentPlan, plan))}
+                        {buildWechatActionLabel(
+                          isWechat,
+                          buildPurchaseButtonLabel(currentPlan, plan),
+                        )}
                       </Button>
                     ) : (
                       <Button type="button" variant="secondary" className="w-full" disabled>
@@ -702,12 +849,15 @@ export default function SubscriptionPage() {
               type="button"
               variant="primary"
               className="w-full sm:w-auto"
-              disabled={paying || isWechat !== true}
+              disabled={paying || isWechat === null}
               onClick={() => {
-                openPurchaseDialog(recommendedPlan, 'recommendation');
+                handlePlanAction(recommendedPlan, 'recommendation');
               }}
             >
-              {buildWechatActionLabel(isWechat, buildPurchaseButtonLabel(currentPlan, recommendedPlan))}
+              {buildWechatActionLabel(
+                isWechat,
+                buildPurchaseButtonLabel(currentPlan, recommendedPlan),
+              )}
             </Button>
           </div>
         </div>
@@ -717,7 +867,9 @@ export default function SubscriptionPage() {
         <Card className="rounded-3xl border-neutral-200 bg-white shadow-sm">
           <CardHeader>
             <CardTitle className="text-xl font-black text-neutral-900">激活码升级</CardTitle>
-            <CardDescription>继续保留原有激活码入口，适合线下发码、运营赠送或补偿升级。</CardDescription>
+            <CardDescription>
+              继续保留原有激活码入口，适合线下发码、运营赠送或补偿升级。
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -730,7 +882,12 @@ export default function SubscriptionPage() {
                 onChange={(event) => setActivationCode(event.target.value)}
               />
             </div>
-            <Button type="button" className="w-full sm:w-auto" disabled={redeeming} onClick={() => void handleRedeemActivationCode()}>
+            <Button
+              type="button"
+              className="w-full sm:w-auto"
+              disabled={redeeming}
+              onClick={() => void handleRedeemActivationCode()}
+            >
               {redeeming ? '兑换中…' : '兑换并升级'}
             </Button>
           </CardContent>
@@ -753,22 +910,34 @@ export default function SubscriptionPage() {
           >
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neutral-500">套餐详情</p>
-                <p id={planDetailTitleId} className="text-xl font-black text-neutral-900">{planDetailMeta?.name}</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neutral-500">
+                  套餐详情
+                </p>
+                <p id={planDetailTitleId} className="text-xl font-black text-neutral-900">
+                  {planDetailMeta?.name}
+                </p>
                 <p className="text-sm text-neutral-600">{planDetailMeta?.summary}</p>
                 <div className="flex flex-wrap gap-2">
                   {planDetailIsCurrent ? <Badge variant="success">当前套餐</Badge> : null}
                   {planDetail === recommendedPlan ? <Badge variant="accent">推荐</Badge> : null}
                 </div>
               </div>
-              <button type="button" className={modalCloseButtonClass} aria-label="关闭" onClick={() => setPlanDetail(null)}>
+              <button
+                type="button"
+                className={modalCloseButtonClass}
+                aria-label="关闭"
+                onClick={() => setPlanDetail(null)}
+              >
                 <X size={18} strokeWidth={2.5} aria-hidden="true" />
               </button>
             </div>
 
             <div className="mt-5 space-y-4">
               <div className="rounded-2xl bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
-                产品容量：<span className="font-semibold text-neutral-900">{SUBSCRIPTION_PLAN_PRODUCT_LIMITS[planDetail ?? currentPlan]} 只</span>
+                产品容量：
+                <span className="font-semibold text-neutral-900">
+                  {SUBSCRIPTION_PLAN_PRODUCT_LIMITS[planDetail ?? currentPlan]} 只
+                </span>
               </div>
               <ul className="space-y-2 text-sm text-neutral-700">
                 {planDetailMeta?.perks.map((item) => (
@@ -784,17 +953,28 @@ export default function SubscriptionPage() {
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 <MetricCard label="图片额度" value={toDisplayValue(subscription?.maxImages)} />
                 <MetricCard label="分享额度" value={toDisplayValue(subscription?.maxShares)} />
-                <MetricCard label="存储额度" value={toDisplayBytes(subscription?.maxStorageBytes)} />
-                <MetricCard label="到期时间" value={formatSubscriptionDate(subscription?.expiresAt ?? null)} />
+                <MetricCard
+                  label="存储额度"
+                  value={toDisplayBytes(subscription?.maxStorageBytes)}
+                />
+                <MetricCard
+                  label="到期时间"
+                  value={formatSubscriptionDate(subscription?.expiresAt ?? null)}
+                />
               </div>
             ) : null}
 
             {payableDetailPlan ? (
               <div className="mt-5 rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">价目表</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
+                  价目表
+                </p>
                 <div className="mt-3 grid grid-cols-3 gap-2 text-sm text-neutral-700">
                   {DURATION_OPTIONS.map((days) => (
-                    <div key={days} className="rounded-2xl bg-white px-3 py-2 text-center ring-1 ring-neutral-200">
+                    <div
+                      key={days}
+                      className="rounded-2xl bg-white px-3 py-2 text-center ring-1 ring-neutral-200"
+                    >
                       <p className="font-semibold text-neutral-900">{days} 天</p>
                       <p>{formatCurrency(SUBSCRIPTION_PRICE_BOOK[payableDetailPlan][days])}</p>
                     </div>
@@ -806,14 +986,21 @@ export default function SubscriptionPage() {
 
             {payableDetailPlan ? (
               <div className="mt-5 rounded-2xl border border-[#FFD400]/40 bg-[#FFFBE6] px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">30 天参考价</p>
-                <p className="mt-2 text-2xl font-black text-neutral-900">{formatCurrency(planDetailMonthlyPrice)}</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
+                  30 天参考价
+                </p>
+                <p className="mt-2 text-2xl font-black text-neutral-900">
+                  {formatCurrency(planDetailMonthlyPrice)}
+                </p>
               </div>
             ) : null}
 
             {payableDetailPlan && isWechat === false ? (
-              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                当前不是微信浏览器，无法调起 JSAPI 支付。请在微信内打开后再继续。
+              <div className="mt-4">
+                <ExternalWechatHint
+                  notice={externalWechatNotice}
+                  onCopyLink={() => void copyCurrentPageLinkForWechat()}
+                />
               </div>
             ) : null}
 
@@ -825,16 +1012,25 @@ export default function SubscriptionPage() {
                 <Button
                   type="button"
                   variant={payableDetailPlan === 'PRO' ? 'primary' : 'default'}
-                  disabled={paying || isWechat !== true}
+                  disabled={paying || isWechat === null}
                   onClick={() => {
                     if (!payableDetailPlan) {
                       return;
                     }
+
+                    if (isWechat === false) {
+                      void copyCurrentPageLinkForWechat();
+                      return;
+                    }
+
                     setPlanDetail(null);
                     openPurchaseDialog(payableDetailPlan, 'plan_detail');
                   }}
                 >
-                  {buildWechatActionLabel(isWechat, buildPurchaseButtonLabel(currentPlan, payableDetailPlan))}
+                  {buildWechatActionLabel(
+                    isWechat,
+                    buildPurchaseButtonLabel(currentPlan, payableDetailPlan),
+                  )}
                 </Button>
               ) : null}
             </div>
@@ -860,8 +1056,12 @@ export default function SubscriptionPage() {
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p id={purchaseDialogTitleId} className="text-xl font-black text-neutral-900">微信支付购买 {formatPlanLabel(purchasePlan)}</p>
-                <p className="mt-1 text-sm text-neutral-600">{buildFulfillmentHint(currentPlan, purchasePlan, subscription)}</p>
+                <p id={purchaseDialogTitleId} className="text-xl font-black text-neutral-900">
+                  微信支付购买 {formatPlanLabel(purchasePlan)}
+                </p>
+                <p className="mt-1 text-sm text-neutral-600">
+                  {buildFulfillmentHint(currentPlan, purchasePlan, subscription)}
+                </p>
               </div>
               <Button
                 type="button"
@@ -892,28 +1092,49 @@ export default function SubscriptionPage() {
             </div>
 
             <div className="mt-5 rounded-2xl border border-[#FFD400]/40 bg-[#FFFBE6] px-4 py-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">支付预览</p>
-              <p className="mt-2 text-3xl font-black text-neutral-900">{formatCurrency(paymentPreviewPrice)}</p>
-              <p className="mt-1 text-sm text-neutral-700">{purchaseDuration} 天 · {formatPlanLabel(purchasePlan)} · 微信 JSAPI</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
+                支付预览
+              </p>
+              <p className="mt-2 text-3xl font-black text-neutral-900">
+                {formatCurrency(paymentPreviewPrice)}
+              </p>
+              <p className="mt-1 text-sm text-neutral-700">
+                {purchaseDuration} 天 · {formatPlanLabel(purchasePlan)} · 微信 JSAPI
+              </p>
             </div>
 
             {isWechat === false ? (
-              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                当前不是微信浏览器，无法调起 JSAPI 支付。请在微信内打开后再继续。
+              <div className="mt-4">
+                <ExternalWechatHint
+                  notice={externalWechatNotice}
+                  onCopyLink={() => void copyCurrentPageLinkForWechat()}
+                />
               </div>
             ) : null}
 
             <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <Button type="button" variant="secondary" disabled={paying} onClick={() => closePurchaseDialog('dialog_cancel_button')}>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={paying}
+                onClick={() => closePurchaseDialog('dialog_cancel_button')}
+              >
                 取消
               </Button>
               <Button
                 type="button"
                 variant="primary"
-                disabled={paying || isWechat !== true}
-                onClick={() => void startWechatPayment({ plan: purchasePlan, durationDays: purchaseDuration })}
+                disabled={paying || isWechat === null}
+                onClick={() => {
+                  if (isWechat === false) {
+                    void copyCurrentPageLinkForWechat();
+                    return;
+                  }
+
+                  void startWechatPayment({ plan: purchasePlan, durationDays: purchaseDuration });
+                }}
               >
-                {paying ? '处理中…' : '立即微信支付'}
+                {paying ? '处理中…' : buildWechatActionLabel(isWechat, '立即微信支付')}
               </Button>
             </div>
           </section>
@@ -921,13 +1142,17 @@ export default function SubscriptionPage() {
       ) : null}
 
       {message ? (
-        <Card className="rounded-2xl border-emerald-200 bg-emerald-50 p-4">
+        <Card
+          className="rounded-2xl border-emerald-200 bg-emerald-50 p-4"
+          role="status"
+          aria-live="polite"
+        >
           <p className="text-sm font-semibold text-emerald-700">{message}</p>
         </Card>
       ) : null}
 
       {error ? (
-        <Card className="rounded-2xl border-red-200 bg-red-50 p-4">
+        <Card className="rounded-2xl border-red-200 bg-red-50 p-4" role="alert">
           <p className="text-sm font-semibold text-red-700">{error}</p>
         </Card>
       ) : null}
@@ -946,6 +1171,39 @@ function MetricCard({ label, value }: { label: string; value: string }) {
     <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">{label}</p>
       <p className="mt-2 text-sm font-semibold text-neutral-900">{value}</p>
+    </div>
+  );
+}
+
+function ExternalWechatHint({
+  notice,
+  onCopyLink,
+}: {
+  notice: string | null;
+  onCopyLink: () => void;
+}) {
+  return (
+    <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      <p className="font-semibold">当前在外部浏览器打开</p>
+      <p className="mt-1 leading-6 text-amber-800">
+        微信支付仅支持在微信内完成。先复制当前页面链接，再回到微信聊天里粘贴打开，就能继续支付。
+      </p>
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <Button
+          type="button"
+          variant="outline"
+          className="border-amber-300 bg-white text-amber-900 hover:bg-white"
+          onClick={onCopyLink}
+        >
+          复制链接，回微信打开
+        </Button>
+        <p className="text-xs text-amber-700">也可以先发给自己，再从微信里重新点开。</p>
+      </div>
+      {notice ? (
+        <p className="mt-2 text-xs font-medium text-emerald-700" role="status" aria-live="polite">
+          {notice}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -1014,7 +1272,10 @@ function buildRecommendationCopy(currentPlan: PlanTier) {
   return '当前已是最高等级，续费即可保持权益不断档。';
 }
 
-function buildPurchaseButtonLabel(currentPlan: PlanTier, targetPlan: PayableTenantSubscriptionPlan) {
+function buildPurchaseButtonLabel(
+  currentPlan: PlanTier,
+  targetPlan: PayableTenantSubscriptionPlan,
+) {
   if (currentPlan === 'FREE') {
     return `购买${formatPlanLabel(targetPlan)}`;
   }
@@ -1036,10 +1297,10 @@ function buildWechatActionLabel(isWechat: boolean | null, enabledLabel: string) 
   }
 
   if (isWechat === false) {
-    return '请在微信内打开';
+    return '复制链接，回微信打开';
   }
 
-  return '检测支付环境中';
+  return '检测支付环境中…';
 }
 
 function buildFulfillmentHint(
@@ -1060,7 +1321,9 @@ function buildFulfillmentHint(
   }
 
   if (currentPlan === 'PRO' && targetPlan === 'BASIC') {
-    const expiresAt = subscription?.expiresAt ? formatSubscriptionDate(subscription.expiresAt) : '当前 PRO 到期时';
+    const expiresAt = subscription?.expiresAt
+      ? formatSubscriptionDate(subscription.expiresAt)
+      : '当前 PRO 到期时';
     return `该订单为延后生效降级，支付成功后会在 ${expiresAt} 自动切换为基础版。`;
   }
 
@@ -1204,7 +1467,21 @@ function clearWechatAuthQuery() {
 
   url.searchParams.delete('wechatAuth');
   const nextQuery = url.searchParams.toString();
-  window.history.replaceState({}, '', `${url.pathname}${nextQuery ? `?${nextQuery}` : ''}${url.hash}`);
+  window.history.replaceState(
+    {},
+    '',
+    `${url.pathname}${nextQuery ? `?${nextQuery}` : ''}${url.hash}`,
+  );
+}
+
+function resolveCurrentPageUrlForWechatOpen() {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const url = new URL(window.location.href);
+  url.searchParams.delete('wechatAuth');
+  return url.toString();
 }
 
 async function waitForWeixinJsBridge() {

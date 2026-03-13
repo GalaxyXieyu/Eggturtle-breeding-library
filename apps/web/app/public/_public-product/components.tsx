@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PublicSharePresentation } from '@eggturtle/shared';
-import { ArrowRight, CheckCircle2 } from 'lucide-react';
 
 import { PetCard } from '@/components/pet';
 import { FamilyNodeCard } from '@/components/family-tree/FamilyNodeCard';
@@ -76,259 +75,6 @@ export function DemoHint({ demo }: { demo: boolean }) {
   }
 
   return null;
-}
-
-const QUICK_VALUE_ITEMS = [
-  {
-    eyebrow: 'Timeline',
-    title: '交配 / 产蛋 / 换公主线',
-    description: '把关键节点收拢到一条时间线上，对外展示也能讲清繁育过程。',
-  },
-  {
-    eyebrow: 'Pedigree',
-    title: '家族谱系与配偶关系',
-    description: '父母辈、当前配偶、同窝与子代关系可以连续查看。',
-  },
-  {
-    eyebrow: 'Sharing',
-    title: '二维码分享与永久链接',
-    description: '分享卡、PNG 下载、系统分享与联系二维码统一承接。',
-  },
-  {
-    eyebrow: 'Branding',
-    title: '公开页可品牌化配置',
-    description: '标题、副标题、主题色、封面图、轮播图和微信信息都能配置。',
-  },
-] as const;
-
-const CAPABILITY_SHOWCASE_ITEMS = [
-  {
-    title: '交配 / 产蛋 / 换公时间线',
-    description: '公开页不只放照片，还能把繁育主线直接讲清楚。',
-    bullets: ['关键节点一条线回看', '适合对外解释当前繁育进度'],
-  },
-  {
-    title: '家族谱系',
-    description: '父母辈、当前个体、配偶、同窝与子代关系可连续浏览。',
-    bullets: ['适合强调选育来源', '让公开页更像可验证档案'],
-  },
-  {
-    title: '种公负载与待配优先级',
-    description: '公龟关联母龟负载、待配状态与优先级可以被明确呈现。',
-    bullets: ['先看待配与逾期提醒', '更方便解释配对策略'],
-  },
-  {
-    title: '二维码分享卡 / PNG / 系统分享',
-    description: '同一套公开页可直接生成分享动作，不需要再单独做海报。',
-    bullets: ['二维码分享卡', 'PNG 下载与系统分享'],
-  },
-  {
-    title: '永久链接与签名刷新',
-    description: '分享出去的是长期可用入口，签名参数过期后也能自动刷新。',
-    bullets: ['长期转发更省心', '减少失效链接带来的流失'],
-  },
-  {
-    title: '证书验真与访问承接',
-    description: '公开证书验真、访问归因与登录后承接可以串成完整转化链路。',
-    bullets: ['访客来源可追踪', '登录后继续承接当前访问'],
-  },
-  {
-    title: '后台品牌化配置',
-    description: '标题、副标题、主题色、封面图、轮播图、微信信息都能统一调整。',
-    bullets: ['更像自己的品牌官网', '不需要单独维护一套宣传页'],
-  },
-] as const;
-
-const CAPABILITY_PROOF_ITEMS = [
-  {
-    title: '公开证书验真',
-    description: '不是单纯放图，而是能指向可核验的公开凭证。',
-  },
-  {
-    title: '永久链接持续可用',
-    description: '签名参数到期后可刷新，减少旧分享失效。',
-  },
-  {
-    title: '访问归因可登录承接',
-    description: '先浏览公开页，再登录进入后台，来源信息仍能接住。',
-  },
-] as const;
-
-const CONVERSION_BULLETS = [
-  '免费版可先管理 10 只，适合先启动与试运营',
-  '后续升级不影响已有公开链接与展示内容',
-  '先看能力，再决定是否注册使用，路径更顺',
-] as const;
-
-type PublicSectionProps = {
-  className?: string;
-};
-
-type PublicConversionSectionProps = PublicSectionProps & {
-  primaryHref: string;
-  primaryLabel: string;
-  secondaryHref?: string;
-  secondaryLabel?: string;
-};
-
-export function PublicQuickValueBar({ className }: PublicSectionProps) {
-  return (
-    <section className={`grid gap-3 sm:grid-cols-2 xl:grid-cols-4 ${className ?? ''}`}>
-      {QUICK_VALUE_ITEMS.map((item) => (
-        <article
-          key={item.title}
-          className="rounded-2xl border border-black/5 bg-white/92 p-4 shadow-[0_10px_24px_rgba(0,0,0,0.06)] backdrop-blur dark:border-white/10 dark:bg-neutral-900/75"
-        >
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-neutral-500 dark:text-neutral-400">
-            {item.eyebrow}
-          </p>
-          <h2 className="mt-2 text-base font-semibold text-neutral-900 dark:text-neutral-100">
-            {item.title}
-          </h2>
-          <p className="mt-2 text-sm leading-relaxed text-neutral-600 dark:text-neutral-300">
-            {item.description}
-          </p>
-        </article>
-      ))}
-    </section>
-  );
-}
-
-export function PublicCapabilityShowcaseSection({ className }: PublicSectionProps) {
-  return (
-    <section
-      className={`rounded-3xl border border-black/10 bg-white/92 p-5 shadow-[0_14px_32px_rgba(0,0,0,0.06)] dark:border-white/10 dark:bg-neutral-900/75 sm:p-6 ${className ?? ''}`}
-    >
-      <div className="max-w-3xl">
-        <p className="text-xs font-semibold uppercase tracking-[0.26em] text-neutral-500 dark:text-neutral-400">
-          Capabilities
-        </p>
-        <h2 className="mt-2 text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
-          功能 / 能力展示
-        </h2>
-        <p className="mt-2 text-sm leading-relaxed text-neutral-600 dark:text-neutral-300 sm:text-[15px]">
-          公开页的真实亮点不是“按系列看”，而是把繁育管理、对外展示、分享转化和品牌化能力一次讲清楚。
-        </p>
-      </div>
-
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {CAPABILITY_SHOWCASE_ITEMS.map((item, index) => (
-          <article
-            key={item.title}
-            className="rounded-2xl border border-black/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,245,236,0.9))] p-4 shadow-[0_8px_20px_rgba(0,0,0,0.05)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(23,23,23,0.98),rgba(10,10,10,0.94))]"
-          >
-            <div className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-neutral-900 px-2 text-xs font-semibold text-white dark:bg-[#FFD400] dark:text-neutral-900">
-              {index + 1}
-            </div>
-            <h3 className="mt-3 text-base font-semibold text-neutral-900 dark:text-neutral-100">
-              {item.title}
-            </h3>
-            <p className="mt-2 text-sm leading-relaxed text-neutral-600 dark:text-neutral-300">
-              {item.description}
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {item.bullets.map((bullet) => (
-                <span
-                  key={bullet}
-                  className="inline-flex items-center rounded-full border border-[#FFD400]/45 bg-[#FFF8D9]/70 px-3 py-1 text-xs font-medium text-neutral-700 dark:border-[#FFD400]/25 dark:bg-[#2b2410]/60 dark:text-[#ffe19a]"
-                >
-                  {bullet}
-                </span>
-              ))}
-            </div>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-export function PublicCapabilityProofSection({ className }: PublicSectionProps) {
-  return (
-    <section
-      className={`rounded-3xl border border-[#FFD400]/45 bg-[#FFFBE7]/88 p-5 shadow-[0_14px_30px_rgba(255,212,0,0.15)] dark:border-[#FFD400]/25 dark:bg-[#2b2410]/72 sm:p-6 ${className ?? ''}`}
-    >
-      <div className="max-w-3xl">
-        <p className="text-xs font-semibold uppercase tracking-[0.26em] text-[#9c7400] dark:text-[#ffd96a]">
-          Proof
-        </p>
-        <h2 className="mt-2 text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
-          能力证明区
-        </h2>
-        <p className="mt-2 text-sm leading-relaxed text-neutral-700 dark:text-neutral-200 sm:text-[15px]">
-          这套公开页不是静态海报，而是带验证、带刷新、带承接的能力展示入口。
-        </p>
-      </div>
-
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {CAPABILITY_PROOF_ITEMS.map((item) => (
-          <article
-            key={item.title}
-            className="rounded-2xl border border-black/8 bg-white/90 p-4 shadow-[0_8px_18px_rgba(0,0,0,0.05)] dark:border-white/10 dark:bg-neutral-950/55"
-          >
-            <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
-              <CheckCircle2 size={17} />
-              <p className="text-sm font-semibold">{item.title}</p>
-            </div>
-            <p className="mt-2 text-sm leading-relaxed text-neutral-600 dark:text-neutral-300">
-              {item.description}
-            </p>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-export function PublicConversionSection({
-  className,
-  primaryHref,
-  primaryLabel,
-  secondaryHref,
-  secondaryLabel,
-}: PublicConversionSectionProps) {
-  return (
-    <section
-      className={`rounded-3xl border border-black/10 bg-white/92 p-5 shadow-[0_14px_32px_rgba(0,0,0,0.06)] dark:border-white/10 dark:bg-neutral-900/75 sm:p-6 ${className ?? ''}`}
-    >
-      <p className="text-xs font-semibold uppercase tracking-[0.26em] text-neutral-500 dark:text-neutral-400">
-        Conversion
-      </p>
-      <h2 className="mt-2 text-2xl font-semibold text-neutral-900 dark:text-neutral-100">转化区</h2>
-      <p className="mt-2 max-w-3xl text-sm leading-relaxed text-neutral-600 dark:text-neutral-300 sm:text-[15px]">
-        先让访客看到繁育能力，再用“我的”页里的简单套餐介绍承接，路径会比“先讲系列”更顺。
-      </p>
-
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        {CONVERSION_BULLETS.map((item) => (
-          <div
-            key={item}
-            className="rounded-2xl border border-black/8 bg-neutral-50/80 px-4 py-3 text-sm text-neutral-700 dark:border-white/10 dark:bg-neutral-950/45 dark:text-neutral-200"
-          >
-            {item}
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Link
-          href={primaryHref}
-          className="inline-flex min-h-10 items-center justify-center gap-1 rounded-full bg-neutral-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-neutral-800 dark:bg-[#FFD400] dark:text-neutral-900 dark:hover:bg-[#f1ca00]"
-        >
-          {primaryLabel}
-          <ArrowRight size={15} />
-        </Link>
-        {secondaryHref && secondaryLabel ? (
-          <Link
-            href={secondaryHref}
-            className="inline-flex min-h-10 items-center justify-center rounded-full border border-neutral-900 bg-white px-4 py-2 text-sm font-semibold text-neutral-900 transition hover:bg-neutral-100 dark:border-white/20 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800"
-          >
-            {secondaryLabel}
-          </Link>
-        ) : null}
-      </div>
-    </section>
-  );
 }
 
 export function ShareContactCard({
@@ -589,7 +335,7 @@ export function BreederCarousel({
 
   return (
     <div className="public-border-default public-bg-card-alt overflow-hidden rounded-3xl border shadow-[0_14px_38px_rgba(0,0,0,0.14)] dark:shadow-[0_22px_46px_rgba(0,0,0,0.45)]">
-      <div className="relative aspect-[4/5] bg-neutral-100 dark:bg-neutral-950/90">
+      <div className="relative aspect-[4/5] bg-[#1a1810] dark:bg-neutral-950/90">
         <button
           type="button"
           onClick={handleBack}
@@ -642,7 +388,7 @@ export function BreederCarousel({
 
           <div className="relative h-full w-full shrink-0">
             {!activeImageLoaded ? (
-              <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-neutral-200 via-neutral-100 to-neutral-200" />
+              <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-[#2a2218] via-[#1e1a12] to-[#2a2218]" />
             ) : null}
             <img
               ref={activeImageRef}
