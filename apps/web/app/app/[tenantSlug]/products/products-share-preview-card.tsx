@@ -100,6 +100,11 @@ export default function ProductsSharePreviewCard({
                 <h2 className="mt-2 text-2xl font-semibold leading-tight drop-shadow-sm sm:text-3xl">
                   {sharePreview.feedTitle}
                 </h2>
+                {sharePreview.feedSubtitle ? (
+                  <p className="mt-1 text-sm text-white/70 drop-shadow-sm">
+                    {sharePreview.feedSubtitle}
+                  </p>
+                ) : null}
                 <div className="mt-2 inline-flex max-w-full items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] leading-relaxed text-white/82 backdrop-blur-sm sm:text-xs">
                   <span className="truncate">{listStatsLabel}</span>
                 </div>

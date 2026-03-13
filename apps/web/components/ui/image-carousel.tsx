@@ -55,7 +55,7 @@ export function ImageCarousel({
     <div className={cn('space-y-3', className)}>
       <div
         className={cn(
-          'relative overflow-hidden rounded-[28px] bg-[linear-gradient(180deg,rgba(250,250,249,0.98),rgba(244,244,245,0.92))] shadow-[0_18px_42px_rgba(15,23,42,0.10)] ring-1 ring-black/5',
+          'relative aspect-square overflow-hidden rounded-[28px] bg-[linear-gradient(180deg,rgba(250,250,249,0.98),rgba(244,244,245,0.92))] shadow-[0_18px_42px_rgba(15,23,42,0.10)] ring-1 ring-black/5',
           heroClassName,
         )}
       >
@@ -64,7 +64,7 @@ export function ImageCarousel({
             key={activeItem.id}
             src={activeItem.src}
             alt={activeItem.alt}
-            className={cn('aspect-square w-full object-cover', imageClassName)}
+            className={cn('h-full w-full object-cover', imageClassName)}
             loading="eager"
             decoding="async"
             fetchPriority="high"

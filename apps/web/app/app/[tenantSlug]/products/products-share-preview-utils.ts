@@ -17,7 +17,7 @@ export function buildFallbackSharePreview(tenantSlug: string): SharePreviewState
   const tenantName = tenantSlug.trim() || '用户';
   return {
     feedTitle: `${tenantName} · 公开图鉴`,
-    feedSubtitle: '管理端顶部已切换为分享端视觉，可直接预览分享配置效果。',
+    feedSubtitle: `${tenantName} 在库产品展示`,
     brandPrimary: '#FFD400',
     brandSecondary: '#1f2937',
     heroImages: [DEFAULT_SHARE_PREVIEW_HERO],

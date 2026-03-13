@@ -175,6 +175,7 @@ export default function TenantProductsPage() {
   const [listStats, setListStats] = useState<ProductListStats>(EMPTY_LIST_STATS);
   const queryVersionRef = useRef(0);
   const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
+  const scrollToProductIdRef = useRef<string | null>(null);
   const [tenantReady, setTenantReady] = useState(false);
   const [seriesOptions, setSeriesOptions] = useState<ProductSeriesOption[]>([]);
   const [isCreateDrawerOpen, setIsCreateDrawerOpen] = useState(false);
@@ -869,6 +870,18 @@ export default function TenantProductsPage() {
     };
   }, [hasHydratedState, listQuery, loadProducts, loadSeriesOptions, loadSharePreview, tenantReady]);
 
+  // After a breeding event save triggers a full list reload, scroll back to the edited product
+  useEffect(() => {
+    if (!loading && scrollToProductIdRef.current) {
+      const productId = scrollToProductIdRef.current;
+      scrollToProductIdRef.current = null;
+      requestAnimationFrame(() => {
+        const el = document.querySelector(`[data-product-id="${productId}"]`);
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    }
+  }, [items, loading]);
+
   useEffect(() => {
     if (!tenantReady || !hasHydratedState || typeof window === 'undefined') {
       return;
@@ -1421,6 +1434,7 @@ export default function TenantProductsPage() {
           setError(null);
           setContinueEditProductId(null);
           if (createdEvent) {
+            scrollToProductIdRef.current = nextProduct.id;
             void loadProducts(listQuery);
           }
         }}

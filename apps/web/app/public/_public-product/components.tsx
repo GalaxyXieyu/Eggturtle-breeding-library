@@ -336,7 +336,7 @@ export function BreederCarousel({
 
   return (
     <div className="public-border-default public-bg-card-alt overflow-hidden border-y shadow-[0_14px_38px_rgba(0,0,0,0.14)] sm:rounded-3xl sm:border dark:shadow-[0_22px_46px_rgba(0,0,0,0.45)]">
-      <div className="relative aspect-[10/13] bg-[#1a1810] dark:bg-neutral-950/90 sm:aspect-[4/5]">
+      <div className="w-full relative aspect-square bg-[#1a1810] dark:bg-neutral-950/90 sm:aspect-[4/5]">
         <button
           type="button"
           onClick={handleBack}

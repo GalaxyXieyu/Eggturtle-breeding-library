@@ -163,13 +163,13 @@ export default function ProductsListCard({
 
   return (
     <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
-      <CardContent className="space-y-4 px-3 pt-4 sm:px-6 sm:pt-6">
+      <CardContent className="space-y-4 px-3 pt-3 pb-3 sm:px-6 sm:pt-4 sm:pb-4">
         {!showMobileFilterFab ? (
           <div
             ref={mobileTopFilterRef}
-            className="z-20 border border-black/5 bg-white/95 px-3 py-3 shadow-[0_4px_20px_rgba(0,0,0,0.06)] backdrop-blur-md supports-[backdrop-filter]:bg-white/90 lg:hidden lg:rounded-2xl"
+            className="z-20 bg-white/95 px-3 py-2 backdrop-blur-md supports-[backdrop-filter]:bg-white/90 lg:hidden lg:rounded-2xl"
           >
-            <div className="mt-3 grid gap-3">
+            <div className="grid gap-3">
               <div className="flex min-w-0 items-start gap-2">
                 <p className="mt-2 w-10 shrink-0 text-[11px] font-medium text-neutral-500">系列</p>
                 <div className="flex min-w-0 max-w-full flex-1 gap-2 overflow-x-auto overscroll-x-contain pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -201,7 +201,7 @@ export default function ProductsListCard({
                     type="text"
                     placeholder="按编号 / 名称 / 描述搜索"
                     value={searchInput}
-                    className="h-11 rounded-full px-4 text-[15px] placeholder:text-neutral-400"
+                    className="h-11 rounded-full px-4 text-sm placeholder:text-neutral-400"
                     onChange={(event) => onSearchInputChange(event.target.value)}
                     onBlur={onSearchInputCommit}
                     onKeyDown={(event) => {
@@ -215,7 +215,7 @@ export default function ProductsListCard({
                 </div>
                 <button
                   type="button"
-                  className="inline-flex h-11 shrink-0 items-center justify-center rounded-full border border-neutral-200 bg-white px-4 text-[15px] font-normal text-neutral-700 transition hover:border-neutral-300 hover:bg-neutral-50"
+                  className="inline-flex h-11 shrink-0 items-center justify-center rounded-full border border-neutral-200 bg-white px-4 text-sm font-normal text-neutral-700 transition hover:border-neutral-300 hover:bg-neutral-50"
                   onClick={onResetFilters}
                 >
                   清空
@@ -278,8 +278,8 @@ export default function ProductsListCard({
         {!loading && visibleItems.length > 0 ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] sm:gap-4 xl:grid-cols-[repeat(auto-fill,minmax(240px,1fr))]">
             {visibleItems.map((item, index) => (
+              <div key={`preview-${item.id}`} data-product-id={item.id}>
               <PetCard
-                key={`preview-${item.id}`}
                 variant="tenant"
                 code={item.code}
                 coverImageUrl={
@@ -329,6 +329,7 @@ export default function ProductsListCard({
                   </span>
                 }
               />
+              </div>
             ))}
           </div>
         ) : null}

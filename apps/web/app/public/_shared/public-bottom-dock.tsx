@@ -13,6 +13,8 @@ type PublicBottomDockProps = {
   shareQuery?: string;
   activeTab: PublicDockTab;
   className?: string;
+  clientTabKeys?: PublicDockTab[];
+  onTabChange?: (tab: PublicDockTab) => void;
 };
 
 export default function PublicBottomDock({
@@ -20,6 +22,8 @@ export default function PublicBottomDock({
   shareQuery,
   activeTab,
   className,
+  clientTabKeys = [],
+  onTabChange,
 }: PublicBottomDockProps) {
   const basePath = `/public/s/${shareToken}`;
 
@@ -76,9 +80,20 @@ export default function PublicBottomDock({
 
           return (
             <li key={item.key} className="tenant-mobile-nav-item list-none">
-              <Link href={item.href} aria-label={item.label} className={linkClassName}>
-                {content}
-              </Link>
+              {clientTabKeys.includes(item.key) && onTabChange ? (
+                <button
+                  type="button"
+                  aria-label={item.label}
+                  className={linkClassName}
+                  onClick={() => onTabChange(item.key)}
+                >
+                  {content}
+                </button>
+              ) : (
+                <Link href={item.href} aria-label={item.label} className={linkClassName}>
+                  {content}
+                </Link>
+              )}
             </li>
           );
         })}
