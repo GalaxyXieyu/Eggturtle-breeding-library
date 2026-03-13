@@ -396,6 +396,26 @@ export type {
   DashboardOverviewWindow,
 } from './dashboard';
 export {
+  getTenantWatermarkResponseSchema,
+  tenantWatermarkConfigSchema,
+  tenantWatermarkEffectiveSchema,
+  tenantWatermarkEntitlementSchema,
+  tenantWatermarkStateSchema,
+  tenantWatermarkTextModeSchema,
+  updateTenantWatermarkRequestSchema,
+  updateTenantWatermarkResponseSchema,
+} from './tenant-watermark';
+export type {
+  GetTenantWatermarkResponse,
+  TenantWatermarkConfig,
+  TenantWatermarkEffective,
+  TenantWatermarkEntitlement,
+  TenantWatermarkState,
+  TenantWatermarkTextMode,
+  UpdateTenantWatermarkRequest,
+  UpdateTenantWatermarkResponse,
+} from './tenant-watermark';
+export {
   isPayableTenantSubscriptionPlan,
   payableTenantSubscriptionPlanSchema,
   resolveSubscriptionPriceCents,

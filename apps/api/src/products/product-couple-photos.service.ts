@@ -7,6 +7,7 @@ import type {
   ListProductCouplePhotosResponse,
   ProductCouplePhoto
 } from '@eggturtle/shared'
+import { Prisma } from '@prisma/client'
 import type {
   Product as PrismaProduct,
   ProductCouplePhoto as PrismaProductCouplePhotoModel
@@ -16,6 +17,7 @@ import { AuditLogsService } from '../audit-logs/audit-logs.service'
 import { PrismaService } from '../prisma.service'
 import { buildWebpVariantKey, resolveAllowedMaxEdge, resizeToWebpMaxEdge } from '../images/image-variants'
 import { SharesCoreService } from '../shares/shares-core.service'
+import { TenantWatermarkService } from '../tenant-watermark/tenant-watermark.service'
 import { STORAGE_PROVIDER_TOKEN } from '../storage/storage.constants'
 import type { StorageProvider } from '../storage/storage.provider'
 
@@ -44,6 +46,7 @@ export class ProductCouplePhotosService {
     private readonly auditLogsService: AuditLogsService,
     private readonly generatedAssetsSupportService: ProductGeneratedAssetsSupportService,
     private readonly sharesCoreService: SharesCoreService,
+    private readonly tenantWatermarkService: TenantWatermarkService,
     @Inject(STORAGE_PROVIDER_TOKEN) private readonly storageProvider: StorageProvider
   ) {}
 
@@ -55,11 +58,12 @@ export class ProductCouplePhotosService {
   ): Promise<GenerateProductCouplePhotoResponse> {
     const context = await this.loadCouplePhotoContext(tenantId, femaleProductId)
     const templateVersion = payload.templateVersion?.trim() || DEFAULT_COUPLE_PHOTO_TEMPLATE_VERSION
-    const watermarkSnapshot = {
-      platformTemplate: 'merchant.only',
+    const appliedWatermark = await this.tenantWatermarkService.resolveAppliedWatermark({
+      tenantId,
       tenantName: context.tenantName,
-      watermarkText: this.generatedAssetsSupportService.buildWatermarkText(context.tenantName)
-    }
+      target: 'couplePhoto'
+    })
+    const watermarkSnapshot = appliedWatermark.snapshot
     const generatedAt = new Date()
     const offspringUnitPrice = context.femaleProduct.offspringUnitPrice
 
@@ -117,7 +121,7 @@ export class ProductCouplePhotosService {
           maleShortDescription: context.maleProduct.description ?? '',
           priceLabel: `¥${offspringUnitPrice.toFixed(2)}`,
           generatedAtLabel: `生成时间：${this.generatedAssetsSupportService.formatDateTime(generatedAt)}`,
-          watermarkText: this.generatedAssetsSupportService.buildWatermarkText(context.tenantName)
+          watermarkText: appliedWatermark.watermarkText ?? ''
         },
         femaleImage,
         maleImage,
@@ -168,7 +172,7 @@ export class ProductCouplePhotosService {
             maleImageKeySnapshot: context.maleImageKey,
             priceSnapshot: offspringUnitPrice,
             templateVersion,
-            watermarkSnapshot,
+            watermarkSnapshot: watermarkSnapshot === null ? Prisma.DbNull : (watermarkSnapshot as Prisma.InputJsonValue),
             imageKey: uploadResult?.key ?? key,
             imageUrl: uploadResult?.url ?? '',
             contentType: uploadResult?.contentType ?? 'image/png',

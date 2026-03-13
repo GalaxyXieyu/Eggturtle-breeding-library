@@ -56,8 +56,9 @@ const STAMP_CENTER = { x: 272, y: 1262 };
 
 const FOOTER = {
   lineY: 1388,
-  watermarkY: 1418,
-  verifyY: 1448
+  watermarkY: 1412,
+  statementY: 1440,
+  verifyY: 1468
 } as const;
 
 export const CERTIFICATE_SLOTS = {
@@ -388,7 +389,8 @@ export function buildCertificateStyleSvg(input: CertificateStyleInput): string {
   <text x="${w / 2}" y="${sellerInfoY + 24}" text-anchor="middle" font-size="18" fill="#4f3f2d" class="font-code">账号ID: ${esc(input.sellerAccountId)}</text>
 
   <line x1="${PAGE_LAYOUT.content.x + 28}" y1="${FOOTER.lineY}" x2="${PAGE_LAYOUT.content.x + PAGE_LAYOUT.content.width - 28}" y2="${FOOTER.lineY}" stroke="#c7b294" stroke-width="1.2"/>
-  <text x="${w / 2}" y="${FOOTER.watermarkY}" text-anchor="middle" font-size="21" fill="#4d3c2b" class="font-label">${esc(input.verificationStatementZh)}</text>
+  ${input.watermarkText.trim() ? `<text x="${w / 2}" y="${FOOTER.watermarkY}" text-anchor="middle" font-size="20" fill="rgba(77,60,43,0.72)" class="font-label">${esc(input.watermarkText)}</text>` : ''}
+  <text x="${w / 2}" y="${FOOTER.statementY}" text-anchor="middle" font-size="21" fill="#4d3c2b" class="font-label">${esc(input.verificationStatementZh)}</text>
   <text x="${w / 2}" y="${FOOTER.verifyY}" text-anchor="middle" font-size="19" fill="#5f4d38" class="font-code">Verify ID: ${esc(input.verifyId)}</text>
 </svg>`;
 }

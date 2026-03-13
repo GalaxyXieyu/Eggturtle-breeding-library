@@ -17,6 +17,7 @@ import { SharesModule } from './shares/shares.module';
 import { TenantsModule } from './tenants/tenants.module';
 import { ReferralsModule } from './referrals/referrals.module';
 import { TenantSharePresentationModule } from './tenant-share-presentation/tenant-share-presentation.module';
+import { TenantWatermarkModule } from './tenant-watermark/tenant-watermark.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { TenantSharePresentationModule } from './tenant-share-presentation/tenan
     SharesModule,
     ReferralsModule,
     TenantSharePresentationModule,
+    TenantWatermarkModule,
     AdminModule
   ],
   controllers: [HealthController]

@@ -8,6 +8,7 @@ import { ReferralsModule } from '../referrals/referrals.module';
 import { SharesCoreService } from '../shares/shares-core.service';
 import { StorageModule } from '../storage/storage.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
+import { TenantWatermarkModule } from '../tenant-watermark/tenant-watermark.module';
 
 import { ProductCertificatesPublicController } from './product-certificates-public.controller';
 import { ProductCertificateVerificationService } from './product-certificate-verification.service';
@@ -23,7 +24,7 @@ import { ProductsController } from './products.controller';
 import { ProductsService } from './products.service';
 
 @Module({
-  imports: [PrismaModule, StorageModule, AuthModule, AuditLogsModule, SubscriptionsModule, BrandingModule, ReferralsModule],
+  imports: [PrismaModule, StorageModule, AuthModule, AuditLogsModule, SubscriptionsModule, BrandingModule, ReferralsModule, TenantWatermarkModule],
   controllers: [ProductsController, ProductCertificatesPublicController, SaleBatchesPublicController],
   providers: [
     ProductsService,

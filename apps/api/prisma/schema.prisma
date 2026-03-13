@@ -185,6 +185,7 @@ model Tenant {
   featuredProducts    FeaturedProduct[]
   shares              PublicShare[]
   sharePresentationConfig TenantSharePresentationConfig?
+  watermarkConfig     TenantWatermarkConfig?
   brandingOverride    TenantBrandingOverride?
   productCertificates ProductCertificate[]
   certificateQuotaMonthly TenantCertificateQuotaMonthly[]
@@ -686,6 +687,23 @@ model TenantSharePresentationConfig {
 
   @@index([tenantId], map: "tenant_share_presentation_configs_tenant_id_idx")
   @@map("tenant_share_presentation_configs")
+}
+
+model TenantWatermarkConfig {
+  id                 String   @id @default(cuid())
+  tenantId           String   @unique @map("tenant_id")
+  enabled            Boolean  @default(true)
+  textMode           String   @default("AUTO_TENANT_NAME") @map("text_mode") @db.VarChar(32)
+  customText         String?  @map("custom_text") @db.VarChar(64)
+  applyToSharePoster Boolean  @default(true) @map("apply_to_share_poster")
+  applyToCouplePhoto Boolean  @default(true) @map("apply_to_couple_photo")
+  applyToCertificate Boolean  @default(true) @map("apply_to_certificate")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+  tenant             Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId], map: "tenant_watermark_configs_tenant_id_idx")
+  @@map("tenant_watermark_configs")
 }
 
 model TenantBrandingOverride {

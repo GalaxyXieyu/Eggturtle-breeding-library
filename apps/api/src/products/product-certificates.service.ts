@@ -35,6 +35,7 @@ import { AuditLogsService } from '../audit-logs/audit-logs.service'
 import { BrandingService } from '../branding/branding.service'
 import { PrismaService } from '../prisma.service'
 import { SharesCoreService } from '../shares/shares-core.service'
+import { TenantWatermarkService } from '../tenant-watermark/tenant-watermark.service'
 import { buildWebpVariantKey, resolveAllowedMaxEdge, resizeToWebpMaxEdge } from '../images/image-variants'
 import { STORAGE_PROVIDER_TOKEN } from '../storage/storage.constants'
 import type { StorageProvider } from '../storage/storage.provider'
@@ -48,7 +49,6 @@ import {
   buildCertificateQuota,
   buildCertificateSaleSnapshot,
   buildCertificateVerifyId,
-  buildCertificateWatermarkSnapshot,
   getCertificateMonthKey,
   mapToProductCertificate,
   mapToProductCertificateCenterItem,
@@ -68,6 +68,7 @@ export class ProductCertificatesService {
     private readonly generatedAssetsSupportService: ProductGeneratedAssetsSupportService,
     private readonly productSaleBatchesService: ProductSaleBatchesService,
     private readonly sharesCoreService: SharesCoreService,
+    private readonly tenantWatermarkService: TenantWatermarkService,
     @Inject(STORAGE_PROVIDER_TOKEN) private readonly storageProvider: StorageProvider
   ) {}
 
@@ -102,6 +103,11 @@ export class ProductCertificatesService {
     const verifyId = this.buildVerifyId()
     const quota = await this.getCertificateQuota(tenantId, this.getMonthKey(issuedAt))
     const templateVersion = payload.templateVersion?.trim() || DEFAULT_CERTIFICATE_TEMPLATE_VERSION
+    const appliedWatermark = await this.tenantWatermarkService.resolveAppliedWatermark({
+      tenantId,
+      tenantName: context.tenantName,
+      target: 'certificate'
+    })
     const png = await this.renderCertificateImage({
       context,
       actorUserId,
@@ -110,7 +116,8 @@ export class ProductCertificatesService {
       verifyId,
       templateVersion,
       buyerName: payload.buyerName,
-      buyerAccountId: payload.buyerAccountId
+      buyerAccountId: payload.buyerAccountId,
+      watermarkText: appliedWatermark.watermarkText
     })
 
     return {
@@ -162,6 +169,11 @@ export class ProductCertificatesService {
     const certNo = this.buildCertificateNo(context.saleBatch?.batchNo || context.product.code, issuedAt)
     const verifyId = this.buildVerifyId()
     const templateVersion = payload.templateVersion?.trim() || DEFAULT_CERTIFICATE_TEMPLATE_VERSION
+    const appliedWatermark = await this.tenantWatermarkService.resolveAppliedWatermark({
+      tenantId,
+      tenantName: context.tenantName,
+      target: 'certificate'
+    })
     const png = await this.renderCertificateImage({
       context,
       actorUserId,
@@ -170,9 +182,10 @@ export class ProductCertificatesService {
       verifyId,
       templateVersion,
       buyerName: payload.buyerName,
-      buyerAccountId: payload.buyerAccountId
+      buyerAccountId: payload.buyerAccountId,
+      watermarkText: appliedWatermark.watermarkText
     })
-    const watermarkSnapshot = this.buildWatermarkSnapshot(context.tenantName)
+    const watermarkSnapshot = appliedWatermark.snapshot
     const lineageSnapshot = this.buildLineageSnapshot(context)
     const imageKey = this.generatedAssetsSupportService.buildCertificateStorageKey(tenantId, context.product.id)
 
@@ -295,7 +308,7 @@ export class ProductCertificatesService {
             templateVersion,
             lineageSnapshot: lineageSnapshot as Prisma.InputJsonValue,
             saleSnapshot: saleSnapshot as Prisma.InputJsonValue,
-            watermarkSnapshot: watermarkSnapshot as Prisma.InputJsonValue,
+            watermarkSnapshot: watermarkSnapshot === null ? Prisma.DbNull : (watermarkSnapshot as Prisma.InputJsonValue),
             imageKey: uploadResult?.key ?? imageKey,
             imageUrl: uploadResult?.url ?? '',
             contentType: uploadResult?.contentType ?? 'image/png',
@@ -619,15 +632,21 @@ export class ProductCertificatesService {
     const certNo = this.buildCertificateNo(context.saleBatch?.batchNo || context.product.code, issuedAt)
     const verifyId = this.buildVerifyId()
     const templateVersion = request.templateVersion?.trim() || DEFAULT_CERTIFICATE_TEMPLATE_VERSION
+    const appliedWatermark = await this.tenantWatermarkService.resolveAppliedWatermark({
+      tenantId,
+      tenantName: context.tenantName,
+      target: 'certificate'
+    })
     const png = await this.renderCertificateImage({
       context,
       actorUserId,
       issuedAt,
       certNo,
       verifyId,
-      templateVersion
+      templateVersion,
+      watermarkText: appliedWatermark.watermarkText
     })
-    const watermarkSnapshot = this.buildWatermarkSnapshot(context.tenantName)
+    const watermarkSnapshot = appliedWatermark.snapshot
     const lineageSnapshot = this.buildLineageSnapshot(context)
     const saleSnapshot = this.buildSaleSnapshot(context)
     const imageKey = this.generatedAssetsSupportService.buildCertificateStorageKey(tenantId, context.product.id)
@@ -676,7 +695,7 @@ export class ProductCertificatesService {
             templateVersion,
             lineageSnapshot: lineageSnapshot as Prisma.InputJsonValue,
             saleSnapshot: saleSnapshot as Prisma.InputJsonValue,
-            watermarkSnapshot: watermarkSnapshot as Prisma.InputJsonValue,
+            watermarkSnapshot: watermarkSnapshot === null ? Prisma.DbNull : (watermarkSnapshot as Prisma.InputJsonValue),
             imageKey: uploadResult?.key ?? imageKey,
             imageUrl: uploadResult?.url ?? '',
             contentType: uploadResult?.contentType ?? 'image/png',
@@ -854,6 +873,7 @@ export class ProductCertificatesService {
     templateVersion: string
     buyerName?: string
     buyerAccountId?: string
+    watermarkText?: string | null
   }): Promise<Buffer> {
     const [subjectImage, sireImage, damImage, issuer, platformBranding] = await Promise.all([
       this.generatedAssetsSupportService.loadManagedImageBuffer(input.context.tenantId, input.context.subjectImageKey),
@@ -896,7 +916,7 @@ export class ProductCertificatesService {
       sellerName: issuer.name,
       sellerAccountId: issuer.id,
       verifyId: input.verifyId,
-      watermarkText: this.generatedAssetsSupportService.buildWatermarkText(input.context.tenantName)
+      watermarkText: input.watermarkText?.trim() || ''
     }
 
     try {
@@ -965,13 +985,6 @@ export class ProductCertificatesService {
 
   private buildSaleSnapshot(context: CertificateLineageContext): Prisma.JsonObject | null {
     return buildCertificateSaleSnapshot(context, this.generatedAssetsSupportService.decimalToNumber.bind(this.generatedAssetsSupportService))
-  }
-
-  private buildWatermarkSnapshot(tenantName: string): Prisma.JsonObject {
-    return buildCertificateWatermarkSnapshot(
-      tenantName,
-      this.generatedAssetsSupportService.buildWatermarkText(tenantName)
-    )
   }
 
   private async resolveIssuerInfo(userId: string): Promise<{ name: string; id: string }> {

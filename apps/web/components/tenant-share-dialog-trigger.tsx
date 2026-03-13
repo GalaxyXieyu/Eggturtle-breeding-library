@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { listProductsResponseSchema } from '@eggturtle/shared';
+import { getTenantWatermarkResponseSchema, listProductsResponseSchema } from '@eggturtle/shared';
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams } from 'next/navigation';
@@ -73,12 +73,16 @@ export default function TenantShareDialogTrigger({
   const [presentationPreviewImageUrl, setPresentationPreviewImageUrl] = useState<string | null>(null);
   const [presentationPosterImageUrls, setPresentationPosterImageUrls] = useState<string[]>([]);
   const [presentationAssetsPending, setPresentationAssetsPending] = useState(false);
+  const [sharePosterWatermarkText, setSharePosterWatermarkText] = useState<string | null>(null);
+  const [watermarkPending, setWatermarkPending] = useState(false);
   const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
   const shareRequestIdRef = useRef(0);
   const shareAbortControllerRef = useRef<AbortController | null>(null);
   const presentationRequestIdRef = useRef(0);
   const presentationAbortControllerRef = useRef<AbortController | null>(null);
+  const watermarkAbortControllerRef = useRef<AbortController | null>(null);
   const posterRequestIdRef = useRef(0);
+  const watermarkRequestIdRef = useRef(0);
   const openSessionIdRef = useRef(0);
   const mountedRef = useRef(true);
   const titleId = useId();
@@ -149,6 +153,11 @@ export default function TenantShareDialogTrigger({
     presentationAbortControllerRef.current = null;
   }, []);
 
+  const cancelWatermarkRequest = useCallback(() => {
+    watermarkAbortControllerRef.current?.abort();
+    watermarkAbortControllerRef.current = null;
+  }, []);
+
   const normalizedPresentationPosterImageUrls = useMemo(
     () =>
       Array.from(
@@ -181,8 +190,10 @@ export default function TenantShareDialogTrigger({
   const resetPreviewState = useCallback(() => {
     cancelShareRequest();
     cancelPresentationRequest();
+    cancelWatermarkRequest();
     shareRequestIdRef.current += 1;
     presentationRequestIdRef.current += 1;
+    watermarkRequestIdRef.current += 1;
     posterRequestIdRef.current += 1;
     setPending(false);
     setLink('');
@@ -193,8 +204,10 @@ export default function TenantShareDialogTrigger({
     setPresentationPreviewImageUrl(null);
     setPresentationPosterImageUrls([]);
     setPresentationAssetsPending(false);
+    setSharePosterWatermarkText(null);
+    setWatermarkPending(false);
     setError(null);
-  }, [cancelPresentationRequest, cancelShareRequest]);
+  }, [cancelPresentationRequest, cancelShareRequest, cancelWatermarkRequest]);
 
   const handleClose = useCallback(() => {
     openSessionIdRef.current += 1;
@@ -279,6 +292,66 @@ export default function TenantShareDialogTrigger({
     [cancelShareRequest, missingTenantMessage, normalizedIntent],
   );
 
+  const prepareWatermarkState = useCallback(
+    async (sessionId: number) => {
+      const requestId = watermarkRequestIdRef.current + 1;
+      watermarkRequestIdRef.current = requestId;
+      cancelWatermarkRequest();
+      const abortController = new AbortController();
+      watermarkAbortControllerRef.current = abortController;
+      setWatermarkPending(true);
+
+      try {
+        const response = await apiRequest('/tenant-watermark', {
+          signal: abortController.signal,
+          responseSchema: getTenantWatermarkResponseSchema,
+        });
+
+        if (
+          !mountedRef.current ||
+          openSessionIdRef.current !== sessionId ||
+          watermarkRequestIdRef.current !== requestId
+        ) {
+          return;
+        }
+
+        setSharePosterWatermarkText(
+          response.effective.enabled && response.effective.applyToSharePoster
+            ? response.effective.watermarkText
+            : null,
+        );
+      } catch (currentError) {
+        if (abortController.signal.aborted) {
+          return;
+        }
+
+        if (
+          !mountedRef.current ||
+          openSessionIdRef.current !== sessionId ||
+          watermarkRequestIdRef.current !== requestId
+        ) {
+          return;
+        }
+
+        console.error('[Share] Failed to load tenant watermark state:', currentError);
+        setSharePosterWatermarkText(null);
+      } finally {
+        if (watermarkAbortControllerRef.current === abortController) {
+          watermarkAbortControllerRef.current = null;
+        }
+
+        if (
+          mountedRef.current &&
+          openSessionIdRef.current === sessionId &&
+          watermarkRequestIdRef.current === requestId
+        ) {
+          setWatermarkPending(false);
+        }
+      }
+    },
+    [cancelWatermarkRequest],
+  );
+
   const preparePresentationAssets = useCallback(
     async (sessionId: number) => {
       if (!shouldUsePresentationAssets) {
@@ -359,12 +432,14 @@ export default function TenantShareDialogTrigger({
       setPortalRoot(null);
       cancelShareRequest();
       cancelPresentationRequest();
+      cancelWatermarkRequest();
       openSessionIdRef.current += 1;
       shareRequestIdRef.current += 1;
       presentationRequestIdRef.current += 1;
+      watermarkRequestIdRef.current += 1;
       posterRequestIdRef.current += 1;
     };
-  }, [cancelPresentationRequest, cancelShareRequest]);
+  }, [cancelPresentationRequest, cancelShareRequest, cancelWatermarkRequest]);
 
   useEffect(() => {
     if (!notice) {
@@ -383,7 +458,8 @@ export default function TenantShareDialogTrigger({
     const sessionId = openSessionIdRef.current;
     void prepareShareAssets(sessionId);
     void preparePresentationAssets(sessionId);
-  }, [intentKey, open, preparePresentationAssets, prepareShareAssets]);
+    void prepareWatermarkState(sessionId);
+  }, [intentKey, open, preparePresentationAssets, prepareShareAssets, prepareWatermarkState]);
 
   useEffect(() => {
     if (!open) {
@@ -433,7 +509,7 @@ export default function TenantShareDialogTrigger({
   }, [link]);
 
   useEffect(() => {
-    if (!open || !qrDataUrl || presentationAssetsPending) {
+    if (!open || !qrDataUrl || presentationAssetsPending || watermarkPending) {
       setPosterPending(false);
       return;
     }
@@ -453,6 +529,7 @@ export default function TenantShareDialogTrigger({
       brandTitleEn: platformAppNameEn,
       previewImageUrl: resolvedPreviewImageUrl,
       posterImageUrls: resolvedPosterImageUrls,
+      watermarkText: sharePosterWatermarkText,
       variant: resolvedPosterVariant,
     };
 
@@ -519,6 +596,8 @@ export default function TenantShareDialogTrigger({
     qrDataUrl,
     resolvedPosterImageUrls,
     resolvedPosterVariant,
+    sharePosterWatermarkText,
+    watermarkPending,
     resolvedPreviewImageUrl,
     posterRetrySeed,
   ]);
@@ -762,6 +841,7 @@ type SharePosterPayload = {
   brandTitleEn: string;
   previewImageUrl?: string | null;
   posterImageUrls?: string[];
+  watermarkText?: string | null;
   variant: TenantSharePosterVariant;
 };
 
@@ -915,10 +995,23 @@ async function generateGenericSharePoster(payload: SharePosterPayload): Promise<
   roundedRect(ctx, heroX, accentBarY, heroWidth, accentBarHeight, 4);
   ctx.fill();
 
+  const watermarkText = payload.watermarkText?.trim();
+  if (watermarkText) {
+    drawMultilineText(ctx, watermarkText, {
+      x: heroX,
+      y: accentBarY + 34,
+      maxWidth: heroWidth,
+      lineHeight: 26,
+      maxLines: 1,
+      font: '600 22px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif',
+      color: 'rgba(82,82,82,0.78)',
+    });
+  }
+
   // Footer text with refined styling
   ctx.fillStyle = '#999999';
   ctx.font = '600 22px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
-  ctx.fillText(payload.brandTitleEn, heroX, accentBarY + 55);
+  ctx.fillText(payload.brandTitleEn, heroX, accentBarY + (watermarkText ? 76 : 55));
 
   return canvas.toDataURL('image/png');
 }
@@ -1120,6 +1213,19 @@ async function generateDetailSharePoster(payload: SharePosterPayload): Promise<s
     ctx.beginPath();
     ctx.arc(dotX, accentY, dotRadius, 0, Math.PI * 2);
     ctx.fill();
+  }
+
+  const watermarkText = payload.watermarkText?.trim();
+  if (watermarkText) {
+    drawMultilineText(ctx, watermarkText, {
+      x: panelX + 34,
+      y: panelY + panelHeight - 92,
+      maxWidth: panelWidth - 68,
+      lineHeight: 24,
+      maxLines: 1,
+      font: '600 20px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif',
+      color: 'rgba(146,64,14,0.76)',
+    });
   }
 
   ctx.fillStyle = '#92400e';
