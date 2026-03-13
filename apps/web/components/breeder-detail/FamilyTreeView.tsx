@@ -92,12 +92,12 @@ export function FamilyTreeView({ tree, openBreederDetail }: FamilyTreeViewProps)
                   <div className="w-full space-y-1">
                     <p className="text-center text-[10px] font-medium text-neutral-500">父系</p>
                     <TreeCard
-                      node={tree.paternalGrandfather}
+                      node={tree.paternalGrandfather ?? null}
                       onOpen={openBreederDetail}
                       className="w-[6rem] sm:w-[6.5rem]"
                     />
                     <TreeCard
-                      node={tree.paternalGrandmother}
+                      node={tree.paternalGrandmother ?? null}
                       onOpen={openBreederDetail}
                       className="w-[6rem] sm:w-[6.5rem]"
                     />
@@ -105,12 +105,12 @@ export function FamilyTreeView({ tree, openBreederDetail }: FamilyTreeViewProps)
                   <div className="w-full space-y-1">
                     <p className="text-center text-[10px] font-medium text-neutral-500">母系</p>
                     <TreeCard
-                      node={tree.maternalGrandfather}
+                      node={tree.maternalGrandfather ?? null}
                       onOpen={openBreederDetail}
                       className="w-[6rem] sm:w-[6.5rem]"
                     />
                     <TreeCard
-                      node={tree.maternalGrandmother}
+                      node={tree.maternalGrandmother ?? null}
                       onOpen={openBreederDetail}
                       className="w-[6rem] sm:w-[6.5rem]"
                     />
