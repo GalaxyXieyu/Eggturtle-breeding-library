@@ -12,6 +12,7 @@ import {
 } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
+  TENANT_WATERMARK_MAX_TEXT_LENGTH,
   getTenantSharePresentationResponseSchema,
   getTenantWatermarkResponseSchema,
   uploadTenantSharePresentationImageResponseSchema,
@@ -162,6 +163,16 @@ export default function SharePresentationPage() {
     setSavedWatermarkForm(nextForm);
     setWatermarkEntitlement(state.entitlement);
     setWatermarkEffective(state.effective);
+    setWatermarkError(null);
+  }, []);
+
+  const applyWatermarkUnavailable = useCallback((message: string) => {
+    setWatermarkForm(DEFAULT_WATERMARK_FORM);
+    setSavedWatermarkForm(null);
+    setWatermarkEntitlement(null);
+    setWatermarkEffective(null);
+    setWatermarkError(message);
+    setWatermarkMessage(null);
   }, []);
 
   const applyPresentation = useCallback((presentation: TenantSharePresentation) => {
@@ -171,7 +182,7 @@ export default function SharePresentationPage() {
   }, []);
 
   const loadPresentation = useCallback(async () => {
-    const [presentationResponse, watermarkResponse] = await Promise.all([
+    const [presentationResult, watermarkResult] = await Promise.allSettled([
       apiRequest('/tenant-share-presentation', {
         responseSchema: getTenantSharePresentationResponseSchema,
       }),
@@ -180,9 +191,19 @@ export default function SharePresentationPage() {
       }),
     ]);
 
-    applyPresentation(presentationResponse.presentation);
-    applyWatermarkState(watermarkResponse);
-  }, [applyPresentation, applyWatermarkState]);
+    if (presentationResult.status === 'rejected') {
+      throw presentationResult.reason;
+    }
+
+    applyPresentation(presentationResult.value.presentation);
+
+    if (watermarkResult.status === 'fulfilled') {
+      applyWatermarkState(watermarkResult.value);
+      return;
+    }
+
+    applyWatermarkUnavailable(buildWatermarkLoadErrorMessage(watermarkResult.reason));
+  }, [applyPresentation, applyWatermarkState, applyWatermarkUnavailable]);
 
   useEffect(() => {
     let cancelled = false;
@@ -868,7 +889,7 @@ export default function SharePresentationPage() {
                       </p>
                     </div>
                     <div className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
-                      {watermarkEntitlement?.plan ?? 'FREE'}
+                      {watermarkEntitlement?.plan ?? '未加载'}
                     </div>
                   </div>
 
@@ -890,7 +911,11 @@ export default function SharePresentationPage() {
                     ) : null}
                   </div>
 
-                  {watermarkEntitlement && !watermarkEntitlement.canEdit ? (
+                  {!watermarkEntitlement ? (
+                    <div className="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50/70 p-4 text-sm text-neutral-600">
+                      商家水印模块暂时不可用，但不会影响你继续编辑其他分享配置。
+                    </div>
+                  ) : !watermarkEntitlement.canEdit ? (
                     <div className="flex flex-col gap-3 rounded-2xl border border-dashed border-amber-300 bg-amber-50/70 p-4">
                       <p className="text-sm text-amber-900">
                         {watermarkEntitlement.reason ?? '升级到 PRO 后即可开启商家水印。'}
@@ -956,7 +981,7 @@ export default function SharePresentationPage() {
                           <Label htmlFor="watermark-custom-text">自定义文案</Label>
                           <Input
                             id="watermark-custom-text"
-                            maxLength={32}
+                            maxLength={TENANT_WATERMARK_MAX_TEXT_LENGTH}
                             value={watermarkForm.customText}
                             placeholder="例如：XX 龟舍 · 商家水印"
                             disabled={watermarkSaving}
@@ -1168,6 +1193,10 @@ function buildWatermarkStatusCopy(
   entitlement: TenantWatermarkState['entitlement'] | null,
   effective: TenantWatermarkState['effective'] | null,
 ) {
+  if (!entitlement) {
+    return '商家水印配置暂不可用，但不影响其他分享配置。';
+  }
+
   if (effective?.enabled && effective.watermarkText) {
     return `已启用，当前文案：${effective.watermarkText}`;
   }
@@ -1177,6 +1206,11 @@ function buildWatermarkStatusCopy(
   }
 
   return '当前未启用商家水印。';
+}
+
+function buildWatermarkLoadErrorMessage(requestError: unknown) {
+  const message = formatApiError(requestError);
+  return `${message} 当前可继续编辑其他分享配置。`;
 }
 
 function toWatermarkFormState(state: TenantWatermarkState): WatermarkFormState {

@@ -133,7 +133,7 @@ export default function ProductsFilterOverlay({
           type="text"
           placeholder="按编号 / 名称 / 描述搜索"
           value={searchInput}
-          className="h-9"
+          className="h-11 rounded-full px-4 text-[15px] placeholder:text-neutral-400"
           onChange={(event) => onSearchInputChange(event.target.value)}
           onBlur={onSearchInputCommit}
           onKeyDown={(event) => {

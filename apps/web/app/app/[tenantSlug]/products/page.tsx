@@ -1244,6 +1244,7 @@ export default function TenantProductsPage() {
       <main className="tenant-mobile-dock-safe-stack space-y-4 pb-10 sm:space-y-6 lg:pb-10">
         <ProductsSharePreviewCard
           sharePreview={sharePreview}
+          listStatsLabel={listStatsLabel}
           shareHeroImageUrl={shareHeroImageUrl}
           shareHeroIndex={shareHeroIndex}
           shareOverlayColor={shareOverlayColor}
@@ -1282,7 +1283,6 @@ export default function TenantProductsPage() {
         ) : null}
 
         <ProductsListCard
-          listStatsLabel={listStatsLabel}
           showMobileFilterFab={showMobileFilterFab}
           mobileTopFilterRef={mobileTopFilterRef}
           activeFilterCount={activeFilterCount}

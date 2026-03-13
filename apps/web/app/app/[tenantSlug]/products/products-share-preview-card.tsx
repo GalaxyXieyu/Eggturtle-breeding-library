@@ -9,6 +9,7 @@ import type { SharePreviewState } from '@/app/app/[tenantSlug]/products/products
 
 type ProductsSharePreviewCardProps = {
   sharePreview: SharePreviewState;
+  listStatsLabel: string;
   shareHeroImageUrl: string;
   shareHeroIndex: number;
   shareOverlayColor: string;
@@ -23,6 +24,7 @@ type ProductsSharePreviewCardProps = {
 
 export default function ProductsSharePreviewCard({
   sharePreview,
+  listStatsLabel,
   shareHeroImageUrl,
   shareHeroIndex,
   shareOverlayColor,
@@ -98,9 +100,9 @@ export default function ProductsSharePreviewCard({
                 <h2 className="mt-2 text-2xl font-semibold leading-tight drop-shadow-sm sm:text-3xl">
                   {sharePreview.feedTitle}
                 </h2>
-                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/85 sm:text-base">
-                  {sharePreview.feedSubtitle}
-                </p>
+                <div className="mt-2 inline-flex max-w-full items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] leading-relaxed text-white/82 backdrop-blur-sm sm:text-xs">
+                  <span className="truncate">{listStatsLabel}</span>
+                </div>
               </div>
             </div>
 

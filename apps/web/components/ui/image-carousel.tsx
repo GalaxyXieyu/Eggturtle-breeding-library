@@ -61,9 +61,10 @@ export function ImageCarousel({
       >
         {activeItem ? (
           <img
+            key={activeItem.id}
             src={activeItem.src}
             alt={activeItem.alt}
-            className={cn('aspect-[4/5] w-full object-cover sm:aspect-[5/6] lg:min-h-[420px] lg:aspect-auto', imageClassName)}
+            className={cn('aspect-square w-full object-cover', imageClassName)}
             loading="eager"
             decoding="async"
             fetchPriority="high"
@@ -80,7 +81,7 @@ export function ImageCarousel({
               type="button"
               data-ui="button"
               onClick={() => handleStep(-1)}
-              className="absolute left-3 top-1/2 z-10 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/45 bg-black/45 text-white shadow-[0_8px_20px_rgba(0,0,0,0.18)] backdrop-blur-sm transition hover:bg-black/60"
+              className="absolute left-3 top-1/2 z-10 inline-flex h-9 w-9 -translate-y-1/2 appearance-none items-center justify-center rounded-full border border-white/45 bg-black/45 text-white shadow-[0_8px_20px_rgba(0,0,0,0.18)] outline-none backdrop-blur-sm transition [touch-action:manipulation] hover:bg-black/60 focus-visible:ring-2 focus-visible:ring-[#E5B800]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
               aria-label="上一张"
             >
               <ChevronLeft size={16} />
@@ -89,7 +90,7 @@ export function ImageCarousel({
               type="button"
               data-ui="button"
               onClick={() => handleStep(1)}
-              className="absolute right-3 top-1/2 z-10 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/45 bg-black/45 text-white shadow-[0_8px_20px_rgba(0,0,0,0.18)] backdrop-blur-sm transition hover:bg-black/60"
+              className="absolute right-3 top-1/2 z-10 inline-flex h-9 w-9 -translate-y-1/2 appearance-none items-center justify-center rounded-full border border-white/45 bg-black/45 text-white shadow-[0_8px_20px_rgba(0,0,0,0.18)] outline-none backdrop-blur-sm transition [touch-action:manipulation] hover:bg-black/60 focus-visible:ring-2 focus-visible:ring-[#E5B800]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
               aria-label="下一张"
             >
               <ChevronRight size={16} />
@@ -102,7 +103,7 @@ export function ImageCarousel({
 
       {items.length > 1 ? (
         <div className="overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div className="flex min-w-full gap-2.5">
+          <div className="flex min-w-full gap-1.5 sm:gap-2.5">
             {items.map((item, index) => {
               const isActive = item.id === activeItem?.id;
 
@@ -114,14 +115,14 @@ export function ImageCarousel({
                   onClick={() => onSelect(item.id)}
                   aria-label={`查看图片 ${index + 1}${isActive ? '（当前）' : ''}`}
                   className={cn(
-                    'group shrink-0 overflow-hidden rounded-2xl bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(247,247,245,0.92))] p-1.5 shadow-[0_10px_20px_rgba(15,23,42,0.08)] ring-1 ring-black/6 transition-all',
+                    'group shrink-0 appearance-none overflow-hidden rounded-[16px] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(247,247,245,0.92))] p-[3px] shadow-[0_10px_20px_rgba(15,23,42,0.08)] outline-none ring-1 ring-black/6 transition-all [touch-action:manipulation] focus-visible:ring-2 focus-visible:ring-[#E5B800]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white sm:rounded-2xl sm:p-1.5',
                     isActive
                       ? 'scale-[0.98] ring-2 ring-[#E5B800] shadow-[0_14px_28px_rgba(229,184,0,0.18)]'
                       : 'hover:-translate-y-0.5 hover:ring-black/10',
                     thumbnailClassName,
                   )}
                 >
-                  <div className="relative h-[72px] w-[72px] overflow-hidden rounded-[14px] bg-stone-100 sm:h-[78px] sm:w-[78px]">
+                  <div className="relative h-[52px] w-[52px] overflow-hidden rounded-[10px] bg-stone-100 sm:h-[78px] sm:w-[78px] sm:rounded-[14px]">
                     <img
                       src={item.thumbnailSrc ?? item.src}
                       alt={item.alt}

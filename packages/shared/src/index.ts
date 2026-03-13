@@ -397,6 +397,7 @@ export type {
 } from './dashboard';
 export {
   getTenantWatermarkResponseSchema,
+  TENANT_WATERMARK_MAX_TEXT_LENGTH,
   tenantWatermarkConfigSchema,
   tenantWatermarkEffectiveSchema,
   tenantWatermarkEntitlementSchema,

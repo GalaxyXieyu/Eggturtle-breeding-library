@@ -3,11 +3,12 @@ import { z } from 'zod';
 import { tenantSubscriptionPlanSchema, tenantSubscriptionStatusSchema } from './subscription';
 
 export const tenantWatermarkTextModeSchema = z.enum(['AUTO_TENANT_NAME', 'CUSTOM']);
+export const TENANT_WATERMARK_MAX_TEXT_LENGTH = 64;
 
 const nullableCustomTextSchema = z
   .string()
   .trim()
-  .max(32)
+  .max(TENANT_WATERMARK_MAX_TEXT_LENGTH)
   .nullable()
   .transform((value) => value ?? null);
 
@@ -39,7 +40,7 @@ export const tenantWatermarkEntitlementSchema = z.object({
 
 export const tenantWatermarkEffectiveSchema = z.object({
   enabled: z.boolean(),
-  watermarkText: z.string().trim().min(1).max(64).nullable(),
+  watermarkText: z.string().trim().min(1).max(TENANT_WATERMARK_MAX_TEXT_LENGTH).nullable(),
   applyToSharePoster: z.boolean(),
   applyToCouplePhoto: z.boolean(),
   applyToCertificate: z.boolean(),

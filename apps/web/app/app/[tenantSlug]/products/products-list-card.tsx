@@ -17,7 +17,6 @@ import {
 } from '@/app/app/[tenantSlug]/products/products-page-state';
 
 type ProductsListCardProps = {
-  listStatsLabel: string;
   showMobileFilterFab: boolean;
   mobileTopFilterRef: RefObject<HTMLDivElement>;
   activeFilterCount: number;
@@ -52,7 +51,6 @@ type ProductsListCardProps = {
 };
 
 export default function ProductsListCard({
-  listStatsLabel,
   showMobileFilterFab,
   mobileTopFilterRef,
   activeFilterCount,
@@ -165,13 +163,7 @@ export default function ProductsListCard({
 
   return (
     <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
-      <CardContent className="space-y-4 px-3 pt-6 sm:px-6">
-        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-600">
-          <span className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5">
-            {listStatsLabel}
-          </span>
-        </div>
-
+      <CardContent className="space-y-4 px-3 pt-4 sm:px-6 sm:pt-6">
         {!showMobileFilterFab ? (
           <div
             ref={mobileTopFilterRef}
@@ -209,7 +201,7 @@ export default function ProductsListCard({
                     type="text"
                     placeholder="按编号 / 名称 / 描述搜索"
                     value={searchInput}
-                    className="h-9"
+                    className="h-11 rounded-full px-4 text-[15px] placeholder:text-neutral-400"
                     onChange={(event) => onSearchInputChange(event.target.value)}
                     onBlur={onSearchInputCommit}
                     onKeyDown={(event) => {
@@ -223,7 +215,7 @@ export default function ProductsListCard({
                 </div>
                 <button
                   type="button"
-                  className="inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-neutral-200 bg-white px-4 text-sm font-medium text-neutral-700 transition hover:border-neutral-300 hover:bg-neutral-50"
+                  className="inline-flex h-11 shrink-0 items-center justify-center rounded-full border border-neutral-200 bg-white px-4 text-[15px] font-normal text-neutral-700 transition hover:border-neutral-300 hover:bg-neutral-50"
                   onClick={onResetFilters}
                 >
                   清空
