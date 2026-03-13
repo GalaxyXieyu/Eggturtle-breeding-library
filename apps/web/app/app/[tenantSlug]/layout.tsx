@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   meProfileResponseSchema,
@@ -155,17 +155,6 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
     ? NAV_ITEMS.filter((item) => item.href(tenantSlug) === accountPath)
     : navItemsWithoutShare;
   const shouldBlockOtherPages = setupCheckReady && setupRequired && pathname !== accountPath;
-
-  const handleMobileNavChange = useCallback(
-    (href: string) => {
-      if (!href || isActive(pathname, href)) {
-        return;
-      }
-
-      router.replace(href);
-    },
-    [pathname, router],
-  );
 
   const floatingShareIntent = useMemo<TenantShareIntent>(() => {
     const segments = pathname.split('/').filter(Boolean);
@@ -394,8 +383,8 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
 
             return (
               <li key={`mobile-${href}`} className="tenant-mobile-nav-item list-none">
-                <button
-                  type="button"
+                <Link
+                  href={href}
                   aria-label={item.label[locale]}
                   aria-current={active ? 'page' : undefined}
                   className={cn(
@@ -404,7 +393,6 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
                       ? 'is-active'
                       : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200',
                   )}
-                  onClick={() => handleMobileNavChange(href)}
                 >
                   <span className="tenant-mobile-nav-stack">
                     <span className="tenant-mobile-nav-icon">
@@ -412,7 +400,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
                     </span>
                     <span className="tenant-mobile-nav-label">{item.label[locale]}</span>
                   </span>
-                </button>
+                </Link>
               </li>
             );
           })}
