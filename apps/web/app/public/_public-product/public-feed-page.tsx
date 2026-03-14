@@ -7,11 +7,9 @@ import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 
 import { buildFilterPillClass } from '@/components/filter-pill';
 import { FloatingActionButton, modalCloseButtonClass } from '@/components/ui/floating-actions';
-import PublicBottomDock, { type PublicDockTab } from '@/app/public/_shared/public-bottom-dock';
-import PublicShareFeaturesScreen from '@/app/public/_shared/public-share-features-screen';
+import PublicBottomDock from '@/app/public/_shared/public-bottom-dock';
 import PublicFloatingActions from '@/app/public/_shared/public-floating-actions';
 import { withPublicImageMaxEdge } from '@/app/public/_shared/public-image';
-import PublicShareMePage from '@/app/public/_shared/public-share-me-page';
 
 import type { Breeder, NeedMatingStatus, Series } from '@/app/public/_public-product/types';
 import {
@@ -108,7 +106,6 @@ export default function PublicFeedPage({
   const [sex, setSex] = useState<'all' | 'male' | 'female'>('all');
   const [status, setStatus] = useState<'all' | NeedMatingStatus>('all');
   const [showMobileFilterFab, setShowMobileFilterFab] = useState(false);
-  const [activeDockTab, setActiveDockTab] = useState<PublicDockTab>('pets');
   const [isMobileFilterModalOpen, setIsMobileFilterModalOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_BREEDERS);
   const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
@@ -370,20 +367,6 @@ export default function PublicFeedPage({
       : `/public/s/${shareToken}`;
   const homeHref = tenantSlug ? `/app/${tenantSlug}` : '/app';
 
-  useEffect(() => {
-    if (typeof document === 'undefined' || activeDockTab === 'pets') {
-      return undefined;
-    }
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
-  }, [activeDockTab]);
-
-  const handleDockTabChange = useCallback((nextTab: PublicDockTab) => {
-    setIsMobileFilterModalOpen(false);
-    setActiveDockTab(nextTab);
-  }, []);
-
   function renderFilterContent() {
     return (
       <div className="flex flex-col gap-3">
@@ -625,56 +608,32 @@ export default function PublicFeedPage({
 
         <ShareContactCard presentation={resolvedPresentation} className="mt-4" />
       </div>
-      {activeDockTab === 'pets' ? (
-        <PublicFloatingActions
-          permalink={permalink}
-          homeHref={homeHref}
-          showHomeButton={false}
-          tenantQrImageUrl={contactQrImageUrl}
-          tenantWechatId={contactWechatId}
-          shareCardTitle={resolvedPresentation.feedTitle}
-          shareCardSubtitle={resolvedPresentation.feedSubtitle}
-          shareCardPrimaryColor={brandPrimary}
-          shareCardSecondaryColor={brandSecondary}
-          shareCardHeroImageUrl={heroImages[heroIndex] ?? heroImages[0] ?? null}
-        >
-          {showMobileFilterFab ? (
-            <FloatingActionButton
-              className="lg:hidden"
-              aria-label="打开筛选"
-              onClick={() => setIsMobileFilterModalOpen(true)}
-            >
-              <Search size={18} />
-            </FloatingActionButton>
-          ) : null}
-        </PublicFloatingActions>
-      ) : null}
-      {activeDockTab === 'features' ? (
-        <div className="fixed inset-x-0 top-0 bottom-[calc(env(safe-area-inset-bottom)+74px)] z-[60] overflow-y-auto bg-white lg:hidden">
-          <PublicShareFeaturesScreen
-            shareToken={shareToken}
-            shareQuery={shareQuery}
-            presentation={presentation}
-            embedded
-          />
-        </div>
-      ) : null}
-      {activeDockTab === 'me' ? (
-        <div className="fixed inset-x-0 top-0 bottom-[calc(env(safe-area-inset-bottom)+74px)] z-[60] overflow-y-auto bg-gradient-to-br from-stone-100 via-white to-amber-50/40 lg:hidden">
-          <PublicShareMePage
-            shareToken={shareToken}
-            shareQuery={shareQuery}
-            presentation={presentation}
-            embedded
-          />
-        </div>
-      ) : null}
+      <PublicFloatingActions
+        permalink={permalink}
+        homeHref={homeHref}
+        showHomeButton={false}
+        tenantQrImageUrl={contactQrImageUrl}
+        tenantWechatId={contactWechatId}
+        shareCardTitle={resolvedPresentation.feedTitle}
+        shareCardSubtitle={resolvedPresentation.feedSubtitle}
+        shareCardPrimaryColor={brandPrimary}
+        shareCardSecondaryColor={brandSecondary}
+        shareCardHeroImageUrl={heroImages[heroIndex] ?? heroImages[0] ?? null}
+      >
+        {showMobileFilterFab ? (
+          <FloatingActionButton
+            className="lg:hidden"
+            aria-label="打开筛选"
+            onClick={() => setIsMobileFilterModalOpen(true)}
+          >
+            <Search size={18} />
+          </FloatingActionButton>
+        ) : null}
+      </PublicFloatingActions>
       <PublicBottomDock
         shareToken={shareToken}
         shareQuery={shareQuery}
-        activeTab={activeDockTab}
-        clientTabKeys={['features', 'pets', 'me']}
-        onTabChange={handleDockTabChange}
+        activeTab="pets"
       />
     </div>
   );
