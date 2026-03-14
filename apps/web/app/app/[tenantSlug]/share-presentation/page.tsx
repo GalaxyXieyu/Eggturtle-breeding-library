@@ -39,6 +39,7 @@ import { apiRequest, resolveAuthenticatedAssetUrl } from '@/lib/api-client';
 import { formatApiError } from '@/lib/error-utils';
 import { ensureTenantRouteSession } from '@/lib/tenant-route-session';
 import { uploadSingleFileWithAuth } from '@/lib/upload-client';
+import { TenantSharePreviewCarouselCard } from '@/components/share/tenant-share-preview-carousel-card';
 import TenantShareDialogTrigger from '@/components/tenant-share-dialog-trigger';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -259,6 +260,12 @@ export default function SharePresentationPage() {
       wechatId: normalizeNullableString(form.wechatId),
     };
   }, [form, tenantSlug]);
+  const previewHeroSignature = useMemo(() => preview.heroImages.join('|'), [preview.heroImages]);
+  const [previewHeroIndex, setPreviewHeroIndex] = useState(0);
+
+  useEffect(() => {
+    setPreviewHeroIndex(0);
+  }, [previewHeroSignature]);
 
   const closeCropDialog = useCallback(() => {
     setCropSource((current) => {
@@ -533,12 +540,17 @@ export default function SharePresentationPage() {
             <LoadingCard />
           ) : (
             <>
-              <SharePreviewHeroCard preview={preview}>
+              <TenantSharePreviewCarouselCard
+                preview={preview}
+                activeIndex={previewHeroIndex}
+                onActiveIndexChange={setPreviewHeroIndex}
+                className="border-white/12 shadow-[0_18px_42px_rgba(15,23,42,0.16)]"
+              >
                 <TenantShareDialogTrigger
                   intent="feed"
                   title={preview.feedTitle}
                   subtitle={preview.feedSubtitle}
-                  previewImageUrl={preview.heroImages[0] ?? null}
+                  previewImageUrl={preview.heroImages[previewHeroIndex] ?? preview.heroImages[0] ?? null}
                   posterImageUrls={preview.heroImages}
                   assetSource="provided"
                   trigger={({ onClick, pending }) => (
@@ -554,7 +566,7 @@ export default function SharePresentationPage() {
                     </Button>
                   )}
                 />
-              </SharePreviewHeroCard>
+              </TenantSharePreviewCarouselCard>
 
               <SettingsCard>
                 <SettingRow
@@ -1092,43 +1104,6 @@ export default function SharePresentationPage() {
   );
 }
 
-type SharePreviewHeroCardProps = {
-  children?: ReactNode;
-  preview: PreviewState;
-};
-
-function SharePreviewHeroCard({ children, preview }: SharePreviewHeroCardProps) {
-  return (
-    <Card className="overflow-hidden rounded-[30px] border border-white/70 bg-white/78 p-2 shadow-[0_18px_40px_rgba(15,23,42,0.10)] backdrop-blur-xl">
-      <div className="relative aspect-[16/10] overflow-hidden rounded-[24px] bg-neutral-900 ring-1 ring-black/5">
-        <img
-          src={resolveAuthenticatedAssetUrl(preview.heroImages[0] ?? DEFAULT_HERO_IMAGE)}
-          alt="分享封面预览"
-          className="h-full w-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/18 via-black/22 to-black/62" />
-        <div
-          className="absolute inset-0"
-          style={{
-            background: `linear-gradient(135deg, ${hexToRgba(preview.brandSecondary, 0.18)}, transparent 60%)`,
-          }}
-        />
-        <div className="absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top_right,rgba(255,212,0,0.18),transparent_42%)]" />
-        <div className="absolute right-3 top-3">{children}</div>
-        <div className="absolute inset-x-0 bottom-0 p-4 text-white">
-          <p className="text-[10px] uppercase tracking-[0.24em] text-white/68">share preview</p>
-          <h2 className="mt-1.5 text-pretty text-[26px] font-semibold leading-tight drop-shadow-sm sm:text-[30px]">
-            {preview.feedTitle}
-          </h2>
-          <p className="mt-1 max-w-[82%] text-[13px] leading-snug text-white/82 sm:text-sm">
-            {preview.feedSubtitle}
-          </p>
-        </div>
-      </div>
-    </Card>
-  );
-}
-
 type AssetPreviewMiniProps = {
   alt: string;
   detail?: string;
@@ -1292,23 +1267,6 @@ function normalizeColor(value: string): string | null {
   }
 
   return normalized;
-}
-
-function hexToRgba(hex: string, alpha: number): string {
-  const normalized = hex.replace('#', '');
-  const value =
-    normalized.length === 3
-      ? normalized
-          .split('')
-          .map((char) => `${char}${char}`)
-          .join('')
-      : normalized;
-
-  const red = Number.parseInt(value.slice(0, 2), 16);
-  const green = Number.parseInt(value.slice(2, 4), 16);
-  const blue = Number.parseInt(value.slice(4, 6), 16);
-
-  return `rgba(${Number.isNaN(red) ? 255 : red}, ${Number.isNaN(green) ? 212 : green}, ${Number.isNaN(blue) ? 0 : blue}, ${alpha})`;
 }
 
 function ensureJpegFileName(value: string): string {

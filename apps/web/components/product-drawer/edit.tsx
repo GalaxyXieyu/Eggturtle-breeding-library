@@ -742,6 +742,7 @@ export default function ProductEditDrawer({
       });
       markProductsPageDirty(tenantSlug);
 
+      let savedProduct = response.product;
       let createdEvent: ProductEvent | undefined;
       if (eventPayload) {
         try {
@@ -752,6 +753,15 @@ export default function ProductEditDrawer({
             responseSchema: createProductEventResponseSchema
           });
           createdEvent = eventResponse.event;
+
+          try {
+            const refreshedProductResponse = await apiRequest(`/products/${currentProduct.id}`, {
+              responseSchema: getProductResponseSchema
+            });
+            savedProduct = refreshedProductResponse.product;
+          } catch {
+            savedProduct = response.product;
+          }
         } catch (eventRequestError) {
           onSaved(response.product);
           setError(`资料已保存，但事件录入失败：${formatApiError(eventRequestError)}`);
@@ -759,7 +769,7 @@ export default function ProductEditDrawer({
         }
       }
 
-      onSaved(response.product, createdEvent);
+      onSaved(savedProduct, createdEvent);
       onClose();
     } catch (requestError) {
       setError(formatApiError(requestError));
