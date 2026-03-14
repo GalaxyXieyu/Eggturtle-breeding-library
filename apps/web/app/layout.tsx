@@ -1,6 +1,6 @@
 import '../../../packages/shared/styles/ui-foundation.css';
 import './globals.css';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter, Playfair_Display } from 'next/font/google';
 
 import { UiPreferencesProvider } from '@/components/ui-preferences';
@@ -26,6 +26,12 @@ export async function generateMetadata(): Promise<Metadata> {
     description: branding.appDescription.zh,
   };
 }
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+};
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

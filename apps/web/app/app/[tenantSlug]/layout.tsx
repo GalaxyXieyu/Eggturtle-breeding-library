@@ -419,7 +419,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
           <TenantFloatingShareButton intent={floatingShareIntent} inline />
         </TenantMobileActionStack>
       ) : null}
-      {!isEntityDetailPage ? <TenantFloatingPreferences className="lg:hidden" /> : null}
+      {!isEntityDetailPage && pathname !== accountPath ? <TenantFloatingPreferences className="lg:hidden" /> : null}
     </div>
   );
 }
