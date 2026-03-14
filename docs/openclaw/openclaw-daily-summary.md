@@ -13,7 +13,7 @@
 - 仓库内没有现成的飞书日报/周报自动化脚本，也没有直连飞书的环境变量配置。
 - OpenClaw 本机已安装，`openclaw cron`、`openclaw channels`、`openclaw message send` 可用。
 - OpenClaw 本机状态显示 Feishu channel 已配置，但 `openclaw channels status --probe` 返回 gateway 不在线：`ws://127.0.0.1:18789` 超时。
-- 当前仓库任务 SSOT 是 `/Users/apple/coding/.openclaw/workspace/workspaces/groups/eggturtle/eggturtle/tasks/Tasks.csv`。
+- 当前仓库任务 SSOT 是 `/Users/apple/coding/.openclaw/workspace/workspaces/groups/eggturtle-lab/eggturtle-lab/tasks/Tasks.csv`。
 
 ## 本次新增内容
 

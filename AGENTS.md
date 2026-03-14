@@ -149,7 +149,10 @@
 ## 开发执行计划
 
 ### 执行入口
-- `/Users/apple/coding/.openclaw/workspace/workspaces/groups/eggturtle/eggturtle/tasks/Tasks.csv` - 当前任务 SSOT（workspace 唯一写入口；任务审计/cron/盘点也必须从这里读取）
+- `/Users/apple/coding/.openclaw/workspace/workspaces/groups/eggturtle-lab/eggturtle-lab/tasks/Tasks.csv` - 当前任务 SSOT（workspace 唯一写入口；任务审计/cron/盘点也必须从这里读取）
+- OpenClaw/群聊编排统一入口：`python3 /Users/apple/coding/.openclaw/workspace/workspaces/groups/eggturtle-lab/eggturtle-lab/scripts/task_orchestrator.py`
+- Codex 实时进度写入：`... task_orchestrator.py progress --task-id Txx --status doing --note "..."`（用于定时任务镜像到飞书）
+- 注意：ACP Codex 会话内的 `feishu-mcp` 当前可能不可用；飞书待办的创建/打勾由前台/cron 镜像同步兜底
 - `docs/plan/EggsTask.csv` - 历史归档，只读参考，不再作为任务源
 - `docs/DEVELOPMENT_PLAN_GUIDE.md` - 开发计划结构指南
 
