@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import {
   createProductRequestSchema,
   createProductResponseSchema,
@@ -23,10 +23,8 @@ import { formatApiError } from '@/lib/error-utils';
 import { uploadSingleFileWithAuth } from '@/lib/upload-client';
 import {
   createSeriesIfNeeded,
-  formatSeriesDisplayLabel,
   parseOffspringUnitPrice,
   parsePopularityScore,
-  toSuggestedSeriesCode,
   type ProductSeriesOption,
   type ProductSex
 } from '@/components/product-drawer/shared';
@@ -37,12 +35,13 @@ import {
   releasePendingImageUrls,
   type PendingImageItem,
 } from '@/components/product-drawer/image-utils';
+import ProductCreateBasicInfoSection from '@/components/product-drawer/product-create-basic-info-section';
 import ProductStatusToggleGroup from '@/components/product-drawer/status-toggle-group';
+import { useProductSeriesManagement } from '@/components/product-drawer/use-product-series-management';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { modalCloseButtonClass } from '@/components/ui/floating-actions';
 import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/native-select';
 
 export type { ProductSeriesOption } from '@/components/product-drawer/shared';
 export type { PendingImageItem } from '@/components/product-drawer/image-utils';
@@ -83,7 +82,6 @@ export default function ProductCreateDrawer({
 
   const [code, setCode] = useState('');
   const [selectedSeriesId, setSelectedSeriesId] = useState('');
-  const [isCreatingSeries, setIsCreatingSeries] = useState(false);
   const [sex, setSex] = useState<CreateSex>('');
   const [offspringUnitPrice, setOffspringUnitPrice] = useState('');
   const [sireCode, setSireCode] = useState('');
@@ -96,23 +94,31 @@ export default function ProductCreateDrawer({
   const [popularityScore, setPopularityScore] = useState(DEFAULT_POPULARITY_SCORE);
   const [isFeatured, setIsFeatured] = useState(false);
 
-  const [newSeriesCode, setNewSeriesCode] = useState('');
-  const [newSeriesName, setNewSeriesName] = useState('');
-  const [newSeriesDescription, setNewSeriesDescription] = useState('');
-  const [newSeriesSortOrder, setNewSeriesSortOrder] = useState('');
-  const [newSeriesIsActive, setNewSeriesIsActive] = useState(true);
-
   const [error, setError] = useState<string | null>(null);
 
   const pendingImagesRef = useRef<PendingImageItem[]>([]);
-
-  const selectedSeries = useMemo(
-    () => seriesOptions.find((item) => item.id === selectedSeriesId) ?? null,
-    [selectedSeriesId, seriesOptions],
-  );
+  const {
+    seriesOptions: resolvedSeriesOptions,
+    isCreatingSeries,
+    setIsCreatingSeries,
+    newSeriesCode,
+    setNewSeriesCode,
+    newSeriesName,
+    setNewSeriesName,
+    newSeriesDescription,
+    setNewSeriesDescription,
+    newSeriesSortOrder,
+    setNewSeriesSortOrder,
+    newSeriesIsActive,
+    setNewSeriesIsActive,
+    resetSeriesDraft,
+  } = useProductSeriesManagement({
+    open,
+    isDemoMode,
+    initialOptions: seriesOptions,
+  });
 
   const currentImage = pendingImages[currentImageIndex] ?? null;
-  const hasMultipleImages = pendingImages.length > 1;
   const selectedImageCount = pendingImages.length;
 
   useEffect(() => {
@@ -148,8 +154,7 @@ export default function ProductCreateDrawer({
     }
 
     setNewSeriesName(fallbackName);
-    setNewSeriesCode(toSuggestedSeriesCode(fallbackName));
-  }, [code, isCreatingSeries, newSeriesCode, newSeriesName]);
+  }, [code, isCreatingSeries, newSeriesCode, newSeriesName, setNewSeriesName]);
 
   useEffect(() => {
     if (pendingImages.length === 0) {
@@ -182,16 +187,28 @@ export default function ProductCreateDrawer({
     setInStock(true);
     setPopularityScore(DEFAULT_POPULARITY_SCORE);
     setIsFeatured(false);
-    setNewSeriesCode('');
-    setNewSeriesName('');
-    setNewSeriesDescription('');
-    setNewSeriesSortOrder('');
-    setNewSeriesIsActive(true);
+    resetSeriesDraft();
     setError(null);
     releasePendingImageUrls(pendingImagesRef.current);
     setPendingImages([]);
     pendingImagesRef.current = [];
     setCurrentImageIndex(0);
+  }
+
+  function setCreateRelationCode(field: 'sireCode' | 'damCode' | 'mateCode', value: string) {
+    const normalized = value.toUpperCase();
+
+    if (field === 'sireCode') {
+      setSireCode(normalized);
+      return;
+    }
+
+    if (field === 'damCode') {
+      setDamCode(normalized);
+      return;
+    }
+
+    setMateCode(normalized);
   }
 
   function closeDrawer() {
@@ -524,7 +541,6 @@ export default function ProductCreateDrawer({
               pendingImages={pendingImages}
               currentImageIndex={currentImageIndex}
               currentImage={currentImage}
-              hasMultipleImages={hasMultipleImages}
               onAddPendingImages={handleAddPendingImages}
               onSetMainPendingImage={setMainPendingImage}
               onMovePendingImage={movePendingImage}
@@ -532,245 +548,36 @@ export default function ProductCreateDrawer({
               onSetCurrentImageIndex={setCurrentImageIndex}
             />
 
-            <Card className="rounded-2xl border-neutral-200">
-              <CardHeader>
-                <CardTitle className="text-lg">基础资料</CardTitle>
-                <CardDescription>编码、系列、性别与谱系信息。</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="grid gap-1.5">
-                    <label
-                      htmlFor="create-drawer-code"
-                      className="text-xs font-semibold text-neutral-600"
-                    >
-                      产品编码（必填）
-                    </label>
-                    <Input
-                      id="create-drawer-code"
-                      type="text"
-                      required
-                      placeholder="例如 HB-108"
-                      value={code}
-                      onChange={(event) => setCode(event.target.value.toUpperCase())}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <label
-                      htmlFor="create-drawer-series"
-                      className="text-xs font-semibold text-neutral-600"
-                    >
-                      系列
-                    </label>
-                    <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-                      <NativeSelect
-                        id="create-drawer-series"
-                        value={isCreatingSeries ? '__create__' : selectedSeriesId}
-                        onChange={(event) => {
-                          const nextValue = event.target.value;
-                          if (nextValue === '__create__') {
-                            setIsCreatingSeries(true);
-                            setSelectedSeriesId('');
-                            return;
-                          }
-
-                          setIsCreatingSeries(false);
-                          setSelectedSeriesId(nextValue);
-                        }}
-                        disabled={submitting}
-                      >
-                        <option value="">不选择系列</option>
-                        {seriesOptions.map((item) => (
-                          <option key={`create-drawer-series-option-${item.id}`} value={item.id}>
-                            {formatSeriesDisplayLabel(item, { includeCodeForDistinct: true })}
-                          </option>
-                        ))}
-                      </NativeSelect>
-                      <Button
-                        type="button"
-                        variant={isCreatingSeries ? 'default' : 'secondary'}
-                        className="w-full sm:w-auto"
-                        onClick={() => {
-                          setIsCreatingSeries(true);
-                          setSelectedSeriesId('');
-                        }}
-                        disabled={submitting}
-                      >
-                        新建系列
-                      </Button>
-                    </div>
-                    {isCreatingSeries ? (
-                      <p className="text-xs text-amber-700">将先创建系列，再完成当前乌龟创建。</p>
-                    ) : selectedSeries ? (
-                      <p className="text-xs text-emerald-600">
-                        已选择系列：{formatSeriesDisplayLabel(selectedSeries, { includeCodeForDistinct: true })}
-                      </p>
-                    ) : (
-                      <p className="text-xs text-neutral-500">可留空，或先新建系列后直接关联。</p>
-                    )}
-                  </div>
-                  <div className="grid gap-1.5">
-                    <label
-                      htmlFor="create-drawer-sex"
-                      className="text-xs font-semibold text-neutral-600"
-                    >
-                      性别
-                    </label>
-                    <NativeSelect
-                      id="create-drawer-sex"
-                      value={sex}
-                      onChange={(event) => setSex(event.target.value as CreateSex)}
-                    >
-                      <option value="">未知</option>
-                      <option value="male">公</option>
-                      <option value="female">母</option>
-                    </NativeSelect>
-                  </div>
-                  {sex === 'female' ? (
-                    <div className="grid gap-1.5">
-                      <label
-                        htmlFor="create-drawer-price"
-                        className="text-xs font-semibold text-neutral-600"
-                      >
-                        子代单价
-                      </label>
-                      <Input
-                        id="create-drawer-price"
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        placeholder="可选，如 18000"
-                        value={offspringUnitPrice}
-                        onChange={(event) => setOffspringUnitPrice(event.target.value)}
-                      />
-                    </div>
-                  ) : null}
-                </div>
-
-                {isCreatingSeries ? (
-                  <div className="space-y-3 rounded-2xl border border-[#FFD400]/35 bg-[#FFF9D8] p-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs font-semibold text-neutral-700">新系列信息</p>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        className="h-8 px-2 text-xs text-neutral-600"
-                        onClick={() => setIsCreatingSeries(false)}
-                        disabled={submitting}
-                      >
-                        返回选择
-                      </Button>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <Input
-                        placeholder="系列编码（必填）"
-                        value={newSeriesCode}
-                        onChange={(event) => setNewSeriesCode(event.target.value.toUpperCase())}
-                        disabled={submitting}
-                      />
-                      <Input
-                        placeholder="系列名称（必填）"
-                        value={newSeriesName}
-                        onChange={(event) => {
-                          const value = event.target.value;
-                          setNewSeriesName(value);
-                          if (!newSeriesCode.trim()) {
-                            setNewSeriesCode(toSuggestedSeriesCode(value));
-                          }
-                        }}
-                        disabled={submitting}
-                      />
-                      <Input
-                        type="number"
-                        placeholder="排序（可选）"
-                        value={newSeriesSortOrder}
-                        onChange={(event) => setNewSeriesSortOrder(event.target.value)}
-                        disabled={submitting}
-                      />
-                      <label className="inline-flex items-center gap-2 text-sm text-neutral-700">
-                        <input
-                          type="checkbox"
-                          checked={newSeriesIsActive}
-                          onChange={(event) => setNewSeriesIsActive(event.target.checked)}
-                          disabled={submitting}
-                        />
-                        启用系列
-                      </label>
-                    </div>
-                    <textarea
-                      rows={2}
-                      className="w-full rounded-md border border-neutral-200 px-3 py-2 text-sm"
-                      placeholder="系列描述（可选）"
-                      value={newSeriesDescription}
-                      onChange={(event) => setNewSeriesDescription(event.target.value)}
-                      disabled={submitting}
-                    />
-                  </div>
-                ) : null}
-
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="grid gap-1.5">
-                    <label
-                      htmlFor="create-drawer-sire"
-                      className="text-xs font-semibold text-neutral-600"
-                    >
-                      父本编号
-                    </label>
-                    <Input
-                      id="create-drawer-sire"
-                      placeholder="可选"
-                      value={sireCode}
-                      onChange={(event) => setSireCode(event.target.value.toUpperCase())}
-                    />
-                  </div>
-                  <div className="grid gap-1.5">
-                    <label
-                      htmlFor="create-drawer-dam"
-                      className="text-xs font-semibold text-neutral-600"
-                    >
-                      母本编号
-                    </label>
-                    <Input
-                      id="create-drawer-dam"
-                      placeholder="可选"
-                      value={damCode}
-                      onChange={(event) => setDamCode(event.target.value.toUpperCase())}
-                    />
-                  </div>
-                  <div className="grid gap-1.5">
-                    <label
-                      htmlFor="create-drawer-mate"
-                      className="text-xs font-semibold text-neutral-600"
-                    >
-                      配偶编号
-                    </label>
-                    <Input
-                      id="create-drawer-mate"
-                      placeholder="可选"
-                      value={mateCode}
-                      onChange={(event) => setMateCode(event.target.value.toUpperCase())}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid gap-1.5">
-                  <label
-                    htmlFor="create-drawer-description"
-                    className="text-xs font-semibold text-neutral-600"
-                  >
-                    备注
-                  </label>
-                  <textarea
-                    id="create-drawer-description"
-                    rows={3}
-                    className="w-full rounded-md border border-neutral-200 px-3 py-2 text-sm"
-                    placeholder="可选，记录来源/特征等"
-                    value={description}
-                    onChange={(event) => setDescription(event.target.value)}
-                  />
-                </div>
-              </CardContent>
-            </Card>
+            <ProductCreateBasicInfoSection
+              submitting={submitting}
+              code={code}
+              selectedSeriesId={selectedSeriesId}
+              seriesOptions={resolvedSeriesOptions}
+              isCreatingSeries={isCreatingSeries}
+              sex={sex}
+              offspringUnitPrice={offspringUnitPrice}
+              sireCode={sireCode}
+              damCode={damCode}
+              mateCode={mateCode}
+              description={description}
+              newSeriesCode={newSeriesCode}
+              newSeriesName={newSeriesName}
+              newSeriesDescription={newSeriesDescription}
+              newSeriesSortOrder={newSeriesSortOrder}
+              newSeriesIsActive={newSeriesIsActive}
+              onCodeChange={(value) => setCode(value.toUpperCase())}
+              onSelectedSeriesIdChange={setSelectedSeriesId}
+              onIsCreatingSeriesChange={setIsCreatingSeries}
+              onSexChange={setSex}
+              onOffspringUnitPriceChange={setOffspringUnitPrice}
+              onRelationCodeChange={setCreateRelationCode}
+              onDescriptionChange={setDescription}
+              onNewSeriesCodeChange={setNewSeriesCode}
+              onNewSeriesNameChange={setNewSeriesName}
+              onNewSeriesDescriptionChange={setNewSeriesDescription}
+              onNewSeriesSortOrderChange={setNewSeriesSortOrder}
+              onNewSeriesIsActiveChange={setNewSeriesIsActive}
+            />
 
             <Card className="rounded-2xl border-neutral-200">
               <CardHeader>

@@ -14,6 +14,9 @@ import {
 
 import { Button } from '@/components/ui/button';
 import { resolveDrawerImageUrl } from '@/components/product-drawer/image-utils';
+import ProductImageGallery, {
+  type ProductImageGalleryItem,
+} from '@/components/product-drawer/product-image-gallery';
 import { ImageUploadDropzone } from '@/components/ui/image-upload-dropzone';
 
 type ProductEditImageWorkbenchProps = {
@@ -24,7 +27,6 @@ type ProductEditImageWorkbenchProps = {
   images: ProductImage[];
   currentImage: ProductImage | null;
   currentImageIndex: number;
-  hasMultipleImages: boolean;
   imageMessage: string | null;
   imageError: string | null;
   onUploadImages: (event: ChangeEvent<HTMLInputElement>) => Promise<void> | void;
@@ -42,7 +44,6 @@ export default function ProductEditImageWorkbench({
   images,
   currentImage,
   currentImageIndex,
-  hasMultipleImages,
   imageMessage,
   imageError,
   onUploadImages,
@@ -51,6 +52,14 @@ export default function ProductEditImageWorkbench({
   onMoveImage,
   onSetCurrentImageIndex,
 }: ProductEditImageWorkbenchProps) {
+  const galleryItems: ProductImageGalleryItem[] = images.map((image, index) => ({
+    id: image.id,
+    url: resolveDrawerImageUrl(image.url),
+    isMain: image.isMain,
+    previewAlt: `抽屉图片 ${index + 1}`,
+    thumbnailAlt: `抽屉缩略图 ${index + 1}`,
+  }));
+
   return (
     <section className="space-y-3 rounded-2xl border border-neutral-200/90 bg-neutral-50/70 p-3">
       <div className="flex items-center justify-between gap-3">
@@ -83,21 +92,21 @@ export default function ProductEditImageWorkbench({
 
       {!loadingImages && currentImage ? (
         <>
-          <article className="relative overflow-hidden rounded-xl border border-neutral-200 bg-white">
-            <div className="relative aspect-square bg-neutral-100">
-              <img
-                src={resolveDrawerImageUrl(currentImage.url)}
-                alt={`抽屉图片 ${currentImageIndex + 1}`}
-                className="h-full w-full object-cover"
+          <div className="space-y-3">
+            <div className="relative">
+              <ProductImageGallery
+                items={galleryItems}
+                currentImageIndex={currentImageIndex}
+                disabled={submittingImages}
+                articleClassName="relative overflow-hidden rounded-xl border border-neutral-200 bg-white"
+                viewportClassName="relative aspect-square bg-neutral-100"
+                mainBadgeClassName="rounded bg-[#FFD400] px-1.5 py-0.5 text-[10px] font-semibold text-neutral-900"
+                indexBadgeClassName="rounded bg-black/65 px-1.5 py-0.5 text-[10px] font-semibold text-white"
+                thumbnailClassName="relative h-14 w-14 shrink-0 overflow-hidden rounded-md border-2 transition-all"
+                thumbnailMainBadgeLabel="主"
+                thumbnailMainBadgeClassName="absolute left-1 top-1 rounded bg-black/65 px-1 py-0.5 text-[9px] font-semibold text-white"
+                onSetCurrentImageIndex={onSetCurrentImageIndex}
               />
-              <div className="absolute left-2 top-2 flex items-center gap-2">
-                {currentImage.isMain ? (
-                  <span className="rounded bg-[#FFD400] px-1.5 py-0.5 text-[10px] font-semibold text-neutral-900">主图</span>
-                ) : null}
-                <span className="rounded bg-black/65 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                  #{currentImageIndex + 1}
-                </span>
-              </div>
               <div className="absolute right-2 top-2 flex gap-2">
                 <Button
                   type="button"
@@ -123,81 +132,54 @@ export default function ProductEditImageWorkbench({
                 </Button>
               </div>
             </div>
-          </article>
 
-          <div className="grid grid-cols-4 gap-2 sm:flex sm:flex-wrap">
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              className="col-span-2"
-              disabled={submittingImages || currentImageIndex === 0}
-              onClick={() => void onMoveImage(currentImageIndex, -1)}
-            >
-              <ArrowUp size={13} />
-              上移
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              className="col-span-2"
-              disabled={submittingImages || currentImageIndex === images.length - 1}
-              onClick={() => void onMoveImage(currentImageIndex, 1)}
-            >
-              <ArrowDown size={13} />
-              下移
-            </Button>
-            <Button
-              type="button"
-              size="icon"
-              variant="secondary"
-              aria-label="上一张图片"
-              className="h-8 w-8 rounded-full"
-              disabled={submittingImages || currentImageIndex === 0}
-              onClick={() => onSetCurrentImageIndex(Math.max(0, currentImageIndex - 1))}
-            >
-              <ChevronLeft size={15} />
-            </Button>
-            <Button
-              type="button"
-              size="icon"
-              variant="secondary"
-              aria-label="下一张图片"
-              className="h-8 w-8 rounded-full"
-              disabled={submittingImages || currentImageIndex === images.length - 1}
-              onClick={() => onSetCurrentImageIndex(Math.min(images.length - 1, currentImageIndex + 1))}
-            >
-              <ChevronRight size={15} />
-            </Button>
-          </div>
-
-          {hasMultipleImages ? (
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {images.map((image, index) => (
-                <button
-                  key={`drawer-image-thumb-${image.id}`}
-                  type="button"
-                  className={`relative h-14 w-14 shrink-0 overflow-hidden rounded-md border-2 transition-all ${
-                    index === currentImageIndex ? 'border-neutral-900' : 'border-transparent'
-                  }`}
-                  onClick={() => onSetCurrentImageIndex(index)}
-                  disabled={submittingImages}
-                >
-                  <img
-                    src={resolveDrawerImageUrl(image.url)}
-                    alt={`抽屉缩略图 ${index + 1}`}
-                    className="h-full w-full object-cover"
-                  />
-                  {image.isMain ? (
-                    <span className="absolute left-1 top-1 rounded bg-black/65 px-1 py-0.5 text-[9px] font-semibold text-white">
-                      主
-                    </span>
-                  ) : null}
-                </button>
-              ))}
+            <div className="grid grid-cols-4 gap-2 sm:flex sm:flex-wrap">
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                className="col-span-2"
+                disabled={submittingImages || currentImageIndex === 0}
+                onClick={() => void onMoveImage(currentImageIndex, -1)}
+              >
+                <ArrowUp size={13} />
+                上移
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                className="col-span-2"
+                disabled={submittingImages || currentImageIndex === images.length - 1}
+                onClick={() => void onMoveImage(currentImageIndex, 1)}
+              >
+                <ArrowDown size={13} />
+                下移
+              </Button>
+              <Button
+                type="button"
+                size="icon"
+                variant="secondary"
+                aria-label="上一张图片"
+                className="h-8 w-8 rounded-full"
+                disabled={submittingImages || currentImageIndex === 0}
+                onClick={() => onSetCurrentImageIndex(Math.max(0, currentImageIndex - 1))}
+              >
+                <ChevronLeft size={15} />
+              </Button>
+              <Button
+                type="button"
+                size="icon"
+                variant="secondary"
+                aria-label="下一张图片"
+                className="h-8 w-8 rounded-full"
+                disabled={submittingImages || currentImageIndex === images.length - 1}
+                onClick={() => onSetCurrentImageIndex(Math.min(images.length - 1, currentImageIndex + 1))}
+              >
+                <ChevronRight size={15} />
+              </Button>
             </div>
-          ) : null}
+          </div>
         </>
       ) : null}
 

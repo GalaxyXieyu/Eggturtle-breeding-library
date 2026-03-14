@@ -5,13 +5,14 @@ import type { ChangeEvent } from 'react';
 import {
   ArrowDown,
   ArrowUp,
-  ChevronLeft,
-  ChevronRight,
   ImagePlus,
   Star,
   Trash2,
 } from 'lucide-react';
 
+import ProductImageGallery, {
+  type ProductImageGalleryItem,
+} from '@/components/product-drawer/product-image-gallery';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ImageUploadDropzone } from '@/components/ui/image-upload-dropzone';
@@ -23,7 +24,6 @@ type ProductCreateImageWorkbenchProps = {
   pendingImages: PendingImageItem[];
   currentImageIndex: number;
   currentImage: PendingImageItem | null;
-  hasMultipleImages: boolean;
   onAddPendingImages: (event: ChangeEvent<HTMLInputElement>) => void;
   onSetMainPendingImage: (targetId: string) => void;
   onMovePendingImage: (index: number, direction: -1 | 1) => void;
@@ -37,13 +37,20 @@ export default function ProductCreateImageWorkbench({
   pendingImages,
   currentImageIndex,
   currentImage,
-  hasMultipleImages,
   onAddPendingImages,
   onSetMainPendingImage,
   onMovePendingImage,
   onRemovePendingImage,
   onSetCurrentImageIndex,
 }: ProductCreateImageWorkbenchProps) {
+  const galleryItems: ProductImageGalleryItem[] = pendingImages.map((item, index) => ({
+    id: item.id,
+    url: item.previewUrl,
+    isMain: item.isMain,
+    previewAlt: `待上传图片 ${index + 1}`,
+    thumbnailAlt: `待上传缩略图 ${index + 1}`,
+  }));
+
   return (
     <>
       <Card className="rounded-2xl border-neutral-200 shadow-sm">
@@ -85,51 +92,13 @@ export default function ProductCreateImageWorkbench({
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <article className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-100">
-              <div className="relative aspect-square">
-                <img
-                  src={currentImage.previewUrl}
-                  alt={`待上传图片 ${currentImageIndex + 1}`}
-                  className="h-full w-full object-cover"
-                />
-
-                <div className="absolute left-3 top-3 flex items-center gap-2">
-                  {currentImage.isMain ? (
-                    <span className="rounded-full bg-black/70 px-2.5 py-1 text-xs text-white">主图</span>
-                  ) : null}
-                  <span className="rounded-full bg-black/55 px-2.5 py-1 text-xs text-white">
-                    #{currentImageIndex + 1}
-                  </span>
-                </div>
-
-                {hasMultipleImages ? (
-                  <>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="secondary"
-                      className="absolute left-3 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full bg-white/92"
-                      aria-label="上一张图片"
-                      onClick={() => onSetCurrentImageIndex(Math.max(0, currentImageIndex - 1))}
-                      disabled={currentImageIndex === 0 || submitting}
-                    >
-                      <ChevronLeft size={16} />
-                    </Button>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="secondary"
-                      className="absolute right-3 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full bg-white/92"
-                      aria-label="下一张图片"
-                      onClick={() => onSetCurrentImageIndex(Math.min(pendingImages.length - 1, currentImageIndex + 1))}
-                      disabled={currentImageIndex === pendingImages.length - 1 || submitting}
-                    >
-                      <ChevronRight size={16} />
-                    </Button>
-                  </>
-                ) : null}
-              </div>
-            </article>
+            <ProductImageGallery
+              items={galleryItems}
+              currentImageIndex={currentImageIndex}
+              disabled={submitting}
+              navigationMode="overlay"
+              onSetCurrentImageIndex={onSetCurrentImageIndex}
+            />
 
             <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
               <Button
@@ -174,32 +143,6 @@ export default function ProductCreateImageWorkbench({
                 删除
               </Button>
             </div>
-
-            {hasMultipleImages ? (
-              <div className="flex gap-2 overflow-x-auto pb-1">
-                {pendingImages.map((item, index) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-md border-2 transition-all ${
-                      index === currentImageIndex ? 'border-neutral-900' : 'border-transparent'
-                    }`}
-                    onClick={() => onSetCurrentImageIndex(index)}
-                  >
-                    <img
-                      src={item.previewUrl}
-                      alt={`待上传缩略图 ${index + 1}`}
-                      className="h-full w-full object-cover"
-                    />
-                    {item.isMain ? (
-                      <span className="absolute left-1 top-1 rounded bg-black/65 px-1 py-0.5 text-[10px] font-medium text-white">
-                        主图
-                      </span>
-                    ) : null}
-                  </button>
-                ))}
-              </div>
-            ) : null}
           </CardContent>
         </Card>
       ) : null}

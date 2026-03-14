@@ -15,6 +15,7 @@ export type ProductBooleanField =
   | 'isFeatured';
 
 export type ProductSex = '' | 'male' | 'female';
+export type RelationCodeFieldKey = 'sireCode' | 'damCode' | 'mateCode';
 
 export type SeriesResolveResult =
   | {
@@ -122,6 +123,28 @@ export function toSuggestedSeriesCode(input: string) {
 
 export function normalizeText(value: string) {
   return value.trim().toLowerCase();
+}
+
+export function normalizeOptionalCode(value: string | null | undefined): string | null {
+  const normalized = value?.trim().toUpperCase();
+  return normalized ? normalized : null;
+}
+
+export function uniqueNormalizedCodes(values: Array<string | null | undefined>): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  values.forEach((value) => {
+    const normalized = normalizeOptionalCode(value);
+    if (!normalized || seen.has(normalized)) {
+      return;
+    }
+
+    seen.add(normalized);
+    result.push(normalized);
+  });
+
+  return result;
 }
 
 function isPlaceholderSeriesCode(code: string) {
