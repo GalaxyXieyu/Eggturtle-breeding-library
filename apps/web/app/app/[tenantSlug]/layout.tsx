@@ -125,6 +125,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
       ),
     [messages.defaultTenant, locale, tenantBranding.platform.defaultTenantName, tenantBranding.resolved.displayName, tenantSlug],
   );
+  const isEntityDetailPage = /^\/app\/[^/]+\/(?:products|breeders)\/[^/]+$/.test(pathname);
 
   const shouldRenderLayoutFloatingShare =
     ENABLE_FLOATING_SHARE_BUTTON &&
@@ -133,7 +134,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
     pathname !== `/app/${tenantSlug}/share-presentation` &&
     !pathname?.endsWith('/account') &&
     !pathname?.endsWith('/certificates') &&
-    !/^\/app\/[^/]+\/(?:products|breeders)\/[^/]+$/.test(pathname);
+    !isEntityDetailPage;
   const setupQueryEnabled = searchParams.get('setup') === '1';
   const accountPath = `/app/${tenantSlug}/account`;
   const sharePresentationPath = `/app/${tenantSlug}/share-presentation`;
@@ -409,7 +410,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
       {shouldRenderLayoutFloatingShare && !setupRequired ? (
         <TenantFloatingShareButton intent={floatingShareIntent} className="lg:hidden" />
       ) : null}
-      <TenantFloatingPreferences className="lg:hidden" />
+      {!isEntityDetailPage ? <TenantFloatingPreferences className="lg:hidden" /> : null}
     </div>
   );
 }
