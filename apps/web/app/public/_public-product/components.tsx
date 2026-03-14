@@ -3,12 +3,15 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { PublicSharePresentation } from '@eggturtle/shared';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { PetCard } from '@/components/pet';
 import { FamilyNodeCard } from '@/components/family-tree/FamilyNodeCard';
+import {
+  DetailCarouselImagePanel,
+  DetailCarouselThumbStrip,
+} from '@/components/share/product-detail-carousel-shared';
 import { formatSex, formatShortDate } from '@/lib/pet-format';
 import { sanitizeEventNoteForDisplay } from '@/lib/breeder-utils';
 import type {
@@ -310,20 +313,7 @@ export function BreederCarousel({
 
   const hasSeriesIntro = Boolean(series?.description);
   const effectiveSlide = hasSeriesIntro ? slide : 0;
-  const activeImage = breeder.images[currentImageIndex] || breeder.images[0];
-  const activeImageUrl =
-    (withPublicImageMaxEdge(activeImage?.url || '/images/mg_01.jpg', 960) as string) ??
-    '/images/mg_01.jpg';
-  const [activeImageLoaded, setActiveImageLoaded] = useState(false);
-  const activeImageRef = useRef<HTMLImageElement | null>(null);
   const resolvedHomeHref = homeHref ?? withDemo(publicPath(shareToken, '', shareQuery), demo);
-
-  useEffect(() => {
-    setActiveImageLoaded(false);
-    if (activeImageRef.current?.complete) {
-      setActiveImageLoaded(true);
-    }
-  }, [activeImageUrl]);
 
   function handleBack() {
     if (typeof window !== 'undefined' && window.history.length > 1) {
@@ -387,49 +377,16 @@ export function BreederCarousel({
             </div>
           ) : null}
 
-          <div className="relative h-full w-full shrink-0">
-            {!activeImageLoaded ? (
-              <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-[#2a2218] via-[#1e1a12] to-[#2a2218]" />
-            ) : null}
-            <img
-              ref={activeImageRef}
-              src={activeImageUrl}
-              alt={activeImage?.alt || breeder.code}
-              className={`h-full w-full object-cover transition-opacity duration-300 ${activeImageLoaded ? 'opacity-100' : 'opacity-0'}`}
-              loading="eager"
-              decoding="async"
-              fetchPriority="high"
-              onLoad={() => setActiveImageLoaded(true)}
-              onError={() => setActiveImageLoaded(true)}
-            />
-
-            {breeder.images.length > 1 ? (
+          <DetailCarouselImagePanel
+            items={breeder.images.map((image, index) => ({
+              id: image.id || `${image.url}-${index}`,
+              src: withPublicImageMaxEdge(image.url, 960) ?? image.url,
+              alt: image.alt || breeder.code,
+            }))}
+            activeIndex={currentImageIndex}
+            onActiveIndexChange={setCurrentImageIndex}
+            bottomLeft={
               <>
-                <button
-                  type="button"
-                  onClick={() => setCurrentImageIndex((idx) => Math.max(0, idx - 1))}
-                  disabled={currentImageIndex === 0}
-                  className="public-carousel-btn left-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <ChevronLeft size={18} strokeWidth={2.3} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setCurrentImageIndex((idx) => Math.min(breeder.images.length - 1, idx + 1))
-                  }
-                  disabled={currentImageIndex === breeder.images.length - 1}
-                  className="public-carousel-btn right-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <ChevronRight size={18} strokeWidth={2.3} />
-                </button>
-              </>
-            ) : null}
-
-            <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/35 to-transparent" />
-
-            <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-2">
-              <div className="flex flex-wrap items-center gap-2">
                 {hasSeriesIntro ? (
                   <button
                     type="button"
@@ -447,39 +404,22 @@ export function BreederCarousel({
                     系列 {series.name}
                   </span>
                 ) : null}
-              </div>
-              <span className="shrink-0 rounded-full bg-black/70 px-3 py-1 text-xs font-medium text-white">
-                {currentImageIndex + 1}/{breeder.images.length}
-              </span>
-            </div>
-          </div>
+              </>
+            }
+          />
         </div>
       </div>
 
       {effectiveSlide === (hasSeriesIntro ? 1 : 0) && breeder.images.length > 1 ? (
-        <div className="public-border-default public-bg-card border-t px-3 py-3 sm:px-4">
-          <div className="public-carousel-thumb-strip">
-            {breeder.images.map((img, index) => (
-              <button
-                key={img.id || `${img.url}-${index}`}
-                type="button"
-                className={`public-carousel-thumb ${index === currentImageIndex ? 'is-active' : ''}`}
-                onClick={() => setCurrentImageIndex(index)}
-                aria-label={`查看第 ${index + 1} 张图片${index === currentImageIndex ? '（当前）' : ''}`}
-              >
-                <div className="public-carousel-thumb-frame">
-                  <img
-                    src={withPublicImageMaxEdge(img.url, 320) ?? img.url}
-                    alt={img.alt || `${breeder.code}-${index + 1}`}
-                    loading="lazy"
-                    decoding="async"
-                    fetchPriority="low"
-                  />
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
+        <DetailCarouselThumbStrip
+          items={breeder.images.map((image, index) => ({
+            id: image.id || `${image.url}-${index}`,
+            src: withPublicImageMaxEdge(image.url, 320) ?? image.url,
+            alt: image.alt || `${breeder.code}-${index + 1}`,
+          }))}
+          activeIndex={currentImageIndex}
+          onActiveIndexChange={setCurrentImageIndex}
+        />
       ) : null}
     </div>
   );
