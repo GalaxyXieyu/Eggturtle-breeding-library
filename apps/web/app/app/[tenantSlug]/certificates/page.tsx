@@ -444,14 +444,14 @@ export default function CertificateCenterPage() {
               证书中心加载中...
             </div>
           ) : items.length === 0 ? (
-            <div className="rounded-[28px] border border-dashed border-neutral-300 bg-[linear-gradient(180deg,#fcfcfb,#f7f5f1)] px-5 py-12 text-center">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm text-neutral-500">
+            <div className="rounded-[28px] border border-dashed border-neutral-300 bg-[linear-gradient(180deg,#fcfcfb,#f7f5f1)] px-5 py-12 text-center dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.06))] dark:shadow-[0_20px_48px_rgba(0,0,0,0.28)]">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm text-neutral-500 dark:bg-white/[0.08] dark:text-neutral-200">
                 <FileSearch size={20} />
               </div>
-              <p className="mt-4 text-base font-semibold text-neutral-900">
+              <p className="mt-4 text-base font-semibold text-neutral-900 dark:text-neutral-100">
                 {hasFilters ? '当前筛选下还没有命中的证书。' : '证书中心还没有记录。'}
               </p>
-              <p className="mt-2 text-sm leading-6 text-neutral-500">
+              <p className="mt-2 text-sm leading-6 text-neutral-500 dark:text-neutral-300">
                 {hasFilters
                   ? '可以放宽关键词或切回“全部”状态，再看看历史版本和公开验真记录。'
                   : '先去母龟详情页生成第一张证书，这里就会自动接管后续管理。'}

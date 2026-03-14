@@ -1183,21 +1183,21 @@ function ExternalWechatHint({
   onCopyLink: () => void;
 }) {
   return (
-    <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-      <p className="font-semibold">当前在外部浏览器打开</p>
-      <p className="mt-1 leading-6 text-amber-800">
+    <div className="public-warm-note rounded-2xl border px-4 py-3 text-sm">
+      <p className="public-warm-note-title font-semibold">当前在外部浏览器打开</p>
+      <p className="public-warm-note-body mt-1 leading-6">
         微信支付仅支持在微信内完成。先复制当前页面链接，再回到微信聊天里粘贴打开，就能继续支付。
       </p>
       <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <Button
           type="button"
           variant="outline"
-          className="border-amber-300 bg-white text-amber-900 hover:bg-white"
+          className="border-amber-300 bg-white/92 text-neutral-900 hover:bg-white dark:border-white/12 dark:bg-white/[0.06] dark:text-neutral-100 dark:hover:bg-white/[0.1]"
           onClick={onCopyLink}
         >
           复制链接，回微信打开
         </Button>
-        <p className="text-xs text-amber-700">也可以先发给自己，再从微信里重新点开。</p>
+        <p className="public-warm-note-body text-xs">也可以先发给自己，再从微信里重新点开。</p>
       </div>
       {notice ? (
         <p className="mt-2 text-xs font-medium text-emerald-700" role="status" aria-live="polite">

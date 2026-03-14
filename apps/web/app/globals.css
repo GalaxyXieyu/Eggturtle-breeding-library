@@ -1383,6 +1383,37 @@ button.auth-action {
   }
 }
 
+.public-warm-note {
+  border-color: rgba(245, 158, 11, 0.28);
+  background: linear-gradient(135deg, rgba(255, 248, 220, 0.96) 0%, rgba(255, 252, 244, 0.98) 100%);
+  box-shadow: 0 12px 30px rgba(245, 158, 11, 0.08);
+}
+
+.public-warm-note-title {
+  color: #7c2d12;
+}
+
+.public-warm-note-body {
+  color: #9a3412;
+}
+
+:root[data-theme='dark'] .public-warm-note {
+  border-color: rgba(250, 204, 21, 0.14);
+  background:
+    linear-gradient(135deg, rgba(110, 77, 19, 0.34) 0%, rgba(43, 33, 16, 0.9) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 18px 38px rgba(0, 0, 0, 0.24);
+}
+
+:root[data-theme='dark'] .public-warm-note-title {
+  color: #f8e6af;
+}
+
+:root[data-theme='dark'] .public-warm-note-body {
+  color: rgba(245, 231, 191, 0.9);
+}
+
 .public-carousel-btn:hover:not(:disabled) {
   transform: translateY(-50%) scale(1.04);
   box-shadow:

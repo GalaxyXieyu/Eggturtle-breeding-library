@@ -216,13 +216,9 @@ export default function PublicProductDetailPage({
 
                     {breeder.description ? (
                       <div
-                        className="mt-4 rounded-2xl border p-3"
-                        style={{
-                          borderColor: `${brandPrimary}66`,
-                          background: `linear-gradient(135deg, ${brandPrimary}22, #fff8d6)`,
-                        }}
+                        className="public-warm-note mt-4 rounded-2xl border p-3"
                       >
-                        <div className="whitespace-pre-wrap text-sm leading-relaxed text-amber-900">
+                        <div className="public-warm-note-body whitespace-pre-wrap text-sm font-medium leading-relaxed">
                           {breeder.description}
                         </div>
                       </div>

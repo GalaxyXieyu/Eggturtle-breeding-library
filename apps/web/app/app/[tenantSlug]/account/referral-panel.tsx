@@ -189,11 +189,11 @@ export default function ReferralPanel({ tenantSlug }: { tenantSlug: string }) {
         </div>
       </Card>
 
-      <Card className="rounded-3xl border-neutral-200/90 bg-white p-6">
-        <h3 className="text-base font-semibold text-neutral-900">{messages.progressTitle}</h3>
-        <p className="mt-1 text-sm text-neutral-500">{messages.progressDesc}</p>
+      <Card className="rounded-3xl border-neutral-200/90 bg-white p-6 dark:border-white/10 dark:bg-white/[0.04]">
+        <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">{messages.progressTitle}</h3>
+        <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-300">{messages.progressDesc}</p>
 
-        {loading ? <p className="mt-4 text-sm text-neutral-600">{messages.loading}</p> : null}
+        {loading ? <p className="mt-4 text-sm text-neutral-600 dark:text-neutral-300">{messages.loading}</p> : null}
 
         {!loading && overview?.invites.length ? (
           <div className="mt-4 space-y-3">
@@ -204,15 +204,15 @@ export default function ReferralPanel({ tenantSlug }: { tenantSlug: string }) {
         ) : null}
 
         {!loading && !overview?.invites.length ? (
-          <p className="mt-4 text-sm text-neutral-600">{messages.progressEmpty}</p>
+          <p className="mt-4 text-sm text-neutral-600 dark:text-neutral-300">{messages.progressEmpty}</p>
         ) : null}
       </Card>
 
-      <Card className="rounded-3xl border-neutral-200/90 bg-white p-6">
-        <h3 className="text-base font-semibold text-neutral-900">{messages.rewardsTitle}</h3>
-        <p className="mt-1 text-sm text-neutral-500">{messages.rewardsDesc}</p>
+      <Card className="rounded-3xl border-neutral-200/90 bg-white p-6 dark:border-white/10 dark:bg-white/[0.04]">
+        <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">{messages.rewardsTitle}</h3>
+        <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-300">{messages.rewardsDesc}</p>
 
-        {loading ? <p className="mt-4 text-sm text-neutral-600">{messages.loading}</p> : null}
+        {loading ? <p className="mt-4 text-sm text-neutral-600 dark:text-neutral-300">{messages.loading}</p> : null}
 
         {!loading && overview?.rewards.length ? (
           <div className="mt-4 space-y-3">
@@ -223,7 +223,7 @@ export default function ReferralPanel({ tenantSlug }: { tenantSlug: string }) {
         ) : null}
 
         {!loading && !overview?.rewards.length ? (
-          <p className="mt-4 text-sm text-neutral-600">{messages.rewardsEmpty}</p>
+          <p className="mt-4 text-sm text-neutral-600 dark:text-neutral-300">{messages.rewardsEmpty}</p>
         ) : null}
       </Card>
 
@@ -261,20 +261,20 @@ function InviteProgressCard({
   const status = getInviteStatusMeta(invite.status, locale);
 
   return (
-    <div className="rounded-2xl border border-neutral-200 bg-neutral-50/80 p-4">
-      <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-500">
-        <span className="rounded-full bg-white px-2 py-1 font-semibold text-neutral-700">{invite.inviteeDisplayName}</span>
+    <div className="rounded-2xl border border-neutral-200 bg-neutral-50/80 p-4 dark:border-white/8 dark:bg-white/[0.06]">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
+        <span className="rounded-full bg-white px-2 py-1 font-semibold text-neutral-700 dark:bg-white/[0.08] dark:text-neutral-100">{invite.inviteeDisplayName}</span>
         <span className={`rounded-full px-2 py-1 font-semibold ${status.className}`}>{status.label}</span>
         <span>{formatReferralDate(invite.boundAt, locale)}</span>
       </div>
-      <p className="mt-2 text-sm font-semibold text-neutral-900">{messages.inviteCode(invite.referralCode)}</p>
-      <p className="mt-1 text-xs text-neutral-600">
+      <p className="mt-2 text-sm font-semibold text-neutral-900 dark:text-neutral-100">{messages.inviteCode(invite.referralCode)}</p>
+      <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-300">
         {invite.firstProductCreatedAt
           ? messages.firstUploadAt(formatReferralDate(invite.firstProductCreatedAt, locale))
           : messages.uploadPending}
       </p>
       {invite.rewardAwardedAt ? (
-        <p className="mt-1 text-xs text-emerald-700">
+        <p className="mt-1 text-xs text-emerald-700 dark:text-emerald-300">
           {messages.rewardAwardedAt(formatReferralDate(invite.rewardAwardedAt, locale))}
         </p>
       ) : null}
@@ -292,19 +292,19 @@ function RewardCard({
   const messages = ACCOUNT_REFERRAL_MESSAGES[locale];
 
   return (
-    <div className="rounded-2xl border border-neutral-200 bg-neutral-50/80 p-4">
-      <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-500">
-        <span className="rounded-full bg-white px-2 py-1 font-semibold text-neutral-700">
+    <div className="rounded-2xl border border-neutral-200 bg-neutral-50/80 p-4 dark:border-white/8 dark:bg-white/[0.06]">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
+        <span className="rounded-full bg-white px-2 py-1 font-semibold text-neutral-700 dark:bg-white/[0.08] dark:text-neutral-100">
           {getRewardTriggerLabel(reward.triggerType, locale)}
         </span>
         <span>{reward.status}</span>
         <span>{formatReferralDate(reward.createdAt, locale)}</span>
       </div>
-      <p className="mt-2 text-sm font-semibold text-neutral-900">
+      <p className="mt-2 text-sm font-semibold text-neutral-900 dark:text-neutral-100">
         {messages.rewardDelta(reward.rewardDaysReferrer, reward.rewardDaysInvitee)}
       </p>
       {reward.statusReason ? (
-        <p className="mt-1 text-xs text-amber-700">
+        <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
           {reward.statusReason === 'monthly_cap_clipped' ? messages.rewardClipped : messages.rewardCapped}
         </p>
       ) : null}
@@ -332,22 +332,22 @@ function getInviteStatusMeta(status: ReferralInviteProgress['status'], locale: '
     case 'reward_awarded':
       return {
         label: messages.statusAwarded,
-        className: 'bg-emerald-100 text-emerald-700',
+        className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/18 dark:text-emerald-200',
       };
     case 'reward_skipped':
       return {
         label: messages.statusSkipped,
-        className: 'bg-amber-100 text-amber-700',
+        className: 'bg-amber-100 text-amber-700 dark:bg-amber-500/18 dark:text-amber-200',
       };
     case 'first_product_uploaded':
       return {
         label: messages.statusUploaded,
-        className: 'bg-sky-100 text-sky-700',
+        className: 'bg-sky-100 text-sky-700 dark:bg-sky-500/18 dark:text-sky-200',
       };
     default:
       return {
         label: messages.statusBound,
-        className: 'bg-neutral-200 text-neutral-700',
+        className: 'bg-neutral-200 text-neutral-700 dark:bg-white/[0.08] dark:text-neutral-200',
       };
   }
 }
