@@ -1330,6 +1330,59 @@ button.auth-action {
     opacity 0.2s ease;
 }
 
+.public-carousel-loading {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(249, 245, 237, 0.98) 0%, rgba(234, 224, 205, 0.96) 52%, rgba(246, 241, 233, 0.98) 100%);
+}
+
+.public-carousel-loading-blur {
+  position: absolute;
+  inset: -8%;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  opacity: 0.5;
+  transform: scale(1.08);
+  filter: blur(24px) saturate(0.9) brightness(0.96);
+}
+
+.public-carousel-loading-sheen {
+  position: absolute;
+  inset: -20% auto -20% -65%;
+  width: 55%;
+  background: linear-gradient(115deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.24) 38%, rgba(255, 255, 255, 0.72) 52%, rgba(255, 255, 255, 0) 72%);
+  transform: skewX(-16deg);
+  animation: public-carousel-sheen 1.7s ease-in-out infinite;
+}
+
+.public-carousel-loading-glow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 22% 22%, rgba(255, 255, 255, 0.58) 0%, rgba(255, 255, 255, 0) 26%),
+    radial-gradient(circle at 78% 82%, rgba(219, 174, 81, 0.28) 0%, rgba(219, 174, 81, 0) 34%),
+    linear-gradient(180deg, rgba(60, 40, 14, 0.04) 0%, rgba(60, 40, 14, 0.12) 100%);
+}
+
+@keyframes public-carousel-sheen {
+  0% {
+    transform: translateX(0) skewX(-16deg);
+    opacity: 0;
+  }
+
+  18% {
+    opacity: 0.95;
+  }
+
+  100% {
+    transform: translateX(320%) skewX(-16deg);
+    opacity: 0;
+  }
+}
+
 .public-carousel-btn:hover:not(:disabled) {
   transform: translateY(-50%) scale(1.04);
   box-shadow:
@@ -1451,6 +1504,27 @@ button.auth-action {
   border-color: rgba(255, 255, 255, 0.18);
   background: rgba(17, 24, 39, 0.48);
   color: rgb(245, 245, 245);
+}
+
+:root[data-theme='dark'] .public-carousel-loading {
+  background:
+    linear-gradient(135deg, rgba(34, 29, 22, 0.98) 0%, rgba(50, 41, 28, 0.96) 48%, rgba(24, 20, 16, 0.98) 100%);
+}
+
+:root[data-theme='dark'] .public-carousel-loading-blur {
+  opacity: 0.42;
+  filter: blur(24px) saturate(0.82) brightness(0.7);
+}
+
+:root[data-theme='dark'] .public-carousel-loading-sheen {
+  background: linear-gradient(115deg, rgba(255, 255, 255, 0) 0%, rgba(255, 225, 160, 0.08) 36%, rgba(255, 240, 200, 0.28) 52%, rgba(255, 255, 255, 0) 72%);
+}
+
+:root[data-theme='dark'] .public-carousel-loading-glow {
+  background:
+    radial-gradient(circle at 24% 22%, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 24%),
+    radial-gradient(circle at 76% 80%, rgba(250, 204, 21, 0.16) 0%, rgba(250, 204, 21, 0) 32%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.04) 0%, rgba(0, 0, 0, 0.2) 100%);
 }
 
 :root[data-theme='dark'] .public-carousel-btn:hover {

@@ -311,46 +311,67 @@ export default function PublicShareFeaturesScreen({
             return (
               <article
                 key={feature.title}
-                className={`grid min-h-[20rem] items-center gap-5 overflow-hidden rounded-[32px] border p-4 shadow-[0_24px_72px_rgba(15,23,42,0.08)] md:min-h-[24rem] md:gap-10 md:p-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:p-8 ${feature.panelClassName}`}
+                className={`overflow-hidden rounded-[32px] border p-5 shadow-[0_24px_72px_rgba(15,23,42,0.08)] md:p-6 lg:grid lg:min-h-[24rem] lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:items-center lg:gap-10 lg:p-8 ${feature.panelClassName}`}
               >
-                <div
-                  className={`grid items-center gap-4 ${imageFirst ? 'lg:order-1' : 'lg:order-2'} grid-cols-[minmax(0,0.76fr)_minmax(11rem,1.24fr)] sm:grid-cols-[minmax(0,0.78fr)_minmax(14rem,1.22fr)] lg:grid-cols-1`}
-                >
-                  <div className="min-w-0 lg:hidden">
-                    <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#9C7400]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <div className="space-y-4 lg:hidden">
+                  <div className="min-w-0">
+                    <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#9C7400]" style={{ fontFamily: 'Inter, sans-serif' }}>
                       <span>{feature.eyebrow}</span>
                       <span className="h-px flex-1 bg-[#E5D9A3]" />
+                      <span className="text-[10px] text-[#9C7400]/70">0{index + 1}</span>
                     </div>
-                    <h2 className="text-[30px] font-bold leading-[1.02] text-gray-900 sm:text-[34px]" style={{ fontFamily: 'Playfair Display, serif', letterSpacing: '-0.03em' }}>
+                    <h2 className="text-[34px] font-bold leading-[0.98] text-gray-900" style={{ fontFamily: 'Playfair Display, serif', letterSpacing: '-0.03em' }}>
                       {feature.title}
                     </h2>
-                    <p className="mt-2 max-w-[12ch] text-[13px] leading-6 text-gray-600 sm:max-w-[14ch] sm:text-sm" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <p className="mt-3 text-sm leading-6 text-gray-600" style={{ fontFamily: 'Inter, sans-serif' }}>
                       {feature.description}
                     </p>
                   </div>
 
-                  <div className="relative self-stretch lg:mt-0">
+                  <div className="relative">
                     <div className="absolute -inset-3 rounded-[28px] bg-[radial-gradient(circle_at_top_right,rgba(255,212,0,0.2),transparent_55%)] blur-2xl" />
-                    <div className="relative h-full">
-                      <div className="block lg:hidden h-full">
-                        <ScreenshotSurface src={feature.image} alt={feature.title} contain={feature.contain} ratio="4 / 5" />
-                      </div>
-                      <div className="hidden lg:block">
-                        <ScreenshotSurface src={feature.image} alt={feature.title} contain={feature.contain} ratio="16 / 11" />
-                      </div>
-                      <div className="absolute -bottom-3 left-3 rounded-2xl border border-black/5 bg-white/92 px-3 py-2 shadow-[0_12px_28px_rgba(15,23,42,0.12)] backdrop-blur md:-bottom-4 md:left-4 md:px-4 md:py-3">
+                    <div className="relative">
+                      <ScreenshotSurface src={feature.image} alt={feature.title} contain={feature.contain} ratio="4 / 3" />
+                      <div className="absolute -bottom-3 left-3 rounded-2xl border border-black/5 bg-white/92 px-3 py-2 shadow-[0_12px_28px_rgba(15,23,42,0.12)] backdrop-blur">
                         <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-500" style={{ fontFamily: 'Inter, sans-serif' }}>
                           {feature.statLabel}
                         </div>
-                        <div className="mt-1 text-base font-bold text-gray-900 md:text-lg" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        <div className="mt-1 text-base font-bold text-gray-900" style={{ fontFamily: 'Inter, sans-serif' }}>
                           {feature.statValue}
                         </div>
                       </div>
                     </div>
                   </div>
+
+                  <div className="flex flex-wrap gap-2.5 pt-3">
+                    {feature.points.map((point) => (
+                      <span
+                        key={point}
+                        className="inline-flex rounded-full border border-black/8 bg-white/82 px-3.5 py-2 text-[13px] font-medium text-gray-700 shadow-[0_6px_18px_rgba(15,23,42,0.05)]"
+                        style={{ fontFamily: 'Inter, sans-serif' }}
+                      >
+                        {point}
+                      </span>
+                    ))}
+                  </div>
                 </div>
 
-                <div className={`${imageFirst ? 'lg:order-2' : 'lg:order-1'} hidden lg:block`}>
+                <div className={`${imageFirst ? 'order-1' : 'order-2'} relative hidden self-stretch lg:block`}>
+                  <div className="absolute -inset-3 rounded-[28px] bg-[radial-gradient(circle_at_top_right,rgba(255,212,0,0.2),transparent_55%)] blur-2xl" />
+                  <div className="relative h-full">
+                    <ScreenshotSurface src={feature.image} alt={feature.title} contain={feature.contain} ratio="16 / 11" />
+                    <div className="absolute -bottom-4 left-4 rounded-2xl border border-black/5 bg-white/92 px-4 py-3 shadow-[0_12px_28px_rgba(15,23,42,0.12)] backdrop-blur">
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-500" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        {feature.statLabel}
+                      </div>
+                      <div className="mt-1 text-lg font-bold text-gray-900" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        {feature.statValue}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={`${imageFirst ? 'order-2' : 'order-1'} hidden lg:block`}>
                   <div className="mb-5 flex items-center gap-3">
                     <span className="inline-flex rounded-full bg-[#FFF3BF] px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-[#8A6800]" style={{ fontFamily: 'Inter, sans-serif' }}>
                       {feature.eyebrow}

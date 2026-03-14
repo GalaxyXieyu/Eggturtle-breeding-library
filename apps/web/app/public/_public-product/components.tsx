@@ -156,9 +156,43 @@ export function SeriesIntroCard({
   series: Series | null;
   breeders: Breeder[];
 }) {
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isManuallyCollapsed, setIsManuallyCollapsed] = useState(true);
+  const [hasManuallyInteracted, setHasManuallyInteracted] = useState(false);
+  const [isScrollCollapsed, setIsScrollCollapsed] = useState(false);
   const firstImage = withPublicImageMaxEdge(breeders[0]?.images[0]?.url, 640);
   const [coverLoaded, setCoverLoaded] = useState(false);
+
+  useEffect(() => {
+    setIsManuallyCollapsed(true);
+    setHasManuallyInteracted(false);
+  }, [series?.id]);
+
+  useEffect(() => {
+    let raf = 0;
+
+    const onScroll = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        if (!hasManuallyInteracted) {
+          setIsScrollCollapsed(window.scrollY > 200);
+        }
+      });
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('scroll', onScroll);
+    };
+  }, [hasManuallyInteracted]);
+
+  useEffect(() => {
+    if (hasManuallyInteracted) {
+      setIsScrollCollapsed(false);
+    }
+  }, [hasManuallyInteracted]);
 
   if (!series) return null;
 
@@ -173,14 +207,24 @@ export function SeriesIntroCard({
 
   const hasDescription = Boolean(series.description?.trim());
   const descriptionPanelId = `series-intro-panel-${series.id}`;
+  const isContentCollapsed = isManuallyCollapsed;
+  const isFullyHidden = isScrollCollapsed;
 
   return (
-    <div className="mb-3 overflow-hidden rounded-2xl border border-black/5 shadow-[0_12px_30px_rgba(0,0,0,0.08)]">
+    <div
+      className={`mb-3 overflow-hidden rounded-2xl border border-black/5 shadow-[0_12px_30px_rgba(0,0,0,0.08)] transition-all duration-500 ${
+        isFullyHidden
+          ? 'max-h-0 -translate-y-4 opacity-0'
+          : isContentCollapsed
+            ? 'max-h-[80px] translate-y-0 opacity-100'
+            : 'max-h-[800px] translate-y-0 opacity-100'
+      }`}
+    >
       <div className="relative overflow-hidden">
         {firstImage ? (
           <>
             {!coverLoaded ? (
-              <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-neutral-600 via-neutral-500 to-neutral-600" />
+              <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-neutral-700 via-neutral-600 to-neutral-700" />
             ) : null}
             <PublicImageWithRetry
               src={firstImage}
@@ -201,6 +245,14 @@ export function SeriesIntroCard({
         <div className="relative">
           <div className="flex items-center justify-between px-4 py-3 sm:px-5">
             <div className="flex min-w-0 items-center gap-2 text-xs font-medium uppercase tracking-wide text-white/70">
+              <svg aria-hidden="true" className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 11H5m14 0a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2m14 0V9a2 2 0 0 0-2-2M5 11V9a2 2 0 0 1 2-2m0 0V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2M7 7h10"
+                />
+              </svg>
               <span className="shrink-0">系列介绍</span>
               <div className="ml-1 flex min-w-0 items-center gap-1.5">
                 <div className="truncate text-base font-bold text-white sm:text-lg">{series.name}</div>
@@ -211,17 +263,19 @@ export function SeriesIntroCard({
             </div>
             <button
               type="button"
-              aria-expanded={!isCollapsed}
+              aria-expanded={!isContentCollapsed}
               aria-controls={descriptionPanelId}
-              aria-label={isCollapsed ? `展开 ${series.name} 系列介绍` : `收起 ${series.name} 系列介绍`}
-              onClick={() => setIsCollapsed((current) => !current)}
-              className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/25 bg-white/20 px-3 py-2 text-xs font-semibold text-white shadow-[0_10px_24px_rgba(0,0,0,0.18)] backdrop-blur-md [touch-action:manipulation] transition hover:border-white/35 hover:bg-white/28 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black/35"
+              aria-label={isContentCollapsed ? `展开 ${series.name} 系列介绍` : `收起 ${series.name} 系列介绍`}
+              onClick={() => {
+                setHasManuallyInteracted(true);
+                setIsScrollCollapsed(false);
+                setIsManuallyCollapsed((current) => !current);
+              }}
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-white/72 backdrop-blur-sm transition hover:bg-white/16 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black/35"
             >
-              <span className="hidden sm:inline">{isCollapsed ? '展开介绍' : '收起介绍'}</span>
-              <span className="sm:hidden">{isCollapsed ? '展开' : '收起'}</span>
               <svg
                 aria-hidden="true"
-                className={`h-4 w-4 shrink-0 transition-transform duration-200 ${isCollapsed ? 'rotate-180' : 'rotate-0'}`}
+                className={`h-3.5 w-3.5 transition-transform ${isContentCollapsed ? 'rotate-180' : ''}`}
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -238,7 +292,9 @@ export function SeriesIntroCard({
 
           <div
             id={descriptionPanelId}
-            className={`overflow-hidden transition-[max-height,opacity] duration-300 ${isCollapsed ? 'max-h-0 opacity-0' : 'max-h-[600px] opacity-100'}`}
+            className={`overflow-hidden transition-all duration-300 ${
+              isContentCollapsed ? 'max-h-0 opacity-0' : 'max-h-[600px] opacity-100'
+            }`}
           >
             <div className="px-4 pb-3 sm:px-5">
               {hasDescription ? (
@@ -311,6 +367,9 @@ export function BreederCarousel({
   const hasSeriesIntro = Boolean(series?.description);
   const effectiveSlide = hasSeriesIntro ? slide : 0;
   const activeImage = breeder.images[currentImageIndex] || breeder.images[0];
+  const activeImagePreviewUrl =
+    (withPublicImageMaxEdge(activeImage?.url || '/images/mg_01.jpg', 320) as string) ??
+    '/images/mg_01.jpg';
   const activeImageUrl =
     (withPublicImageMaxEdge(activeImage?.url || '/images/mg_01.jpg', 960) as string) ??
     '/images/mg_01.jpg';
@@ -336,7 +395,7 @@ export function BreederCarousel({
 
   return (
     <div className="public-border-default public-bg-card-alt overflow-hidden border-y shadow-[0_14px_38px_rgba(0,0,0,0.14)] sm:rounded-3xl sm:border dark:shadow-[0_22px_46px_rgba(0,0,0,0.45)]">
-      <div className="w-full relative aspect-square bg-[#1a1810] dark:bg-neutral-950/90 sm:aspect-[4/5]">
+      <div className="relative w-full aspect-square bg-[#efe5d4] dark:bg-[#18130e] sm:aspect-[4/5]">
         <button
           type="button"
           onClick={handleBack}
@@ -387,15 +446,22 @@ export function BreederCarousel({
             </div>
           ) : null}
 
-          <div className="relative h-full w-full shrink-0">
+          <div className="relative h-full w-full shrink-0 overflow-hidden">
             {!activeImageLoaded ? (
-              <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-[#2a2218] via-[#1e1a12] to-[#2a2218]" />
+              <div className="public-carousel-loading" aria-hidden="true">
+                <div
+                  className="public-carousel-loading-blur"
+                  style={{ backgroundImage: `url(${activeImagePreviewUrl})` }}
+                />
+                <div className="public-carousel-loading-sheen" />
+                <div className="public-carousel-loading-glow" />
+              </div>
             ) : null}
             <img
               ref={activeImageRef}
               src={activeImageUrl}
               alt={activeImage?.alt || breeder.code}
-              className={`h-full w-full object-cover transition-opacity duration-300 ${activeImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              className={`h-full w-full object-cover transition-[opacity,transform] duration-500 ease-out ${activeImageLoaded ? 'scale-100 opacity-100' : 'scale-[1.015] opacity-0'}`}
               loading="eager"
               decoding="async"
               fetchPriority="high"
