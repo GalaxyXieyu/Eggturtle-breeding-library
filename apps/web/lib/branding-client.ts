@@ -3,33 +3,14 @@
 import { useEffect, useState } from 'react';
 import {
   DEFAULT_PLATFORM_BRANDING,
-  DEFAULT_TENANT_BRANDING_OVERRIDE,
-  getResolvedPlatformBrandingResponseSchema,
-  getResolvedTenantBrandingResponseSchema,
+  buildDefaultTenantBranding,
+  loadPlatformBranding,
+  loadResolvedTenantBranding,
   type PlatformBrandingConfig,
   type ResolvedTenantBranding,
 } from '@eggturtle/shared';
 
 import { apiRequest } from '@/lib/api-client';
-
-function buildDefaultTenantBranding(tenantSlug: string): ResolvedTenantBranding {
-  const displayName = DEFAULT_PLATFORM_BRANDING.defaultTenantName.zh;
-
-  return {
-    tenant: {
-      id: tenantSlug || 'default-tenant',
-      slug: tenantSlug || 'default-tenant',
-      name: displayName,
-    },
-    platform: DEFAULT_PLATFORM_BRANDING,
-    branding: DEFAULT_TENANT_BRANDING_OVERRIDE,
-    resolved: {
-      displayName,
-      publicTitle: `${displayName} · ${DEFAULT_PLATFORM_BRANDING.publicCatalogTitleSuffix.zh}`,
-      publicSubtitle: `${displayName} ${DEFAULT_PLATFORM_BRANDING.publicCatalogSubtitleSuffix.zh}`,
-    },
-  };
-}
 
 export function usePlatformBranding() {
   const [branding, setBranding] = useState<PlatformBrandingConfig>(DEFAULT_PLATFORM_BRANDING);
@@ -37,22 +18,11 @@ export function usePlatformBranding() {
   useEffect(() => {
     let cancelled = false;
 
-    void (async () => {
-      try {
-        const response = await apiRequest('/branding/platform', {
-          auth: false,
-          responseSchema: getResolvedPlatformBrandingResponseSchema,
-        });
-
-        if (!cancelled) {
-          setBranding(response.branding);
-        }
-      } catch {
-        if (!cancelled) {
-          setBranding(DEFAULT_PLATFORM_BRANDING);
-        }
+    void loadPlatformBranding(apiRequest).then((nextBranding) => {
+      if (!cancelled) {
+        setBranding(nextBranding);
       }
-    })();
+    });
 
     return () => {
       cancelled = true;
@@ -73,22 +43,11 @@ export function useResolvedTenantBranding(tenantSlug: string) {
 
     let cancelled = false;
 
-    void (async () => {
-      try {
-        const response = await apiRequest(`/branding/tenant/${encodeURIComponent(tenantSlug)}`, {
-          auth: false,
-          responseSchema: getResolvedTenantBrandingResponseSchema,
-        });
-
-        if (!cancelled) {
-          setBranding(response.branding);
-        }
-      } catch {
-        if (!cancelled) {
-          setBranding(buildDefaultTenantBranding(tenantSlug));
-        }
+    void loadResolvedTenantBranding(tenantSlug, apiRequest).then((nextBranding) => {
+      if (!cancelled) {
+        setBranding(nextBranding);
       }
-    })();
+    });
 
     return () => {
       cancelled = true;

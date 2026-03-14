@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import {
   DEFAULT_PLATFORM_BRANDING,
-  getResolvedPlatformBrandingResponseSchema,
+  loadPlatformBranding,
   type PlatformBrandingConfig,
 } from '@eggturtle/shared';
 
@@ -15,22 +15,11 @@ export function usePlatformBranding() {
   useEffect(() => {
     let cancelled = false;
 
-    void (async () => {
-      try {
-        const response = await apiRequest('/branding/platform', {
-          auth: false,
-          responseSchema: getResolvedPlatformBrandingResponseSchema,
-        });
-
-        if (!cancelled) {
-          setBranding(response.branding);
-        }
-      } catch {
-        if (!cancelled) {
-          setBranding(DEFAULT_PLATFORM_BRANDING);
-        }
+    void loadPlatformBranding(apiRequest).then((nextBranding) => {
+      if (!cancelled) {
+        setBranding(nextBranding);
       }
-    })();
+    });
 
     return () => {
       cancelled = true;

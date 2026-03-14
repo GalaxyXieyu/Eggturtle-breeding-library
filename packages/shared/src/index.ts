@@ -343,6 +343,11 @@ export type {
 } from './branding';
 export { fetchPlatformBrandingServerConfig, getPlatformBrandingApiBaseUrl } from './branding-server';
 export {
+  buildDefaultTenantBranding,
+  loadPlatformBranding,
+  loadResolvedTenantBranding,
+} from './branding-client';
+export {
   createShareRequestSchema,
   createShareResponseSchema,
   getTenantSharePresentationResponseSchema,
