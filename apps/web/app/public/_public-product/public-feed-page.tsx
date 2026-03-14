@@ -3,10 +3,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PublicSharePresentation } from '@eggturtle/shared';
-import { Search, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 
 import { buildFilterPillClass } from '@/components/filter-pill';
-import { PublicShareHeroCarousel } from '@/components/share/public-share-hero-carousel';
 import { FloatingActionButton, modalCloseButtonClass } from '@/components/ui/floating-actions';
 import PublicBottomDock, { type PublicDockTab } from '@/app/public/_shared/public-bottom-dock';
 import PublicShareFeaturesScreen from '@/app/public/_shared/public-share-features-screen';
@@ -128,21 +127,35 @@ export default function PublicFeedPage({
       ),
     [resolvedPresentation.hero.images],
   );
-  const heroCarouselItems = useMemo(
-    () =>
-      heroImages.map((imageUrl, index) => ({
-        alt: `${resolvedPresentation.feedTitle} 轮播图 ${index + 1}`,
-        id: `public-share-hero-${index}`,
-        src: imageUrl,
-      })),
-    [heroImages, resolvedPresentation.feedTitle],
-  );
   const heroSignature = useMemo(() => heroImages.join('|'), [heroImages]);
   const [heroIndex, setHeroIndex] = useState(0);
+  const [heroImageLoaded, setHeroImageLoaded] = useState(false);
+  const heroImageRef = useRef<HTMLImageElement | null>(null);
 
   useEffect(() => {
     setHeroIndex(0);
   }, [heroSignature]);
+
+  useEffect(() => {
+    setHeroImageLoaded(false);
+    if (heroImageRef.current?.complete) {
+      setHeroImageLoaded(true);
+    }
+  }, [heroIndex, heroSignature]);
+
+  useEffect(() => {
+    if (heroImages.length <= 1) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setHeroIndex((current) => (current + 1) % heroImages.length);
+    }, 5000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [heroImages]);
 
   useEffect(() => {
     setSeriesId(resolveSeriesId(initialSeriesId, series));
@@ -444,19 +457,74 @@ export default function PublicFeedPage({
     <div className="min-h-screen bg-gradient-to-br from-stone-100 via-white to-amber-50/40 text-black dark:from-neutral-950 dark:via-neutral-950 dark:to-neutral-900/40 dark:text-neutral-100">
       <div className="w-full px-1 pb-[calc(env(safe-area-inset-bottom)+94px)] pt-[calc(env(safe-area-inset-top)+8px)] sm:px-3 lg:px-5 2xl:px-6">
         <header className="mb-3 overflow-hidden bg-neutral-900 shadow-[0_18px_50px_rgba(0,0,0,0.22)] sm:rounded-2xl">
-          <PublicShareHeroCarousel
-            items={heroCarouselItems}
-            activeIndex={heroIndex}
-            onActiveIndexChange={setHeroIndex}
-            className="h-[240px] lg:h-[320px]"
-            contentClassName="p-5 lg:p-8"
-            eyebrow="public share"
-            overlayColor={hexToRgba(brandSecondary, 0.18)}
-            subtitle={resolvedPresentation.feedSubtitle}
-            subtitleClassName="mt-2 text-sm leading-relaxed text-white/80 lg:text-base"
-            title={resolvedPresentation.feedTitle}
-            titleClassName="mt-2 text-[26px] font-semibold leading-tight text-white drop-shadow-sm lg:text-[34px]"
-          />
+          <div className="relative h-[240px] lg:h-[320px]">
+            {!heroImageLoaded ? (
+              <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-neutral-500 via-neutral-400 to-neutral-500" />
+            ) : null}
+            <img
+              ref={heroImageRef}
+              src={heroImages[heroIndex] || '/images/mg_04.jpg'}
+              alt={resolvedPresentation.feedTitle}
+              className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${heroImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
+              onLoad={() => setHeroImageLoaded(true)}
+              onError={() => setHeroImageLoaded(true)}
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-black/25 to-black/40" />
+            <div
+              className="absolute inset-0"
+              style={{
+                background: `linear-gradient(135deg, ${hexToRgba(brandSecondary, 0.18)}, transparent 52%)`,
+              }}
+            />
+            <div className="absolute inset-0">
+              <div className="flex h-full flex-col justify-end p-5 lg:p-8">
+                <div className="text-xs uppercase tracking-widest text-white/70">public share</div>
+                <h1 className="mt-2 text-[26px] font-semibold leading-tight text-white drop-shadow-sm lg:text-[34px]">
+                  {resolvedPresentation.feedTitle}
+                </h1>
+                <div className="mt-2 text-sm leading-relaxed text-white/80 lg:text-base">
+                  {resolvedPresentation.feedSubtitle}
+                </div>
+              </div>
+            </div>
+
+            {heroImages.length > 1 ? (
+              <>
+                <button
+                  type="button"
+                  aria-label="上一张"
+                  className="public-carousel-btn left-3"
+                  onClick={() =>
+                    setHeroIndex((index) => (index - 1 + heroImages.length) % heroImages.length)
+                  }
+                >
+                  <ChevronLeft size={18} strokeWidth={2.3} />
+                </button>
+                <button
+                  type="button"
+                  aria-label="下一张"
+                  className="public-carousel-btn right-3"
+                  onClick={() => setHeroIndex((index) => (index + 1) % heroImages.length)}
+                >
+                  <ChevronRight size={18} strokeWidth={2.3} />
+                </button>
+                <div className="public-carousel-dots">
+                  {heroImages.map((_, index) => (
+                    <button
+                      key={`hero-dot-${index}`}
+                      type="button"
+                      aria-label={`切换到第 ${index + 1} 张`}
+                      onClick={() => setHeroIndex(index)}
+                      className={`public-carousel-dot ${index === heroIndex ? 'is-active' : ''}`}
+                    />
+                  ))}
+                </div>
+              </>
+            ) : null}
+          </div>
         </header>
 
         <DemoHint demo={demo} />

@@ -61,6 +61,7 @@ import {
   buildDemoSharePreview,
   buildFallbackSharePreview,
   buildSharePreviewFromPresentation,
+  hexToRgba,
 } from '@/app/app/[tenantSlug]/products/products-share-preview-utils';
 import { useProductsPageUiEffects } from '@/app/app/[tenantSlug]/products/products-page-ui-hooks';
 
@@ -248,6 +249,8 @@ export default function TenantProductsPage() {
 
     return fallbackHeroUrls.map((item) => resolveAuthenticatedAssetUrl(item));
   }, [items, previewStatusFilter, sharePreview.heroImages]);
+  const shareOverlayColor = hexToRgba(sharePreview.brandSecondary, 0.4);
+
   useEffect(() => {
     setSharePreview(buildFallbackSharePreview(tenantSlug));
   }, [tenantSlug]);
@@ -609,19 +612,16 @@ export default function TenantProductsPage() {
   );
 
   const loadProducts = useCallback(
-    async (query: ProductsListQuery, options?: { preserveItems?: boolean }) => {
-      const preserveItems = options?.preserveItems ?? false;
+    async (query: ProductsListQuery) => {
       const requestVersion = queryVersionRef.current + 1;
       queryVersionRef.current = requestVersion;
 
-      if (!preserveItems) {
-        setLoading(true);
-        setIsLoadingMore(false);
-        setHasMore(false);
-        setNextPage(1);
-        setItems([]);
-        setListStats(EMPTY_LIST_STATS);
-      }
+      setLoading(true);
+      setIsLoadingMore(false);
+      setHasMore(false);
+      setNextPage(1);
+      setItems([]);
+      setListStats(EMPTY_LIST_STATS);
 
       const response = await loadProductsPage(query, 1);
       if (queryVersionRef.current !== requestVersion) {
@@ -1259,9 +1259,21 @@ export default function TenantProductsPage() {
         <ProductsSharePreviewCard
           sharePreview={sharePreview}
           listStatsLabel={listStatsLabel}
+          shareHeroImageUrl={shareHeroImageUrl}
           shareHeroIndex={shareHeroIndex}
+          shareOverlayColor={shareOverlayColor}
+          activeFilterCount={activeFilterCount}
+          useLegacySharePreviewStyle
           showShareConfigEntry
           onHeroIndexChange={setShareHeroIndex}
+          onOpenFilter={(event) => {
+            setIsCreateDrawerOpen(false);
+            openFilterPopover(event, 'below', { toggle: true });
+          }}
+          onOpenCreate={() => {
+            setIsFilterPopoverOpen(false);
+            setIsCreateDrawerOpen(true);
+          }}
           onOpenShareConfig={() => router.push(`/app/${tenantSlug}/share-presentation`)}
         />
 
@@ -1420,7 +1432,7 @@ export default function TenantProductsPage() {
           setContinueEditProductId(null);
           if (createdEvent) {
             scrollToProductIdRef.current = nextProduct.id;
-            void loadProducts(listQuery, { preserveItems: true });
+            void loadProducts(listQuery);
           }
         }}
       />
