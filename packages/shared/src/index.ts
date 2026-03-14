@@ -341,6 +341,7 @@ export type {
   UpdatePlatformBrandingRequest,
   UpdatePlatformBrandingResponse,
 } from './branding';
+export { fetchPlatformBrandingServerConfig, getPlatformBrandingApiBaseUrl } from './branding-server';
 export {
   createShareRequestSchema,
   createShareResponseSchema,
