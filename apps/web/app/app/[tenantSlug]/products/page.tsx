@@ -27,10 +27,11 @@ import ProductDrawer, {
   type ProductCreateResult,
   type ProductSeriesOption,
 } from '@/components/product-drawer';
+import TenantMobileActionStack from '@/components/tenant-mobile-action-stack';
 import TenantFloatingShareButton from '@/components/tenant-floating-share-button';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { FloatingActionButton, FloatingActionDock } from '@/components/ui/floating-actions';
+import { FloatingActionButton } from '@/components/ui/floating-actions';
 import {
   DEFAULT_LIST_QUERY,
   compareProducts,
@@ -1341,7 +1342,7 @@ export default function TenantProductsPage() {
         ) : null}
 
         {!isCreateDrawerOpen ? (
-          <FloatingActionDock className="lg:hidden">
+          <TenantMobileActionStack className="lg:hidden">
             <FloatingActionButton
               aria-label="新建产品"
               onClick={() => {
@@ -1360,16 +1361,12 @@ export default function TenantProductsPage() {
             />
             {showMobileFilterFab ? (
               <div className="relative" data-products-filter-root="true">
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="default"
-                  className="h-11 w-11 rounded-full border border-black/10 bg-neutral-900 text-white shadow-[0_14px_30px_rgba(0,0,0,0.18)] backdrop-blur transition hover:scale-[1.05] hover:bg-neutral-800 dark:border-white/10"
+                <FloatingActionButton
                   aria-label="打开筛选"
                   onClick={(event) => openFilterPopover(event, 'above', { toggle: true })}
                 >
                   <Search size={18} />
-                </Button>
+                </FloatingActionButton>
                 {activeFilterCount > 0 ? (
                   <span className="pointer-events-none absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#FFD400] px-1 text-[11px] font-semibold text-neutral-900 shadow-[0_10px_18px_rgba(0,0,0,0.18)] ring-1 ring-black/10">
                     {activeFilterCount}
@@ -1377,7 +1374,7 @@ export default function TenantProductsPage() {
                 ) : null}
               </div>
             ) : null}
-          </FloatingActionDock>
+          </TenantMobileActionStack>
         ) : null}
       </main>
 

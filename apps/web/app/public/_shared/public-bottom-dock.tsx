@@ -1,12 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { Layers, PawPrint, UserRound } from 'lucide-react';
+import { LayoutTemplate, PawPrint, UserRound } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { appendPublicShareQuery } from '@/app/public/_shared/public-share-api';
 
-export type PublicDockTab = 'series' | 'pets' | 'me';
+export type PublicDockTab = 'features' | 'pets' | 'me';
 
 type PublicBottomDockProps = {
   shareToken: string;
@@ -31,13 +31,13 @@ export default function PublicBottomDock({
     key: PublicDockTab;
     label: string;
     href: string;
-    icon: typeof Layers;
+    icon: typeof LayoutTemplate;
   }> = [
     {
-      key: 'series',
+      key: 'features',
       label: '功能',
-      href: appendPublicShareQuery(`${basePath}/series`, shareQuery),
-      icon: Layers,
+      href: appendPublicShareQuery(`${basePath}/features`, shareQuery),
+      icon: LayoutTemplate,
     },
     {
       key: 'pets',

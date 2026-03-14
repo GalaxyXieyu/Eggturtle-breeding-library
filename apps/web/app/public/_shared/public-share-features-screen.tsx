@@ -5,7 +5,6 @@ import Link from 'next/link';
 import type { PublicSharePresentation } from '@eggturtle/shared';
 import { ArrowRight, Check } from 'lucide-react';
 
-import type { Breeder, Series } from '@/app/public/_public-product/types';
 import { resolvePublicSharePresentation } from '@/app/public/_public-product/presentation';
 import PublicBottomDock from '@/app/public/_shared/public-bottom-dock';
 import PublicFloatingActions from '@/app/public/_shared/public-floating-actions';
@@ -97,8 +96,6 @@ type Props = {
   shareToken: string;
   shareQuery?: string;
   presentation?: PublicSharePresentation | null;
-  breeders: Breeder[];
-  series: Series[];
   embedded?: boolean;
 };
 
@@ -162,7 +159,7 @@ function HeroPreviewCard() {
   );
 }
 
-export default function PublicShareSeriesPageRedesign({
+export default function PublicShareFeaturesScreen({
   shareToken,
   shareQuery,
   presentation,
@@ -265,7 +262,7 @@ export default function PublicShareSeriesPageRedesign({
                   </Link>
 
                   <a
-                    href="#series-features"
+                    href="#share-features"
                     className="rounded-full border-2 border-gray-300 bg-white px-8 py-5 text-base font-semibold text-gray-900 transition-all hover:border-gray-900 md:text-lg"
                     style={{ fontFamily: 'Inter, sans-serif' }}
                   >
@@ -306,7 +303,7 @@ export default function PublicShareSeriesPageRedesign({
         ) : null}
       </section>
 
-      <section id="series-features" className={`py-16 md:py-32 ${embedded ? 'px-5' : 'px-6'}`}>
+      <section id="share-features" className={`py-16 md:py-32 ${embedded ? 'px-5' : 'px-6'}`}>
         <div className="mx-auto max-w-7xl space-y-10 md:space-y-14">
           {CORE_FEATURES.map((feature, index) => {
             const imageFirst = feature.imagePosition === 'left';
@@ -501,7 +498,7 @@ export default function PublicShareSeriesPageRedesign({
         shareCardSecondaryColor={resolvedPresentation.theme.brandSecondary}
         shareCardHeroImageUrl={shareCardHeroImageUrl}
       />
-      <PublicBottomDock shareToken={shareToken} shareQuery={shareQuery} activeTab="series" />
+      <PublicBottomDock shareToken={shareToken} shareQuery={shareQuery} activeTab="features" />
     </div>
   );
 }

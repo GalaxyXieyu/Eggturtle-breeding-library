@@ -9,10 +9,10 @@ import { buildFilterPillClass } from '@/components/filter-pill';
 import { PublicShareHeroCarousel } from '@/components/share/public-share-hero-carousel';
 import { FloatingActionButton, modalCloseButtonClass } from '@/components/ui/floating-actions';
 import PublicBottomDock, { type PublicDockTab } from '@/app/public/_shared/public-bottom-dock';
+import PublicShareFeaturesScreen from '@/app/public/_shared/public-share-features-screen';
 import PublicFloatingActions from '@/app/public/_shared/public-floating-actions';
 import { withPublicImageMaxEdge } from '@/app/public/_shared/public-image';
 import PublicShareMePage from '@/app/public/_shared/public-share-me-page';
-import PublicShareSeriesPageRedesign from '@/app/public/s/[shareToken]/series/page-redesign';
 
 import type { Breeder, NeedMatingStatus, Series } from '@/app/public/_public-product/types';
 import {
@@ -581,14 +581,12 @@ export default function PublicFeedPage({
           ) : null}
         </PublicFloatingActions>
       ) : null}
-      {activeDockTab === 'series' ? (
+      {activeDockTab === 'features' ? (
         <div className="fixed inset-x-0 top-0 bottom-[calc(env(safe-area-inset-bottom)+74px)] z-[60] overflow-y-auto bg-white lg:hidden">
-          <PublicShareSeriesPageRedesign
+          <PublicShareFeaturesScreen
             shareToken={shareToken}
             shareQuery={shareQuery}
             presentation={presentation}
-            breeders={breeders}
-            series={series}
             embedded
           />
         </div>
@@ -607,7 +605,7 @@ export default function PublicFeedPage({
         shareToken={shareToken}
         shareQuery={shareQuery}
         activeTab={activeDockTab}
-        clientTabKeys={['series', 'pets', 'me']}
+        clientTabKeys={['features', 'pets', 'me']}
         onTabChange={handleDockTabChange}
       />
     </div>

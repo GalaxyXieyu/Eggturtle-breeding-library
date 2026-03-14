@@ -9,7 +9,7 @@ import {
   firstSearchParamValue,
   refreshPublicShareEntryLocation,
   shouldAutoRefreshShareSignature,
-  type PublicSearchParams
+  type PublicSearchParams,
 } from '@/app/public/_shared/public-share-api';
 
 export default async function PublicShareFeedPage({
@@ -23,11 +23,15 @@ export default async function PublicShareFeedPage({
   const hasSidParam = typeof sidValue === 'string' && sidValue.trim().length > 0;
   const requestedTab = firstSearchParamValue(searchParams.tab)?.trim();
   const requestedSeriesId = firstSearchParamValue(searchParams.series)?.trim();
+  const standaloneTab =
+    requestedTab === 'features' || requestedTab === 'me'
+      ? requestedTab
+      : null;
   if (!hasSidParam) {
     const location = await refreshPublicShareEntryLocation(params.shareToken);
     if (location) {
-      if (requestedTab === 'series' || requestedTab === 'me') {
-        redirect(rewritePublicShareLocation(location, params.shareToken, requestedTab, requestedSeriesId));
+      if (standaloneTab) {
+        redirect(rewritePublicShareLocation(location, params.shareToken, standaloneTab, requestedSeriesId));
       }
       redirect(location);
     }
@@ -39,8 +43,8 @@ export default async function PublicShareFeedPage({
     if (shouldAutoRefreshShareSignature(shareResult.status, shareResult.errorCode)) {
       const location = await refreshPublicShareEntryLocation(params.shareToken);
       if (location) {
-        if (requestedTab === 'series' || requestedTab === 'me') {
-          redirect(rewritePublicShareLocation(location, params.shareToken, requestedTab, requestedSeriesId));
+        if (standaloneTab) {
+          redirect(rewritePublicShareLocation(location, params.shareToken, standaloneTab, requestedSeriesId));
         }
         redirect(location);
       }
@@ -73,8 +77,8 @@ export default async function PublicShareFeedPage({
     shareRouteQuery.set('series', requestedSeriesId);
   }
 
-  if (requestedTab === 'series' || requestedTab === 'me') {
-    redirect(`/public/s/${params.shareToken}/${requestedTab}?${shareRouteQuery.toString()}`);
+  if (standaloneTab) {
+    redirect(`/public/s/${params.shareToken}/${standaloneTab}?${shareRouteQuery.toString()}`);
   }
 
   const shareQuery = shareRouteQuery.toString();
@@ -96,7 +100,7 @@ export default async function PublicShareFeedPage({
 function rewritePublicShareLocation(
   location: string,
   shareToken: string,
-  tab: 'series' | 'me',
+  tab: 'features' | 'me',
   seriesId?: string,
 ) {
   const resolved = new URL(location, 'http://public-share.local');

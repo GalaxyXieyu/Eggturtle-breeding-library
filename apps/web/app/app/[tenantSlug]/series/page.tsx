@@ -46,6 +46,7 @@ function stripPublicAssetBase(url: string): string | null {
   return stripped.startsWith('/') ? stripped : `/${stripped}`;
 }
 import { switchTenantBySlug } from '@/lib/tenant-session';
+import TenantMobileActionStack from '@/components/tenant-mobile-action-stack';
 import TenantFloatingShareButton from '@/components/tenant-floating-share-button';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -58,7 +59,6 @@ import {
 } from '@/components/ui/card';
 import {
   FloatingActionButton,
-  FloatingActionDock,
   modalCloseButtonClass,
 } from '@/components/ui/floating-actions';
 import { Input } from '@/components/ui/input';
@@ -372,7 +372,7 @@ export default function SeriesListPage() {
 
   return (
     <>
-      <main className="space-y-4 pb-8 sm:space-y-6">
+      <main className="tenant-mobile-dock-safe-stack space-y-4 pb-8 sm:space-y-6">
         {error ? (
           <Card className="rounded-3xl border-red-200 bg-red-50 p-5">
             <p className="text-sm font-semibold text-red-700">{error}</p>
@@ -485,7 +485,7 @@ export default function SeriesListPage() {
         </Card>
 
         {isManageMode && !isFilterModalOpen && !editor ? (
-          <FloatingActionDock className="lg:hidden">
+          <TenantMobileActionStack className="lg:hidden">
             <FloatingActionButton
               aria-label="打开系列筛选弹窗"
               onClick={() => setIsFilterModalOpen(true)}
@@ -493,7 +493,7 @@ export default function SeriesListPage() {
               <Search size={18} />
             </FloatingActionButton>
             <TenantFloatingShareButton intent="series" inline className="h-11 w-11" />
-          </FloatingActionDock>
+          </TenantMobileActionStack>
         ) : null}
 
         {isFilterModalOpen && isManageMode ? (

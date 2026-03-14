@@ -2301,8 +2301,8 @@ button.auth-action {
     var(--tenant-mobile-dock-offset) + var(--tenant-mobile-fab-size) + 20px
   );
   --tenant-mobile-dock-stack-clearance: calc(
-    var(--tenant-mobile-dock-offset) + (var(--tenant-mobile-fab-size) * 3) +
-      (var(--tenant-mobile-fab-gap) * 2) + 20px
+    var(--tenant-mobile-dock-offset) + (var(--tenant-mobile-fab-size) * 4) +
+      (var(--tenant-mobile-fab-gap) * 3) + 20px
   );
 }
 

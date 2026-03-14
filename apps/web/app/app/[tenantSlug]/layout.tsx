@@ -16,6 +16,7 @@ import { LayoutDashboard, Package, Layers, Share2, LogOut, UserRound } from 'luc
 import { UiPreferenceControls, useUiPreferences } from '@/components/ui-preferences';
 import { Button } from '@/components/ui/button';
 import ReferralAuthNotice from '@/components/referral-auth-notice';
+import TenantMobileActionStack from '@/components/tenant-mobile-action-stack';
 import TenantFloatingShareButton from '@/components/tenant-floating-share-button';
 import TenantFloatingPreferences from '@/components/tenant-floating-preferences';
 import type { TenantShareIntent } from '@/lib/tenant-share';
@@ -131,6 +132,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
     ENABLE_FLOATING_SHARE_BUTTON &&
     pathname !== `/app/${tenantSlug}` &&
     pathname !== `/app/${tenantSlug}/products` &&
+    pathname !== `/app/${tenantSlug}/series` &&
     pathname !== `/app/${tenantSlug}/share-presentation` &&
     !pathname?.endsWith('/account') &&
     !pathname?.endsWith('/certificates') &&
@@ -357,7 +359,12 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
 
         <section className="flex h-full min-w-0 flex-1 flex-col">
           <div data-tenant-scroll-root="true" className="min-h-0 flex-1 overflow-y-auto pr-1">
-            <div className="tenant-mobile-content-safe pb-3 sm:pb-4 lg:pb-4">
+            <div
+              className={cn(
+                'tenant-mobile-content-safe pb-3 sm:pb-4 lg:pb-4',
+                shouldRenderLayoutFloatingShare && !setupRequired ? 'tenant-mobile-dock-safe-stack' : null,
+              )}
+            >
               <ReferralAuthNotice />
               {shouldBlockOtherPages ? (
                 <div className="rounded-2xl border border-[#FFD400]/70 bg-[#FFF7D5] px-4 py-3 text-sm font-semibold text-neutral-900">
@@ -408,7 +415,9 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
         </ul>
       </nav>
       {shouldRenderLayoutFloatingShare && !setupRequired ? (
-        <TenantFloatingShareButton intent={floatingShareIntent} className="lg:hidden" />
+        <TenantMobileActionStack className="lg:hidden">
+          <TenantFloatingShareButton intent={floatingShareIntent} inline />
+        </TenantMobileActionStack>
       ) : null}
       {!isEntityDetailPage ? <TenantFloatingPreferences className="lg:hidden" /> : null}
     </div>

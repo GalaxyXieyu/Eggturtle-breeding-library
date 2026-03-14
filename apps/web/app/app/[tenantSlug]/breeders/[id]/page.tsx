@@ -41,6 +41,7 @@ import {
 import ProductDrawer, { type ProductSeriesOption } from '@/components/product-drawer';
 import CouplePhotoPreviewDialog from '@/components/couple-photo-preview-dialog';
 import { Card } from '@/components/ui/card';
+import TenantMobileActionStack from '@/components/tenant-mobile-action-stack';
 import TenantFloatingShareButton from '@/components/tenant-floating-share-button';
 import { useCertificateData, useCertificateStudio } from '@/components/certificate-studio';
 import {
@@ -693,7 +694,7 @@ export default function BreederDetailPage() {
   ]);
 
   return (
-    <main className="tenant-mobile-dock-safe space-y-4 pb-10 sm:space-y-6 lg:pb-10">
+    <main className="tenant-mobile-dock-safe-stack space-y-4 pb-10 sm:space-y-6 lg:pb-10">
       <BreederInfoCard
         breeder={currentBreeder}
         seriesLabel={seriesLabel}
@@ -791,15 +792,17 @@ export default function BreederDetailPage() {
       ) : null}
 
       {!loading && currentBreeder ? (
-        <TenantFloatingShareButton
-          intent={{ productId: currentBreeder.id }}
-          title={detailShareTitle}
-          subtitle="扫码查看该种龟公开详情页，或复制链接直接转发。"
-          previewImageUrl={detailSharePreviewImage}
-          posterImageUrls={detailSharePosterImageUrls}
-          posterVariant="detail"
-          className="lg:hidden"
-        />
+        <TenantMobileActionStack className="lg:hidden">
+          <TenantFloatingShareButton
+            intent={{ productId: currentBreeder.id }}
+            title={detailShareTitle}
+            subtitle="扫码查看该种龟公开详情页，或复制链接直接转发。"
+            previewImageUrl={detailSharePreviewImage}
+            posterImageUrls={detailSharePosterImageUrls}
+            posterVariant="detail"
+            inline
+          />
+        </TenantMobileActionStack>
       ) : null}
 
       <CouplePhotoPreviewDialog

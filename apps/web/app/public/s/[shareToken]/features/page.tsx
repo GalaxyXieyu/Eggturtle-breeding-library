@@ -11,7 +11,7 @@ import {
   type PublicSearchParams,
 } from '@/app/public/_shared/public-share-api';
 
-export default async function PublicShareSeriesPage({
+export default async function PublicShareFeaturesRoute({
   params,
   searchParams,
 }: {
@@ -77,7 +77,7 @@ export default async function PublicShareSeriesPage({
 
 function rewritePublicShareLocation(location: string, shareToken: string) {
   const resolved = new URL(location, 'http://public-share.local');
-  resolved.pathname = `/public/s/${shareToken}/series`;
+  resolved.pathname = `/public/s/${shareToken}/features`;
   resolved.searchParams.delete('tab');
   return `${resolved.pathname}${resolved.search}${resolved.hash}`;
 }
