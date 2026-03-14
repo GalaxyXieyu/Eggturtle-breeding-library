@@ -699,7 +699,6 @@ export default function BreederDetailPage() {
         breeder={currentBreeder}
         seriesLabel={seriesLabel}
         images={data.images}
-        activeImage={activeImage}
         activeImageId={activeImageId}
         relationIds={relationIds}
         onImageClick={setActiveImageId}

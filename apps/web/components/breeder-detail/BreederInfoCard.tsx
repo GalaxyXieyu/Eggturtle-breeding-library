@@ -1,18 +1,17 @@
 import { useMemo } from 'react';
 import { type Product, type ProductImage } from '@eggturtle/shared';
-import { ArrowLeft, FileBadge2, HeartHandshake, Image as ImageIcon, Loader2, PencilRuler } from 'lucide-react';
+import { FileBadge2, HeartHandshake, Image as ImageIcon, Loader2, PencilRuler } from 'lucide-react';
 import { resolveDistinctBreederName } from '@/lib/breeder-utils';
 import { formatPrice, formatSex } from '@/lib/pet-format';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
-import { ImageCarousel } from '@/components/ui/image-carousel';
+import { BreederHeroCarousel } from './BreederHeroCarousel';
 
 type BreederInfoCardProps = {
   breeder: Product | null;
   seriesLabel: string | null;
   images: ProductImage[];
-  activeImage: ProductImage | null;
   activeImageId: string | null;
   relationIds?: Partial<Record<keyof typeof relationPillStyles, string | null>>;
   onImageClick: (imageId: string) => void;
@@ -108,123 +107,134 @@ export function BreederInfoCard({
     [breeder?.code, breeder?.name],
   );
   const breederTitle = (breederDistinctName ?? breederCode) || '种龟详情';
+  const heroItems = images.map((image) => ({
+    id: image.id,
+    src: withMaxEdge(resolveImageUrl(image.url), 960),
+    thumbnailSrc: withMaxEdge(resolveImageUrl(image.url), 480),
+    alt: `${breeder?.code ?? 'breeder'} 图片`,
+  }));
+  const detailContent = (
+    <>
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant={breeder?.inStock ? 'success' : 'default'}>
+          {breeder?.inStock ? '启用中' : '停用'}
+        </Badge>
+        <Badge variant="accent">{formatSex(breeder?.sex, { unknownLabel: '未知' })}</Badge>
+        <Badge variant="sky">{seriesLabel ?? '未关联系列'}</Badge>
+        {typeof breeder?.offspringUnitPrice === 'number' ? (
+          <Badge variant="warning">子代 ¥ {formatPrice(breeder.offspringUnitPrice)}</Badge>
+        ) : null}
+        {breeder?.sex?.toLowerCase() === 'female' && typeof breeder?.offspringUnitPrice !== 'number' ? (
+          <Badge variant="warning">待填子代单价</Badge>
+        ) : null}
+      </div>
+      <div className="space-y-1">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">名称</p>
+        <CardTitle className="text-3xl text-neutral-900 sm:text-4xl">
+          {breederTitle}
+        </CardTitle>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <RelationPill
+          label="父本"
+          value={breeder?.sireCode ?? '未关联'}
+          relationId={relationIds?.父本}
+          onOpen={onOpenRelation}
+        />
+        <RelationPill
+          label="母本"
+          value={breeder?.damCode ?? '未关联'}
+          relationId={relationIds?.母本}
+          onOpen={onOpenRelation}
+        />
+        <RelationPill
+          label="配偶"
+          value={breeder?.mateCode ?? '未关联'}
+          relationId={relationIds?.配偶}
+          onOpen={onOpenRelation}
+        />
+      </div>
+      <div className="rounded-2xl border border-neutral-200 bg-white p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">说明</p>
+        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-neutral-700">
+          {breeder?.description?.trim() || '暂无说明'}
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {breeder ? (
+          <Button variant="primary" onClick={onEdit}>
+            <PencilRuler size={16} />
+            编辑资料
+          </Button>
+        ) : null}
+        {breeder?.sex?.toLowerCase() === 'female' ? (
+          <>
+            <Button variant="outline" className="bg-white" onClick={onOpenCertificateDrawer} disabled={actionsDisabled}>
+              <FileBadge2 size={16} />
+              生成证书
+            </Button>
+            <Button
+              variant="outline"
+              className="bg-white"
+              onClick={onOpenCouplePhotoDrawer}
+              disabled={actionsDisabled || generatingCouplePhoto}
+            >
+              {generatingCouplePhoto ? <Loader2 size={16} className="animate-spin" /> : <HeartHandshake size={16} />}
+              {generatingCouplePhoto ? '生成中...' : '生成夫妻图'}
+            </Button>
+          </>
+        ) : null}
+      </div>
+      {actionErrorMessage ? (
+        <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {actionErrorMessage}
+        </p>
+      ) : null}
+    </>
+  );
 
   return (
-    <Card className="tenant-card-lift overflow-hidden rounded-3xl border-neutral-200/90 bg-white transition-all">
-      <CardContent className="grid gap-6 p-0 lg:grid-cols-[380px_minmax(0,1fr)]">
-        <div className="flex flex-col gap-3 border-b border-neutral-200/80 p-3 sm:p-4 lg:border-b-0 lg:border-r">
-          <ImageCarousel
-            items={images.map((image) => ({
-              id: image.id,
-              src: withMaxEdge(resolveImageUrl(image.url), 960),
-              thumbnailSrc: withMaxEdge(resolveImageUrl(image.url), 480),
-              alt: `${breeder?.code ?? 'breeder'} 图片`,
-            }))}
+    <>
+      <div className="space-y-4 lg:hidden">
+        <div className="-mx-2 sm:-mx-3">
+          <BreederHeroCarousel
+            items={heroItems}
             activeId={activeImageId}
             onSelect={onImageClick}
-            heroClassName="bg-neutral-100"
+            onBack={onBack}
+            title={breederCode || breederTitle}
+            subtitle={breederCode && breederDistinctName ? breederDistinctName : null}
             emptyState={<ImageIcon size={42} />}
-            heroOverlay={
-              <>
-                <button
-                  type="button"
-                  data-ui="button"
-                  onClick={onBack}
-                  className="absolute left-3 top-3 z-10 inline-flex h-9 items-center gap-1 rounded-full border border-white/40 bg-black/55 px-3 text-xs font-semibold text-white shadow-[0_8px_20px_rgba(0,0,0,0.28)] backdrop-blur-sm transition hover:bg-black/65 hover:text-white"
-                  aria-label="返回列表"
-                >
-                  <ArrowLeft size={14} />
-                  返回
-                </button>
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/50 to-transparent p-4">
-                  <p className="text-sm font-semibold text-white">{breederCode || breederTitle}</p>
-                  {breederCode && breederDistinctName ? (
-                    <p className="text-xs text-white/85">{breederDistinctName}</p>
-                  ) : null}
-                </div>
-              </>
-            }
+            variant="immersive"
           />
         </div>
 
-        <div className="space-y-5 p-6">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={breeder?.inStock ? 'success' : 'default'}>
-              {breeder?.inStock ? '启用中' : '停用'}
-            </Badge>
-            <Badge variant="accent">{formatSex(breeder?.sex, { unknownLabel: '未知' })}</Badge>
-            <Badge variant="sky">{seriesLabel ?? '未关联系列'}</Badge>
-            {typeof breeder?.offspringUnitPrice === 'number' ? (
-              <Badge variant="warning">子代 ¥ {formatPrice(breeder.offspringUnitPrice)}</Badge>
-            ) : null}
-            {breeder?.sex?.toLowerCase() === 'female' && typeof breeder?.offspringUnitPrice !== 'number' ? (
-              <Badge variant="warning">待填子代单价</Badge>
-            ) : null}
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">名称</p>
-            <CardTitle className="text-3xl text-neutral-900 sm:text-4xl">
-              {breederTitle}
-            </CardTitle>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <RelationPill
-              label="父本"
-              value={breeder?.sireCode ?? '未关联'}
-              relationId={relationIds?.父本}
-              onOpen={onOpenRelation}
-            />
-            <RelationPill
-              label="母本"
-              value={breeder?.damCode ?? '未关联'}
-              relationId={relationIds?.母本}
-              onOpen={onOpenRelation}
-            />
-            <RelationPill
-              label="配偶"
-              value={breeder?.mateCode ?? '未关联'}
-              relationId={relationIds?.配偶}
-              onOpen={onOpenRelation}
+        <Card className="tenant-card-lift overflow-hidden rounded-3xl border-neutral-200/90 bg-white transition-all">
+          <CardContent className="space-y-5 p-5 sm:p-6">
+            {detailContent}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="tenant-card-lift hidden overflow-hidden rounded-3xl border-neutral-200/90 bg-white transition-all lg:block">
+        <CardContent className="grid gap-6 p-0 lg:grid-cols-[380px_minmax(0,1fr)]">
+          <div className="flex min-w-0 flex-col gap-3 border-b border-neutral-200/80 p-3 sm:p-4 lg:border-b-0 lg:border-r">
+            <BreederHeroCarousel
+              items={heroItems}
+              activeId={activeImageId}
+              onSelect={onImageClick}
+              onBack={onBack}
+              title={breederCode || breederTitle}
+              subtitle={breederCode && breederDistinctName ? breederDistinctName : null}
+              emptyState={<ImageIcon size={42} />}
             />
           </div>
-          <div className="rounded-2xl border border-neutral-200 bg-white p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">说明</p>
-            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-neutral-700">
-              {breeder?.description?.trim() || '暂无说明'}
-            </p>
+
+          <div className="space-y-5 p-6">
+            {detailContent}
           </div>
-          <div className="flex flex-wrap gap-2">
-            {breeder ? (
-              <Button variant="primary" onClick={onEdit}>
-                <PencilRuler size={16} />
-                编辑资料
-              </Button>
-            ) : null}
-            {breeder?.sex?.toLowerCase() === 'female' ? (
-              <>
-                <Button variant="outline" className="bg-white" onClick={onOpenCertificateDrawer} disabled={actionsDisabled}>
-                  <FileBadge2 size={16} />
-                  生成证书
-                </Button>
-                <Button
-                  variant="outline"
-                  className="bg-white"
-                  onClick={onOpenCouplePhotoDrawer}
-                  disabled={actionsDisabled || generatingCouplePhoto}
-                >
-                  {generatingCouplePhoto ? <Loader2 size={16} className="animate-spin" /> : <HeartHandshake size={16} />}
-                  {generatingCouplePhoto ? '生成中...' : '生成夫妻图'}
-                </Button>
-              </>
-            ) : null}
-          </div>
-          {actionErrorMessage ? (
-            <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-              {actionErrorMessage}
-            </p>
-          ) : null}
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </>
   );
 }

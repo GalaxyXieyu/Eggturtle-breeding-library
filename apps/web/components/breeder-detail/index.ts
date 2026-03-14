@@ -1,5 +1,5 @@
 export { BreederInfoCard } from './BreederInfoCard';
-export { BreederImageGallery } from './BreederImageGallery';
+export { BreederHeroCarousel } from './BreederHeroCarousel';
 export { FamilyTreeView } from './FamilyTreeView';
 export { BreederEventTimeline } from './BreederEventTimeline';
 export { StatusPill } from './StatusPill';
