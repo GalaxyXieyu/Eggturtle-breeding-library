@@ -825,8 +825,10 @@ export class ProductCertificatesService {
 
     const sireCode =
       saleBatch?.sireCodeSnapshot ?? (await this.generatedAssetsSupportService.resolveCurrentMateCode(tenantId, product))
-    const [sireProduct, sireImageKey, damImageKey] = await Promise.all([
+    const damCode = this.generatedAssetsSupportService.normalizeOptionalCode(product.damCode)
+    const [sireProduct, damProduct, sireImageKey, damImageKey] = await Promise.all([
       this.generatedAssetsSupportService.findProductByCode(tenantId, sireCode),
+      damCode ? this.generatedAssetsSupportService.findProductByCode(tenantId, damCode) : Promise.resolve(null),
       sireCode ? this.generatedAssetsSupportService.findMainImageKeyByCode(tenantId, sireCode) : Promise.resolve(null),
       this.generatedAssetsSupportService.findMainImageKey(tenantId, product.id)
     ])
@@ -857,6 +859,7 @@ export class ProductCertificatesService {
       subjectMedia,
       seriesName,
       sireProduct,
+      damProduct,
       subjectImageKey,
       sireImageKey,
       damImageKey,
@@ -875,6 +878,16 @@ export class ProductCertificatesService {
     buyerAccountId?: string
     watermarkText?: string | null
   }): Promise<Buffer> {
+    // 预先解析父系和母系的系别名称
+    const [sireFamily, damFamily] = await Promise.all([
+      input.context.sireProduct?.seriesId
+        ? this.generatedAssetsSupportService.resolveSeriesName(input.context.tenantId, input.context.sireProduct.seriesId)
+        : Promise.resolve('未设定'),
+      input.context.damProduct?.seriesId
+        ? this.generatedAssetsSupportService.resolveSeriesName(input.context.tenantId, input.context.damProduct.seriesId)
+        : Promise.resolve(input.context.seriesName ?? '未设定')
+    ])
+
     const [subjectImage, sireImage, damImage, issuer, platformBranding] = await Promise.all([
       this.generatedAssetsSupportService.loadManagedImageBuffer(input.context.tenantId, input.context.subjectImageKey),
       this.generatedAssetsSupportService.loadManagedImageBuffer(input.context.tenantId, input.context.sireImageKey),
@@ -899,18 +912,20 @@ export class ProductCertificatesService {
       certNo: input.certNo,
       issuedOnText: this.generatedAssetsSupportService.formatDateYmd(input.issuedAt),
       issuedOnChineseText: this.generatedAssetsSupportService.formatDateChinese(input.issuedAt),
-      lineName:
-        input.context.saleBatch?.batchNo || input.context.product.name?.trim() || input.context.product.code,
-      lineCode: input.context.saleBatch?.batchNo || input.context.product.code,
-      lineFamily: input.context.seriesName ?? '未设定',
-      damName: input.context.product.name?.trim() || input.context.product.code || '未登记',
-      damCode: input.context.product.code || '未登记',
+      // 父系 (Sire) - 左侧
+      sireName: input.context.sireProduct?.name?.trim() || input.context.sireProduct?.code || input.context.saleBatch?.sireCodeSnapshot || '未登记',
       sireCode: input.context.sireProduct?.code || input.context.saleBatch?.sireCodeSnapshot || '未登记',
-      damCodeValue: input.context.product.code || '未登记',
+      sireFamily: sireFamily ?? '未设定',
+      // 母系 (Dam) - 右侧
+      damName: input.context.damProduct?.name?.trim() || input.context.product.damCode || '未登记',
+      damCode: input.context.product.damCode || '未登记',
+      damFamily: damFamily ?? '未设定',
+      // 祖代
       sireSireCode: input.context.sireProduct?.sireCode || '未登记',
       sireDamCode: input.context.sireProduct?.damCode || '未登记',
       damSireCode: input.context.product.sireCode || '未登记',
       damDamCode: input.context.product.damCode || '未登记',
+      // 交易信息
       buyerName: input.context.saleAllocation?.buyerName || input.buyerName?.trim() || '未登记',
       buyerAccountId: input.context.saleAllocation?.buyerAccountId || input.buyerAccountId?.trim() || '未填写',
       sellerName: issuer.name,

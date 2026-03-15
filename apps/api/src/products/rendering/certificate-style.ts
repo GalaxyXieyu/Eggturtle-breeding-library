@@ -102,13 +102,12 @@ export type CertificateStyleInput = {
   certNo: string;
   issuedOnText: string;
   issuedOnChineseText: string;
-  lineName: string;
-  lineCode: string;
-  lineFamily: string;
+  sireName: string;
+  sireCode: string;
+  sireFamily: string;
   damName: string;
   damCode: string;
-  sireCode: string;
-  damCodeValue: string;
+  damFamily: string;
   sireSireCode: string;
   sireDamCode: string;
   damSireCode: string;
@@ -279,7 +278,7 @@ export function buildCertificateStyleSvg(input: CertificateStyleInput): string {
   const lineageTitleY = LINEAGE_ROW.y - 18;
   const lineageLine1Y = LINEAGE_ROW.y + 18;
   const lineageLine2Y = LINEAGE_ROW.y + 46;
-  const parentCodeY = SIRE_SLOT.y + SIRE_SLOT.height + 30;
+  const parentCodeY = SIRE_SLOT.y + SIRE_SLOT.height + 68;
   const buyerInfoY = BOTTOM_ROW.y + 112;
   const sellerInfoY = BOTTOM_ROW.y + 172;
 
@@ -343,15 +342,15 @@ export function buildCertificateStyleSvg(input: CertificateStyleInput): string {
   <line x1="${PAGE_LAYOUT.content.x}" y1="${topDividerY}" x2="${PAGE_LAYOUT.content.x + PAGE_LAYOUT.content.width}" y2="${topDividerY}" stroke="#b79b74" stroke-width="1.6"/>
   <line x1="${PAGE_LAYOUT.content.x}" y1="${lineageDividerY}" x2="${PAGE_LAYOUT.content.x + PAGE_LAYOUT.content.width}" y2="${lineageDividerY}" stroke="#b79b74" stroke-width="1.3"/>
 
-  <text x="${leftSummaryCenterX}" y="${summaryTitleY}" text-anchor="middle" font-size="24" font-weight="600" fill="#2d2318" class="font-label">系别 (Line):</text>
-  <text x="${leftSummaryCenterX}" y="${summaryNameY}" text-anchor="middle" font-size="40" font-weight="700" fill="#2d2318" class="font-main">${esc(input.lineName)}</text>
-  <text x="${leftSummaryCenterX}" y="${summaryCodeY}" text-anchor="middle" font-size="24" fill="#564531" class="font-code">编号: ${esc(input.lineCode)}</text>
-  <text x="${leftSummaryCenterX}" y="${summaryFamilyY}" text-anchor="middle" font-size="24" fill="#564531" class="font-label">系别: ${esc(input.lineFamily)}</text>
+  <text x="${leftSummaryCenterX}" y="${summaryTitleY}" text-anchor="middle" font-size="24" font-weight="600" fill="#2d2318" class="font-label">父系:</text>
+  <text x="${leftSummaryCenterX}" y="${summaryNameY}" text-anchor="middle" font-size="40" font-weight="700" fill="#2d2318" class="font-main">${esc(input.sireCode)}</text>
+  <text x="${leftSummaryCenterX}" y="${summaryCodeY}" text-anchor="middle" font-size="24" fill="#564531" class="font-label">${esc(input.sireName)}</text>
+  <text x="${leftSummaryCenterX}" y="${summaryFamilyY}" text-anchor="middle" font-size="24" fill="#564531" class="font-label">系别: ${esc(input.sireFamily)}</text>
 
-  <text x="${rightSummaryCenterX}" y="${summaryTitleY}" text-anchor="middle" font-size="24" font-weight="600" fill="#2d2318" class="font-label">母系 (Dam):</text>
-  <text x="${rightSummaryCenterX}" y="${summaryNameY}" text-anchor="middle" font-size="40" font-weight="700" fill="#2d2318" class="font-main">${esc(input.damName)}</text>
-  <text x="${rightSummaryCenterX}" y="${summaryCodeY}" text-anchor="middle" font-size="24" fill="#564531" class="font-code">编号: ${esc(input.damCode)}</text>
-  <text x="${rightSummaryCenterX}" y="${summaryFamilyY}" text-anchor="middle" font-size="24" fill="#564531" class="font-label">系别: ${esc(input.lineFamily)}</text>
+  <text x="${rightSummaryCenterX}" y="${summaryTitleY}" text-anchor="middle" font-size="24" font-weight="600" fill="#2d2318" class="font-label">母系:</text>
+  <text x="${rightSummaryCenterX}" y="${summaryNameY}" text-anchor="middle" font-size="40" font-weight="700" fill="#2d2318" class="font-main">${esc(input.damCode)}</text>
+  <text x="${rightSummaryCenterX}" y="${summaryCodeY}" text-anchor="middle" font-size="24" fill="#564531" class="font-label">${esc(input.damName)}</text>
+  <text x="${rightSummaryCenterX}" y="${summaryFamilyY}" text-anchor="middle" font-size="24" fill="#564531" class="font-label">系别: ${esc(input.damFamily)}</text>
 
   <rect x="${subjectLabelBoxX}" y="${subjectLabelBoxY}" width="${subjectLabelBoxWidth}" height="${subjectLabelBoxHeight}" rx="10" fill="rgba(250,244,233,0.92)" stroke="#b79b74" stroke-width="1.2"/>
   <text x="${SIRE_SLOT.x + SIRE_SLOT.width / 2}" y="${SIRE_SLOT.y - 18}" text-anchor="middle" font-size="22" fill="#4b3a28" class="font-label">父龟影像</text>
@@ -364,8 +363,8 @@ export function buildCertificateStyleSvg(input: CertificateStyleInput): string {
   <rect x="${CERTIFICATE_SLOTS.sire.x}" y="${CERTIFICATE_SLOTS.sire.y}" width="${CERTIFICATE_SLOTS.sire.width}" height="${CERTIFICATE_SLOTS.sire.height}" fill="${panelFill}" stroke="none" rx="9"/>
   <rect x="${CERTIFICATE_SLOTS.dam.x}" y="${CERTIFICATE_SLOTS.dam.y}" width="${CERTIFICATE_SLOTS.dam.width}" height="${CERTIFICATE_SLOTS.dam.height}" fill="${panelFill}" stroke="none" rx="9"/>
 
-  <text x="${SIRE_SLOT.x + SIRE_SLOT.width / 2}" y="${parentCodeY}" text-anchor="middle" font-size="21" fill="#3f3122" class="font-code">公龟编号: ${esc(input.sireCode)}</text>
-  <text x="${DAM_SLOT.x + DAM_SLOT.width / 2}" y="${parentCodeY}" text-anchor="middle" font-size="21" fill="#3f3122" class="font-code">母龟编号: ${esc(input.damCodeValue)}</text>
+  <text x="${SIRE_SLOT.x + SIRE_SLOT.width / 2}" y="${parentCodeY}" text-anchor="middle" font-size="21" fill="#3f3122" class="font-code">${esc(input.sireCode)}</text>
+  <text x="${DAM_SLOT.x + DAM_SLOT.width / 2}" y="${parentCodeY}" text-anchor="middle" font-size="21" fill="#3f3122" class="font-code">${esc(input.damCode)}</text>
 
   <text x="${w / 2}" y="${lineageTitleY}" text-anchor="middle" font-size="32" font-weight="600" fill="#2c2117" class="font-title">祖代信息</text>
   <text x="${lineageLeftCenterX}" y="${lineageLine1Y}" text-anchor="middle" font-size="20" fill="#4f3f2d" class="font-code">祖父 (Sire&apos;s Sire): ${esc(input.sireSireCode)}</text>
