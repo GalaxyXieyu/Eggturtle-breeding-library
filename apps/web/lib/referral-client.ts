@@ -14,6 +14,7 @@ import { apiRequest } from '@/lib/api-client';
 
 const PENDING_REFERRAL_STORAGE_KEY = 'eggturtle.pending-referral-code:v1';
 const REFERRAL_PROMO_DISMISSED_KEY_PREFIX = 'eggturtle.referral-promo-dismissed:v1:';
+const REFERRAL_PROMO_SESSION_SEEN_KEY_PREFIX = 'eggturtle.referral-promo-session-seen:v1:';
 const REFERRAL_AUTH_NOTICE_STORAGE_KEY = 'eggturtle.referral-auth-notice:v1';
 
 function canUseStorage() {
@@ -71,6 +72,22 @@ export function markReferralPromoDismissed(tenantSlug: string): void {
   }
 
   window.localStorage.setItem(`${REFERRAL_PROMO_DISMISSED_KEY_PREFIX}${tenantSlug}`, '1');
+}
+
+export function isReferralPromoSeenInSession(tenantSlug: string): boolean {
+  if (!tenantSlug || !canUseStorage()) {
+    return false;
+  }
+
+  return window.sessionStorage.getItem(`${REFERRAL_PROMO_SESSION_SEEN_KEY_PREFIX}${tenantSlug}`) === '1';
+}
+
+export function markReferralPromoSeenInSession(tenantSlug: string): void {
+  if (!tenantSlug || !canUseStorage()) {
+    return;
+  }
+
+  window.sessionStorage.setItem(`${REFERRAL_PROMO_SESSION_SEEN_KEY_PREFIX}${tenantSlug}`, '1');
 }
 
 export function stashReferralAuthNotice(message: string): void {

@@ -3,23 +3,22 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Copy, Sparkles, X } from 'lucide-react';
+import { Sparkles, X } from 'lucide-react';
 
-import { copyTextWithFallback } from '@/lib/browser-share';
 import { formatApiError } from '@/lib/error-utils';
 import {
   fetchMyReferralOverview,
   isReferralPromoDismissed,
+  isReferralPromoSeenInSession,
   markReferralPromoDismissed,
-  resolveReferralShareUrl,
+  markReferralPromoSeenInSession,
 } from '@/lib/referral-client';
 
-const OPEN_DELAY_MS = 60_000;
+const OPEN_DELAY_MS = 800;
 
 export default function ReferralFirstVisitModal({ tenantSlug }: { tenantSlug: string }) {
   const [open, setOpen] = useState(false);
   const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [overview, setOverview] = useState<Awaited<ReturnType<typeof fetchMyReferralOverview>> | null>(null);
 
@@ -30,11 +29,16 @@ export default function ReferralFirstVisitModal({ tenantSlug }: { tenantSlug: st
   }, []);
 
   useEffect(() => {
-    if (!tenantSlug || isReferralPromoDismissed(tenantSlug)) {
+    if (
+      !tenantSlug ||
+      isReferralPromoDismissed(tenantSlug) ||
+      isReferralPromoSeenInSession(tenantSlug)
+    ) {
       return;
     }
 
     const timer = window.setTimeout(() => {
+      markReferralPromoSeenInSession(tenantSlug);
       setOpen(true);
     }, OPEN_DELAY_MS);
 
@@ -72,50 +76,31 @@ export default function ReferralFirstVisitModal({ tenantSlug }: { tenantSlug: st
   }, [open, overview]);
 
   useEffect(() => {
-    if (!notice) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => setNotice(null), 2500);
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, [notice]);
-
-  useEffect(() => {
     if (!open) {
       return;
     }
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
-        markReferralPromoDismissed(tenantSlug);
         setOpen(false);
       }
     }
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open, tenantSlug]);
+  }, [open]);
 
-  const shareUrl = useMemo(() => resolveReferralShareUrl(overview), [overview]);
-  const firstUploadDays = overview?.rules.firstProductInviteeDays ?? 7;
-
-  async function handleCopy() {
-    if (!shareUrl) {
-      return;
-    }
-
-    const copied = await copyTextWithFallback(shareUrl);
-    if (copied) {
-      setNotice('邀请链接已复制。');
-      return;
-    }
-
-    setError('复制失败，请稍后再试。');
-  }
+  const firstUploadDays = useMemo(() => overview?.rules.firstProductInviteeDays ?? 7, [overview]);
+  const monthAwardedText = useMemo(
+    () => (overview ? `${overview.monthAwardedDays}/${overview.rules.monthlyCapDays}` : '0/60'),
+    [overview],
+  );
 
   function handleClose() {
+    setOpen(false);
+  }
+
+  function handleDismissForever() {
     markReferralPromoDismissed(tenantSlug);
     setOpen(false);
   }
@@ -165,36 +150,27 @@ export default function ReferralFirstVisitModal({ tenantSlug }: { tenantSlug: st
           </div>
           <div className="rounded-2xl bg-neutral-50 px-3 py-2">
             <p className="text-[11px] text-neutral-500">本月上限</p>
-            <p className="mt-1 text-sm font-semibold text-neutral-900">
-              {overview ? `${overview.monthAwardedDays}/${overview.rules.monthlyCapDays}` : '0/60'}
-            </p>
+            <p className="mt-1 text-sm font-semibold text-neutral-900">{monthAwardedText}</p>
           </div>
         </div>
 
         <div className="mt-5 flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => void handleCopy()}
-            disabled={!shareUrl}
-            className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-neutral-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-60"
+            onClick={handleDismissForever}
+            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm font-semibold text-neutral-900 transition hover:bg-neutral-50"
           >
-            <Copy size={14} />
-            复制邀请链接
+            不再提醒
           </button>
           <Link
             href={`/app/${tenantSlug}/account?tab=referral`}
             onClick={handleClose}
-            className="inline-flex min-h-11 items-center justify-center rounded-full border border-neutral-900 bg-white px-4 py-2 text-sm font-semibold text-neutral-900 transition hover:bg-neutral-50"
+            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full bg-neutral-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-neutral-800"
           >
-            去邀请中心
+            立即邀请
           </Link>
         </div>
 
-        {notice ? (
-          <p className="mt-2 text-xs text-emerald-700" aria-live="polite">
-            {notice}
-          </p>
-        ) : null}
         {error ? <p className="mt-2 text-xs text-amber-700">{error}</p> : null}
       </div>
     </div>,

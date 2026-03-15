@@ -17,6 +17,7 @@ import { LayoutDashboard, Package, Layers, Share2, LogOut, UserRound } from 'luc
 import { UiPreferenceControls, useUiPreferences } from '@/components/ui-preferences';
 import { Button } from '@/components/ui/button';
 import ReferralAuthNotice from '@/components/referral-auth-notice';
+import ReferralFirstVisitModal from '@/components/referral-first-visit-modal';
 import TenantMobileActionStack from '@/components/tenant-mobile-action-stack';
 import TenantFloatingShareButton from '@/components/tenant-floating-share-button';
 import TenantFloatingPreferences from '@/components/tenant-floating-preferences';
@@ -403,6 +404,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
               )}
             >
               <ReferralAuthNotice />
+              <ReferralFirstVisitModal tenantSlug={tenantSlug} />
               {shouldBlockOtherPages ? (
                 <div className="rounded-2xl border border-[#FFD400]/70 bg-[#FFF7D5] px-4 py-3 text-sm font-semibold text-neutral-900">
                   正在跳转到信息补全页，请先完成用户名、密码和密保设置。

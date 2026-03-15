@@ -269,18 +269,6 @@ export default function SubscriptionPageContent({ embedded = false }: Subscripti
     setError('复制失败，请手动复制当前页面链接后到微信打开。');
   }, []);
 
-  const handlePlanAction = useCallback(
-    (plan: PayableTenantSubscriptionPlan, entryPoint: PurchaseEntryPoint) => {
-      if (isWechat === false) {
-        void copyCurrentPageLinkForWechat();
-        return;
-      }
-
-      openPurchaseDialog(plan, entryPoint);
-    },
-    [copyCurrentPageLinkForWechat, isWechat, openPurchaseDialog],
-  );
-
   const closePurchaseDialog = useCallback(
     (reason: string) => {
       const session = purchaseDialogSessionRef.current;
@@ -847,7 +835,6 @@ export default function SubscriptionPageContent({ embedded = false }: Subscripti
                     const selected = selectedEmbeddedPlan === plan;
                     const meta = PLAN_META[plan];
                     const isCurrent = currentPlan === plan;
-                    const isPayable = plan !== 'FREE';
                     const isRecommended = plan === recommendedPlan;
                     const monthlyPrice = plan === 'FREE' ? 0 : SUBSCRIPTION_PRICE_BOOK[plan][30];
                     const badgeLabel = isCurrent ? '当前' : isRecommended ? '推荐' : meta.badge;
