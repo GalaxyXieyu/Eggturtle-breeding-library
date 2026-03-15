@@ -6,7 +6,7 @@
 
 /* 统一悬浮按钮外观（与 TenantFloatingShareButton / PublicFloatingActions 一致） */
 .tenant-fab-button {
-  @apply flex h-11 w-11 items-center justify-center rounded-full border border-black/10 bg-neutral-900 text-white shadow-[0_14px_30px_rgba(0,0,0,0.18)] backdrop-blur transition hover:scale-[1.05] hover:bg-neutral-800 hover:shadow-[0_10px_24px_rgba(0,0,0,0.2)] [&_svg]:text-white;
+  @apply flex h-11 w-11 items-center justify-center rounded-full border border-black/10 bg-neutral-900 text-white shadow-[0_14px_30px_rgba(0,0,0,0.18)] backdrop-blur transition hover:scale-[1.05] hover:bg-neutral-800 hover:shadow-[0_10px_24px_rgba(0,0,0,0.2)] dark:border-white/10 dark:bg-slate-900 dark:text-white dark:hover:bg-slate-800 dark:hover:text-white [&_svg]:text-current;
 }
 
 @media (min-width: 1024px) {
