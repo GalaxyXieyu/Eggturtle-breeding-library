@@ -85,6 +85,8 @@ export const ACCOUNT_PAGE_MESSAGES: Record<
     loading: string;
     missingTenant: string;
     profileUpdated: string;
+    avatarUpdated: string;
+    avatarRemoved: string;
     passwordUpdated: string;
     securityUpdated: string;
     phoneInvalid: string;
@@ -106,6 +108,8 @@ export const ACCOUNT_PAGE_MESSAGES: Record<
     loading: '正在加载账户信息…',
     missingTenant: '缺少 tenantSlug。',
     profileUpdated: '账户资料已更新。',
+    avatarUpdated: '头像已更新。',
+    avatarRemoved: '头像已移除。',
     passwordUpdated: '密码已更新。',
     securityUpdated: '密保信息已更新。',
     phoneInvalid: '请输入正确的 11 位手机号。',
@@ -126,6 +130,8 @@ export const ACCOUNT_PAGE_MESSAGES: Record<
     loading: 'Loading account details…',
     missingTenant: 'Missing tenantSlug.',
     profileUpdated: 'Profile updated.',
+    avatarUpdated: 'Avatar updated.',
+    avatarRemoved: 'Avatar removed.',
     passwordUpdated: 'Password updated.',
     securityUpdated: 'Security info updated.',
     phoneInvalid: 'Please enter a valid 11-digit phone number.',
@@ -150,6 +156,15 @@ export const ACCOUNT_PROFILE_MESSAGES: Record<
     title: string;
     description: string;
     loginAccountLabel: string;
+    avatarLabel: string;
+    avatarDetail: string;
+    avatarEmpty: string;
+    avatarHint: string;
+    avatarTapHint: string;
+    uploadAvatar: string;
+    uploadingAvatar: string;
+    removeAvatar: string;
+    removingAvatar: string;
     displayNameLabel: string;
     displayNameEmpty: string;
     displayNamePlaceholder: string;
@@ -195,12 +210,32 @@ export const ACCOUNT_PROFILE_MESSAGES: Record<
     passwordSummaryUpdated: (value: string) => string;
     securitySummaryEmpty: string;
     createdAt: (value: string) => string;
+    subscriptionDetailAction: string;
+    subscriptionActivationAction: string;
+    subscriptionWechatAction: string;
+    subscriptionDaysLeft: (value: number) => string;
+    subscriptionLongTerm: string;
+    subscriptionExpired: string;
+    subscriptionQuotaLabel: string;
+    subscriptionStorageQuota: string;
+    subscriptionImageQuota: string;
+    subscriptionShareQuota: string;
+    subscriptionUnlimited: string;
   }
 > = {
   zh: {
     title: '我的资料',
     description: '先看当前信息，再点某一项进去修改。',
     loginAccountLabel: '登录账号',
+    avatarLabel: '个人头像',
+    avatarDetail: '分享海报、公开页和导航都会优先使用这张头像。',
+    avatarEmpty: '未设置头像',
+    avatarHint: '建议上传清晰正方形头像，支持裁切后再保存。',
+    avatarTapHint: '点击头像上传或更换',
+    uploadAvatar: '上传头像',
+    uploadingAvatar: '上传中…',
+    removeAvatar: '移除头像',
+    removingAvatar: '移除中…',
     displayNameLabel: '显示名称 / 昵称',
     displayNameEmpty: '未设置显示名称',
     displayNamePlaceholder: '例如：Siri 的龟舍',
@@ -246,11 +281,31 @@ export const ACCOUNT_PROFILE_MESSAGES: Record<
     passwordSummaryUpdated: (value) => `最近更新：${value}`,
     securitySummaryEmpty: '尚未设置密保',
     createdAt: (value) => `创建于 ${value}`,
+    subscriptionDetailAction: '套餐',
+    subscriptionActivationAction: '激活码',
+    subscriptionWechatAction: '微信支付',
+    subscriptionDaysLeft: (value) => `剩余 ${value} 天`,
+    subscriptionLongTerm: '长期可用',
+    subscriptionExpired: '已到期',
+    subscriptionQuotaLabel: '套餐额度',
+    subscriptionStorageQuota: '存储',
+    subscriptionImageQuota: '图片',
+    subscriptionShareQuota: '分享',
+    subscriptionUnlimited: '不限',
   },
   en: {
     title: 'My profile',
     description: 'Review your info first, then tap a section to edit.',
     loginAccountLabel: 'Login account',
+    avatarLabel: 'Avatar',
+    avatarDetail: 'Used across share posters, public pages, and the navigation.',
+    avatarEmpty: 'No avatar',
+    avatarHint: 'Upload a clear square image. You can crop it before saving.',
+    avatarTapHint: 'Tap avatar to upload or replace.',
+    uploadAvatar: 'Upload avatar',
+    uploadingAvatar: 'Uploading…',
+    removeAvatar: 'Remove avatar',
+    removingAvatar: 'Removing…',
     displayNameLabel: 'Display name',
     displayNameEmpty: 'No display name',
     displayNamePlaceholder: 'e.g., Siri Turtle Farm',
@@ -296,6 +351,17 @@ export const ACCOUNT_PROFILE_MESSAGES: Record<
     passwordSummaryUpdated: (value) => `Last updated: ${value}`,
     securitySummaryEmpty: 'Security info not set',
     createdAt: (value) => `Created ${value}`,
+    subscriptionDetailAction: 'Plan',
+    subscriptionActivationAction: 'Activation code',
+    subscriptionWechatAction: 'WeChat Pay',
+    subscriptionDaysLeft: (value) => `${value} days left`,
+    subscriptionLongTerm: 'Always available',
+    subscriptionExpired: 'Expired',
+    subscriptionQuotaLabel: 'Quota',
+    subscriptionStorageQuota: 'Storage',
+    subscriptionImageQuota: 'Images',
+    subscriptionShareQuota: 'Shares',
+    subscriptionUnlimited: 'Unlimited',
   },
 };
 
@@ -483,7 +549,8 @@ export const ACCOUNT_REFERRAL_MESSAGES: Record<
     firstUploadAt: (value) => `首只乌龟上传时间：${value}`,
     uploadPending: '尚未完成首只乌龟上传',
     rewardAwardedAt: (value) => `奖励到账时间：${value}`,
-    rewardDelta: (referrerDays, inviteeDays) => `邀请人 +${referrerDays} 天，被邀请者 +${inviteeDays} 天`,
+    rewardDelta: (referrerDays, inviteeDays) =>
+      `邀请人 +${referrerDays} 天，被邀请者 +${inviteeDays} 天`,
     rewardClipped: '本次奖励受月上限裁剪。',
     rewardCapped: '本月奖励已达上限。',
     statusBound: '已绑定',
@@ -511,25 +578,31 @@ export const ACCOUNT_REFERRAL_MESSAGES: Record<
     people: 'people',
     shareLinkLabel: 'My invite link',
     copyLink: 'Copy link',
-    copySuccess: (days) => `Invite link copied. Both sides get ${days} days after the first upload.`,
+    copySuccess: (days) =>
+      `Invite link copied. Both sides get ${days} days after the first upload.`,
     copyFailed: 'Copy failed. Please try again.',
     bindTitle: 'Bind inviter',
     bindingCode: (code) => `Bound invite code ${code}`,
     bindWindow: (hours) => `Manual binding is available once within ${hours} hours after sign-up`,
-    bindPlaceholder: 'Enter your friend\'s invite code',
+    bindPlaceholder: "Enter your friend's invite code",
     binding: 'Binding…',
     bindConfirm: 'Confirm binding',
     progressTitle: 'Invite progress',
-    progressDesc: 'The invite link is locked at registration. Reward is granted after the first turtle upload.',
-    progressEmpty: 'No invite records yet. Copy your invite link and ask your friend to sign up from the public page.',
+    progressDesc:
+      'The invite link is locked at registration. Reward is granted after the first turtle upload.',
+    progressEmpty:
+      'No invite records yet. Copy your invite link and ask your friend to sign up from the public page.',
     rewardsTitle: 'Reward history',
-    rewardsDesc: 'Shows historical first-payment/renewal rewards together with the new first-upload reward.',
-    rewardsEmpty: 'No reward history yet. Rewards start after invited friends sign up and complete their first upload.',
+    rewardsDesc:
+      'Shows historical first-payment/renewal rewards together with the new first-upload reward.',
+    rewardsEmpty:
+      'No reward history yet. Rewards start after invited friends sign up and complete their first upload.',
     inviteCode: (code) => `Invite code ${code}`,
     firstUploadAt: (value) => `First upload: ${value}`,
     uploadPending: 'First upload not completed yet',
     rewardAwardedAt: (value) => `Reward granted: ${value}`,
-    rewardDelta: (referrerDays, inviteeDays) => `Inviter +${referrerDays} days, invitee +${inviteeDays} days`,
+    rewardDelta: (referrerDays, inviteeDays) =>
+      `Inviter +${referrerDays} days, invitee +${inviteeDays} days`,
     rewardClipped: 'This reward was clipped by the monthly cap.',
     rewardCapped: 'The monthly reward cap has been reached.',
     statusBound: 'Bound',

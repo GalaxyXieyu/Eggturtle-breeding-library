@@ -3,9 +3,10 @@ import {
   publicSharePresentationSchema,
   sharePresentationOverrideSchema,
   tenantSharePresentationSchema,
+  tenantShareAvatarPresetSchema,
   type PublicSharePresentation,
   type SharePresentationOverride,
-  type TenantSharePresentation
+  type TenantSharePresentation,
 } from '@eggturtle/shared';
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
@@ -39,14 +40,14 @@ export class TenantSharePresentationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly brandingService: BrandingService,
-    @Inject(STORAGE_PROVIDER_TOKEN) private readonly storageProvider: StorageProvider
+    @Inject(STORAGE_PROVIDER_TOKEN) private readonly storageProvider: StorageProvider,
   ) {}
 
   async getTenantTemplate(tenantId: string): Promise<TenantSharePresentation> {
     const config = await this.prisma.tenantSharePresentationConfig.findUnique({
       where: {
-        tenantId
-      }
+        tenantId,
+      },
     });
 
     if (!config) {
@@ -56,61 +57,68 @@ export class TenantSharePresentationService {
     return {
       feedTitle: this.normalizeNullableShortText(config.feedTitle),
       feedSubtitle: this.normalizeNullableText(config.feedSubtitle),
+      avatarPreset: this.normalizeAvatarPreset(config.avatarPreset),
       brandPrimary: this.normalizeColorToken(config.brandPrimary),
       brandSecondary: this.normalizeColorToken(config.brandSecondary),
       heroImages: this.normalizeHeroImages(config.heroImages),
       showWechatBlock: config.showWechatBlock,
       wechatQrImageUrl: this.normalizeNullableAssetUrl(config.wechatQrImageUrl),
-      wechatId: this.normalizeNullableWechatId(config.wechatId)
+      wechatId: this.normalizeNullableWechatId(config.wechatId),
     };
   }
 
-  async upsertTenantTemplate(tenantId: string, presentation: TenantSharePresentation): Promise<TenantSharePresentation> {
+  async upsertTenantTemplate(
+    tenantId: string,
+    presentation: TenantSharePresentation,
+  ): Promise<TenantSharePresentation> {
     const normalized = tenantSharePresentationSchema.parse(presentation);
 
     const config = await this.prisma.tenantSharePresentationConfig.upsert({
       where: {
-        tenantId
+        tenantId,
       },
       create: {
         tenantId,
         feedTitle: this.normalizeNullableShortText(normalized.feedTitle),
         feedSubtitle: this.normalizeNullableText(normalized.feedSubtitle),
+        avatarPreset: this.normalizeAvatarPreset(normalized.avatarPreset),
         brandPrimary: this.normalizeColorToken(normalized.brandPrimary),
         brandSecondary: this.normalizeColorToken(normalized.brandSecondary),
         heroImages: this.toHeroImagesJson(normalized.heroImages),
         showWechatBlock: normalized.showWechatBlock,
         wechatQrImageUrl: this.normalizeNullableAssetUrl(normalized.wechatQrImageUrl),
-        wechatId: this.normalizeNullableWechatId(normalized.wechatId)
+        wechatId: this.normalizeNullableWechatId(normalized.wechatId),
       },
       update: {
         feedTitle: this.normalizeNullableShortText(normalized.feedTitle),
         feedSubtitle: this.normalizeNullableText(normalized.feedSubtitle),
+        avatarPreset: this.normalizeAvatarPreset(normalized.avatarPreset),
         brandPrimary: this.normalizeColorToken(normalized.brandPrimary),
         brandSecondary: this.normalizeColorToken(normalized.brandSecondary),
         heroImages: this.toHeroImagesJson(normalized.heroImages),
         showWechatBlock: normalized.showWechatBlock,
         wechatQrImageUrl: this.normalizeNullableAssetUrl(normalized.wechatQrImageUrl),
-        wechatId: this.normalizeNullableWechatId(normalized.wechatId)
-      }
+        wechatId: this.normalizeNullableWechatId(normalized.wechatId),
+      },
     });
 
     return {
       feedTitle: this.normalizeNullableShortText(config.feedTitle),
       feedSubtitle: this.normalizeNullableText(config.feedSubtitle),
+      avatarPreset: this.normalizeAvatarPreset(config.avatarPreset),
       brandPrimary: this.normalizeColorToken(config.brandPrimary),
       brandSecondary: this.normalizeColorToken(config.brandSecondary),
       heroImages: this.normalizeHeroImages(config.heroImages),
       showWechatBlock: config.showWechatBlock,
       wechatQrImageUrl: this.normalizeNullableAssetUrl(config.wechatQrImageUrl),
-      wechatId: this.normalizeNullableWechatId(config.wechatId)
+      wechatId: this.normalizeNullableWechatId(config.wechatId),
     };
   }
 
   async uploadImage(
     tenantId: string,
     actorUserId: string,
-    file: UploadedBinaryFile
+    file: UploadedBinaryFile,
   ): Promise<UploadedSharePresentationAsset> {
     const contentType = file.mimetype?.trim() || 'application/octet-stream';
     if (!contentType.startsWith('image/')) {
@@ -127,8 +135,8 @@ export class TenantSharePresentationService {
       metadata: {
         tenantId,
         uploadedBy: actorUserId,
-        source: 'tenant-share-presentation.upload'
-      }
+        source: 'tenant-share-presentation.upload',
+      },
     });
 
     const url = uploadResult.url.startsWith('s3://')
@@ -139,20 +147,21 @@ export class TenantSharePresentationService {
       key: uploadResult.key,
       url,
       contentType: uploadResult.contentType,
-      sizeBytes: String(file.buffer.length)
+      sizeBytes: String(file.buffer.length),
     };
   }
 
   async resolvePublicPresentation(input: {
     tenantId: string;
     tenantName: string;
+    actorUserId: string;
     overrideRaw: Prisma.JsonValue | null;
   }): Promise<PublicSharePresentation> {
     const template = await this.getTenantTemplate(input.tenantId);
     const override = this.parseOverride(input.overrideRaw);
     const defaultBranding = await this.brandingService.resolveTenantPublicCopy({
       tenantId: input.tenantId,
-      tenantName: input.tenantName
+      tenantName: input.tenantName,
     });
     const defaultFeedTitle = defaultBranding.publicTitle;
     const defaultFeedSubtitle = defaultBranding.publicSubtitle;
@@ -162,7 +171,7 @@ export class TenantSharePresentationService {
       key: 'feedTitle',
       templateValue: template.feedTitle,
       defaultValue: defaultFeedTitle,
-      normalize: (value) => this.normalizeNullableShortText(value)
+      normalize: (value) => this.normalizeNullableShortText(value),
     });
 
     const feedSubtitle = this.resolveTextField({
@@ -170,27 +179,33 @@ export class TenantSharePresentationService {
       key: 'feedSubtitle',
       templateValue: template.feedSubtitle,
       defaultValue: defaultFeedSubtitle,
-      normalize: (value) => this.normalizeNullableText(value)
+      normalize: (value) => this.normalizeNullableText(value),
     });
+
+    const avatarPreset = this.resolveNullableAvatarPreset({
+      override,
+      templateValue: template.avatarPreset,
+    });
+    const avatarUrl = await this.resolveUserAvatarUrl(input.actorUserId);
 
     const brandPrimary = this.resolveColorToken({
       override,
       key: 'brandPrimary',
       templateValue: template.brandPrimary,
-      defaultValue: DEFAULT_BRAND_PRIMARY
+      defaultValue: DEFAULT_BRAND_PRIMARY,
     });
 
     const brandSecondary = this.resolveColorToken({
       override,
       key: 'brandSecondary',
       templateValue: template.brandSecondary,
-      defaultValue: DEFAULT_BRAND_SECONDARY
+      defaultValue: DEFAULT_BRAND_SECONDARY,
     });
 
     const heroImages = this.resolveHeroImages({
       override,
       templateValue: template.heroImages,
-      defaultValue: DEFAULT_HERO_IMAGES
+      defaultValue: DEFAULT_HERO_IMAGES,
     });
 
     const showWechatBlock = this.resolveShowWechatBlock(override, template.showWechatBlock);
@@ -198,35 +213,39 @@ export class TenantSharePresentationService {
       override,
       key: 'wechatQrImageUrl',
       templateValue: template.wechatQrImageUrl,
-      normalize: (value) => this.normalizeNullableAssetUrl(value)
+      normalize: (value) => this.normalizeNullableAssetUrl(value),
     });
     const wechatId = this.resolveNullableField({
       override,
       key: 'wechatId',
       templateValue: template.wechatId,
-      normalize: (value) => this.normalizeNullableWechatId(value)
+      normalize: (value) => this.normalizeNullableWechatId(value),
     });
 
     return publicSharePresentationSchema.parse({
       feedTitle,
       feedSubtitle,
+      identity: {
+        avatarPreset,
+        avatarUrl,
+      },
       theme: {
         brandPrimary,
-        brandSecondary
+        brandSecondary,
       },
       hero: {
-        images: heroImages
+        images: heroImages,
       },
       contact: {
         showWechatBlock,
         wechatQrImageUrl,
-        wechatId
-      }
+        wechatId,
+      },
     });
   }
 
   toSharePresentationOverrideJson(
-    override: SharePresentationOverride | null | undefined
+    override: SharePresentationOverride | null | undefined,
   ): Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput | undefined {
     if (typeof override === 'undefined') {
       return undefined;
@@ -245,6 +264,10 @@ export class TenantSharePresentationService {
 
     if (this.hasOwn(normalized, 'feedSubtitle')) {
       output.feedSubtitle = this.normalizeNullableText(normalized.feedSubtitle ?? null);
+    }
+
+    if (this.hasOwn(normalized, 'avatarPreset')) {
+      output.avatarPreset = this.normalizeAvatarPreset(normalized.avatarPreset ?? null);
     }
 
     if (this.hasOwn(normalized, 'brandPrimary')) {
@@ -282,12 +305,13 @@ export class TenantSharePresentationService {
     return {
       feedTitle: null,
       feedSubtitle: null,
+      avatarPreset: null,
       brandPrimary: null,
       brandSecondary: null,
       heroImages: [],
       showWechatBlock: DEFAULT_WECHAT_BLOCK_VISIBLE,
       wechatQrImageUrl: null,
-      wechatId: null
+      wechatId: null,
     };
   }
 
@@ -356,7 +380,10 @@ export class TenantSharePresentationService {
     return input.defaultValue;
   }
 
-  private resolveShowWechatBlock(override: SharePresentationOverride, templateValue: boolean): boolean {
+  private resolveShowWechatBlock(
+    override: SharePresentationOverride,
+    templateValue: boolean,
+  ): boolean {
     if (this.hasOwn(override, 'showWechatBlock')) {
       return Boolean(override.showWechatBlock);
     }
@@ -375,6 +402,88 @@ export class TenantSharePresentationService {
     }
 
     return input.normalize(input.templateValue);
+  }
+
+  private resolveNullableAvatarPreset(input: {
+    override: SharePresentationOverride;
+    templateValue: string | null;
+  }) {
+    if (this.hasOwn(input.override, 'avatarPreset')) {
+      return this.normalizeAvatarPreset(input.override.avatarPreset ?? null);
+    }
+
+    return this.normalizeAvatarPreset(input.templateValue);
+  }
+
+  private async resolveUserAvatarUrl(userId: string): Promise<string | null> {
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+      select: {
+        avatarUrl: true,
+      },
+    });
+
+    return this.normalizeUserAvatarUrl(user?.avatarUrl ?? null);
+  }
+
+  private normalizeUserAvatarUrl(value: string | null | undefined): string | null {
+    const normalized = value?.trim();
+    if (!normalized) {
+      return null;
+    }
+
+    if (/^https?:\/\//i.test(normalized)) {
+      return normalized;
+    }
+
+    const storageKey = this.extractUploadStorageKey(normalized);
+    if (storageKey?.includes('/user-avatar/')) {
+      return `/me/avatar/assets?key=${encodeURIComponent(storageKey)}`;
+    }
+
+    return this.normalizeNullableAssetUrl(normalized);
+  }
+
+  private extractUploadStorageKey(value: string): string | null {
+    try {
+      const parsed = new URL(value, 'http://localhost');
+      if (parsed.pathname === '/me/avatar/assets') {
+        return this.normalizeStorageKey(parsed.searchParams.get('key'));
+      }
+
+      const uploadPublicBaseUrl = (process.env.UPLOAD_PUBLIC_BASE_URL ?? '/uploads').replace(
+        /\/+$/,
+        '',
+      );
+      if (
+        parsed.pathname === uploadPublicBaseUrl ||
+        !parsed.pathname.startsWith(`${uploadPublicBaseUrl}/`)
+      ) {
+        return null;
+      }
+
+      return this.normalizeStorageKey(
+        decodeURIComponent(parsed.pathname.slice(uploadPublicBaseUrl.length + 1)),
+      );
+    } catch {
+      return null;
+    }
+  }
+
+  private normalizeStorageKey(rawKey: string | null | undefined): string | null {
+    const key = rawKey?.replace(/\\/g, '/').replace(/^\/+/, '').trim();
+    if (!key) {
+      return null;
+    }
+
+    const segments = key.split('/').filter((segment) => segment.length > 0);
+    if (segments.length < 2 || segments.some((segment) => segment === '..')) {
+      return null;
+    }
+
+    return segments.join('/');
   }
 
   private normalizeHeroImages(raw: Prisma.JsonValue | string[]): string[] {
@@ -418,6 +527,16 @@ export class TenantSharePresentationService {
     }
 
     return normalized.slice(0, 240);
+  }
+
+  private normalizeAvatarPreset(value: string | null | undefined) {
+    const normalized = value?.trim() ?? null;
+    if (!normalized) {
+      return null;
+    }
+
+    const parsed = tenantShareAvatarPresetSchema.safeParse(normalized);
+    return parsed.success ? parsed.data : null;
   }
 
   private normalizeNullableWechatId(value: string | null | undefined): string | null {
@@ -473,16 +592,13 @@ export class TenantSharePresentationService {
       'image/png': '.png',
       'image/webp': '.webp',
       'image/gif': '.gif',
-      'image/svg+xml': '.svg'
+      'image/svg+xml': '.svg',
     };
 
     return extensionMap[mimeType] ?? '';
   }
 
-  private hasOwn<Key extends string>(
-    value: object,
-    key: Key
-  ): value is Record<Key, unknown> {
+  private hasOwn<Key extends string>(value: object, key: Key): value is Record<Key, unknown> {
     return Object.prototype.hasOwnProperty.call(value, key);
   }
 }

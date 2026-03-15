@@ -142,7 +142,7 @@ export default function BreederDetailPage() {
   const [activeImageId, setActiveImageId] = useState<string | null>(null);
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
   const [eventFilter, setEventFilter] = useState<'all' | 'mating' | 'egg' | 'change_mate'>('all');
-  const [eventExpanded, setEventExpanded] = useState(true);
+  const [eventExpanded, setEventExpanded] = useState(false);
   const [generatingCouplePhoto, setGeneratingCouplePhoto] = useState(false);
   const [quickActionError, setQuickActionError] = useState<string | null>(null);
   const [couplePhotoPreviewPath, setCouplePhotoPreviewPath] = useState<string | null>(null);

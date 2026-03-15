@@ -49,3 +49,9 @@
 
 - [openclaw/openclaw-daily-summary.md](./openclaw/openclaw-daily-summary.md)
   - Eggturtle 每日 22:30 OpenClaw 日报方案、脚本与 cron 注册方式
+- [openclaw/workflow-and-assets-inventory.md](./openclaw/workflow-and-assets-inventory.md)
+  - Eggturtle 当前唯一维护的任务流程逻辑文档（用户动作 / 自动编排 / SSOT / skills 分工）
+- [openclaw/project-sop-adapter-template.md](./openclaw/project-sop-adapter-template.md)
+  - 可复用到任意项目的 SOP Adapter 模板（路径 / 命令 / Prompt / skills / 风险位）
+- [openclaw/low-cognitive-load-sop-refactor.md](./openclaw/low-cognitive-load-sop-refactor.md)
+  - 已归档：核心结论已归并进唯一逻辑文档

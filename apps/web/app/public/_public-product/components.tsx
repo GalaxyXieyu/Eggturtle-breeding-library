@@ -352,6 +352,7 @@ export function BreederCarousel({
   shareToken,
   shareQuery,
   homeHref,
+  watermarkText,
 }: {
   breeder: Breeder;
   series: Series | null;
@@ -359,6 +360,7 @@ export function BreederCarousel({
   shareToken: string;
   shareQuery?: string;
   homeHref?: string;
+  watermarkText?: string | null;
 }) {
   const router = useRouter();
   const [slide, setSlide] = useState(series?.description ? 1 : 0);
@@ -469,6 +471,8 @@ export function BreederCarousel({
               onError={() => setActiveImageLoaded(true)}
             />
 
+            <PublicDetailWatermark text={watermarkText} />
+
             {breeder.images.length > 1 ? (
               <>
                 <button
@@ -547,6 +551,38 @@ export function BreederCarousel({
           </div>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function PublicDetailWatermark({ text }: { text?: string | null }) {
+  const normalizedText = text?.trim();
+  if (!normalizedText) {
+    return null;
+  }
+
+  const rows = Array.from({ length: 5 }, (_, rowIndex) => ({
+    id: rowIndex,
+    content: Array.from({ length: 3 }, () => normalizedText).join('   '),
+    offsetClass: rowIndex % 2 === 0 ? '-translate-x-4' : 'translate-x-6',
+  }));
+
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+      <div className="absolute inset-[-10%] flex -rotate-[20deg] flex-col justify-around">
+        {rows.map((row) => (
+          <div
+            key={row.id}
+            className={[
+              'select-none whitespace-nowrap text-[15px] font-semibold tracking-[0.24em] text-white/[0.13] sm:text-[19px]',
+              '[text-shadow:0_1px_2px_rgba(15,23,42,0.08)]',
+              row.offsetClass,
+            ].join(' ')}
+          >
+            {row.content}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import type { PublicSharePresentation } from '@eggturtle/shared';
+import type { PublicShareMerchantWatermark, PublicSharePresentation } from '@eggturtle/shared';
 import { redirect } from 'next/navigation';
 
 import {
@@ -34,7 +34,10 @@ export type PublicShareProductDetailViewModel = {
   shareQuery?: string;
   breederId: string;
   homeHref?: string;
+  tenantSlug?: string;
+  tenantName?: string;
   presentation?: PublicSharePresentation | null;
+  merchantWatermark?: PublicShareMerchantWatermark | null;
 };
 
 export type PublicShareProductDetailLoadResult =
@@ -125,7 +128,10 @@ export async function loadPublicShareProductDetail(
       shareToken: params.shareToken,
       shareQuery,
       homeHref: `/public/s/${params.shareToken}`,
-      presentation: shareResult.data.presentation
+      tenantSlug: shareResult.data.tenant.slug,
+      tenantName: shareResult.data.tenant.name,
+      presentation: shareResult.data.presentation,
+      merchantWatermark: shareResult.data.merchantWatermark,
     }
   };
 }

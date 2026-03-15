@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 'use client';
 
 import type { ReactNode } from 'react';
@@ -112,6 +113,7 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
   const searchParams = useSearchParams();
   const router = useRouter();
   const [currentPlan, setCurrentPlan] = useState<PlanTier>('FREE');
+  const [currentProfile, setCurrentProfile] = useState<MeProfile | null>(null);
   const [planLoading, setPlanLoading] = useState(true);
   const [setupRequired, setSetupRequired] = useState(false);
   const [setupCheckReady, setSetupCheckReady] = useState(false);
@@ -124,7 +126,13 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
         tenantBranding.resolved.displayName || tenantSlug,
         tenantBranding.platform.defaultTenantName[locale] || messages.defaultTenant,
       ),
-    [messages.defaultTenant, locale, tenantBranding.platform.defaultTenantName, tenantBranding.resolved.displayName, tenantSlug],
+    [
+      messages.defaultTenant,
+      locale,
+      tenantBranding.platform.defaultTenantName,
+      tenantBranding.resolved.displayName,
+      tenantSlug,
+    ],
   );
   const isEntityDetailPage = /^\/app\/[^/]+\/(?:products|breeders)\/[^/]+$/.test(pathname);
 
@@ -250,9 +258,11 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
         setSetupRequired(
           shouldRequireProfileSetup(profileResponse.profile, securityResponse.profile),
         );
+        setCurrentProfile(profileResponse.profile);
         setSetupCheckReady(true);
       } catch {
         if (!cancelled) {
+          setCurrentProfile(null);
           setSetupRequired(true);
           setSetupCheckReady(true);
         }
@@ -263,6 +273,23 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
       cancelled = true;
     };
   }, [pathname, router, tenantSlug]);
+
+  useEffect(() => {
+    const handleProfileUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<MeProfile>).detail;
+      if (detail?.id) {
+        setCurrentProfile(detail);
+      }
+    };
+
+    window.addEventListener('eggturtle:me-profile-updated', handleProfileUpdated as EventListener);
+    return () => {
+      window.removeEventListener(
+        'eggturtle:me-profile-updated',
+        handleProfileUpdated as EventListener,
+      );
+    };
+  }, []);
 
   useEffect(() => {
     if (!setupCheckReady || !setupRequired) {
@@ -332,7 +359,15 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
                         : 'bg-neutral-100 text-neutral-500 group-hover:bg-neutral-200 dark:bg-neutral-900 dark:text-neutral-400 dark:group-hover:bg-neutral-800',
                     )}
                   >
-                    <Icon size={18} />
+                    {href === accountPath && currentProfile?.avatarUrl ? (
+                      <img
+                        src={currentProfile.avatarUrl}
+                        alt="用户头像"
+                        className="h-9 w-9 rounded-xl object-cover"
+                      />
+                    ) : (
+                      <Icon size={18} />
+                    )}
                   </span>
                   <span>{item.label[locale]}</span>
                 </Link>
@@ -362,7 +397,9 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
             <div
               className={cn(
                 'tenant-mobile-content-safe pb-3 sm:pb-4 lg:pb-4',
-                shouldRenderLayoutFloatingShare && !setupRequired ? 'tenant-mobile-dock-safe-stack' : null,
+                shouldRenderLayoutFloatingShare && !setupRequired
+                  ? 'tenant-mobile-dock-safe-stack'
+                  : null,
               )}
             >
               <ReferralAuthNotice />
@@ -404,7 +441,15 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
                 >
                   <span className="tenant-mobile-nav-stack">
                     <span className="tenant-mobile-nav-icon">
-                      <Icon className="tenant-mobile-nav-icon-glyph" />
+                      {href === accountPath && currentProfile?.avatarUrl ? (
+                        <img
+                          src={currentProfile.avatarUrl}
+                          alt="用户头像"
+                          className="h-6 w-6 rounded-full object-cover"
+                        />
+                      ) : (
+                        <Icon className="tenant-mobile-nav-icon-glyph" />
+                      )}
                     </span>
                     <span className="tenant-mobile-nav-label">{item.label[locale]}</span>
                   </span>
@@ -419,7 +464,9 @@ export default function TenantRouteLayout({ children }: TenantRouteLayoutProps) 
           <TenantFloatingShareButton intent={floatingShareIntent} inline />
         </TenantMobileActionStack>
       ) : null}
-      {!isEntityDetailPage && pathname !== accountPath ? <TenantFloatingPreferences className="lg:hidden" /> : null}
+      {!isEntityDetailPage && pathname !== accountPath ? (
+        <TenantFloatingPreferences className="lg:hidden" />
+      ) : null}
     </div>
   );
 }

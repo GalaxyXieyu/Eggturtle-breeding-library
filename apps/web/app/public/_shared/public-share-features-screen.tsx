@@ -30,7 +30,8 @@ const CORE_FEATURES = [
     points: ['多代血统清晰可追溯', '选种与留种更有依据', '避免近亲配对风险'],
     statLabel: '谱系层级',
     statValue: '4+ 代',
-    panelClassName: 'border-[#F3E4A3] bg-[linear-gradient(135deg,rgba(255,251,235,0.92),rgba(255,255,255,0.98))]',
+    panelClassName:
+      'border-[#F3E4A3] bg-[linear-gradient(135deg,rgba(255,251,235,0.92),rgba(255,255,255,0.98))]',
   },
   {
     title: '配对管理',
@@ -42,7 +43,8 @@ const CORE_FEATURES = [
     points: ['配对节奏统一留痕', '繁殖周期一眼看清', '历史组合随时回查'],
     statLabel: '配对节奏',
     statValue: '实时',
-    panelClassName: 'border-[#E8E8E8] bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(248,250,252,0.98))]',
+    panelClassName:
+      'border-[#E8E8E8] bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(248,250,252,0.98))]',
   },
   {
     title: '产蛋追踪',
@@ -54,19 +56,22 @@ const CORE_FEATURES = [
     points: ['每窝时间与数量同步记录', '孵化阶段持续跟踪', '批次管理更轻松'],
     statLabel: '窝次记录',
     statValue: '持续',
-    panelClassName: 'border-[#F0E3B2] bg-[linear-gradient(135deg,rgba(250,245,230,0.94),rgba(255,255,255,0.98))]',
+    panelClassName:
+      'border-[#F0E3B2] bg-[linear-gradient(135deg,rgba(250,245,230,0.94),rgba(255,255,255,0.98))]',
   },
   {
     title: '血统证书',
     eyebrow: 'Certificate',
-    description: '为每只宠物生成可公开展示的血统证书，关键信息清晰呈现。扫码即可核验来源，让展示更专业、成交更有信任感。',
+    description:
+      '为每只宠物生成可公开展示的血统证书，关键信息清晰呈现。扫码即可核验来源，让展示更专业、成交更有信任感。',
     image: LOCAL_IMAGES.reminder,
     imagePosition: 'right' as const,
     contain: true,
     points: ['关键信息集中展示', '支持公开扫码验真', '提升展示与成交信任'],
     statLabel: '验真方式',
     statValue: '扫码',
-    panelClassName: 'border-[#E8E0B0] bg-[linear-gradient(135deg,rgba(255,249,219,0.92),rgba(255,255,255,0.98))]',
+    panelClassName:
+      'border-[#E8E0B0] bg-[linear-gradient(135deg,rgba(255,249,219,0.92),rgba(255,255,255,0.98))]',
   },
 ] as const;
 
@@ -97,6 +102,8 @@ type Props = {
   shareQuery?: string;
   presentation?: PublicSharePresentation | null;
   embedded?: boolean;
+  tenantSlug?: string;
+  tenantName?: string;
 };
 
 function ScreenshotSurface({
@@ -133,9 +140,20 @@ function HeroPreviewCard() {
   return (
     <div className="relative hidden lg:block">
       <div className="relative">
-        <ScreenshotSurface src={LOCAL_IMAGES.heroPreview} alt="Platform Preview" contain ratio="4 / 3" />
-        <div className="absolute -bottom-6 -left-6 rounded-2xl bg-white p-6 shadow-2xl" style={{ maxWidth: '200px' }}>
-          <div className="mb-2 text-4xl font-black" style={{ fontFamily: 'Playfair Display, serif', color: '#FFD400' }}>
+        <ScreenshotSurface
+          src={LOCAL_IMAGES.heroPreview}
+          alt="Platform Preview"
+          contain
+          ratio="4 / 3"
+        />
+        <div
+          className="absolute -bottom-6 -left-6 rounded-2xl bg-white p-6 shadow-2xl"
+          style={{ maxWidth: '200px' }}
+        >
+          <div
+            className="mb-2 text-4xl font-black"
+            style={{ fontFamily: 'Playfair Display, serif', color: '#FFD400' }}
+          >
             98%
           </div>
           <div className="text-sm text-gray-600" style={{ fontFamily: 'Inter, sans-serif' }}>
@@ -143,10 +161,16 @@ function HeroPreviewCard() {
           </div>
         </div>
 
-        <div className="absolute -right-6 -top-6 rounded-2xl bg-white p-6 shadow-2xl" style={{ maxWidth: '180px' }}>
+        <div
+          className="absolute -right-6 -top-6 rounded-2xl bg-white p-6 shadow-2xl"
+          style={{ maxWidth: '180px' }}
+        >
           <div className="mb-2 flex items-center gap-2">
             <div className="h-3 w-3 rounded-full bg-green-500" />
-            <span className="text-xs font-semibold text-gray-600" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <span
+              className="text-xs font-semibold text-gray-600"
+              style={{ fontFamily: 'Inter, sans-serif' }}
+            >
               实时同步
             </span>
           </div>
@@ -164,6 +188,8 @@ export default function PublicShareFeaturesScreen({
   shareQuery,
   presentation,
   embedded = false,
+  tenantSlug,
+  tenantName,
 }: Props) {
   const resolvedPresentation = resolvePublicSharePresentation(presentation);
   const contactQrImageUrl = resolvedPresentation.contact.showWechatBlock
@@ -177,10 +203,21 @@ export default function PublicShareFeaturesScreen({
   const workspaceHref = '/app?intent=dashboard&source=share';
 
   const mainContent = (
-    <div className={embedded ? 'min-h-full bg-white' : 'min-h-screen w-full overflow-x-hidden bg-white'}>
-      <section className="relative flex items-center overflow-hidden" style={embedded ? undefined : { minHeight: '100vh' }}>
+    <div
+      className={
+        embedded ? 'min-h-full bg-white' : 'min-h-screen w-full overflow-x-hidden bg-white'
+      }
+    >
+      <section
+        className="relative flex items-center overflow-hidden"
+        style={embedded ? undefined : { minHeight: '100vh' }}
+      >
         <div className="absolute inset-0 z-0">
-          <img src={LOCAL_IMAGES.heroBackground} alt="Turtle Background" className="h-full w-full object-cover object-center opacity-85" />
+          <img
+            src={LOCAL_IMAGES.heroBackground}
+            alt="Turtle Background"
+            className="h-full w-full object-cover object-center opacity-85"
+          />
           <div
             className="absolute inset-0"
             style={{
@@ -190,14 +227,21 @@ export default function PublicShareFeaturesScreen({
           />
           <div
             className="absolute inset-0"
-            style={{ background: 'radial-gradient(ellipse at 15% 50%, rgba(255,212,0,0.22), transparent 52%)' }}
+            style={{
+              background:
+                'radial-gradient(ellipse at 15% 50%, rgba(255,212,0,0.22), transparent 52%)',
+            }}
           />
         </div>
 
-        <div className="absolute left-1/4 top-1/4 h-96 w-96 rounded-full blur-3xl md:h-[600px] md:w-[600px]"
-             style={{ background: '#FFD400', opacity: 0.12 }} />
-        <div className="absolute bottom-1/4 right-1/3 h-96 w-96 rounded-full blur-3xl md:h-[500px] md:w-[500px]"
-             style={{ background: '#FFD400', opacity: 0.1 }} />
+        <div
+          className="absolute left-1/4 top-1/4 h-96 w-96 rounded-full blur-3xl md:h-[600px] md:w-[600px]"
+          style={{ background: '#FFD400', opacity: 0.12 }}
+        />
+        <div
+          className="absolute bottom-1/4 right-1/3 h-96 w-96 rounded-full blur-3xl md:h-[500px] md:w-[500px]"
+          style={{ background: '#FFD400', opacity: 0.1 }}
+        />
 
         <div className={`relative z-10 w-full ${embedded ? 'px-5 py-14' : 'px-6 py-20'}`}>
           <div className="mx-auto max-w-7xl">
@@ -205,7 +249,10 @@ export default function PublicShareFeaturesScreen({
               <div className="max-w-[640px]">
                 <div
                   className="mb-8 inline-flex items-center gap-2 rounded-full px-4 py-2"
-                  style={{ background: 'rgba(255,212,0,0.15)', border: '1px solid rgba(255,212,0,0.3)' }}
+                  style={{
+                    background: 'rgba(255,212,0,0.15)',
+                    border: '1px solid rgba(255,212,0,0.3)',
+                  }}
                 >
                   <span className="h-2 w-2 rounded-full" style={{ background: '#FFD400' }} />
                   <span
@@ -218,7 +265,11 @@ export default function PublicShareFeaturesScreen({
 
                 <h1
                   className="mb-6 text-5xl font-bold text-gray-900 md:text-6xl lg:text-7xl xl:text-8xl"
-                  style={{ fontFamily: 'Playfair Display, serif', lineHeight: '1.03', letterSpacing: '-0.04em' }}
+                  style={{
+                    fontFamily: 'Playfair Display, serif',
+                    lineHeight: '1.03',
+                    letterSpacing: '-0.04em',
+                  }}
                 >
                   选育溯源
                   <br />
@@ -237,10 +288,16 @@ export default function PublicShareFeaturesScreen({
                 <div className="mb-10 grid grid-cols-2 gap-x-6 gap-y-3 md:max-w-[560px]">
                   {HIGHLIGHTS.map((item) => (
                     <div key={item} className="flex items-center gap-2.5">
-                      <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full" style={{ background: '#FFD400' }}>
+                      <div
+                        className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full"
+                        style={{ background: '#FFD400' }}
+                      >
                         <Check className="h-3 w-3 text-black" strokeWidth={3} />
                       </div>
-                      <span className="text-sm text-gray-700 md:text-base" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <span
+                        className="text-sm text-gray-700 md:text-base"
+                        style={{ fontFamily: 'Inter, sans-serif' }}
+                      >
                         {item}
                       </span>
                     </div>
@@ -273,10 +330,16 @@ export default function PublicShareFeaturesScreen({
                 <div className="mt-12 flex gap-8 border-t border-gray-200 pt-8 md:gap-10">
                   {STATS.map((stat) => (
                     <div key={stat.label}>
-                      <div className="mb-1 text-3xl font-black" style={{ fontFamily: 'Playfair Display, serif', color: '#FFD400' }}>
+                      <div
+                        className="mb-1 text-3xl font-black"
+                        style={{ fontFamily: 'Playfair Display, serif', color: '#FFD400' }}
+                      >
                         {stat.value}
                       </div>
-                      <div className="text-sm text-gray-600" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <div
+                        className="text-sm text-gray-600"
+                        style={{ fontFamily: 'Inter, sans-serif' }}
+                      >
                         {stat.label}
                       </div>
                     </div>
@@ -292,7 +355,10 @@ export default function PublicShareFeaturesScreen({
         {!embedded ? (
           <div className="absolute bottom-8 left-1/2 hidden -translate-x-1/2 md:block">
             <div className="flex flex-col items-center gap-2">
-              <span className="text-xs uppercase tracking-wider text-gray-500" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <span
+                className="text-xs uppercase tracking-wider text-gray-500"
+                style={{ fontFamily: 'Inter, sans-serif' }}
+              >
                 向下滚动
               </span>
               <div className="flex h-10 w-6 items-start justify-center rounded-full border-2 border-gray-400 p-2">
@@ -315,15 +381,24 @@ export default function PublicShareFeaturesScreen({
               >
                 <div className="space-y-4 lg:hidden">
                   <div className="min-w-0">
-                    <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#9C7400]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <div
+                      className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#9C7400]"
+                      style={{ fontFamily: 'Inter, sans-serif' }}
+                    >
                       <span>{feature.eyebrow}</span>
                       <span className="h-px flex-1 bg-[#E5D9A3]" />
                       <span className="text-[10px] text-[#9C7400]/70">0{index + 1}</span>
                     </div>
-                    <h2 className="text-[34px] font-bold leading-[0.98] text-gray-900" style={{ fontFamily: 'Playfair Display, serif', letterSpacing: '-0.03em' }}>
+                    <h2
+                      className="text-[34px] font-bold leading-[0.98] text-gray-900"
+                      style={{ fontFamily: 'Playfair Display, serif', letterSpacing: '-0.03em' }}
+                    >
                       {feature.title}
                     </h2>
-                    <p className="mt-3 text-sm leading-6 text-gray-600" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <p
+                      className="mt-3 text-sm leading-6 text-gray-600"
+                      style={{ fontFamily: 'Inter, sans-serif' }}
+                    >
                       {feature.description}
                     </p>
                   </div>
@@ -331,12 +406,23 @@ export default function PublicShareFeaturesScreen({
                   <div className="relative">
                     <div className="absolute -inset-3 rounded-[28px] bg-[radial-gradient(circle_at_top_right,rgba(255,212,0,0.2),transparent_55%)] blur-2xl" />
                     <div className="relative">
-                      <ScreenshotSurface src={feature.image} alt={feature.title} contain={feature.contain} ratio="4 / 3" />
+                      <ScreenshotSurface
+                        src={feature.image}
+                        alt={feature.title}
+                        contain={feature.contain}
+                        ratio="4 / 3"
+                      />
                       <div className="absolute -bottom-3 left-3 rounded-2xl border border-black/5 bg-white/92 px-3 py-2 shadow-[0_12px_28px_rgba(15,23,42,0.12)] backdrop-blur">
-                        <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-500" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        <div
+                          className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-500"
+                          style={{ fontFamily: 'Inter, sans-serif' }}
+                        >
                           {feature.statLabel}
                         </div>
-                        <div className="mt-1 text-base font-bold text-gray-900" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        <div
+                          className="mt-1 text-base font-bold text-gray-900"
+                          style={{ fontFamily: 'Inter, sans-serif' }}
+                        >
                           {feature.statValue}
                         </div>
                       </div>
@@ -356,15 +442,28 @@ export default function PublicShareFeaturesScreen({
                   </div>
                 </div>
 
-                <div className={`${imageFirst ? 'order-1' : 'order-2'} relative hidden self-stretch lg:block`}>
+                <div
+                  className={`${imageFirst ? 'order-1' : 'order-2'} relative hidden self-stretch lg:block`}
+                >
                   <div className="absolute -inset-3 rounded-[28px] bg-[radial-gradient(circle_at_top_right,rgba(255,212,0,0.2),transparent_55%)] blur-2xl" />
                   <div className="relative h-full">
-                    <ScreenshotSurface src={feature.image} alt={feature.title} contain={feature.contain} ratio="16 / 11" />
+                    <ScreenshotSurface
+                      src={feature.image}
+                      alt={feature.title}
+                      contain={feature.contain}
+                      ratio="16 / 11"
+                    />
                     <div className="absolute -bottom-4 left-4 rounded-2xl border border-black/5 bg-white/92 px-4 py-3 shadow-[0_12px_28px_rgba(15,23,42,0.12)] backdrop-blur">
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-500" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <div
+                        className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-500"
+                        style={{ fontFamily: 'Inter, sans-serif' }}
+                      >
                         {feature.statLabel}
                       </div>
-                      <div className="mt-1 text-lg font-bold text-gray-900" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <div
+                        className="mt-1 text-lg font-bold text-gray-900"
+                        style={{ fontFamily: 'Inter, sans-serif' }}
+                      >
                         {feature.statValue}
                       </div>
                     </div>
@@ -373,18 +472,30 @@ export default function PublicShareFeaturesScreen({
 
                 <div className={`${imageFirst ? 'order-2' : 'order-1'} hidden lg:block`}>
                   <div className="mb-5 flex items-center gap-3">
-                    <span className="inline-flex rounded-full bg-[#FFF3BF] px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-[#8A6800]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <span
+                      className="inline-flex rounded-full bg-[#FFF3BF] px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-[#8A6800]"
+                      style={{ fontFamily: 'Inter, sans-serif' }}
+                    >
                       {feature.eyebrow}
                     </span>
-                    <span className="text-sm font-medium text-gray-400" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <span
+                      className="text-sm font-medium text-gray-400"
+                      style={{ fontFamily: 'Inter, sans-serif' }}
+                    >
                       0{index + 1}
                     </span>
                   </div>
 
-                  <h2 className="max-w-[8ch] text-4xl font-bold leading-[0.98] text-gray-900 xl:text-5xl" style={{ fontFamily: 'Playfair Display, serif', letterSpacing: '-0.04em' }}>
+                  <h2
+                    className="max-w-[8ch] text-4xl font-bold leading-[0.98] text-gray-900 xl:text-5xl"
+                    style={{ fontFamily: 'Playfair Display, serif', letterSpacing: '-0.04em' }}
+                  >
                     {feature.title}
                   </h2>
-                  <p className="mt-5 max-w-[24rem] text-lg leading-8 text-gray-600 xl:text-xl" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <p
+                    className="mt-5 max-w-[24rem] text-lg leading-8 text-gray-600 xl:text-xl"
+                    style={{ fontFamily: 'Inter, sans-serif' }}
+                  >
                     {feature.description}
                   </p>
 
@@ -409,21 +520,37 @@ export default function PublicShareFeaturesScreen({
       <section className={`bg-[#FAFAF9] py-16 md:py-24 ${embedded ? 'px-5' : 'px-6'}`}>
         <div className="mx-auto max-w-6xl">
           <div className="mb-16 text-center">
-            <h2 className="mb-4 text-3xl font-bold text-gray-900 md:text-5xl" style={{ fontFamily: 'Playfair Display, serif', letterSpacing: '-0.03em' }}>
+            <h2
+              className="mb-4 text-3xl font-bold text-gray-900 md:text-5xl"
+              style={{ fontFamily: 'Playfair Display, serif', letterSpacing: '-0.03em' }}
+            >
               更多实用功能
             </h2>
-            <p className="text-base text-gray-600 md:text-lg" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <p
+              className="text-base text-gray-600 md:text-lg"
+              style={{ fontFamily: 'Inter, sans-serif' }}
+            >
               全方位支持您的繁育工作
             </p>
           </div>
 
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             {ADDITIONAL_FEATURES.map((feature) => (
-              <div key={feature.title} className="rounded-2xl border border-gray-100 bg-white p-8 transition-all" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.04)' }}>
-                <h3 className="mb-3 text-lg font-bold text-gray-900 md:text-xl" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <div
+                key={feature.title}
+                className="rounded-2xl border border-gray-100 bg-white p-8 transition-all"
+                style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.04)' }}
+              >
+                <h3
+                  className="mb-3 text-lg font-bold text-gray-900 md:text-xl"
+                  style={{ fontFamily: 'Inter, sans-serif' }}
+                >
                   {feature.title}
                 </h3>
-                <p className="text-sm leading-relaxed text-gray-600 md:text-base" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <p
+                  className="text-sm leading-relaxed text-gray-600 md:text-base"
+                  style={{ fontFamily: 'Inter, sans-serif' }}
+                >
                   {feature.description}
                 </p>
               </div>
@@ -434,14 +561,27 @@ export default function PublicShareFeaturesScreen({
 
       <section className={`py-16 md:py-32 ${embedded ? 'px-5' : 'px-6'}`}>
         <div className="mx-auto max-w-4xl">
-          <div className="rounded-3xl border border-gray-200 bg-white p-8 md:p-12" style={{ boxShadow: '0 8px 40px rgba(0,0,0,0.06)' }}>
-            <h2 className="mb-8 text-2xl font-bold text-gray-900 md:text-4xl" style={{ fontFamily: 'Playfair Display, serif', letterSpacing: '-0.03em' }}>
+          <div
+            className="rounded-3xl border border-gray-200 bg-white p-8 md:p-12"
+            style={{ boxShadow: '0 8px 40px rgba(0,0,0,0.06)' }}
+          >
+            <h2
+              className="mb-8 text-2xl font-bold text-gray-900 md:text-4xl"
+              style={{ fontFamily: 'Playfair Display, serif', letterSpacing: '-0.03em' }}
+            >
               专业的繁育管理平台
             </h2>
-            <div className="space-y-6 text-base leading-relaxed text-gray-700 md:text-lg" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <div
+              className="space-y-6 text-base leading-relaxed text-gray-700 md:text-lg"
+              style={{ fontFamily: 'Inter, sans-serif' }}
+            >
               <p>选育溯源档案是一款用于记录与追溯蛋龟血缘信息的繁育管理工具。</p>
-              <p>平台支持记录种龟配对、产蛋时间，并提供智能配对提醒，帮助繁育者更高效地管理繁殖周期。</p>
-              <p>同时，系统支持展示繁育者主页，可向客户直观展示不同种龟的子代价格，让交易更加便捷；还可一键生成“种龟夫妻图”，方便在朋友圈或社群中展示与推广子代。</p>
+              <p>
+                平台支持记录种龟配对、产蛋时间，并提供智能配对提醒，帮助繁育者更高效地管理繁殖周期。
+              </p>
+              <p>
+                同时，系统支持展示繁育者主页，可向客户直观展示不同种龟的子代价格，让交易更加便捷；还可一键生成“种龟夫妻图”，方便在朋友圈或社群中展示与推广子代。
+              </p>
             </div>
           </div>
         </div>
@@ -454,11 +594,18 @@ export default function PublicShareFeaturesScreen({
               <div key={stat.label}>
                 <div
                   className="mb-4 text-6xl font-black md:text-7xl"
-                  style={{ fontFamily: 'Playfair Display, serif', color: '#FFD400', textShadow: '0 4px 20px rgba(255,212,0,0.4)' }}
+                  style={{
+                    fontFamily: 'Playfair Display, serif',
+                    color: '#FFD400',
+                    textShadow: '0 4px 20px rgba(255,212,0,0.4)',
+                  }}
                 >
                   {stat.value}
                 </div>
-                <p className="text-lg text-gray-300 md:text-xl" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <p
+                  className="text-lg text-gray-300 md:text-xl"
+                  style={{ fontFamily: 'Inter, sans-serif' }}
+                >
                   {stat.label}
                 </p>
               </div>
@@ -469,20 +616,32 @@ export default function PublicShareFeaturesScreen({
 
       <section className={`py-20 md:py-32 ${embedded ? 'px-5' : 'px-6'}`}>
         <div className="mx-auto max-w-4xl text-center">
-          <h2 className="mb-8 text-3xl font-bold text-gray-900 md:text-5xl" style={{ fontFamily: 'Playfair Display, serif', letterSpacing: '-0.03em' }}>
+          <h2
+            className="mb-8 text-3xl font-bold text-gray-900 md:text-5xl"
+            style={{ fontFamily: 'Playfair Display, serif', letterSpacing: '-0.03em' }}
+          >
             开始您的专业选育之路
           </h2>
-          <p className="mx-auto mb-6 max-w-2xl text-base leading-relaxed text-gray-700 md:mb-8 md:text-lg" style={{ fontFamily: 'Inter, sans-serif' }}>
-            如今蛋龟市场越来越火，养殖场数量也越来越多。<br className="hidden md:block" />
+          <p
+            className="mx-auto mb-6 max-w-2xl text-base leading-relaxed text-gray-700 md:mb-8 md:text-lg"
+            style={{ fontFamily: 'Inter, sans-serif' }}
+          >
+            如今蛋龟市场越来越火，养殖场数量也越来越多。
             <br className="hidden md:block" />
-            在数量越来越多的市场环境里，<br className="hidden md:block" />
+            <br className="hidden md:block" />
+            在数量越来越多的市场环境里，
+            <br className="hidden md:block" />
             只有真正做好选育，提升品质，才是玩家长期走下去的出路。
           </p>
 
           <Link
             href={workspaceHref}
             className="inline-flex items-center justify-center rounded-full px-10 py-5 text-base font-semibold text-black transition-all md:px-12 md:py-6 md:text-lg"
-            style={{ background: '#FFD400', fontFamily: 'Inter, sans-serif', boxShadow: '0 8px 30px rgba(255,212,0,0.3)' }}
+            style={{
+              background: '#FFD400',
+              fontFamily: 'Inter, sans-serif',
+              boxShadow: '0 8px 30px rgba(255,212,0,0.3)',
+            }}
           >
             立即免费使用
           </Link>
@@ -517,7 +676,11 @@ export default function PublicShareFeaturesScreen({
         shareCardSubtitle={resolvedPresentation.feedSubtitle}
         shareCardPrimaryColor={resolvedPresentation.theme.brandPrimary}
         shareCardSecondaryColor={resolvedPresentation.theme.brandSecondary}
+        shareCardAvatarUrl={resolvedPresentation.identity.avatarUrl}
+        shareCardAvatarPreset={resolvedPresentation.identity.avatarPreset}
         shareCardHeroImageUrl={shareCardHeroImageUrl}
+        shareCardDisplayName={tenantName ?? resolvedPresentation.feedTitle}
+        shareCardAccountLabel={tenantSlug ? `@${tenantSlug}` : null}
       />
       <PublicBottomDock shareToken={shareToken} shareQuery={shareQuery} activeTab="features" />
     </div>

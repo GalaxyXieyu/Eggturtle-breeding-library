@@ -50,6 +50,32 @@ type CouplePhotoRenderLayout = {
 };
 
 let couplePhotoBackgroundCache: Buffer | null | undefined;
+let certificateBackgroundCache: Buffer | null | undefined;
+
+async function loadDefaultCertificateBackground(): Promise<Buffer | null> {
+  if (certificateBackgroundCache !== undefined) {
+    return certificateBackgroundCache;
+  }
+
+  const candidates = [
+    resolve(process.cwd(), 'apps/api/src/products/rendering/assets/certificate-background.png'),
+    resolve(process.cwd(), 'src/products/rendering/assets/certificate-background.png'),
+    resolve(__dirname, 'assets/certificate-background.png')
+  ];
+
+  for (const candidate of candidates) {
+    try {
+      const buffer = await readFile(candidate);
+      certificateBackgroundCache = buffer;
+      return buffer;
+    } catch {
+      continue;
+    }
+  }
+
+  certificateBackgroundCache = null;
+  return null;
+}
 
 async function loadDefaultCouplePhotoBackground(): Promise<Buffer | null> {
   if (couplePhotoBackgroundCache !== undefined) {
@@ -59,10 +85,7 @@ async function loadDefaultCouplePhotoBackground(): Promise<Buffer | null> {
   const candidates = [
     resolve(process.cwd(), 'apps/api/src/products/rendering/assets/couple-photo-background.png'),
     resolve(process.cwd(), 'src/products/rendering/assets/couple-photo-background.png'),
-    resolve(__dirname, 'assets/couple-photo-background.png'),
-    resolve(process.cwd(), 'apps/api/src/products/rendering/assets/certificate-background.png'),
-    resolve(process.cwd(), 'src/products/rendering/assets/certificate-background.png'),
-    resolve(__dirname, 'assets/certificate-background.png')
+    resolve(__dirname, 'assets/couple-photo-background.png')
   ];
 
   for (const candidate of candidates) {
@@ -307,8 +330,13 @@ async function createQrBuffer(payload: string, size: number): Promise<Buffer> {
 }
 
 export async function renderCertificatePng(input: CertificateRenderInput): Promise<Buffer> {
+  const backgroundImage = await (
+    input.backgroundImage !== undefined
+      ? Promise.resolve(input.backgroundImage)
+      : loadDefaultCertificateBackground()
+  );
   const backgroundMode = input.backgroundMode ?? 'full';
-  const useExternalBackground = Boolean(input.backgroundImage);
+  const useExternalBackground = Boolean(backgroundImage);
   const styleSvg = Buffer.from(
     buildCertificateStyleSvg({
       ...input.style,
@@ -320,11 +348,11 @@ export async function renderCertificatePng(input: CertificateRenderInput): Promi
 
   const [backgroundLayer, bottomDecorationLayer, subjectLayer, sireLayer, damLayer] = await Promise.all([
     backgroundMode === 'full'
-      ? buildCanvasBackgroundLayer(input.backgroundImage, CERTIFICATE_CANVAS.width, CERTIFICATE_CANVAS.height)
+      ? buildCanvasBackgroundLayer(backgroundImage, CERTIFICATE_CANVAS.width, CERTIFICATE_CANVAS.height)
       : backgroundMode === 'tiled'
-        ? buildTiledBackgroundLayer(input.backgroundImage, CERTIFICATE_CANVAS.width, CERTIFICATE_CANVAS.height)
+        ? buildTiledBackgroundLayer(backgroundImage, CERTIFICATE_CANVAS.width, CERTIFICATE_CANVAS.height)
       : Promise.resolve(null),
-    backgroundMode === 'bottom' ? buildBottomDecorationLayer(input.backgroundImage) : Promise.resolve(null),
+    backgroundMode === 'bottom' ? buildBottomDecorationLayer(backgroundImage) : Promise.resolve(null),
     buildImageLayer(input.subjectImage, CERTIFICATE_SLOTS.subject),
     buildImageLayer(input.sireImage, CERTIFICATE_SLOTS.sire),
     buildImageLayer(input.damImage, CERTIFICATE_SLOTS.dam)

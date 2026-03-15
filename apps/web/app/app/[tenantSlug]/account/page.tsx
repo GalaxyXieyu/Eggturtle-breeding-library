@@ -4,11 +4,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   meProfileResponseSchema,
+  meSubscriptionResponseSchema,
   myPhoneBindingResponseSchema,
   mySecurityProfileResponseSchema,
   requestSmsCodeRequestSchema,
   requestSmsCodeResponseSchema,
   type MeProfile,
+  type TenantSubscription,
   upsertMyPhoneBindingRequestSchema,
   upsertMyPhoneBindingResponseSchema,
   upsertMySecurityProfileRequestSchema,
@@ -17,6 +19,7 @@ import {
   updateMeProfileResponseSchema,
   updateMyPasswordRequestSchema,
   updateMyPasswordResponseSchema,
+  uploadMyAvatarResponseSchema,
 } from '@eggturtle/shared';
 import AccountProfileOverview from '@/app/app/[tenantSlug]/account/account-profile-overview';
 import { AccountSectionNav } from '@/components/account-section-nav';
@@ -24,6 +27,7 @@ import { Card } from '@/components/ui/card';
 import { apiRequest, clearAccessToken } from '@/lib/api-client';
 import { formatApiError } from '@/lib/error-utils';
 import { ensureTenantRouteSession } from '@/lib/tenant-route-session';
+import { uploadSingleFileWithAuth } from '@/lib/upload-client';
 import AccountSetupCard from '@/app/app/[tenantSlug]/account/account-setup-card';
 import {
   CUSTOM_SECURITY_QUESTION_VALUE,
@@ -42,7 +46,6 @@ import {
 } from '@/app/app/[tenantSlug]/account/account-page-utils';
 import { useUiPreferences } from '@/components/ui-preferences';
 import { ACCOUNT_PAGE_MESSAGES } from '@/lib/locales/account';
-import SubscriptionPageContent from '@/app/app/[tenantSlug]/subscription/page';
 import ReferralPanel from '@/app/app/[tenantSlug]/account/referral-panel';
 
 export default function AccountPage() {
@@ -57,6 +60,7 @@ export default function AccountPage() {
   const [activeTab, setActiveTab] = useState<AccountTab>('profile');
   const [loading, setLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [savingSecurity, setSavingSecurity] = useState(false);
   const [sendingPhoneCode, setSendingPhoneCode] = useState(false);
@@ -65,6 +69,7 @@ export default function AccountPage() {
   const [completingSetup, setCompletingSetup] = useState(false);
 
   const [profile, setProfile] = useState<MeProfile | null>(null);
+  const [subscription, setSubscription] = useState<TenantSubscription | null>(null);
   const [setupRequirements, setSetupRequirements] =
     useState<SetupRequirements>(EMPTY_SETUP_REQUIREMENTS);
 
@@ -98,6 +103,14 @@ export default function AccountPage() {
   const loginAccountHint = describeLoginAccount(profile?.account, boundPhoneNumber, locale);
   const setupChecklistItems = getSetupChecklistItems(setupRequirements, locale);
   const setupSubmitLabel = getSetupSubmitLabel(setupRequirements, locale);
+
+  function publishProfileUpdate(nextProfile: MeProfile) {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.dispatchEvent(new CustomEvent('eggturtle:me-profile-updated', { detail: nextProfile }));
+  }
 
   useEffect(() => {
     if (phoneCodeCooldown <= 0) {
@@ -162,17 +175,21 @@ export default function AccountPage() {
           return;
         }
 
-        const [profileResponse, securityResponse, phoneBindingResponse] = await Promise.all([
-          apiRequest('/me/profile', {
-            responseSchema: meProfileResponseSchema,
-          }),
-          apiRequest('/me/security-profile', {
-            responseSchema: mySecurityProfileResponseSchema,
-          }),
-          apiRequest('/me/phone-binding', {
-            responseSchema: myPhoneBindingResponseSchema,
-          }),
-        ]);
+        const [profileResponse, securityResponse, phoneBindingResponse, subscriptionResponse] =
+          await Promise.all([
+            apiRequest('/me/profile', {
+              responseSchema: meProfileResponseSchema,
+            }),
+            apiRequest('/me/security-profile', {
+              responseSchema: mySecurityProfileResponseSchema,
+            }),
+            apiRequest('/me/phone-binding', {
+              responseSchema: myPhoneBindingResponseSchema,
+            }),
+            apiRequest('/me/subscription', {
+              responseSchema: meSubscriptionResponseSchema,
+            }).catch(() => null),
+          ]);
 
         if (cancelled) {
           return;
@@ -182,6 +199,7 @@ export default function AccountPage() {
         setNameDraft(profileResponse.profile.name ?? '');
         setBoundPhoneNumber(phoneBindingResponse.binding?.phoneNumber ?? null);
         setPhoneDraft(phoneBindingResponse.binding?.phoneNumber ?? '');
+        setSubscription(subscriptionResponse?.subscription ?? null);
         setPhoneCodeDraft('');
         setPhoneCodeCooldown(0);
         setOldPhoneCodeDraft('');
@@ -193,7 +211,7 @@ export default function AccountPage() {
         setSetupRequirements(nextSetupRequirements);
         setSecurityQuestionDraft(
           securityResponse.profile?.question ??
-            (nextSetupRequirements.needsSecurity ? securityQuestionOptions[0] ?? '' : ''),
+            (nextSetupRequirements.needsSecurity ? (securityQuestionOptions[0] ?? '') : ''),
         );
         setSecurityAnswerDraft('');
       } catch (requestError) {
@@ -236,6 +254,7 @@ export default function AccountPage() {
 
       setProfile(response.profile);
       setNameDraft(response.profile.name ?? '');
+      publishProfileUpdate(response.profile);
       setSetupRequirements((current) => ({
         ...current,
         needsDisplayName: !response.profile.name?.trim(),
@@ -430,6 +449,29 @@ export default function AccountPage() {
     }
   }
 
+  async function handleUploadAvatar(file: File) {
+    setAvatarUploading(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const response = await uploadSingleFileWithAuth(
+        '/me/avatar',
+        file,
+        uploadMyAvatarResponseSchema,
+      );
+      setProfile(response.profile);
+      setNameDraft(response.profile.name ?? '');
+      publishProfileUpdate(response.profile);
+      setMessage(messages.avatarUpdated);
+    } catch (requestError) {
+      setError(formatApiError(requestError, undefined, locale));
+      throw requestError;
+    } finally {
+      setAvatarUploading(false);
+    }
+  }
+
   function handleLogout() {
     clearAccessToken();
     router.replace('/login');
@@ -581,10 +623,15 @@ export default function AccountPage() {
 
       {!loading && activeTab === 'profile' ? (
         <AccountProfileOverview
+          avatarUploading={avatarUploading}
+          avatarUrl={profile?.avatarUrl}
+          subscription={subscription}
           loginAccountValue={loginAccountValue}
           loginAccountHint={loginAccountHint}
           profileCreatedAt={profile?.createdAt}
           passwordUpdatedAt={profile?.passwordUpdatedAt}
+          initialSubscriptionExpanded={searchParams.get('tab') === 'subscription'}
+          onAvatarUpload={(file) => handleUploadAvatar(file)}
           nameDraft={nameDraft}
           onNameDraftChange={setNameDraft}
           savingProfile={savingProfile}
@@ -628,15 +675,7 @@ export default function AccountPage() {
         />
       ) : null}
 
-      {!loading && activeTab === 'subscription' ? (
-        <section className="rounded-3xl border border-neutral-200/90 bg-white p-2">
-          <SubscriptionPageContent />
-        </section>
-      ) : null}
-
-      {!loading && activeTab === 'referral' ? (
-        <ReferralPanel tenantSlug={tenantSlug} />
-      ) : null}
+      {!loading && activeTab === 'referral' ? <ReferralPanel tenantSlug={tenantSlug} /> : null}
 
       {message ? (
         <Card className="rounded-2xl border-emerald-200 bg-emerald-50 p-4">

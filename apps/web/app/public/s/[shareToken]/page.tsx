@@ -93,6 +93,8 @@ export default async function PublicShareFeedPage({
       breeders={legacyData.breeders}
       presentation={shareResult.data.presentation}
       tenantSlug={shareResult.data.tenant.slug}
+      tenantName={shareResult.data.tenant.name}
+      stats={shareResult.data.stats ?? null}
     />
   );
 }

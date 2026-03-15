@@ -71,6 +71,8 @@ export default async function PublicShareFeaturesRoute({
       shareQuery={shareQuery}
       presentation={shareResult.data.presentation}
       embedded={false}
+      tenantSlug={shareResult.data.tenant.slug}
+      tenantName={shareResult.data.tenant.name}
     />
   );
 }

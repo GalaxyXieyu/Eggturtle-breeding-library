@@ -136,21 +136,21 @@ export function FamilyTreeView({ tree, openBreederDetail }: FamilyTreeViewProps)
   };
 
   return (
-    <Card className="rounded-3xl border-black/5 bg-white p-4 shadow-[0_8px_24px_rgba(0,0,0,0.06)] sm:p-5">
+    <Card className="rounded-3xl border-black/5 bg-white p-4 shadow-[0_8px_24px_rgba(0,0,0,0.06)] dark:border-white/5 dark:bg-neutral-900 sm:p-5">
       <div className="mb-4 flex items-center gap-2">
-        <Square size={16} className="text-neutral-700" />
-        <h2 className="text-2xl font-semibold text-neutral-900">家族谱系</h2>
+        <Square size={16} className="text-neutral-700 dark:text-neutral-300" />
+        <h2 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">家族谱系</h2>
       </div>
-      {tree.limitations ? <p className="mb-4 text-xs text-neutral-500">{tree.limitations}</p> : null}
+      {tree.limitations ? <p className="mb-4 text-xs text-neutral-500 dark:text-neutral-400">{tree.limitations}</p> : null}
 
-      <div className="space-y-4 rounded-3xl border border-neutral-200 bg-neutral-50/35 p-4 sm:p-5">
+      <div className="space-y-4 rounded-3xl border border-neutral-200 bg-neutral-50/35 p-4 dark:border-neutral-700/50 dark:bg-neutral-800/40 sm:p-5">
         <p className="text-center text-[11px] font-medium text-neutral-500">{generationHint}</p>
         <div className="relative">
           <Button
             type="button"
             variant="secondary"
             size="icon"
-            className="absolute left-2 top-1/2 z-10 inline-flex h-10 w-10 -translate-y-1/2 rounded-full border border-neutral-200 bg-white text-neutral-800 shadow-[0_10px_24px_rgba(15,23,42,0.16)] sm:left-3"
+            className="absolute left-2 top-1/2 z-10 inline-flex h-10 w-10 -translate-y-1/2 rounded-full border border-neutral-200 bg-white text-neutral-800 shadow-[0_10px_24px_rgba(15,23,42,0.16)] dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 sm:left-3"
             onClick={() => scrollRailBy('left')}
             disabled={!canScrollLeft}
             aria-label="查看左侧祖辈与父母"
@@ -161,7 +161,7 @@ export function FamilyTreeView({ tree, openBreederDetail }: FamilyTreeViewProps)
             type="button"
             variant="secondary"
             size="icon"
-            className="absolute right-2 top-1/2 z-10 inline-flex h-10 w-10 -translate-y-1/2 rounded-full border border-neutral-200 bg-white text-neutral-800 shadow-[0_10px_24px_rgba(15,23,42,0.16)] sm:right-3"
+            className="absolute right-2 top-1/2 z-10 inline-flex h-10 w-10 -translate-y-1/2 rounded-full border border-neutral-200 bg-white text-neutral-800 shadow-[0_10px_24px_rgba(15,23,42,0.16)] dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 sm:right-3"
             onClick={() => scrollRailBy('right')}
             disabled={!canScrollRight}
             aria-label="查看右侧子代与后代"
@@ -171,7 +171,7 @@ export function FamilyTreeView({ tree, openBreederDetail }: FamilyTreeViewProps)
 
           <div ref={scrollContainerRef} className="overflow-x-auto pb-2">
             <div
-              className={`flex items-start justify-center gap-6 rounded-2xl border border-neutral-200 bg-white/70 px-5 py-4 sm:gap-10 sm:px-8 sm:py-6 ${railClassName}`}
+              className={`flex items-start justify-center gap-6 rounded-2xl border border-neutral-200 bg-white/70 px-5 py-4 dark:border-neutral-700/50 dark:bg-neutral-800/60 sm:gap-10 sm:px-8 sm:py-6 ${railClassName}`}
             >
               {hasGrandparents ? (
                 <div className="flex w-[14.5rem] shrink-0 flex-col items-center gap-3">
@@ -241,7 +241,7 @@ export function FamilyTreeView({ tree, openBreederDetail }: FamilyTreeViewProps)
                         return (
                           <div
                             key={mate.id}
-                            className="flex flex-col items-center gap-1.5 rounded-2xl border border-neutral-200 bg-white p-2.5 shadow-sm"
+                            className="flex flex-col items-center gap-1.5 rounded-2xl border border-neutral-200 bg-white p-2.5 shadow-sm dark:border-neutral-700 dark:bg-neutral-800"
                           >
                             <TreeCard node={mate} onOpen={openBreederDetail} className="w-[6.5rem] sm:w-[7rem]" />
                             <div className="flex flex-wrap items-center justify-center gap-1">
@@ -258,7 +258,7 @@ export function FamilyTreeView({ tree, openBreederDetail }: FamilyTreeViewProps)
                       })}
                     </div>
                   ) : (
-                    <div className="rounded-2xl border border-dashed border-neutral-300 bg-white/80 p-2.5">
+                    <div className="rounded-2xl border border-dashed border-neutral-300 bg-white/80 p-2.5 dark:border-neutral-600 dark:bg-neutral-800/80">
                       <TreeCard node={null} onOpen={openBreederDetail} className="mx-auto w-[6.5rem] sm:w-[7rem]" />
                     </div>
                   )}

@@ -6,7 +6,7 @@ import { useUiPreferences } from '@/components/ui-preferences';
 import { ACCOUNT_NAV_MESSAGES } from '@/lib/locales/account';
 import { cn } from '@/lib/utils';
 
-type AccountSectionNavActive = 'profile' | 'subscription' | 'referral' | 'certificates';
+type AccountSectionNavActive = 'profile' | 'referral' | 'certificates';
 
 type AccountSectionNavProps = {
   active: AccountSectionNavActive;
@@ -26,11 +26,6 @@ export function AccountSectionNav({ active, tenantSlug }: AccountSectionNavProps
       key: 'profile',
       label: messages.profile,
       href: (nextTenantSlug) => `/app/${nextTenantSlug}/account`,
-    },
-    {
-      key: 'subscription',
-      label: messages.subscription,
-      href: (nextTenantSlug) => `/app/${nextTenantSlug}/account?tab=subscription`,
     },
     {
       key: 'referral',

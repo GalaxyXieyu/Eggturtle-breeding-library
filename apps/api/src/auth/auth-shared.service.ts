@@ -1,8 +1,4 @@
-import {
-  ForbiddenException,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ErrorCode, tenantSlugSchema } from '@eggturtle/shared';
 import type { AuthUser, MeProfile } from '@eggturtle/shared';
 import { Prisma } from '@prisma/client';
@@ -50,6 +46,7 @@ export class AuthSharedService {
     email: string;
     account: string | null;
     name: string | null;
+    avatarUrl?: string | null;
     createdAt: Date;
     passwordUpdatedAt: Date | null;
   }): MeProfile {
@@ -58,6 +55,7 @@ export class AuthSharedService {
       email: user.email,
       account: this.resolveUserAccount(user),
       name: user.name,
+      avatarUrl: this.normalizeUserAvatarUrl(user.avatarUrl),
       createdAt: user.createdAt.toISOString(),
       passwordUpdatedAt: user.passwordUpdatedAt ? user.passwordUpdatedAt.toISOString() : null,
     };
@@ -86,6 +84,24 @@ export class AuthSharedService {
 
     const normalized = value.trim();
     return normalized.length > 0 ? normalized : null;
+  }
+
+  normalizeUserAvatarUrl(value: string | null | undefined): string | null {
+    const normalized = value?.trim();
+    if (!normalized) {
+      return null;
+    }
+
+    if (/^https?:\/\//i.test(normalized)) {
+      return normalized;
+    }
+
+    const storageKey = this.extractUploadStorageKey(normalized);
+    if (storageKey?.includes('/user-avatar/')) {
+      return `/me/avatar/assets?key=${encodeURIComponent(storageKey)}`;
+    }
+
+    return normalized;
   }
 
   issueAccessToken(user: Pick<AuthUser, 'id' | 'email'>, tenantId?: string): string {
@@ -243,10 +259,7 @@ export class AuthSharedService {
     return `${account}@${ACCOUNT_EMAIL_DOMAIN}`;
   }
 
-  async loadPhoneIdentity(
-    client: Prisma.TransactionClient | PrismaService,
-    phoneNumber: string,
-  ) {
+  async loadPhoneIdentity(client: Prisma.TransactionClient | PrismaService, phoneNumber: string) {
     const shadowEmail = this.toPhoneShadowEmail(phoneNumber);
     const boundPhone = await client.userPhoneBinding.findUnique({
       where: {
@@ -297,10 +310,7 @@ export class AuthSharedService {
     return separatorIndex === -1 ? email : email.slice(0, separatorIndex);
   }
 
-  resolveUserAccount(user: {
-    email: string;
-    account?: string | null;
-  }): string | null {
+  resolveUserAccount(user: { email: string; account?: string | null }): string | null {
     const persistedAccount = this.normalizeValidAccount(user.account);
     if (persistedAccount) {
       return persistedAccount;
@@ -311,6 +321,46 @@ export class AuthSharedService {
     }
 
     return null;
+  }
+
+  private extractUploadStorageKey(value: string): string | null {
+    try {
+      const parsed = new URL(value, 'http://localhost');
+      if (parsed.pathname === '/me/avatar/assets') {
+        return this.normalizeStorageKey(parsed.searchParams.get('key'));
+      }
+
+      const uploadPublicBaseUrl = (process.env.UPLOAD_PUBLIC_BASE_URL ?? '/uploads').replace(
+        /\/+$/,
+        '',
+      );
+      if (
+        parsed.pathname === uploadPublicBaseUrl ||
+        !parsed.pathname.startsWith(`${uploadPublicBaseUrl}/`)
+      ) {
+        return null;
+      }
+
+      return this.normalizeStorageKey(
+        decodeURIComponent(parsed.pathname.slice(uploadPublicBaseUrl.length + 1)),
+      );
+    } catch {
+      return null;
+    }
+  }
+
+  private normalizeStorageKey(rawKey: string | null | undefined): string | null {
+    const key = rawKey?.replace(/\\/g, '/').replace(/^\/+/,'').trim();
+    if (!key) {
+      return null;
+    }
+
+    const segments = key.split('/').filter((segment) => segment.length > 0);
+    if (segments.length < 2 || segments.some((segment) => segment === '..')) {
+      return null;
+    }
+
+    return segments.join('/');
   }
 
   buildRegisterTenantName(account: string): string {
@@ -327,10 +377,7 @@ export class AuthSharedService {
     return tenantSlugSchema.parse(normalized);
   }
 
-  async buildUniqueTenantSlug(
-    tx: Prisma.TransactionClient,
-    account: string,
-  ): Promise<string> {
+  async buildUniqueTenantSlug(tx: Prisma.TransactionClient, account: string): Promise<string> {
     const baseSlug = this.normalizeAccountTenantSlugBase(account);
 
     for (let attempt = 0; attempt < 5; attempt += 1) {

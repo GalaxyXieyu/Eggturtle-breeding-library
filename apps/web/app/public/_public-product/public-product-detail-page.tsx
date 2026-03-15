@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import type { PublicSharePresentation } from '@eggturtle/shared';
+import type { PublicShareMerchantWatermark, PublicSharePresentation } from '@eggturtle/shared';
 
 import PublicBottomDock from '@/app/public/_shared/public-bottom-dock';
 import PublicFloatingActions from '@/app/public/_shared/public-floating-actions';
@@ -44,7 +44,10 @@ type Props = {
   shareQuery?: string;
   breederId: string;
   homeHref?: string;
+  tenantSlug?: string;
+  tenantName?: string;
   presentation?: PublicSharePresentation | null;
+  merchantWatermark?: PublicShareMerchantWatermark | null;
 };
 
 export default function PublicProductDetailPage({
@@ -59,7 +62,10 @@ export default function PublicProductDetailPage({
   shareQuery,
   breederId,
   homeHref,
+  tenantSlug,
+  tenantName,
   presentation,
+  merchantWatermark,
 }: Props) {
   const isNotFound = !breeder;
   const resolvedHomeHref = withDemo(homeHref ?? `/public/s/${shareToken}`, demo, shareQuery);
@@ -178,6 +184,7 @@ export default function PublicProductDetailPage({
                 shareToken={shareToken}
                 shareQuery={shareQuery}
                 homeHref={resolvedHomeHref}
+                watermarkText={merchantWatermark?.enabled ? resolvedPresentation.feedTitle : null}
               />
 
               <div className="flex flex-col space-y-4 px-3 sm:px-4 lg:px-5 2xl:px-6">
@@ -215,9 +222,7 @@ export default function PublicProductDetailPage({
                     {breeder.sex === 'female' ? <BreederStatusSummary breeder={breeder} /> : null}
 
                     {breeder.description ? (
-                      <div
-                        className="public-warm-note mt-4 rounded-2xl border p-3"
-                      >
+                      <div className="public-warm-note mt-4 rounded-2xl border p-3">
                         <div className="public-warm-note-body whitespace-pre-wrap text-sm font-medium leading-relaxed">
                           {breeder.description}
                         </div>
@@ -262,7 +267,11 @@ export default function PublicProductDetailPage({
         shareCardSubtitle={resolvedPresentation.feedSubtitle}
         shareCardPrimaryColor={brandPrimary}
         shareCardSecondaryColor={brandSecondary}
+        shareCardAvatarUrl={resolvedPresentation.identity.avatarUrl}
+        shareCardAvatarPreset={resolvedPresentation.identity.avatarPreset}
         shareCardHeroImageUrl={shareCardHeroImageUrl}
+        shareCardDisplayName={tenantName ?? resolvedPresentation.feedTitle}
+        shareCardAccountLabel={tenantSlug ? `@${tenantSlug}` : null}
       />
       <PublicBottomDock shareToken={shareToken} shareQuery={shareQuery} activeTab="pets" />
     </div>

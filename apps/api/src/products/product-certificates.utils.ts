@@ -23,6 +23,7 @@ export type CertificateLineageContext = {
   subjectMedia: PrismaSaleSubjectMediaModel | null
   seriesName: string | null
   sireProduct: PrismaProduct | null
+  damProduct: PrismaProduct | null
   subjectImageKey: string | null
   sireImageKey: string | null
   damImageKey: string | null

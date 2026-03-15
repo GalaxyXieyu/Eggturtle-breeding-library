@@ -6,6 +6,7 @@ import { PrismaModule } from '../prisma.module';
 import { StorageModule } from '../storage/storage.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { TenantSharePresentationModule } from '../tenant-share-presentation/tenant-share-presentation.module';
+import { TenantWatermarkModule } from '../tenant-watermark/tenant-watermark.module';
 
 import { SharesController } from './shares.controller';
 import { SharesCoreService } from './shares-core.service';
@@ -19,7 +20,8 @@ import { SharesPublicService } from './shares-public.service';
     AuthModule,
     SubscriptionsModule,
     StorageModule,
-    TenantSharePresentationModule
+    TenantSharePresentationModule,
+    TenantWatermarkModule,
   ],
   controllers: [SharesController],
   providers: [SharesCoreService, SharesEntryService, SharesPublicService]

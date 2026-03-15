@@ -2,7 +2,11 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { getTenantWatermarkResponseSchema, listProductsResponseSchema } from '@eggturtle/shared';
+import {
+  getTenantSharePresentationResponseSchema,
+  meProfileResponseSchema,
+  type TenantShareAvatarPreset,
+} from '@eggturtle/shared';
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams } from 'next/navigation';
@@ -13,6 +17,7 @@ import { copyTextWithFallback } from '@/lib/browser-share';
 import { apiRequest, resolveAuthenticatedAssetUrl } from '@/lib/api-client';
 import { useResolvedTenantBranding } from '@/lib/branding-client';
 import { formatApiError } from '@/lib/error-utils';
+import { generateShareComboPoster } from '@/lib/share-combo-poster';
 import {
   createTenantFeedShareLink,
   getTenantShareIntentKey,
@@ -24,6 +29,8 @@ import { cn } from '@/lib/utils';
 import { modalCloseButtonClass } from '@/components/ui/floating-actions';
 import ReferralPromoCard from '@/components/referral-promo-card';
 
+const DEFAULT_SHARE_HERO_IMAGE = '/images/mg_04.jpg';
+
 type TenantShareDialogTriggerProps = {
   intent?: TenantShareIntent;
   trigger: (props: { onClick: () => void; pending: boolean }) => ReactNode;
@@ -32,6 +39,7 @@ type TenantShareDialogTriggerProps = {
   previewImageUrl?: string | null;
   posterImageUrls?: string[];
   posterVariant?: TenantSharePosterVariant;
+  shareAvatarPreset?: TenantShareAvatarPreset | null;
   assetSource?: 'provided' | 'presentation';
   missingTenantMessage?: string;
   className?: string;
@@ -45,6 +53,7 @@ export default function TenantShareDialogTrigger({
   previewImageUrl,
   posterImageUrls,
   posterVariant,
+  shareAvatarPreset,
   assetSource,
   missingTenantMessage = '当前用户上下文未就绪，暂时无法生成分享链接。',
   className,
@@ -70,19 +79,21 @@ export default function TenantShareDialogTrigger({
   const [posterRetrySeed, setPosterRetrySeed] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [presentationPreviewImageUrl, setPresentationPreviewImageUrl] = useState<string | null>(null);
+  const [presentationPreviewImageUrl, setPresentationPreviewImageUrl] = useState<string | null>(
+    null,
+  );
   const [presentationPosterImageUrls, setPresentationPosterImageUrls] = useState<string[]>([]);
+  const [presentationAvatarPreset, setPresentationAvatarPreset] =
+    useState<TenantShareAvatarPreset | null>(null);
+  const [currentUserAvatarUrl, setCurrentUserAvatarUrl] = useState<string | null>(null);
+  const [presentationWechatId, setPresentationWechatId] = useState<string | null>(null);
   const [presentationAssetsPending, setPresentationAssetsPending] = useState(false);
-  const [sharePosterWatermarkText, setSharePosterWatermarkText] = useState<string | null>(null);
-  const [watermarkPending, setWatermarkPending] = useState(false);
   const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
   const shareRequestIdRef = useRef(0);
   const shareAbortControllerRef = useRef<AbortController | null>(null);
   const presentationRequestIdRef = useRef(0);
   const presentationAbortControllerRef = useRef<AbortController | null>(null);
-  const watermarkAbortControllerRef = useRef<AbortController | null>(null);
   const posterRequestIdRef = useRef(0);
-  const watermarkRequestIdRef = useRef(0);
   const openSessionIdRef = useRef(0);
   const mountedRef = useRef(true);
   const titleId = useId();
@@ -98,20 +109,17 @@ export default function TenantShareDialogTrigger({
 
     return intentCopy.title;
   }, [intentCopy.title, intentKey, tenantBranding.resolved.publicTitle, title]);
-  const cardSubtitle = useMemo(
-    () => {
-      if (subtitle?.trim()) {
-        return subtitle.trim();
-      }
+  const cardSubtitle = useMemo(() => {
+    if (subtitle?.trim()) {
+      return subtitle.trim();
+    }
 
-      if (intentKey === 'feed') {
-        return tenantBranding.resolved.publicSubtitle;
-      }
+    if (intentKey === 'feed') {
+      return tenantBranding.resolved.publicSubtitle;
+    }
 
-      return intentCopy.subtitle;
-    },
-    [intentCopy.subtitle, intentKey, subtitle, tenantBranding.resolved.publicSubtitle],
-  );
+    return intentCopy.subtitle;
+  }, [intentCopy.subtitle, intentKey, subtitle, tenantBranding.resolved.publicSubtitle]);
   const normalizedPreviewImageUrl = useMemo(
     () => (previewImageUrl?.trim() ? resolveAuthenticatedAssetUrl(previewImageUrl) : null),
     [previewImageUrl],
@@ -130,6 +138,22 @@ export default function TenantShareDialogTrigger({
   );
   const platformAppNameZh = tenantBranding.platform.appName.zh;
   const platformAppNameEn = tenantBranding.platform.appName.en;
+  const resolvedShareAvatarPreset = useMemo(
+    () => shareAvatarPreset ?? presentationAvatarPreset ?? null,
+    [presentationAvatarPreset, shareAvatarPreset],
+  );
+  const resolvedShareAvatarUrl = useMemo(
+    () => currentUserAvatarUrl?.trim() || null,
+    [currentUserAvatarUrl],
+  );
+  const shareAccountLabel = useMemo(
+    () => (tenantSlug ? `@${tenantSlug}` : '公开分享主页'),
+    [tenantSlug],
+  );
+  const shareContactLabel = useMemo(
+    () => (presentationWechatId?.trim() ? `微信号 ${presentationWechatId.trim()}` : null),
+    [presentationWechatId],
+  );
 
   const resolvedPosterVariant = useMemo<TenantSharePosterVariant>(() => {
     if (posterVariant) {
@@ -151,11 +175,6 @@ export default function TenantShareDialogTrigger({
   const cancelPresentationRequest = useCallback(() => {
     presentationAbortControllerRef.current?.abort();
     presentationAbortControllerRef.current = null;
-  }, []);
-
-  const cancelWatermarkRequest = useCallback(() => {
-    watermarkAbortControllerRef.current?.abort();
-    watermarkAbortControllerRef.current = null;
   }, []);
 
   const normalizedPresentationPosterImageUrls = useMemo(
@@ -185,15 +204,17 @@ export default function TenantShareDialogTrigger({
     return normalizedPresentationPosterImageUrls.length > 0
       ? normalizedPresentationPosterImageUrls
       : normalizedPosterImageUrls;
-  }, [normalizedPosterImageUrls, normalizedPresentationPosterImageUrls, shouldUsePresentationAssets]);
+  }, [
+    normalizedPosterImageUrls,
+    normalizedPresentationPosterImageUrls,
+    shouldUsePresentationAssets,
+  ]);
 
   const resetPreviewState = useCallback(() => {
     cancelShareRequest();
     cancelPresentationRequest();
-    cancelWatermarkRequest();
     shareRequestIdRef.current += 1;
     presentationRequestIdRef.current += 1;
-    watermarkRequestIdRef.current += 1;
     posterRequestIdRef.current += 1;
     setPending(false);
     setLink('');
@@ -203,11 +224,12 @@ export default function TenantShareDialogTrigger({
     setPosterRetrySeed(0);
     setPresentationPreviewImageUrl(null);
     setPresentationPosterImageUrls([]);
+    setPresentationAvatarPreset(null);
+    setCurrentUserAvatarUrl(null);
+    setPresentationWechatId(null);
     setPresentationAssetsPending(false);
-    setSharePosterWatermarkText(null);
-    setWatermarkPending(false);
     setError(null);
-  }, [cancelPresentationRequest, cancelShareRequest, cancelWatermarkRequest]);
+  }, [cancelPresentationRequest, cancelShareRequest]);
 
   const handleClose = useCallback(() => {
     openSessionIdRef.current += 1;
@@ -292,73 +314,8 @@ export default function TenantShareDialogTrigger({
     [cancelShareRequest, missingTenantMessage, normalizedIntent],
   );
 
-  const prepareWatermarkState = useCallback(
-    async (sessionId: number) => {
-      const requestId = watermarkRequestIdRef.current + 1;
-      watermarkRequestIdRef.current = requestId;
-      cancelWatermarkRequest();
-      const abortController = new AbortController();
-      watermarkAbortControllerRef.current = abortController;
-      setWatermarkPending(true);
-
-      try {
-        const response = await apiRequest('/tenant-watermark', {
-          signal: abortController.signal,
-          responseSchema: getTenantWatermarkResponseSchema,
-        });
-
-        if (
-          !mountedRef.current ||
-          openSessionIdRef.current !== sessionId ||
-          watermarkRequestIdRef.current !== requestId
-        ) {
-          return;
-        }
-
-        setSharePosterWatermarkText(
-          response.effective.enabled && response.effective.applyToSharePoster
-            ? response.effective.watermarkText
-            : null,
-        );
-      } catch (currentError) {
-        if (abortController.signal.aborted) {
-          return;
-        }
-
-        if (
-          !mountedRef.current ||
-          openSessionIdRef.current !== sessionId ||
-          watermarkRequestIdRef.current !== requestId
-        ) {
-          return;
-        }
-
-        console.error('[Share] Failed to load tenant watermark state:', currentError);
-        setSharePosterWatermarkText(null);
-      } finally {
-        if (watermarkAbortControllerRef.current === abortController) {
-          watermarkAbortControllerRef.current = null;
-        }
-
-        if (
-          mountedRef.current &&
-          openSessionIdRef.current === sessionId &&
-          watermarkRequestIdRef.current === requestId
-        ) {
-          setWatermarkPending(false);
-        }
-      }
-    },
-    [cancelWatermarkRequest],
-  );
-
   const preparePresentationAssets = useCallback(
     async (sessionId: number) => {
-      if (!shouldUsePresentationAssets) {
-        setPresentationAssetsPending(false);
-        return;
-      }
-
       const requestId = presentationRequestIdRef.current + 1;
       presentationRequestIdRef.current = requestId;
       cancelPresentationRequest();
@@ -367,18 +324,16 @@ export default function TenantShareDialogTrigger({
       setPresentationAssetsPending(true);
 
       try {
-        const response = await apiRequest('/products?page=1&pageSize=12&sortBy=updatedAt&sortDir=desc', {
-          signal: abortController.signal,
-          responseSchema: listProductsResponseSchema,
-        });
-
-        const heroImages = Array.from(
-          new Set(
-            response.products
-              .map((item) => item.coverImageUrl?.trim() ?? '')
-              .filter(Boolean),
-          ),
-        );
+        const [presentationResult, profileResult] = await Promise.allSettled([
+          apiRequest('/tenant-share-presentation', {
+            signal: abortController.signal,
+            responseSchema: getTenantSharePresentationResponseSchema,
+          }),
+          apiRequest('/me/profile', {
+            signal: abortController.signal,
+            responseSchema: meProfileResponseSchema,
+          }),
+        ]);
 
         if (
           !mountedRef.current ||
@@ -388,8 +343,45 @@ export default function TenantShareDialogTrigger({
           return;
         }
 
-        setPresentationPreviewImageUrl(heroImages[0] ?? null);
-        setPresentationPosterImageUrls(heroImages);
+        setCurrentUserAvatarUrl(
+          profileResult.status === 'fulfilled'
+            ? (profileResult.value.profile.avatarUrl?.trim() ?? null)
+            : null,
+        );
+
+        if (presentationResult.status === 'rejected') {
+          console.error(
+            '[Share] Failed to load tenant share presentation assets:',
+            presentationResult.reason,
+          );
+          if (shouldUsePresentationAssets) {
+            setPresentationPreviewImageUrl(null);
+            setPresentationPosterImageUrls([]);
+            setPresentationAvatarPreset(null);
+            setPresentationWechatId(null);
+          }
+          return;
+        }
+
+        const configuredHeroImages = Array.from(
+          new Set(
+            presentationResult.value.presentation.heroImages
+              .map((item) => item.trim())
+              .filter(Boolean)
+              .map((item) => resolveAuthenticatedAssetUrl(item)),
+          ),
+        );
+        const heroImages =
+          configuredHeroImages.length > 0 ? configuredHeroImages : [DEFAULT_SHARE_HERO_IMAGE];
+
+        const nextAvatarPreset = presentationResult.value.presentation.avatarPreset ?? null;
+        const nextWechatId = presentationResult.value.presentation.wechatId?.trim() ?? null;
+        if (shouldUsePresentationAssets) {
+          setPresentationPreviewImageUrl(heroImages[0] ?? null);
+          setPresentationPosterImageUrls(heroImages);
+          setPresentationAvatarPreset(nextAvatarPreset);
+          setPresentationWechatId(nextWechatId);
+        }
       } catch (currentError) {
         if (abortController.signal.aborted) {
           return;
@@ -403,9 +395,13 @@ export default function TenantShareDialogTrigger({
           return;
         }
 
-        console.error('[Share] Failed to load unified product cover assets:', currentError);
-        setPresentationPreviewImageUrl(null);
-        setPresentationPosterImageUrls([]);
+        console.error('[Share] Failed to load tenant share presentation assets:', currentError);
+        if (shouldUsePresentationAssets) {
+          setPresentationPreviewImageUrl(null);
+          setPresentationPosterImageUrls([]);
+          setPresentationAvatarPreset(null);
+          setPresentationWechatId(null);
+        }
       } finally {
         if (presentationAbortControllerRef.current === abortController) {
           presentationAbortControllerRef.current = null;
@@ -432,14 +428,12 @@ export default function TenantShareDialogTrigger({
       setPortalRoot(null);
       cancelShareRequest();
       cancelPresentationRequest();
-      cancelWatermarkRequest();
       openSessionIdRef.current += 1;
       shareRequestIdRef.current += 1;
       presentationRequestIdRef.current += 1;
-      watermarkRequestIdRef.current += 1;
       posterRequestIdRef.current += 1;
     };
-  }, [cancelPresentationRequest, cancelShareRequest, cancelWatermarkRequest]);
+  }, [cancelPresentationRequest, cancelShareRequest]);
 
   useEffect(() => {
     if (!notice) {
@@ -458,8 +452,7 @@ export default function TenantShareDialogTrigger({
     const sessionId = openSessionIdRef.current;
     void prepareShareAssets(sessionId);
     void preparePresentationAssets(sessionId);
-    void prepareWatermarkState(sessionId);
-  }, [intentKey, open, preparePresentationAssets, prepareShareAssets, prepareWatermarkState]);
+  }, [intentKey, open, preparePresentationAssets, prepareShareAssets]);
 
   useEffect(() => {
     if (!open) {
@@ -509,7 +502,7 @@ export default function TenantShareDialogTrigger({
   }, [link]);
 
   useEffect(() => {
-    if (!open || !qrDataUrl || presentationAssetsPending || watermarkPending) {
+    if (!open || !qrDataUrl || presentationAssetsPending) {
       setPosterPending(false);
       return;
     }
@@ -529,7 +522,10 @@ export default function TenantShareDialogTrigger({
       brandTitleEn: platformAppNameEn,
       previewImageUrl: resolvedPreviewImageUrl,
       posterImageUrls: resolvedPosterImageUrls,
-      watermarkText: sharePosterWatermarkText,
+      avatarUrl: resolvedShareAvatarUrl,
+      avatarPreset: resolvedShareAvatarPreset,
+      accountLabel: shareAccountLabel,
+      contactLabel: shareContactLabel,
       variant: resolvedPosterVariant,
     };
 
@@ -596,8 +592,10 @@ export default function TenantShareDialogTrigger({
     qrDataUrl,
     resolvedPosterImageUrls,
     resolvedPosterVariant,
-    sharePosterWatermarkText,
-    watermarkPending,
+    resolvedShareAvatarUrl,
+    resolvedShareAvatarPreset,
+    shareAccountLabel,
+    shareContactLabel,
     resolvedPreviewImageUrl,
     posterRetrySeed,
   ]);
@@ -657,6 +655,11 @@ export default function TenantShareDialogTrigger({
       setError('保存失败，请长按海报图片手动保存。');
     }
   }
+
+  const posterPreviewClass =
+    resolvedPosterVariant === 'detail'
+      ? 'aspect-[9/16] h-[min(48dvh,22rem)] max-h-[22rem] sm:h-[min(72vh,42rem)] sm:max-h-[42rem]'
+      : 'aspect-square h-[min(42dvh,20rem)] max-h-[20rem] sm:h-[min(60vh,32rem)] sm:max-h-[32rem]';
 
   function handleRetryShareLink() {
     if (!open || pending || posterPending) {
@@ -727,21 +730,36 @@ export default function TenantShareDialogTrigger({
                 <div className="relative z-10 flex flex-none justify-center py-1 sm:py-2">
                   <div className="flex w-full items-center justify-center overflow-hidden rounded-2xl border border-neutral-200 bg-gradient-to-b from-neutral-50 to-white p-2.5 sm:rounded-3xl sm:p-4">
                     {pending ? (
-                      <div className="mx-auto flex aspect-[9/16] h-[min(48dvh,22rem)] max-h-[22rem] w-auto max-w-full flex-col items-center justify-center gap-3 rounded-[24px] border border-neutral-200 bg-white px-4 text-center text-sm text-neutral-600 shadow-sm sm:h-[min(72vh,42rem)] sm:max-h-[42rem] sm:gap-4 sm:rounded-[28px] sm:px-6">
+                      <div
+                        className={cn(
+                          'mx-auto flex w-auto max-w-full flex-col items-center justify-center gap-3 rounded-[24px] border border-neutral-200 bg-white px-4 text-center text-sm text-neutral-600 shadow-sm sm:gap-4 sm:rounded-[28px] sm:px-6',
+                          posterPreviewClass,
+                        )}
+                      >
                         <span className="inline-flex h-12 w-12 animate-pulse items-center justify-center rounded-full bg-neutral-900 text-[#FFD400]">
                           <Share2 size={18} aria-hidden="true" />
                         </span>
                         正在生成分享链接…
                       </div>
                     ) : posterPending ? (
-                      <div className="mx-auto flex aspect-[9/16] h-[min(48dvh,22rem)] max-h-[22rem] w-auto max-w-full flex-col items-center justify-center gap-3 rounded-[24px] border border-neutral-200 bg-white px-4 text-center text-sm text-neutral-600 shadow-sm sm:h-[min(72vh,42rem)] sm:max-h-[42rem] sm:gap-4 sm:rounded-[28px] sm:px-6">
+                      <div
+                        className={cn(
+                          'mx-auto flex w-auto max-w-full flex-col items-center justify-center gap-3 rounded-[24px] border border-neutral-200 bg-white px-4 text-center text-sm text-neutral-600 shadow-sm sm:gap-4 sm:rounded-[28px] sm:px-6',
+                          posterPreviewClass,
+                        )}
+                      >
                         <span className="inline-flex h-12 w-12 animate-pulse items-center justify-center rounded-full bg-neutral-900 text-[#FFD400]">
                           <QrCode size={20} aria-hidden="true" />
                         </span>
                         正在渲染分享海报…
                       </div>
                     ) : posterDataUrl ? (
-                      <div className="mx-auto flex aspect-[9/16] h-[min(48dvh,22rem)] max-h-[22rem] w-auto max-w-full items-center justify-center rounded-[24px] border border-neutral-200 bg-white p-1 shadow-xl sm:h-[min(72vh,42rem)] sm:max-h-[42rem] sm:rounded-[28px] sm:p-1.5">
+                      <div
+                        className={cn(
+                          'mx-auto flex w-auto max-w-full items-center justify-center rounded-[24px] border border-neutral-200 bg-white p-1 shadow-xl sm:rounded-[28px] sm:p-1.5',
+                          posterPreviewClass,
+                        )}
+                      >
                         <img
                           src={posterDataUrl}
                           alt="分享卡片预览"
@@ -749,7 +767,12 @@ export default function TenantShareDialogTrigger({
                         />
                       </div>
                     ) : (
-                      <div className="mx-auto flex aspect-[9/16] h-[min(48dvh,22rem)] max-h-[22rem] w-auto max-w-full flex-col items-center justify-center gap-3 rounded-[24px] border border-neutral-200 bg-white px-4 text-center text-sm text-neutral-500 shadow-sm sm:h-[min(72vh,42rem)] sm:max-h-[42rem] sm:gap-4 sm:rounded-[28px] sm:px-6">
+                      <div
+                        className={cn(
+                          'mx-auto flex w-auto max-w-full flex-col items-center justify-center gap-3 rounded-[24px] border border-neutral-200 bg-white px-4 text-center text-sm text-neutral-500 shadow-sm sm:gap-4 sm:rounded-[28px] sm:px-6',
+                          posterPreviewClass,
+                        )}
+                      >
                         <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 text-neutral-400">
                           <QrCode size={24} aria-hidden="true" />
                         </span>
@@ -841,7 +864,10 @@ type SharePosterPayload = {
   brandTitleEn: string;
   previewImageUrl?: string | null;
   posterImageUrls?: string[];
-  watermarkText?: string | null;
+  avatarUrl?: string | null;
+  avatarPreset?: TenantShareAvatarPreset | null;
+  accountLabel?: string | null;
+  contactLabel?: string | null;
   variant: TenantSharePosterVariant;
 };
 
@@ -852,168 +878,17 @@ async function generateSharePoster(payload: SharePosterPayload): Promise<string>
 }
 
 async function generateGenericSharePoster(payload: SharePosterPayload): Promise<string> {
-  const width = 1080;
-  const height = 1920;
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-
-  const ctx = canvas.getContext('2d');
-  if (!ctx) {
-    throw new Error('Canvas unavailable');
-  }
-
-  // Modern gradient background (black to dark gray)
-  const background = ctx.createLinearGradient(0, 0, width, height);
-  background.addColorStop(0, '#0a0a0a');
-  background.addColorStop(0.5, '#1a1a1a');
-  background.addColorStop(1, '#0f0f0f');
-  ctx.fillStyle = background;
-  ctx.fillRect(0, 0, width, height);
-
-  // Subtle accent glow (yellow accent)
-  drawGlowCircle(ctx, width * 0.85, 200, 400, 'rgba(255,212,0,0.12)');
-  drawGlowCircle(ctx, 120, height - 200, 350, 'rgba(255,212,0,0.08)');
-
-  const cardX = 50;
-  const cardY = 50;
-  const cardWidth = width - 100;
-  const cardHeight = height - 100;
-
-  // Main card with clean white background
-  ctx.save();
-  ctx.shadowColor = 'rgba(0,0,0,0.5)';
-  ctx.shadowBlur = 60;
-  ctx.shadowOffsetY = 30;
-  roundedRect(ctx, cardX, cardY, cardWidth, cardHeight, 48);
-  ctx.fillStyle = '#ffffff';
-  ctx.fill();
-  ctx.restore();
-
-  const contentPadding = 48;
-  const heroX = cardX + contentPadding;
-  const heroY = cardY + contentPadding;
-  const heroWidth = cardWidth - contentPadding * 2;
-  const heroHeight = 1000;
-
-  // Draw hero image section
-  await drawGenericPosterHero(ctx, payload, heroX, heroY, heroWidth, heroHeight);
-
-  // Decorative accent line above title
-  const titleY = heroY + heroHeight + 60;
-  const accentLineWidth = 80;
-  const accentLineGradient = ctx.createLinearGradient(
-    heroX,
-    titleY - 20,
-    heroX + accentLineWidth,
-    titleY - 20,
-  );
-  accentLineGradient.addColorStop(0, '#FFD400');
-  accentLineGradient.addColorStop(1, '#FFA500');
-  ctx.fillStyle = accentLineGradient;
-  roundedRect(ctx, heroX, titleY - 20, accentLineWidth, 6, 3);
-  ctx.fill();
-
-  // Title section with enhanced typography
-  drawMultilineText(ctx, payload.title, {
-    x: heroX,
-    y: titleY + 30,
-    maxWidth: heroWidth,
-    lineHeight: 72,
-    maxLines: 2,
-    font: '800 62px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif',
-    color: '#0a0a0a',
+  return generateShareComboPoster({
+    title: payload.title,
+    subtitle: payload.subtitle,
+    qrDataUrl: payload.qrDataUrl,
+    heroImageUrl: payload.previewImageUrl ?? payload.posterImageUrls?.[0] ?? null,
+    footerLabel: payload.brandTitleZh,
+    avatarUrl: payload.avatarUrl ?? null,
+    accountLabel: payload.accountLabel,
+    avatarPreset: payload.avatarPreset ?? null,
+    contactLabel: payload.contactLabel ?? null,
   });
-
-  // Subtitle with refined styling
-  drawMultilineText(ctx, payload.subtitle, {
-    x: heroX,
-    y: titleY + 180,
-    maxWidth: heroWidth,
-    lineHeight: 44,
-    maxLines: 2,
-    font: '500 30px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif',
-    color: '#555555',
-  });
-
-  // QR code section - enhanced design
-  const qrSectionY = cardY + cardHeight - 360;
-  const qrSize = 200;
-  const qrX = heroX;
-  const qrY = qrSectionY;
-
-  // QR code container with gradient background
-  const qrBgGradient = ctx.createLinearGradient(
-    qrX - 16,
-    qrY - 16,
-    qrX + qrSize + 16,
-    qrY + qrSize + 16,
-  );
-  qrBgGradient.addColorStop(0, '#fffbeb');
-  qrBgGradient.addColorStop(1, '#fef3c7');
-  ctx.fillStyle = qrBgGradient;
-  roundedRect(ctx, qrX - 16, qrY - 16, qrSize + 32, qrSize + 32, 28);
-  ctx.fill();
-
-  // Accent border
-  ctx.strokeStyle = 'rgba(255,212,0,0.3)';
-  ctx.lineWidth = 3;
-  roundedRect(ctx, qrX - 16, qrY - 16, qrSize + 32, qrSize + 32, 28);
-  ctx.stroke();
-
-  const qrImage = await loadImage(payload.qrDataUrl);
-  ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
-
-  // QR text section - enhanced typography
-  const qrTextX = qrX + qrSize + 50;
-
-  // Icon-style accent
-  ctx.fillStyle = '#FFD400';
-  ctx.beginPath();
-  ctx.arc(qrTextX - 8, qrY + 35, 4, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = '#0a0a0a';
-  ctx.font = '800 40px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
-  ctx.fillText('扫码查看', qrTextX, qrY + 45);
-
-  ctx.fillStyle = '#666666';
-  ctx.font = '500 26px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
-  ctx.fillText('分享链接与二维码同源', qrTextX, qrY + 100);
-  ctx.fillText('可直接转发或复制链接', qrTextX, qrY + 145);
-
-  // Bottom accent bar with enhanced gradient
-  const accentBarY = qrY + qrSize + 50;
-  const accentBarHeight = 8;
-  const accentGradient = ctx.createLinearGradient(heroX, accentBarY, heroX + heroWidth, accentBarY);
-  accentGradient.addColorStop(0, 'rgba(255,212,0,0.3)');
-  accentGradient.addColorStop(0.2, '#FFD400');
-  accentGradient.addColorStop(0.5, '#FFC700');
-  accentGradient.addColorStop(0.8, '#FFD400');
-  accentGradient.addColorStop(1, 'rgba(255,212,0,0.3)');
-  ctx.fillStyle = accentGradient;
-  roundedRect(ctx, heroX, accentBarY, heroWidth, accentBarHeight, 4);
-  ctx.fill();
-
-  const watermarkText = payload.watermarkText?.trim();
-  if (watermarkText) {
-    drawMultilineText(ctx, watermarkText, {
-      x: heroX,
-      y: accentBarY + 34,
-      maxWidth: heroWidth,
-      lineHeight: 26,
-      maxLines: 1,
-      font: '600 22px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif',
-      color: 'rgba(82,82,82,0.78)',
-    });
-  }
-
-  // Footer text with refined styling
-  ctx.fillStyle = '#999999';
-  ctx.font = '600 22px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
-  ctx.fillText(payload.brandTitleEn, heroX, accentBarY + (watermarkText ? 76 : 55));
-
-  return canvas.toDataURL('image/png');
 }
 
 async function generateDetailSharePoster(payload: SharePosterPayload): Promise<string> {
@@ -1215,19 +1090,6 @@ async function generateDetailSharePoster(payload: SharePosterPayload): Promise<s
     ctx.fill();
   }
 
-  const watermarkText = payload.watermarkText?.trim();
-  if (watermarkText) {
-    drawMultilineText(ctx, watermarkText, {
-      x: panelX + 34,
-      y: panelY + panelHeight - 92,
-      maxWidth: panelWidth - 68,
-      lineHeight: 24,
-      maxLines: 1,
-      font: '600 20px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif',
-      color: 'rgba(146,64,14,0.76)',
-    });
-  }
-
   ctx.fillStyle = '#92400e';
   ctx.font = '500 20px "Avenir Next", "PingFang SC", "Segoe UI", sans-serif';
   ctx.fillText('A good card speaks before you do.', panelX + 34, panelY + panelHeight - 58);
@@ -1237,39 +1099,6 @@ async function generateDetailSharePoster(payload: SharePosterPayload): Promise<s
   ctx.fillText(payload.brandTitleEn, panelX + 34, panelY + panelHeight - 24);
 
   return canvas.toDataURL('image/png');
-}
-
-async function drawGenericPosterHero(
-  ctx: CanvasRenderingContext2D,
-  payload: SharePosterPayload,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-) {
-  const imageUrls = resolvePosterImageUrls(payload);
-
-  console.log('[Poster] Drawing hero with', imageUrls.length, 'image URLs');
-
-  if (imageUrls.length === 0) {
-    console.log('[Poster] No images, using unified generic collage fallback');
-    drawUnifiedGenericPosterHero(ctx, [], x, y, width, height);
-    return;
-  }
-
-  console.log('[Poster] Loading images...');
-  const images = await loadImages(imageUrls);
-  console.log('[Poster] Loaded', images.length, 'images successfully');
-
-  if (images.length === 0) {
-    console.log('[Poster] All images failed to load, using unified generic collage fallback');
-    drawUnifiedGenericPosterHero(ctx, [], x, y, width, height);
-    return;
-  }
-
-  console.log('[Poster] Drawing unified generic collage...');
-  drawUnifiedGenericPosterHero(ctx, images, x, y, width, height);
-  console.log('[Poster] Unified generic collage drawn');
 }
 
 function resolvePosterImageUrls(payload: SharePosterPayload): string[] {
@@ -1435,155 +1264,6 @@ function drawPosterCollage(
       currentY += rowHeight + gap;
     }
   }
-
-  ctx.restore();
-}
-
-function drawUnifiedGenericPosterHero(
-  ctx: CanvasRenderingContext2D,
-  images: HTMLImageElement[],
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-) {
-  const heroGradient = ctx.createLinearGradient(x, y, x + width, y + height);
-  heroGradient.addColorStop(0, '#fafaf9');
-  heroGradient.addColorStop(0.5, '#f5f5f4');
-  heroGradient.addColorStop(1, '#e7e5e4');
-  ctx.fillStyle = heroGradient;
-  roundedRect(ctx, x, y, width, height, 32);
-  ctx.fill();
-
-  ctx.strokeStyle = 'rgba(255,212,0,0.15)';
-  ctx.lineWidth = 3;
-  roundedRect(ctx, x, y, width, height, 32);
-  ctx.stroke();
-
-  const padding = 8;
-  const gap = 8;
-  const innerX = x + padding;
-  const innerY = y + padding;
-  const innerWidth = width - padding * 2;
-  const innerHeight = height - padding * 2;
-  const mainWidth = innerWidth * 0.6;
-  const sideWidth = innerWidth - mainWidth - gap;
-  const sideHeight = (innerHeight - gap) / 2;
-  const slotImages = createUnifiedHeroSlotImages(images);
-
-  ctx.save();
-  roundedRect(ctx, x, y, width, height, 32);
-  ctx.clip();
-
-  drawGenericHeroSlot(ctx, slotImages[0] ?? null, innerX, innerY, mainWidth, innerHeight, 20, [
-    '#fef3c7',
-    '#f59e0b',
-  ]);
-  drawGenericHeroSlot(
-    ctx,
-    slotImages[1] ?? null,
-    innerX + mainWidth + gap,
-    innerY,
-    sideWidth,
-    sideHeight,
-    16,
-    ['#e2e8f0', '#94a3b8'],
-  );
-  drawGenericHeroSlot(
-    ctx,
-    slotImages[2] ?? null,
-    innerX + mainWidth + gap,
-    innerY + sideHeight + gap,
-    sideWidth,
-    sideHeight,
-    16,
-    ['#fde68a', '#92400e'],
-  );
-
-  ctx.restore();
-}
-
-function createUnifiedHeroSlotImages(images: HTMLImageElement[]) {
-  if (images.length === 0) {
-    return [null, null, null];
-  }
-
-  return Array.from({ length: 3 }, (_, index) => images[index % images.length] ?? null);
-}
-
-function drawGenericHeroSlot(
-  ctx: CanvasRenderingContext2D,
-  image: HTMLImageElement | null,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  radius: number,
-  fallbackColors: [string, string],
-) {
-  if (image) {
-    drawCoverImage(ctx, image, x, y, width, height, radius);
-  } else {
-    drawGenericHeroSlotFallback(ctx, x, y, width, height, radius, fallbackColors);
-  }
-
-  ctx.save();
-  ctx.shadowColor = 'rgba(0,0,0,0.12)';
-  ctx.shadowBlur = 15;
-  ctx.shadowOffsetY = 6;
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 4;
-  roundedRect(ctx, x, y, width, height, radius);
-  ctx.stroke();
-  ctx.restore();
-}
-
-function drawGenericHeroSlotFallback(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  radius: number,
-  colors: [string, string],
-) {
-  const gradient = ctx.createLinearGradient(x, y, x + width, y + height);
-  gradient.addColorStop(0, colors[0]);
-  gradient.addColorStop(1, colors[1]);
-  ctx.fillStyle = gradient;
-  roundedRect(ctx, x, y, width, height, radius);
-  ctx.fill();
-
-  ctx.save();
-  roundedRect(ctx, x, y, width, height, radius);
-  ctx.clip();
-
-  const lineInset = Math.max(14, width * 0.12);
-  const lineWidth = width - lineInset * 2;
-  const titleY = y + Math.max(22, height * 0.16);
-
-  ctx.fillStyle = 'rgba(255,255,255,0.38)';
-  roundedRect(ctx, x + lineInset, titleY, lineWidth, 14, 7);
-  ctx.fill();
-  roundedRect(ctx, x + lineInset, titleY + 26, lineWidth * 0.78, 11, 5.5);
-  ctx.fill();
-  roundedRect(ctx, x + lineInset, titleY + 48, lineWidth * 0.56, 11, 5.5);
-  ctx.fill();
-
-  drawGlowCircle(
-    ctx,
-    x + width * 0.82,
-    y + height * 0.22,
-    Math.max(width, height) * 0.28,
-    'rgba(255,255,255,0.18)',
-  );
-  drawGlowCircle(
-    ctx,
-    x + width * 0.18,
-    y + height * 0.84,
-    Math.max(width, height) * 0.22,
-    'rgba(17,24,39,0.12)',
-  );
 
   ctx.restore();
 }

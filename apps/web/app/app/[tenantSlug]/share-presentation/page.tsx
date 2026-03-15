@@ -15,6 +15,7 @@ import {
   TENANT_WATERMARK_MAX_TEXT_LENGTH,
   getTenantSharePresentationResponseSchema,
   getTenantWatermarkResponseSchema,
+  meProfileResponseSchema,
   uploadTenantSharePresentationImageResponseSchema,
   updateTenantSharePresentationRequestSchema,
   updateTenantSharePresentationResponseSchema,
@@ -32,6 +33,7 @@ import {
   PenLine,
   RefreshCcw,
   Share2,
+  Stamp,
 } from 'lucide-react';
 
 import ShareCoverCropDialog from './share-cover-crop-dialog';
@@ -56,7 +58,7 @@ import { Textarea } from '@/components/ui/textarea';
 const DEFAULT_HERO_IMAGE = '/images/mg_04.jpg';
 const FORM_ID = 'share-presentation-form';
 
-type EditorKey = 'title' | 'subtitle' | 'contact' | 'cover' | 'carousel' | null;
+type EditorKey = 'title' | 'subtitle' | 'contact' | 'cover' | 'carousel' | 'watermark' | null;
 
 type FormState = {
   feedTitle: string;
@@ -82,7 +84,6 @@ type PreviewState = {
 };
 
 type WatermarkFormState = {
-  enabled: boolean;
   textMode: TenantWatermarkTextMode;
   customText: string;
   applyToSharePoster: boolean;
@@ -109,7 +110,6 @@ const DEFAULT_FORM: FormState = {
 };
 
 const DEFAULT_WATERMARK_FORM: WatermarkFormState = {
-  enabled: true,
   textMode: 'AUTO_TENANT_NAME',
   customText: '',
   applyToSharePoster: true,
@@ -131,6 +131,7 @@ export default function SharePresentationPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
   const [savedForm, setSavedForm] = useState<FormState | null>(null);
+  const [previewAvatarUrl, setPreviewAvatarUrl] = useState<string | null>(null);
   const [cropSource, setCropSource] = useState<CropSource | null>(null);
   const [cropUploading, setCropUploading] = useState(false);
   const [activeEditor, setActiveEditor] = useState<EditorKey>(null);
@@ -139,8 +140,9 @@ export default function SharePresentationPage() {
   const [watermarkMessage, setWatermarkMessage] = useState<string | null>(null);
   const [watermarkForm, setWatermarkForm] = useState<WatermarkFormState>(DEFAULT_WATERMARK_FORM);
   const [savedWatermarkForm, setSavedWatermarkForm] = useState<WatermarkFormState | null>(null);
-  const [watermarkEntitlement, setWatermarkEntitlement] = useState<TenantWatermarkState['entitlement'] | null>(null);
-  const [watermarkEffective, setWatermarkEffective] = useState<TenantWatermarkState['effective'] | null>(null);
+  const [watermarkEntitlement, setWatermarkEntitlement] = useState<
+    TenantWatermarkState['entitlement'] | null
+  >(null);
 
   const heroImageUrls = useMemo(
     () => normalizeHeroImageList(form.heroImagesText, form.previewImageUrl),
@@ -162,7 +164,6 @@ export default function SharePresentationPage() {
     setWatermarkForm(nextForm);
     setSavedWatermarkForm(nextForm);
     setWatermarkEntitlement(state.entitlement);
-    setWatermarkEffective(state.effective);
     setWatermarkError(null);
   }, []);
 
@@ -170,7 +171,6 @@ export default function SharePresentationPage() {
     setWatermarkForm(DEFAULT_WATERMARK_FORM);
     setSavedWatermarkForm(null);
     setWatermarkEntitlement(null);
-    setWatermarkEffective(null);
     setWatermarkError(message);
     setWatermarkMessage(null);
   }, []);
@@ -182,12 +182,15 @@ export default function SharePresentationPage() {
   }, []);
 
   const loadPresentation = useCallback(async () => {
-    const [presentationResult, watermarkResult] = await Promise.allSettled([
+    const [presentationResult, watermarkResult, profileResult] = await Promise.allSettled([
       apiRequest('/tenant-share-presentation', {
         responseSchema: getTenantSharePresentationResponseSchema,
       }),
       apiRequest('/tenant-watermark', {
         responseSchema: getTenantWatermarkResponseSchema,
+      }),
+      apiRequest('/me/profile', {
+        responseSchema: meProfileResponseSchema,
       }),
     ]);
 
@@ -196,6 +199,11 @@ export default function SharePresentationPage() {
     }
 
     applyPresentation(presentationResult.value.presentation);
+    setPreviewAvatarUrl(
+      profileResult.status === 'fulfilled'
+        ? (profileResult.value.profile.avatarUrl?.trim() ?? null)
+        : null,
+    );
 
     if (watermarkResult.status === 'fulfilled') {
       applyWatermarkState(watermarkResult.value);
@@ -326,11 +334,18 @@ export default function SharePresentationPage() {
     setWatermarkMessage(null);
 
     try {
+      const customText = normalizeNullableString(watermarkForm.customText);
+      const selectedScopeCount = [
+        watermarkForm.applyToSharePoster,
+        watermarkForm.applyToCouplePhoto,
+        watermarkForm.applyToCertificate,
+      ].filter(Boolean).length;
+      const hasCustomText = Boolean(customText);
       const request = updateTenantWatermarkRequestSchema.parse({
         config: {
-          enabled: watermarkForm.enabled,
-          textMode: watermarkForm.textMode,
-          customText: normalizeNullableString(watermarkForm.customText),
+          enabled: selectedScopeCount > 0,
+          textMode: hasCustomText ? 'CUSTOM' : 'AUTO_TENANT_NAME',
+          customText: customText ?? null,
           applyToSharePoster: watermarkForm.applyToSharePoster,
           applyToCouplePhoto: watermarkForm.applyToCouplePhoto,
           applyToCertificate: watermarkForm.applyToCertificate,
@@ -345,7 +360,9 @@ export default function SharePresentationPage() {
       });
 
       applyWatermarkState(response);
-      setWatermarkMessage('已保存商家水印配置，新生成图片会立即按此生效。');
+      setWatermarkMessage(
+        selectedScopeCount > 0 ? '已保存商家水印，新生成图片会立即生效。' : '已关闭商家水印。',
+      );
     } catch (requestError) {
       setWatermarkError(formatApiError(requestError));
     } finally {
@@ -512,16 +529,35 @@ export default function SharePresentationPage() {
       : '当前公开页会使用系统默认头图。';
   const carouselSummary =
     heroImageUrls.length > 0 ? `已上传 ${heroImageUrls.length} 张` : '未上传轮播图';
+  const defaultWatermarkText = useMemo(() => {
+    return normalizeNullableString(form.feedTitle) ?? `${tenantSlug || '商家'} · 公开图鉴`;
+  }, [form.feedTitle, tenantSlug]);
+
+  const watermarkSummary = useMemo(() => {
+    if (!watermarkEntitlement) return '加载中…';
+    if (!watermarkEntitlement.canEdit) return '需升级 PRO';
+    const scopes = [];
+    if (watermarkForm.applyToSharePoster) scopes.push('详情图');
+    if (watermarkForm.applyToCouplePhoto) scopes.push('夫妻图');
+    if (watermarkForm.applyToCertificate) scopes.push('证书图');
+    if (scopes.length === 0) return '未开启';
+    return `${normalizeNullableString(watermarkForm.customText) || defaultWatermarkText} · ${scopes.join(' / ')}`;
+  }, [
+    defaultWatermarkText,
+    watermarkEntitlement,
+    watermarkForm.applyToCertificate,
+    watermarkForm.applyToCouplePhoto,
+    watermarkForm.applyToSharePoster,
+    watermarkForm.customText,
+  ]);
+  const watermarkDetail = 'PRO 可在详情图、夫妻图、证书图中展示商家水印。';
 
   return (
     <>
       <main className="relative mx-auto w-full max-w-3xl overflow-x-hidden px-4 pb-[calc(56px+max(24px,env(safe-area-inset-bottom))+7rem)] pt-3 sm:px-5 sm:pb-28 sm:pt-4">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-48 bg-[radial-gradient(circle_at_top_right,rgba(255,212,0,0.18),transparent_36%),radial-gradient(circle_at_top_left,rgba(255,255,255,0.92),transparent_34%)]" />
         <form id={FORM_ID} className="relative space-y-3" onSubmit={handleSubmit}>
-          <MobileSettingsHeader
-            title="分享配置"
-            description="先看当前效果，再点某一项进去修改。"
-          />
+          <MobileSettingsHeader title="分享配置" description="先看当前效果，再点某一项进去修改。" />
 
           {error ? (
             <StatusBanner tone="error">{error}</StatusBanner>
@@ -533,7 +569,11 @@ export default function SharePresentationPage() {
             <LoadingCard />
           ) : (
             <>
-              <SharePreviewHeroCard preview={preview}>
+              <SharePreviewHeroCard
+                preview={preview}
+                tenantSlug={tenantSlug}
+                avatarUrl={previewAvatarUrl}
+              >
                 <TenantShareDialogTrigger
                   intent="feed"
                   title={preview.feedTitle}
@@ -865,189 +905,180 @@ export default function SharePresentationPage() {
                                     }))
                                   }
                                 >
-                                  删除
+                                  移除
                                 </Button>
                               }
                             />
                           ))}
                         </div>
                       ) : (
-                        <p className="text-xs text-neutral-500">暂未上传轮播图。</p>
+                        <p className="text-xs text-neutral-500">
+                          上传后的图片会在公开页头部轮播展示。
+                        </p>
                       )}
                     </div>
                   </EditorPanel>
                 ) : null}
               </SettingsCard>
 
-              <Card className="rounded-[24px] border border-black/[0.05] bg-white/90 shadow-[0_12px_28px_rgba(15,23,42,0.06)] backdrop-blur-xl">
-                <CardContent className="space-y-4 p-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h2 className="text-base font-semibold text-neutral-900">商家水印</h2>
-                      <p className="mt-1 text-sm text-neutral-500">
-                        PRO 可在分享海报、夫妻图、证书图中展示商家水印。
-                      </p>
-                    </div>
-                    <div className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
-                      {watermarkEntitlement?.plan ?? '未加载'}
-                    </div>
-                  </div>
-
-                  {watermarkError ? (
-                    <StatusBanner tone="error">{watermarkError}</StatusBanner>
-                  ) : watermarkMessage ? (
-                    <StatusBanner tone="success">{watermarkMessage}</StatusBanner>
-                  ) : null}
-
-                  <div className="rounded-2xl border border-neutral-200 bg-neutral-50/80 p-4">
-                    <p className="text-sm font-medium text-neutral-900">当前状态</p>
-                    <p className="mt-1 text-sm text-neutral-600">
-                      {buildWatermarkStatusCopy(watermarkEntitlement, watermarkEffective)}
-                    </p>
-                    {watermarkEffective?.enabled && watermarkEffective.watermarkText ? (
-                      <p className="mt-2 text-sm font-medium text-neutral-800">
-                        预览文案：{watermarkEffective.watermarkText}
-                      </p>
-                    ) : null}
-                  </div>
-
-                  {!watermarkEntitlement ? (
-                    <div className="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50/70 p-4 text-sm text-neutral-600">
-                      商家水印模块暂时不可用，但不会影响你继续编辑其他分享配置。
-                    </div>
-                  ) : !watermarkEntitlement.canEdit ? (
-                    <div className="flex flex-col gap-3 rounded-2xl border border-dashed border-amber-300 bg-amber-50/70 p-4">
-                      <p className="text-sm text-amber-900">
-                        {watermarkEntitlement.reason ?? '升级到 PRO 后即可开启商家水印。'}
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          variant="primary"
-                          onClick={() => router.push(`/app/${tenantSlug}/subscription`)}
-                        >
-                          去升级 PRO
-                        </Button>
+              <SettingsCard>
+                <SettingRow
+                  active={activeEditor === 'watermark'}
+                  icon={<Stamp size={16} />}
+                  label="商家水印"
+                  summary={watermarkSummary}
+                  detail={watermarkDetail}
+                  onClick={() => toggleEditor('watermark')}
+                  trailing={
+                    watermarkEntitlement ? (
+                      <div className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
+                        {watermarkEntitlement.plan}
                       </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-4 rounded-2xl border border-neutral-200 bg-white p-4">
-                      <label className="flex items-start gap-3 rounded-2xl border border-neutral-200 bg-neutral-50/80 px-4 py-3">
-                        <input
-                          type="checkbox"
-                          className="mt-1 h-4 w-4 rounded border-neutral-300"
-                          checked={watermarkForm.enabled}
-                          disabled={watermarkSaving}
-                          onChange={(event) =>
-                            setWatermarkForm((prev) => ({ ...prev, enabled: event.target.checked }))
-                          }
-                        />
-                        <span>
-                          <span className="block text-sm font-medium text-neutral-900">启用商家水印</span>
-                          <span className="mt-1 block text-xs text-neutral-500">
-                            仅影响之后新生成的分享海报、夫妻图、证书图。
-                          </span>
-                        </span>
-                      </label>
-
-                      <div className="space-y-2">
-                        <Label>文案模式</Label>
-                        <div className="grid gap-2 sm:grid-cols-2">
-                          <button
-                            type="button"
-                            className={`rounded-2xl border px-4 py-3 text-left ${watermarkForm.textMode === 'AUTO_TENANT_NAME' ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-200 bg-white text-neutral-900'}`}
-                            disabled={watermarkSaving}
-                            onClick={() =>
-                              setWatermarkForm((prev) => ({ ...prev, textMode: 'AUTO_TENANT_NAME' }))
-                            }
-                          >
-                            <p className="text-sm font-medium">自动租户名</p>
-                            <p className="mt-1 text-xs opacity-80">默认使用“{tenantSlug || '商家'} · 珍藏证书”。</p>
-                          </button>
-                          <button
-                            type="button"
-                            className={`rounded-2xl border px-4 py-3 text-left ${watermarkForm.textMode === 'CUSTOM' ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-200 bg-white text-neutral-900'}`}
-                            disabled={watermarkSaving}
-                            onClick={() => setWatermarkForm((prev) => ({ ...prev, textMode: 'CUSTOM' }))}
-                          >
-                            <p className="text-sm font-medium">自定义文案</p>
-                            <p className="mt-1 text-xs opacity-80">适合填品牌名、门店名或固定说明。</p>
-                          </button>
-                        </div>
-                      </div>
-
-                      {watermarkForm.textMode === 'CUSTOM' ? (
-                        <div className="space-y-2">
-                          <Label htmlFor="watermark-custom-text">自定义文案</Label>
-                          <Input
-                            id="watermark-custom-text"
-                            maxLength={TENANT_WATERMARK_MAX_TEXT_LENGTH}
-                            value={watermarkForm.customText}
-                            placeholder="例如：XX 龟舍 · 商家水印"
-                            disabled={watermarkSaving}
-                            onChange={(event) =>
-                              setWatermarkForm((prev) => ({ ...prev, customText: event.target.value }))
-                            }
-                          />
-                        </div>
+                    ) : undefined
+                  }
+                />
+                {activeEditor === 'watermark' ? (
+                  <EditorPanel onClose={() => setActiveEditor(null)}>
+                    <div className="space-y-3 rounded-2xl border border-neutral-200 bg-white p-3">
+                      {watermarkError ? (
+                        <StatusBanner tone="error">{watermarkError}</StatusBanner>
+                      ) : watermarkMessage ? (
+                        <StatusBanner tone="success">{watermarkMessage}</StatusBanner>
                       ) : null}
 
-                      <div className="space-y-2">
-                        <Label>生效范围</Label>
-                        <div className="space-y-2">
-                          {([
-                            ['applyToSharePoster', '分享海报'],
-                            ['applyToCouplePhoto', '夫妻图'],
-                            ['applyToCertificate', '证书图'],
-                          ] as const).map(([key, label]) => (
-                            <label
-                              key={key}
-                              className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-neutral-50/80 px-4 py-3 text-sm text-neutral-900"
-                            >
-                              <input
-                                type="checkbox"
-                                className="h-4 w-4 rounded border-neutral-300"
-                                checked={watermarkForm[key]}
+                      {!watermarkEntitlement ? (
+                        <div className="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50/70 p-4 text-sm text-neutral-600">
+                          商家水印模块暂时不可用，但不会影响你继续编辑其他分享配置。
+                        </div>
+                      ) : !watermarkEntitlement.canEdit ? (
+                        <div className="flex flex-col gap-3 rounded-2xl border border-dashed border-amber-300 bg-amber-50/70 p-4">
+                          <p className="text-sm text-amber-900">
+                            {watermarkEntitlement.reason ?? '升级到 PRO 后即可开启商家水印。'}
+                          </p>
+                          <Button
+                            type="button"
+                            variant="primary"
+                            onClick={() => router.push(`/app/${tenantSlug}/subscription`)}
+                          >
+                            去升级 PRO
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="space-y-4 rounded-2xl border border-neutral-200 bg-white p-4">
+                          <div className="space-y-2">
+                            <Label>水印模式</Label>
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                className={[
+                                  'inline-flex items-center rounded-full border px-4 py-2 text-sm font-medium transition-colors',
+                                  watermarkForm.textMode === 'CUSTOM'
+                                    ? 'border-neutral-900 bg-neutral-900 text-white shadow-[0_8px_18px_rgba(15,23,42,0.14)]'
+                                    : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-neutral-300 hover:bg-white',
+                                ].join(' ')}
+                                disabled={watermarkSaving}
+                                onClick={() =>
+                                  setWatermarkForm((prev) => ({
+                                    ...prev,
+                                    textMode:
+                                      prev.textMode === 'CUSTOM'
+                                        ? 'AUTO_TENANT_NAME'
+                                        : 'CUSTOM',
+                                  }))
+                                }
+                              >
+                                自定义文案
+                              </button>
+                            </div>
+                            <p className="text-xs text-neutral-500">
+                              不选时默认使用“{defaultWatermarkText}”。
+                            </p>
+                          </div>
+
+                          {watermarkForm.textMode === 'CUSTOM' ? (
+                            <div className="space-y-2">
+                              <Label htmlFor="watermark-custom-text">自定义文案</Label>
+                              <Input
+                                id="watermark-custom-text"
+                                maxLength={TENANT_WATERMARK_MAX_TEXT_LENGTH}
+                                value={watermarkForm.customText}
+                                placeholder={defaultWatermarkText}
                                 disabled={watermarkSaving}
                                 onChange={(event) =>
-                                  setWatermarkForm((prev) => ({ ...prev, [key]: event.target.checked }))
+                                  setWatermarkForm((prev) => ({
+                                    ...prev,
+                                    customText: event.target.value,
+                                  }))
                                 }
                               />
-                              <span>{label}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
+                            </div>
+                          ) : null}
 
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          variant="primary"
-                          disabled={watermarkSaving}
-                          onClick={handleWatermarkSubmit}
-                        >
-                          <Check size={16} />
-                          {watermarkSaving ? '保存中…' : '保存商家水印'}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          disabled={!savedWatermarkForm || watermarkSaving}
-                          onClick={() => {
-                            if (savedWatermarkForm) {
-                              setWatermarkForm(savedWatermarkForm);
-                              setWatermarkError(null);
-                              setWatermarkMessage('已恢复为当前已保存的商家水印配置。');
-                            }
-                          }}
-                        >
-                          恢复已保存
-                        </Button>
-                      </div>
+                          <div className="space-y-2">
+                            <Label>生效范围</Label>
+                            <p className="text-xs text-neutral-500">全部取消就等于不加水印。</p>
+                            <div className="flex flex-wrap gap-2">
+                              {(
+                                [
+                                  ['applyToSharePoster', '详情图'],
+                                  ['applyToCouplePhoto', '夫妻图'],
+                                  ['applyToCertificate', '证书图'],
+                                ] as const
+                              ).map(([key, label]) => (
+                                <button
+                                  key={key}
+                                  type="button"
+                                  disabled={watermarkSaving}
+                                  onClick={() =>
+                                    setWatermarkForm((prev) => ({
+                                      ...prev,
+                                      [key]: !prev[key],
+                                    }))
+                                  }
+                                  className={[
+                                    'inline-flex items-center rounded-full border px-4 py-2 text-sm font-medium transition-colors',
+                                    watermarkForm[key]
+                                      ? 'border-neutral-900 bg-neutral-900 text-white shadow-[0_8px_18px_rgba(15,23,42,0.14)]'
+                                      : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-neutral-300 hover:bg-white',
+                                  ].join(' ')}
+                                >
+                                  {label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              variant="primary"
+                              disabled={watermarkSaving}
+                              onClick={handleWatermarkSubmit}
+                            >
+                              <Check size={16} />
+                              {watermarkSaving ? '保存中…' : '保存商家水印'}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              disabled={!savedWatermarkForm || watermarkSaving}
+                              onClick={() => {
+                                if (savedWatermarkForm) {
+                                  setWatermarkForm(savedWatermarkForm);
+                                  setWatermarkError(null);
+                                  setWatermarkMessage('已恢复为当前已保存的商家水印配置。');
+                                }
+                              }}
+                            >
+                              恢复已保存
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </EditorPanel>
+                ) : null}
+              </SettingsCard>
             </>
           )}
         </form>
@@ -1093,11 +1124,19 @@ export default function SharePresentationPage() {
 }
 
 type SharePreviewHeroCardProps = {
+  avatarUrl?: string | null;
   children?: ReactNode;
   preview: PreviewState;
+  tenantSlug: string;
 };
 
-function SharePreviewHeroCard({ children, preview }: SharePreviewHeroCardProps) {
+function SharePreviewHeroCard({
+  avatarUrl,
+  children,
+  preview,
+  tenantSlug,
+}: SharePreviewHeroCardProps) {
+  const resolvedAvatarUrl = avatarUrl?.trim() ? resolveAuthenticatedAssetUrl(avatarUrl) : null;
   return (
     <Card className="overflow-hidden rounded-[30px] border border-white/70 bg-white/78 p-2 shadow-[0_18px_40px_rgba(15,23,42,0.10)] backdrop-blur-xl">
       <div className="relative aspect-[16/10] overflow-hidden rounded-[24px] bg-neutral-900 ring-1 ring-black/5">
@@ -1117,10 +1156,24 @@ function SharePreviewHeroCard({ children, preview }: SharePreviewHeroCardProps) 
         <div className="absolute right-3 top-3">{children}</div>
         <div className="absolute inset-x-0 bottom-0 p-4 text-white">
           <p className="text-[10px] uppercase tracking-[0.24em] text-white/68">share preview</p>
-          <h2 className="mt-1.5 text-pretty text-[26px] font-semibold leading-tight drop-shadow-sm sm:text-[30px]">
-            {preview.feedTitle}
-          </h2>
-          <p className="mt-1 max-w-[82%] text-[13px] leading-snug text-white/82 sm:text-sm">
+          <div className="mt-3 flex items-center gap-3">
+            {resolvedAvatarUrl ? (
+              <img
+                src={resolvedAvatarUrl}
+                alt="用户头像预览"
+                className="h-11 w-11 rounded-full border border-white/80 object-cover shadow-[0_10px_24px_rgba(15,23,42,0.14)] ring-1 ring-black/5"
+              />
+            ) : (
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-stone-400 to-stone-600 text-base font-semibold text-white shadow-[0_10px_24px_rgba(15,23,42,0.14)] ring-1 ring-black/5">
+                {tenantSlug?.[0]?.toUpperCase() || '龟'}
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-white">{preview.feedTitle}</p>
+              <p className="mt-0.5 text-xs text-white/72">@{tenantSlug || 'share'}</p>
+            </div>
+          </div>
+          <p className="mt-3 max-w-[82%] text-[13px] leading-snug text-white/82 sm:text-sm">
             {preview.feedSubtitle}
           </p>
         </div>
@@ -1189,38 +1242,19 @@ function LoadingCard() {
   );
 }
 
-function buildWatermarkStatusCopy(
-  entitlement: TenantWatermarkState['entitlement'] | null,
-  effective: TenantWatermarkState['effective'] | null,
-) {
-  if (!entitlement) {
-    return '商家水印配置暂不可用，但不影响其他分享配置。';
-  }
-
-  if (effective?.enabled && effective.watermarkText) {
-    return `已启用，当前文案：${effective.watermarkText}`;
-  }
-
-  if (entitlement && !entitlement.canEdit) {
-    return entitlement.reason ?? '升级到 PRO 后可启用商家水印。';
-  }
-
-  return '当前未启用商家水印。';
-}
-
 function buildWatermarkLoadErrorMessage(requestError: unknown) {
   const message = formatApiError(requestError);
   return `${message} 当前可继续编辑其他分享配置。`;
 }
 
 function toWatermarkFormState(state: TenantWatermarkState): WatermarkFormState {
+  const isEnabled = state.config.enabled;
   return {
-    enabled: state.config.enabled,
     textMode: state.config.textMode,
     customText: state.config.customText ?? '',
-    applyToSharePoster: state.config.applyToSharePoster,
-    applyToCouplePhoto: state.config.applyToCouplePhoto,
-    applyToCertificate: state.config.applyToCertificate,
+    applyToSharePoster: isEnabled ? state.config.applyToSharePoster : false,
+    applyToCouplePhoto: isEnabled ? state.config.applyToCouplePhoto : false,
+    applyToCertificate: isEnabled ? state.config.applyToCertificate : false,
   };
 }
 

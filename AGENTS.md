@@ -151,8 +151,18 @@
 ### 执行入口
 - `/Users/apple/coding/.openclaw/workspace/workspaces/groups/eggturtle-lab/eggturtle-lab/tasks/Tasks.csv` - 当前任务 SSOT（workspace 唯一写入口；任务审计/cron/盘点也必须从这里读取）
 - OpenClaw/群聊编排统一入口：`python3 /Users/apple/coding/.openclaw/workspace/workspaces/groups/eggturtle-lab/eggturtle-lab/scripts/task_orchestrator.py`
-- Codex 实时进度写入：`... task_orchestrator.py progress --task-id Txx --status doing --note "..."`（用于定时任务镜像到飞书）
-- 注意：ACP Codex 会话内的 `feishu-mcp` 当前可能不可用；飞书待办的创建/打勾由前台/cron 镜像同步兜底
+- 任务流程唯一逻辑文档：`docs/openclaw/workflow-and-assets-inventory.md`
+- Codex 实时进度写入：`... task_orchestrator.py progress --task-id Txx --status doing --note "..."`（默认会同时尝试自动镜像到飞书评论）
+- 正常主流程默认自动镜像：
+  - `add-task` / `add-bug`：自动创建或绑定飞书任务
+  - `progress`：自动评论飞书任务
+  - `complete-session`：自动完成飞书任务
+- `sync-task` 是单任务补同步入口；`feishu-sync-plan` / `feishu-sync-ack` 只保留给 fallback / 运维，不再作为日常流程
+- 注意：ACP Codex 会话里不一定暴露 `feishu_task_*` 句柄；若需要在 Codex 内直接触发飞书工具，统一走 `openclaw-lark-bridge`（复用本机 OpenClaw Gateway 已加载的 Feishu tools）。
+  - `openclaw-lark-bridge` 是本地脚本/skill，不是 MCP server；不要对它做 `resources/list` 探测。
+  - 脚本位置：`python3 ~/.codex/skills/openclaw-lark-bridge/scripts/invoke_openclaw_tool.py ...`
+  - bridge 默认打印完整 `/tools/invoke` 响应；若网关只回 `ok=true` 没有 `result`，优先查看输出里的 `_meta.request_args_has_action` 与 `_diagnosis.next_steps`。
+  - 如果 bridge 也不可用：回落到本地 SSOT，之后再用 `sync-task` 或 fallback 计划补同步。
 - `docs/plan/EggsTask.csv` - 历史归档，只读参考，不再作为任务源
 - `docs/DEVELOPMENT_PLAN_GUIDE.md` - 开发计划结构指南
 

@@ -1,0 +1,343 @@
+/* 悬浮按钮：统一在底部导航之上，避免被遮挡；多 FAB 时用同一容器垂直堆叠 */
+.mobile-fab {
+  bottom: var(--tenant-mobile-dock-offset);
+  z-index: 50;
+}
+
+/* 统一悬浮按钮外观（与 TenantFloatingShareButton / PublicFloatingActions 一致） */
+.tenant-fab-button {
+  @apply flex h-11 w-11 items-center justify-center rounded-full border border-black/10 bg-neutral-900 text-white shadow-[0_14px_30px_rgba(0,0,0,0.18)] backdrop-blur transition hover:scale-[1.05] hover:bg-neutral-800 hover:shadow-[0_10px_24px_rgba(0,0,0,0.2)] [&_svg]:text-white;
+}
+
+@media (min-width: 1024px) {
+  .tenant-mobile-content-safe {
+    padding-bottom: 0;
+  }
+
+  .mobile-fab {
+    bottom: 24px;
+  }
+}
+
+.tenant-card-lift:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 40px rgba(255, 212, 0, 0.12);
+  border-color: rgba(255, 212, 0, 0.3);
+}
+
+:root[data-theme='dark'] .tenant-card-lift:hover {
+  box-shadow: 0 20px 42px rgba(0, 0, 0, 0.52);
+  border-color: rgba(255, 212, 0, 0.34);
+}
+
+:root[data-theme='dark'] .tenant-shell-bg .text-neutral-900 {
+  color: #f8fafc !important;
+}
+
+:root[data-theme='dark'] .tenant-shell-bg .text-neutral-800 {
+  color: #e6edf7 !important;
+}
+
+:root[data-theme='dark'] .tenant-shell-bg .text-neutral-700,
+:root[data-theme='dark'] .tenant-shell-bg .text-neutral-600 {
+  color: #d1dced !important;
+}
+
+:root[data-theme='dark'] .tenant-shell-bg .text-neutral-500,
+:root[data-theme='dark'] .tenant-shell-bg .text-neutral-400 {
+  color: #bdcadf !important;
+}
+
+:root[data-theme='dark'] .tenant-shell-bg .dark\:text-neutral-400,
+:root[data-theme='dark'] .tenant-shell-bg .dark\:text-neutral-500 {
+  color: #bfcee3 !important;
+}
+
+:root[data-theme='dark'] .tenant-shell-bg .dark\:text-neutral-300 {
+  color: #d6e1f0 !important;
+}
+
+:root[data-theme='dark'] .tenant-shell-bg .dark\:text-neutral-200,
+:root[data-theme='dark'] .tenant-shell-bg .dark\:text-neutral-100 {
+  color: #ebf2fb !important;
+}
+
+:root[data-theme='dark'] .tenant-shell-bg .bg-white,
+:root[data-theme='dark'] .tenant-shell-bg .bg-white\/95,
+:root[data-theme='dark'] .tenant-shell-bg .bg-white\/90,
+:root[data-theme='dark'] .tenant-shell-bg .bg-white\/85,
+:root[data-theme='dark'] .tenant-shell-bg .bg-white\/80 {
+  background-color: #101a28 !important;
+}
+
+:root[data-theme='dark'] .tenant-shell-bg .bg-neutral-50 {
+  background-color: #172335 !important;
+}
+
+:root[data-theme='dark'] .tenant-shell-bg .border-neutral-200,
+:root[data-theme='dark'] .tenant-shell-bg .border-neutral-200\/90 {
+  border-color: rgba(148, 163, 184, 0.22) !important;
+}
+
+/* mobile-settings 卡片与展开面板：暗色模式下覆盖半透明白色背景 */
+:root[data-theme='dark'] .tenant-shell-bg .mobile-settings-card {
+  background-color: #101a28 !important;
+  background-image: none !important;
+}
+
+:root[data-theme='dark'] .tenant-shell-bg .mobile-settings-panel {
+  background-color: #0d1521 !important;
+  background-image: none !important;
+  border-top-color: rgba(148, 163, 184, 0.12) !important;
+}
+
+/* mobile-settings 行：选中/展开状态与悬停状态的暗色覆盖 */
+:root[data-theme='dark'] .tenant-shell-bg .mobile-settings-card button[aria-expanded='true'] {
+  background-color: rgba(30, 45, 68, 0.7) !important;
+}
+
+:root[data-theme='dark'] .tenant-shell-bg .mobile-settings-card button:hover {
+  background-color: rgba(20, 32, 50, 0.6) !important;
+}
+
+:root[data-theme='dark'] .tenant-shell-bg .mobile-settings-card button:active {
+  background-color: rgba(35, 52, 78, 0.8) !important;
+}
+
+:root[data-theme='light'] .auth-shell::after {
+  background:
+    linear-gradient(
+      120deg,
+      rgba(240, 245, 253, 0.56) 0%,
+      rgba(247, 250, 255, 0.38) 46%,
+      rgba(250, 252, 255, 0.52) 100%
+    ),
+    radial-gradient(circle at 15% 15%, rgba(255, 212, 0, 0.24) 0%, rgba(255, 212, 0, 0) 45%);
+}
+
+/* Light theme: add a subtle scrim behind the showcase copy so white text stays readable
+   even when the hero photo is bright (daytime mode on mobile). */
+:root[data-theme='light'] .login-brand-copy {
+  padding: 10px 14px;
+  border-radius: 24px;
+}
+
+:root[data-theme='light'] .login-brand-copy::before {
+  content: '';
+  position: absolute;
+  inset: -10px -12px;
+  border-radius: 28px;
+  background: linear-gradient(
+    92deg,
+    rgba(0, 0, 0, 0.52) 0%,
+    rgba(0, 0, 0, 0.28) 52%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  z-index: -1;
+  backdrop-filter: blur(10px);
+}
+
+:root[data-theme='light'] .login-brand-eyebrow {
+  border-color: rgba(120, 53, 15, 0.22);
+  background: rgba(255, 247, 224, 0.78);
+  color: rgba(120, 53, 15, 0.86);
+}
+
+:root[data-theme='light'] .login-showcase h1 {
+  text-shadow:
+    0 18px 56px rgba(0, 0, 0, 0.86),
+    0 6px 18px rgba(0, 0, 0, 0.62);
+}
+
+:root[data-theme='light'] .login-brand-copy .muted {
+  text-shadow: 0 6px 26px rgba(0, 0, 0, 0.72);
+}
+
+:root[data-theme='light'] .login-card {
+  border: 1px solid rgba(247, 250, 255, 0.72);
+  background: linear-gradient(155deg, rgba(255, 255, 255, 0.9) 0%, rgba(244, 248, 255, 0.86) 100%);
+  box-shadow:
+    0 28px 70px -28px rgba(24, 39, 75, 0.36),
+    0 0 0 1px rgba(255, 255, 255, 0.42) inset;
+}
+
+:root[data-theme='light'] .login-card h2,
+:root[data-theme='light'] .login-panel h2,
+:root[data-theme='light'] .login-panel p strong {
+  color: #191b1f;
+}
+
+:root[data-theme='light'] .login-panel p,
+:root[data-theme='light'] .login-panel .muted,
+:root[data-theme='light'] .login-card label {
+  color: rgba(24, 29, 37, 0.82);
+}
+
+:root[data-theme='light'] .login-card input {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(24, 29, 37, 0.2);
+  color: #1d2430;
+}
+
+:root[data-theme='light'] .login-card input::placeholder {
+  color: rgba(51, 65, 85, 0.56);
+}
+
+:root[data-theme='light'] .login-card .login-mode-toggle {
+  border-color: rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.04);
+}
+
+:root[data-theme='light'] .login-mode-btn {
+  color: rgba(30, 41, 59, 0.72);
+}
+
+:root[data-theme='light'] .login-mode-btn:hover:not(:disabled) {
+  color: #111827;
+  background: rgba(255, 255, 255, 0.76);
+}
+
+:root[data-theme='light'] .login-mode-btn.active,
+:root[data-theme='light'] .login-entry-btn.active,
+:root[data-theme='light'] .locale-btn.active {
+  color: #f8fafc;
+  background: #1f2937;
+}
+
+:root[data-theme='light'] .login-card button.secondary,
+:root[data-theme='light'] .login-secondary-cta {
+  border-color: rgba(148, 163, 184, 0.34);
+  background: rgba(241, 245, 249, 0.92);
+  color: #1f2937;
+}
+
+:root[data-theme='light'] .login-card button.secondary:hover:not(:disabled),
+:root[data-theme='light'] .login-secondary-cta:hover:not(:disabled) {
+  border-color: rgba(100, 116, 139, 0.46);
+  background: #e2e8f0;
+  color: #111827;
+}
+
+:root[data-theme='light'] .login-secondary-cta:disabled {
+  color: #6b7280;
+  background: rgba(241, 245, 249, 0.72);
+}
+
+:root[data-theme='light'] .login-text-link {
+  color: #3b82f6;
+}
+
+:root[data-theme='light'] .login-preference-controls .ui-pref-icon-btn {
+  color: rgba(31, 41, 55, 0.7);
+}
+
+:root[data-theme='light'] .login-preference-controls .ui-pref-icon-btn:hover:not(:disabled) {
+  background: rgba(15, 23, 42, 0.08);
+  color: rgba(15, 23, 42, 0.9);
+}
+
+:root[data-theme='dark'] .auth-shell::after {
+  background:
+    linear-gradient(
+      120deg,
+      rgba(2, 6, 14, 0.9) 0%,
+      rgba(5, 12, 22, 0.82) 46%,
+      rgba(7, 14, 24, 0.9) 100%
+    ),
+    radial-gradient(circle at 15% 15%, rgba(255, 212, 0, 0.18) 0%, rgba(255, 212, 0, 0) 45%);
+}
+
+:root[data-theme='dark'] .login-card {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: linear-gradient(155deg, rgba(6, 10, 18, 0.85) 0%, rgba(6, 10, 17, 0.8) 100%);
+}
+
+/* ─── 账号页 · 资料卡 · 暗色模式 ─────────────────────────────── */
+:root[data-theme='dark'] .tenant-shell-bg .account-profile-hero {
+  background: linear-gradient(180deg, rgba(30, 22, 6, 0.82), rgba(20, 28, 42, 0.90)) !important;
+  border: 1px solid rgba(255, 212, 0, 0.14);
+}
+
+:root[data-theme='dark'] .tenant-shell-bg .account-subscription-trigger {
+  background: linear-gradient(180deg, rgba(40, 30, 6, 0.85), rgba(25, 32, 50, 0.90)) !important;
+  border-color: rgba(255, 212, 0, 0.28) !important;
+}
+
+:root[data-theme='dark'] .tenant-shell-bg .account-subscription-trigger span {
+  color: #e8d88a !important;
+}
+
+/* 套餐弹窗背景 */
+:root[data-theme='dark'] .account-subscription-dialog-panel {
+  background: linear-gradient(180deg, #131b10 0%, #0f1620 100%) !important;
+  border-color: rgba(255, 212, 0, 0.14) !important;
+}
+
+/* 套餐卡片（嵌入式滑动卡） */
+:root[data-theme='dark'] .account-subscription-dialog-panel .subscription-plan-card,
+:root[data-theme='dark'] .tenant-shell-bg .subscription-plan-card {
+  background: linear-gradient(180deg, rgba(28, 22, 4, 0.96), rgba(16, 24, 38, 0.98)) !important;
+  border-color: rgba(255, 212, 0, 0.22) !important;
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.48) !important;
+}
+
+:root[data-theme='dark'] .account-subscription-dialog-panel .subscription-plan-card.selected,
+:root[data-theme='dark'] .tenant-shell-bg .subscription-plan-card.selected {
+  border-color: rgba(255, 212, 0, 0.52) !important;
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.56), inset 0 1px 0 rgba(255, 212, 0, 0.12) !important;
+}
+
+/* 套餐 MetricCard（产品/图片/分享/存储 黑色方块 → 保持深色，微调边框） */
+:root[data-theme='dark'] .account-subscription-dialog-panel .rounded-2xl.border,
+:root[data-theme='dark'] .tenant-shell-bg .subscription-plan-card .rounded-2xl.border {
+  background-color: #1a1206 !important;
+  border-color: rgba(255, 212, 0, 0.16) !important;
+}
+
+/* 套餐卡顶部渐变光晕 → 暗色下加强金色光感 */
+:root[data-theme='dark'] .account-subscription-dialog-panel .subscription-plan-card > .pointer-events-none,
+:root[data-theme='dark'] .tenant-shell-bg .subscription-plan-card > .pointer-events-none {
+  background: radial-gradient(circle at top left, rgba(255, 212, 0, 0.14), transparent 58%),
+              radial-gradient(circle at top right, rgba(255, 255, 255, 0.04), transparent 52%) !important;
+}
+
+/* 滑动区域左右渐变遮罩 */
+:root[data-theme='dark'] .account-subscription-dialog-panel .bg-gradient-to-r.from-\[\#FFF8E2\] {
+  background: linear-gradient(to right, #0f1620, transparent) !important;
+}
+:root[data-theme='dark'] .account-subscription-dialog-panel .bg-gradient-to-l.from-\[\#FFF8E2\] {
+  background: linear-gradient(to left, #0f1620, transparent) !important;
+}
+
+/* 套餐导航箭头按钮 */
+:root[data-theme='dark'] .account-subscription-dialog-panel .flex.size-9.rounded-full,
+:root[data-theme='dark'] .tenant-shell-bg .flex.size-9.rounded-full.border-\[\#F0D58A\] {
+  background-color: #1c1504 !important;
+  border-color: rgba(255, 212, 0, 0.28) !important;
+  color: #e8d060 !important;
+}
+
+/* 套餐切换 Pill 按钮（未选中） */
+:root[data-theme='dark'] .account-subscription-dialog-panel .border-\[\#F0D58A\].bg-\[\#FFF9E8\],
+:root[data-theme='dark'] .tenant-shell-bg .border-\[\#F0D58A\].bg-\[\#FFF9E8\] {
+  background-color: #1c1504 !important;
+  border-color: rgba(255, 212, 0, 0.28) !important;
+  color: #d4ba50 !important;
+}
+
+.tenant-reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  animation: tenant-reveal-up 0.55s ease-out forwards;
+}
+
+@keyframes tenant-reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

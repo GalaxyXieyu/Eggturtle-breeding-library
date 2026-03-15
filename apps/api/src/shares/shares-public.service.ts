@@ -2,26 +2,31 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { ErrorCode } from '@eggturtle/shared';
 import { Prisma } from '@prisma/client';
 
-import { buildWebpVariantKey, resolveAllowedMaxEdge, resizeToWebpMaxEdge } from '../images/image-variants';
+import {
+  buildWebpVariantKey,
+  resolveAllowedMaxEdge,
+  resizeToWebpMaxEdge,
+} from '../images/image-variants';
 
 import { canonicalMateCodeCandidates, parseCurrentMateCode } from '../products/breeding-rules';
 import {
   calculateDaysSince,
   normalizeTaggedCode,
   parseTaggedProductEventNote,
-  resolveNeedMatingStatus
+  resolveNeedMatingStatus,
 } from '../products/product-event-utils';
 import { PrismaService } from '../prisma.service';
 import { STORAGE_PROVIDER_TOKEN } from '../storage/storage.constants';
 import type { StorageProvider } from '../storage/storage.provider';
 import { TenantSharePresentationService } from '../tenant-share-presentation/tenant-share-presentation.service';
+import { TenantWatermarkService } from '../tenant-watermark/tenant-watermark.service';
 
 import { SharesCoreService } from './shares-core.service';
 import type {
   PublicShareAssetQueryInput,
   PublicShareQueryInput,
   ShareAccessMeta,
-  ShareScope
+  ShareScope,
 } from './shares.types';
 
 type PublicAssetShareRecord = {
@@ -49,8 +54,9 @@ export class SharesPublicService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly tenantSharePresentationService: TenantSharePresentationService,
+    private readonly tenantWatermarkService: TenantWatermarkService,
     private readonly sharesCoreService: SharesCoreService,
-    @Inject(STORAGE_PROVIDER_TOKEN) private readonly storageProvider: StorageProvider
+    @Inject(STORAGE_PROVIDER_TOKEN) private readonly storageProvider: StorageProvider,
   ) {}
 
   async getPublicShare(shareId: string, query: PublicShareQueryInput, meta: ShareAccessMeta) {
@@ -60,7 +66,7 @@ export class SharesPublicService {
       resourceType: query.resourceType,
       resourceId: query.resourceId,
       exp: query.exp,
-      sig: query.sig
+      sig: query.sig,
     });
 
     const share = await this.prisma.publicShare.findFirst({
@@ -68,7 +74,7 @@ export class SharesPublicService {
         id: shareId,
         tenantId: query.tenantId,
         resourceType: query.resourceType,
-        resourceId: query.resourceId
+        resourceId: query.resourceId,
       },
       select: {
         id: true,
@@ -82,16 +88,16 @@ export class SharesPublicService {
           select: {
             id: true,
             slug: true,
-            name: true
-          }
-        }
-      }
+            name: true,
+          },
+        },
+      },
     });
 
     if (!share) {
       throw new NotFoundException({
         message: 'Share content not found.',
-        errorCode: ErrorCode.ShareNotFound
+        errorCode: ErrorCode.ShareNotFound,
       });
     }
 
@@ -104,34 +110,45 @@ export class SharesPublicService {
       resourceType,
       resourceId: share.resourceId,
       productId: share.productId,
-      createdByUserId: share.createdByUserId
+      createdByUserId: share.createdByUserId,
     };
 
     const presentation = await this.tenantSharePresentationService.resolvePublicPresentation({
       tenantId: share.tenantId,
       tenantName: share.tenant.name,
-      overrideRaw: share.presentationOverride
+      actorUserId: share.createdByUserId,
+      overrideRaw: share.presentationOverride,
     });
 
     const response = await this.buildTenantFeedPublicShare(
       scopedShare,
       query.productId,
       expiresAt,
-      presentation
+      presentation,
     );
-    await this.sharesCoreService.writeShareAccessAuditLog(scopedShare, expiresAt, 'data', meta, query.productId ?? null);
+    await this.sharesCoreService.writeShareAccessAuditLog(
+      scopedShare,
+      expiresAt,
+      'data',
+      meta,
+      query.productId ?? null,
+    );
 
     return response;
   }
 
-  async getPublicShareAsset(shareId: string, query: PublicShareAssetQueryInput, meta: ShareAccessMeta) {
+  async getPublicShareAsset(
+    shareId: string,
+    query: PublicShareAssetQueryInput,
+    meta: ShareAccessMeta,
+  ) {
     const expiresAt = this.sharesCoreService.verifySignature({
       shareId,
       tenantId: query.tenantId,
       resourceType: query.resourceType,
       resourceId: query.resourceId,
       exp: query.exp,
-      sig: query.sig
+      sig: query.sig,
     });
 
     const maxEdge = resolveAllowedMaxEdge(query.maxEdge);
@@ -140,7 +157,7 @@ export class SharesPublicService {
     if (!this.sharesCoreService.isManagedStorageKey(share.tenantId, query.key)) {
       throw new NotFoundException({
         message: 'Share asset not found.',
-        errorCode: ErrorCode.ShareNotFound
+        errorCode: ErrorCode.ShareNotFound,
       });
     }
 
@@ -179,8 +196,8 @@ export class SharesPublicService {
           metadata: {
             source: 'share-asset-variant',
             originalKey: query.key,
-            maxEdge: String(maxEdge)
-          }
+            maxEdge: String(maxEdge),
+          },
         })
         .catch(() => undefined);
     }
@@ -193,18 +210,18 @@ export class SharesPublicService {
           resourceType: this.sharesCoreService.parseShareResourceType(share.resourceType),
           resourceId: share.resourceId,
           productId: share.productId,
-          createdByUserId: share.createdByUserId
+          createdByUserId: share.createdByUserId,
         },
         expiresAt,
         'asset',
-        meta
+        meta,
       )
       .catch(() => undefined);
 
     return {
       content,
       contentType,
-      expiresAt
+      expiresAt,
     };
   }
 
@@ -212,30 +229,32 @@ export class SharesPublicService {
     share: ShareScope,
     detailProductId: string | undefined,
     expiresAt: Date,
-    presentation: Awaited<ReturnType<TenantSharePresentationService['resolvePublicPresentation']>>
+    presentation: Awaited<ReturnType<TenantSharePresentationService['resolvePublicPresentation']>>,
   ) {
     const products = await this.prisma.product.findMany({
       where: {
         tenantId: share.tenantId,
-        inStock: true
+        inStock: true,
       },
       orderBy: [{ code: 'asc' }, { createdAt: 'desc' }],
       include: {
         images: {
           orderBy: [{ isMain: 'desc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }],
-          take: 1
-        }
-      }
+          take: 1,
+        },
+      },
     });
 
     const needMatingSummaryByProductId = await this.loadNeedMatingSummaryByProductIds(
       share.tenantId,
-      products.map((product) => product.id)
+      products.map((product) => product.id),
     );
     const seriesSummaryById = await this.loadSeriesSummaryByIds(
       share.tenantId,
-      products.map((product) => product.seriesId)
+      products.map((product) => product.seriesId),
     );
+
+    const stats = await this.calculateTenantFeedStats(share.tenantId, products, needMatingSummaryByProductId);
 
     const items = await Promise.all(
       products.map(async (product) => {
@@ -250,11 +269,13 @@ export class SharesPublicService {
               key: coverImage.key,
               fallbackUrl: coverImage.url,
               expiresAt,
-              maxEdge: 320
+              maxEdge: 320,
             })
           : null;
 
-        const seriesSummary = product.seriesId ? seriesSummaryById.get(product.seriesId) ?? null : null;
+        const seriesSummary = product.seriesId
+          ? (seriesSummaryById.get(product.seriesId) ?? null)
+          : null;
 
         return {
           id: product.id,
@@ -277,9 +298,9 @@ export class SharesPublicService {
           publicUrl: coverImageUrl,
           thumbnailUrl: coverImageUrl,
           popularityScore: product.popularityScore ?? 0,
-          isFeatured: product.isFeatured ?? false
+          isFeatured: product.isFeatured ?? false,
         };
-      })
+      }),
     );
 
     let product = null;
@@ -290,13 +311,13 @@ export class SharesPublicService {
         where: {
           id: detailProductId,
           tenantId: share.tenantId,
-          inStock: true
+          inStock: true,
         },
         include: {
           images: {
-            orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }]
-          }
-        }
+            orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+          },
+        },
       });
 
       const images = await Promise.all(
@@ -313,26 +334,26 @@ export class SharesPublicService {
             key: image.key,
             fallbackUrl: image.url,
             expiresAt,
-            maxEdge: 960
+            maxEdge: 960,
           }),
           contentType: image.contentType,
           sizeBytes: image.sizeBytes.toString(),
           sortOrder: image.sortOrder,
           isMain: image.isMain,
           createdAt: image.createdAt.toISOString(),
-          updatedAt: image.updatedAt.toISOString()
-        }))
+          updatedAt: image.updatedAt.toISOString(),
+        })),
       );
 
       if (!detailProduct) {
         throw new NotFoundException({
           message: 'Product not found in shared tenant feed.',
-          errorCode: ErrorCode.ProductNotFound
+          errorCode: ErrorCode.ProductNotFound,
         });
       }
 
       const detailSeriesSummary = detailProduct.seriesId
-        ? seriesSummaryById.get(detailProduct.seriesId) ?? null
+        ? (seriesSummaryById.get(detailProduct.seriesId) ?? null)
         : null;
 
       product = {
@@ -356,37 +377,55 @@ export class SharesPublicService {
         inStock: detailProduct?.inStock ?? true,
         popularityScore: detailProduct?.popularityScore ?? 0,
         isFeatured: detailProduct?.isFeatured ?? false,
-        images
+        images,
       };
 
       const [events, familyTree, maleMateLoad] = await Promise.all([
         this.listPublicProductEvents(share.tenantId, detailProduct.id),
         this.buildPublicProductFamilyTree(share.tenantId, detailProduct),
-        this.buildPublicMaleMateLoad(share, detailProduct, expiresAt)
+        this.buildPublicMaleMateLoad(share, detailProduct, expiresAt),
       ]);
 
       detail = {
         events,
         familyTree,
-        maleMateLoad
+        maleMateLoad,
       };
     }
+
+    const detailImageWatermark = await this.tenantWatermarkService.resolveAppliedWatermark({
+      tenantId: share.tenantId,
+      tenantName: share.tenant.name,
+      target: 'sharePoster',
+    });
 
     return {
       shareId: share.id,
       tenant: share.tenant,
+      merchantWatermark: {
+        enabled: detailImageWatermark.enabled,
+      },
       resourceType: 'tenant_feed' as const,
       presentation,
       items,
       product,
       detail,
-      expiresAt: expiresAt.toISOString()
+      stats,
+      expiresAt: expiresAt.toISOString(),
     };
   }
 
-  private async loadSeriesSummaryByIds(tenantId: string, seriesIds: Array<string | null | undefined>) {
-    const summaryById = new Map<string, { code: string; name: string; description: string | null }>();
-    const uniqueSeriesIds = [...new Set(seriesIds.map((seriesId) => seriesId?.trim() ?? '').filter(Boolean))];
+  private async loadSeriesSummaryByIds(
+    tenantId: string,
+    seriesIds: Array<string | null | undefined>,
+  ) {
+    const summaryById = new Map<
+      string,
+      { code: string; name: string; description: string | null }
+    >();
+    const uniqueSeriesIds = [
+      ...new Set(seriesIds.map((seriesId) => seriesId?.trim() ?? '').filter(Boolean)),
+    ];
 
     if (uniqueSeriesIds.length === 0) {
       return summaryById;
@@ -396,22 +435,22 @@ export class SharesPublicService {
       where: {
         tenantId,
         id: {
-          in: uniqueSeriesIds
-        }
+          in: uniqueSeriesIds,
+        },
       },
       select: {
         id: true,
         code: true,
         name: true,
-        description: true
-      }
+        description: true,
+      },
     });
 
     rows.forEach((row) => {
       summaryById.set(row.id, {
         code: row.code,
         name: row.name,
-        description: row.description ?? null
+        description: row.description ?? null,
       });
     });
 
@@ -457,12 +496,16 @@ export class SharesPublicService {
     `);
 
     for (const row of rows) {
-      const status = resolveNeedMatingStatus(row.lastEggAt, row.lastMatingAt, row.excludeFromBreeding);
+      const status = resolveNeedMatingStatus(
+        row.lastEggAt,
+        row.lastMatingAt,
+        row.excludeFromBreeding,
+      );
       summaryByProductId.set(row.productId, {
         status,
         lastEggAt: row.lastEggAt,
         lastMatingAt: row.lastMatingAt,
-        daysSinceEgg: calculateDaysSince(row.lastEggAt)
+        daysSinceEgg: calculateDaysSince(row.lastEggAt),
       });
     }
 
@@ -473,9 +516,9 @@ export class SharesPublicService {
     const events = await this.prisma.productEvent.findMany({
       where: {
         tenantId,
-        productId
+        productId,
       },
-      orderBy: [{ eventDate: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }]
+      orderBy: [{ eventDate: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
     });
 
     return events.map((event) => {
@@ -488,7 +531,7 @@ export class SharesPublicService {
         eggCount: parsedNote.eggCount,
         note: parsedNote.note,
         oldMateCode: parsedNote.oldMateCode,
-        newMateCode: parsedNote.newMateCode
+        newMateCode: parsedNote.newMateCode,
       };
     });
   }
@@ -498,7 +541,7 @@ export class SharesPublicService {
     parsedNote: {
       oldMateCode: string | null;
       newMateCode: string | null;
-    }
+    },
   ): 'mating' | 'egg' | 'change_mate' {
     const eventType = rawType.trim().toLowerCase();
 
@@ -528,11 +571,13 @@ export class SharesPublicService {
       damCode: string | null;
       mateCode: string | null;
       description?: string | null;
-    }
+    },
   ) {
     const currentMateCode = await this.resolveCurrentMateCode(tenantId, detailProduct);
     const isMale = detailProduct.sex?.trim().toLowerCase() === 'male';
-    const mateCodeCandidates = canonicalMateCodeCandidates(isMale ? detailProduct.code : currentMateCode);
+    const mateCodeCandidates = canonicalMateCodeCandidates(
+      isMale ? detailProduct.code : currentMateCode,
+    );
 
     const [sire, dam, mate, children, relatedFemales] = await Promise.all([
       this.findProductByCodeInsensitive(tenantId, detailProduct.sireCode),
@@ -545,19 +590,19 @@ export class SharesPublicService {
             {
               sireCode: {
                 equals: detailProduct.code,
-                mode: 'insensitive'
-              }
+                mode: 'insensitive',
+              },
             },
             {
               damCode: {
                 equals: detailProduct.code,
-                mode: 'insensitive'
-              }
-            }
-          ]
+                mode: 'insensitive',
+              },
+            },
+          ],
         },
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-        take: 100
+        take: 100,
       }),
       isMale && mateCodeCandidates.length > 0
         ? this.prisma.product.findMany({
@@ -566,24 +611,24 @@ export class SharesPublicService {
               inStock: true,
               sex: {
                 equals: 'female',
-                mode: 'insensitive'
+                mode: 'insensitive',
               },
               OR: mateCodeCandidates.map((candidate) => ({
                 mateCode: {
                   equals: candidate,
-                  mode: 'insensitive'
-                }
-              }))
+                  mode: 'insensitive',
+                },
+              })),
             },
             orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
-            take: 100
+            take: 100,
           })
-        : Promise.resolve([])
+        : Promise.resolve([]),
     ]);
 
     const needMatingSummaryByProductId = await this.loadNeedMatingSummaryByProductIds(
       tenantId,
-      relatedFemales.map((item) => item.id)
+      relatedFemales.map((item) => item.id),
     );
 
     const sortedRelatedFemales = relatedFemales.slice().sort((a, b) => {
@@ -616,18 +661,18 @@ export class SharesPublicService {
           needMatingStatus: summary?.status ?? null,
           lastEggAt: summary?.lastEggAt?.toISOString() ?? null,
           lastMatingAt: summary?.lastMatingAt?.toISOString() ?? null,
-          daysSinceEgg: summary?.daysSinceEgg ?? null
+          daysSinceEgg: summary?.daysSinceEgg ?? null,
         };
       }),
       children: children.map((item) => this.toPublicFamilyTreeNode(item)),
       links: {
         sire: this.toPublicFamilyTreeLink(detailProduct.sireCode, sire),
         dam: this.toPublicFamilyTreeLink(detailProduct.damCode, dam),
-        mate: this.toPublicFamilyTreeLink(currentMateCode, mate)
+        mate: this.toPublicFamilyTreeLink(currentMateCode, mate),
       },
       limitations: isMale
         ? '当前家族谱系优先展示自己、直属父母；如存在可追溯数据，会补充祖父母、关联母龟与直系子代，关联母龟按待交配优先级与天数排序。'
-        : '当前家族谱系优先展示自己、直属父母；如存在可追溯数据，会补充祖父母、当前配偶与直系子代。'
+        : '当前家族谱系优先展示自己、直属父母；如存在可追溯数据，会补充祖父母、当前配偶与直系子代。',
     };
   }
 
@@ -642,9 +687,9 @@ export class SharesPublicService {
         tenantId,
         code: {
           equals: normalized,
-          mode: 'insensitive'
-        }
-      }
+          mode: 'insensitive',
+        },
+      },
     });
   }
 
@@ -665,7 +710,7 @@ export class SharesPublicService {
       id: string;
       mateCode: string | null;
       description?: string | null;
-    }
+    },
   ): Promise<string | null> {
     const explicit = normalizeTaggedCode(product.mateCode ?? '');
     if (explicit) {
@@ -681,26 +726,31 @@ export class SharesPublicService {
       where: {
         tenantId,
         productId: product.id,
-        eventType: 'mating'
+        eventType: 'mating',
       },
-      orderBy: [{ eventDate: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }]
+      orderBy: [{ eventDate: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
     });
 
     const parsed = parseTaggedProductEventNote(latestMatingEvent?.note ?? null);
     return normalizeTaggedCode(parsed.maleCode);
   }
 
-  private toPublicFamilyTreeNode(product: { id: string; code: string; name: string | null; sex: string | null }) {
+  private toPublicFamilyTreeNode(product: {
+    id: string;
+    code: string;
+    name: string | null;
+    sex: string | null;
+  }) {
     return {
       id: product.id,
       code: product.code,
       name: product.name,
-      sex: product.sex
+      sex: product.sex,
     };
   }
 
   private toPublicFamilyTreeNodeOrNull(
-    product: { id: string; code: string; name: string | null; sex: string | null } | null
+    product: { id: string; code: string; name: string | null; sex: string | null } | null,
   ) {
     if (!product) {
       return null;
@@ -711,7 +761,7 @@ export class SharesPublicService {
 
   private toPublicFamilyTreeLink(
     code: string | null,
-    product: { id: string; code: string; name: string | null; sex: string | null } | null
+    product: { id: string; code: string; name: string | null; sex: string | null } | null,
   ) {
     if (!code || !code.trim()) {
       return null;
@@ -719,7 +769,7 @@ export class SharesPublicService {
 
     return {
       code: code.trim(),
-      product: this.toPublicFamilyTreeNodeOrNull(product)
+      product: this.toPublicFamilyTreeNodeOrNull(product),
     };
   }
 
@@ -730,7 +780,7 @@ export class SharesPublicService {
       code: string;
       sex: string | null;
     },
-    expiresAt: Date
+    expiresAt: Date,
   ) {
     const tenantId = share.tenantId;
     if (detailProduct.sex?.trim().toLowerCase() !== 'male') {
@@ -744,22 +794,22 @@ export class SharesPublicService {
         inStock: true,
         sex: {
           equals: 'female',
-          mode: 'insensitive'
+          mode: 'insensitive',
         },
         OR: mateCodeCandidates.map((candidate) => ({
           mateCode: {
             equals: candidate,
-            mode: 'insensitive'
-          }
-        }))
+            mode: 'insensitive',
+          },
+        })),
       },
       include: {
         images: {
           orderBy: [{ isMain: 'desc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }],
-          take: 1
-        }
+          take: 1,
+        },
       },
-      orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }]
+      orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
     });
 
     const mapped = await Promise.all(
@@ -769,9 +819,9 @@ export class SharesPublicService {
             where: {
               tenantId,
               productId: female.id,
-              eventType: 'egg'
+              eventType: 'egg',
             },
-            orderBy: [{ eventDate: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }]
+            orderBy: [{ eventDate: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
           }),
           this.prisma.productEvent.findFirst({
             where: {
@@ -781,20 +831,20 @@ export class SharesPublicService {
               OR: mateCodeCandidates.map((candidate) => ({
                 note: {
                   contains: `#maleCode=${candidate}`,
-                  mode: 'insensitive'
-                }
-              }))
+                  mode: 'insensitive',
+                },
+              })),
             },
-            orderBy: [{ eventDate: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }]
+            orderBy: [{ eventDate: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
           }),
           this.prisma.productEvent.findFirst({
             where: {
               tenantId,
               productId: female.id,
-              eventType: 'mating'
+              eventType: 'mating',
             },
-            orderBy: [{ eventDate: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }]
-          })
+            orderBy: [{ eventDate: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+          }),
         ]);
 
         const lastEggAt = lastEggEvent?.eventDate ?? null;
@@ -813,7 +863,7 @@ export class SharesPublicService {
               key: mainImage.key,
               fallbackUrl: mainImage.url,
               expiresAt,
-              maxEdge: 960
+              maxEdge: 960,
             })
           : null;
 
@@ -826,7 +876,7 @@ export class SharesPublicService {
               key: mainImage.key,
               fallbackUrl: mainImage.url,
               expiresAt,
-              maxEdge: 320
+              maxEdge: 320,
             })
           : null;
 
@@ -838,12 +888,14 @@ export class SharesPublicService {
           publicUrl: femaleMainImageUrl ?? null,
           thumbnailUrl: femaleThumbnailUrl ?? null,
           lastEggAt: lastEggAt ? lastEggAt.toISOString() : null,
-          lastMatingWithThisMaleAt: lastMatingWithThisMaleAt ? lastMatingWithThisMaleAt.toISOString() : null,
+          lastMatingWithThisMaleAt: lastMatingWithThisMaleAt
+            ? lastMatingWithThisMaleAt.toISOString()
+            : null,
           daysSinceEgg,
           status,
-          excludeFromBreeding: female.excludeFromBreeding
+          excludeFromBreeding: female.excludeFromBreeding,
         };
-      })
+      }),
     );
 
     return mapped;
@@ -869,7 +921,7 @@ export class SharesPublicService {
       tenantId: input.tenantId,
       resourceType: input.resourceType,
       resourceId: input.resourceId,
-      exp
+      exp,
     });
 
     return this.sharesCoreService.buildPublicShareAssetPath({
@@ -880,13 +932,13 @@ export class SharesPublicService {
       exp,
       sig,
       key: input.key,
-      maxEdge: input.maxEdge
+      maxEdge: input.maxEdge,
     });
   }
 
   private async resolvePublicAssetShare(
     shareId: string,
-    query: Pick<PublicShareAssetQueryInput, 'tenantId' | 'resourceType' | 'resourceId'>
+    query: Pick<PublicShareAssetQueryInput, 'tenantId' | 'resourceType' | 'resourceId'>,
   ): Promise<PublicAssetShareRecord> {
     const now = Date.now();
     const cacheKey = this.buildPublicAssetShareCacheKey(shareId, query);
@@ -901,7 +953,7 @@ export class SharesPublicService {
         id: shareId,
         tenantId: query.tenantId,
         resourceType: query.resourceType,
-        resourceId: query.resourceId
+        resourceId: query.resourceId,
       },
       select: {
         id: true,
@@ -909,20 +961,20 @@ export class SharesPublicService {
         resourceType: true,
         resourceId: true,
         productId: true,
-        createdByUserId: true
-      }
+        createdByUserId: true,
+      },
     });
 
     if (!share) {
       throw new NotFoundException({
         message: 'Share content not found.',
-        errorCode: ErrorCode.ShareNotFound
+        errorCode: ErrorCode.ShareNotFound,
       });
     }
 
     this.publicAssetShareCache.set(cacheKey, {
       share,
-      expiresAtMs: now + PUBLIC_ASSET_SHARE_CACHE_TTL_MS
+      expiresAtMs: now + PUBLIC_ASSET_SHARE_CACHE_TTL_MS,
     });
     this.prunePublicAssetShareCache(now);
 
@@ -931,7 +983,7 @@ export class SharesPublicService {
 
   private buildPublicAssetShareCacheKey(
     shareId: string,
-    query: Pick<PublicShareAssetQueryInput, 'tenantId' | 'resourceType' | 'resourceId'>
+    query: Pick<PublicShareAssetQueryInput, 'tenantId' | 'resourceType' | 'resourceId'>,
   ) {
     return `${shareId}:${query.tenantId}:${query.resourceType}:${query.resourceId}`;
   }
@@ -954,5 +1006,70 @@ export class SharesPublicService {
       }
       this.publicAssetShareCache.delete(oldestKey);
     }
+  }
+
+  private async calculateTenantFeedStats(
+    tenantId: string,
+    products: Array<{ id: string; sex: string | null; seriesId: string | null }>,
+    needMatingSummaryByProductId: Map<
+      string,
+      {
+        status: 'normal' | 'need_mating' | 'warning';
+        lastEggAt: Date | null;
+        lastMatingAt: Date | null;
+        daysSinceEgg: number | null;
+      }
+    >,
+  ) {
+    // Basic counts from products
+    const breederCount = products.length;
+    const maleCount = products.filter((p) => p.sex?.trim().toLowerCase() === 'male').length;
+    const femaleCount = products.filter((p) => p.sex?.trim().toLowerCase() === 'female').length;
+    const uniqueSeriesIds = new Set(products.map((p) => p.seriesId).filter(Boolean));
+    const seriesCount = uniqueSeriesIds.size;
+
+    // Need mating count (warning + need_mating)
+    let needMatingCount = 0;
+    for (const summary of needMatingSummaryByProductId.values()) {
+      if (summary.status === 'need_mating' || summary.status === 'warning') {
+        needMatingCount += 1;
+      }
+    }
+
+    // Eggs this year
+    const now = new Date();
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+    const eggEventsThisYear = await this.prisma.productEvent.findMany({
+      where: {
+        tenantId,
+        eventType: 'egg',
+        eventDate: {
+          gte: startOfYear,
+        },
+      },
+      select: {
+        note: true,
+      },
+    });
+
+    let eggsThisYear = 0;
+    for (const event of eggEventsThisYear) {
+      const parsed = parseTaggedProductEventNote(event.note);
+      if (parsed.eggCount && typeof parsed.eggCount === 'number' && parsed.eggCount > 0) {
+        eggsThisYear += parsed.eggCount;
+      } else {
+        // If no egg count parsed, count as at least 1
+        eggsThisYear += 1;
+      }
+    }
+
+    return {
+      breederCount,
+      maleCount,
+      femaleCount,
+      seriesCount,
+      needMatingCount,
+      eggsThisYear,
+    };
   }
 }

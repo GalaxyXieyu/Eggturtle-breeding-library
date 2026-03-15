@@ -2,7 +2,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { PublicSharePresentation } from '@eggturtle/shared';
+import type { PublicSharePresentation, PublicShareTenantFeedStats } from '@eggturtle/shared';
 import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 
 import { buildFilterPillClass } from '@/components/filter-pill';
@@ -30,6 +30,8 @@ type Props = {
   breeders: Breeder[];
   presentation?: PublicSharePresentation | null;
   tenantSlug?: string;
+  tenantName?: string;
+  stats?: PublicShareTenantFeedStats | null;
 };
 
 const INITIAL_VISIBLE_BREEDERS = 8;
@@ -101,6 +103,8 @@ export default function PublicFeedPage({
   breeders,
   presentation,
   tenantSlug,
+  tenantName,
+  stats,
 }: Props) {
   const [seriesId, setSeriesId] = useState<string>(resolveSeriesId(initialSeriesId, series));
   const [sex, setSex] = useState<'all' | 'male' | 'female'>('all');
@@ -351,7 +355,8 @@ export default function PublicFeedPage({
     () => series.find((item) => item.id === seriesId) || null,
     [series, seriesId],
   );
-  const activeFilterCount = Number(Boolean(seriesId)) + Number(sex !== 'all') + Number(status !== 'all');
+  const activeFilterCount =
+    Number(Boolean(seriesId)) + Number(sex !== 'all') + Number(status !== 'all');
 
   const brandPrimary = resolvedPresentation.theme.brandPrimary;
   const brandSecondary = resolvedPresentation.theme.brandSecondary;
@@ -544,7 +549,11 @@ export default function PublicFeedPage({
                     选择条件后会实时更新列表。
                   </p>
                 </div>
-                <div className={buildFilterPillClass(activeFilterCount > 0, { className: 'shrink-0 text-[11px]' })}>
+                <div
+                  className={buildFilterPillClass(activeFilterCount > 0, {
+                    className: 'shrink-0 text-[11px]',
+                  })}
+                >
                   {activeFilterCount > 0 ? `已选 ${activeFilterCount} 项` : '全部结果'}
                 </div>
                 <button
@@ -618,7 +627,12 @@ export default function PublicFeedPage({
         shareCardSubtitle={resolvedPresentation.feedSubtitle}
         shareCardPrimaryColor={brandPrimary}
         shareCardSecondaryColor={brandSecondary}
+        shareCardAvatarUrl={resolvedPresentation.identity.avatarUrl}
+        shareCardAvatarPreset={resolvedPresentation.identity.avatarPreset}
         shareCardHeroImageUrl={heroImages[heroIndex] ?? heroImages[0] ?? null}
+        shareCardDisplayName={tenantName ?? resolvedPresentation.feedTitle}
+        shareCardAccountLabel={tenantSlug ? `@${tenantSlug}` : null}
+        shareCardStats={stats}
       >
         {showMobileFilterFab ? (
           <FloatingActionButton
@@ -630,11 +644,7 @@ export default function PublicFeedPage({
           </FloatingActionButton>
         ) : null}
       </PublicFloatingActions>
-      <PublicBottomDock
-        shareToken={shareToken}
-        shareQuery={shareQuery}
-        activeTab="pets"
-      />
+      <PublicBottomDock shareToken={shareToken} shareQuery={shareQuery} activeTab="pets" />
     </div>
   );
 }

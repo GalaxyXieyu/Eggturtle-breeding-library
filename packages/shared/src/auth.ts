@@ -41,6 +41,15 @@ export const authNullableAccountSchema = authAccountSchema
   .nullable()
   .optional()
   .transform((value) => value ?? null);
+const authAssetUrlSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(1000)
+  .refine(
+    (value) => value.startsWith('/') || value.startsWith('http://') || value.startsWith('https://'),
+    'Asset URL must be an absolute URL or an absolute path.',
+  );
 
 export const authUserSchema = z.object({
   id: z.string().min(1),
@@ -95,7 +104,7 @@ export const passwordLoginRequestSchema = z
   .refine(
     (payload) => Boolean(payload.account ?? payload.phoneNumber ?? payload.login ?? payload.email),
     {
-    message: 'Login identifier is required.',
+      message: 'Login identifier is required.',
       path: ['account'],
     },
   )
@@ -134,6 +143,7 @@ export const meProfileSchema = z.object({
   email: z.string().email(),
   account: authNullableAccountSchema,
   name: z.string().nullable(),
+  avatarUrl: authAssetUrlSchema.nullable(),
   createdAt: z.string().datetime(),
   passwordUpdatedAt: z.string().datetime().nullable(),
 });
@@ -147,6 +157,14 @@ export const updateMeProfileRequestSchema = z.object({
 });
 
 export const updateMeProfileResponseSchema = z.object({
+  profile: meProfileSchema,
+});
+
+export const uploadMyAvatarResponseSchema = z.object({
+  profile: meProfileSchema,
+});
+
+export const deleteMyAvatarResponseSchema = z.object({
   profile: meProfileSchema,
 });
 
@@ -258,6 +276,8 @@ export type MeProfile = z.infer<typeof meProfileSchema>;
 export type MeProfileResponse = z.infer<typeof meProfileResponseSchema>;
 export type UpdateMeProfileRequest = z.infer<typeof updateMeProfileRequestSchema>;
 export type UpdateMeProfileResponse = z.infer<typeof updateMeProfileResponseSchema>;
+export type UploadMyAvatarResponse = z.infer<typeof uploadMyAvatarResponseSchema>;
+export type DeleteMyAvatarResponse = z.infer<typeof deleteMyAvatarResponseSchema>;
 export type UpdateMyPasswordRequest = z.infer<typeof updateMyPasswordRequestSchema>;
 export type UpdateMyPasswordResponse = z.infer<typeof updateMyPasswordResponseSchema>;
 export type MySecurityProfile = z.infer<typeof mySecurityProfileSchema>;
@@ -270,6 +290,8 @@ export type UpsertMyPhoneBindingRequest = z.infer<typeof upsertMyPhoneBindingReq
 export type UpsertMyPhoneBindingResponse = z.infer<typeof upsertMyPhoneBindingResponseSchema>;
 export type MeSubscriptionResponse = z.infer<typeof meSubscriptionResponseSchema>;
 export type CreateWechatAuthorizeUrlRequest = z.infer<typeof createWechatAuthorizeUrlRequestSchema>;
-export type CreateWechatAuthorizeUrlResponse = z.infer<typeof createWechatAuthorizeUrlResponseSchema>;
+export type CreateWechatAuthorizeUrlResponse = z.infer<
+  typeof createWechatAuthorizeUrlResponseSchema
+>;
 export type RegisterRequest = z.infer<typeof registerRequestSchema>;
 export type RegisterResponse = z.infer<typeof registerResponseSchema>;

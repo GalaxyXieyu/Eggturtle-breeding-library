@@ -1,0 +1,83 @@
+{
+  "ok": true,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"tasklists\": [\n    {\n      \"archive_msec\": \"0\",\n      \"created_at\": \"1773376152000\",\n      \"creator\": {\n        \"id\": \"ou_edb94ddfda191172827fe2c95209a18d\",\n        \"type\": \"user\"\n      },\n      \"guid\": \"aee23437-3861-408c-aa8a-40a9a7c09dbc\",\n      \"members\": [],\n      \"name\": \"选育溯源档案\",\n      \"owner\": {\n        \"id\": \"ou_edb94ddfda191172827fe2c95209a18d\",\n        \"role\": \"owner\",\n        \"type\": \"user\"\n      },\n      \"updated_at\": \"1773479752000\",\n      \"url\": \"https://applink.feishu.cn/client/todo/task_list?guid=aee23437-3861-408c-aa8a-40a9a7c09dbc\"\n    }\n  ],\n  \"has_more\": false,\n  \"page_token\": \"\"\n}"
+      }
+    ],
+    "details": {
+      "tasklists": [
+        {
+          "archive_msec": "0",
+          "created_at": "1773376152000",
+          "creator": {
+            "id": "ou_edb94ddfda191172827fe2c95209a18d",
+            "type": "user"
+          },
+          "guid": "aee23437-3861-408c-aa8a-40a9a7c09dbc",
+          "members": [],
+          "name": "选育溯源档案",
+          "owner": {
+            "id": "ou_edb94ddfda191172827fe2c95209a18d",
+            "role": "owner",
+            "type": "user"
+          },
+          "updated_at": "1773479752000",
+          "url": "https://applink.feishu.cn/client/todo/task_list?guid=aee23437-3861-408c-aa8a-40a9a7c09dbc"
+        }
+      ],
+      "has_more": false,
+      "page_token": ""
+    }
+  },
+  "details": {
+    "tasklists": [
+      {
+        "archive_msec": "0",
+        "created_at": "1773376152000",
+        "creator": {
+          "id": "ou_edb94ddfda191172827fe2c95209a18d",
+          "type": "user"
+        },
+        "guid": "aee23437-3861-408c-aa8a-40a9a7c09dbc",
+        "members": [],
+        "name": "选育溯源档案",
+        "owner": {
+          "id": "ou_edb94ddfda191172827fe2c95209a18d",
+          "role": "owner",
+          "type": "user"
+        },
+        "updated_at": "1773479752000",
+        "url": "https://applink.feishu.cn/client/todo/task_list?guid=aee23437-3861-408c-aa8a-40a9a7c09dbc"
+      }
+    ],
+    "has_more": false,
+    "page_token": ""
+  },
+  "_request": {
+    "tool": "feishu_task_tasklist",
+    "action": "list",
+    "args": {
+      "action": "list"
+    },
+    "sessionKey": null,
+    "headers": {}
+  },
+  "_meta": {
+    "endpoint": "http://127.0.0.1:18789/tools/invoke",
+    "http_status": 200,
+    "response_bytes": 1240,
+    "response_content_type": "application/json; charset=utf-8",
+    "tool": "feishu_task_tasklist",
+    "action": "list",
+    "session_key": null,
+    "request_args_has_action": true,
+    "action_mirrored_to_args": true
+  },
+  "_diagnosis": {
+    "status": "ok",
+    "message": "Gateway returned a result payload."
+  }
+}

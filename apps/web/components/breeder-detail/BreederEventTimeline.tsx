@@ -140,7 +140,7 @@ export function BreederEventTimeline({
   }
 
   return (
-    <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all">
+    <Card className="tenant-card-lift rounded-3xl border-neutral-200/90 bg-white transition-all dark:border-neutral-700/60 dark:bg-neutral-900">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-2xl">
           <CalendarClock size={18} />
@@ -150,7 +150,7 @@ export function BreederEventTimeline({
       </CardHeader>
       <CardContent className="space-y-4">
         {events.length === 0 ? (
-          <p className="rounded-2xl border border-neutral-200 bg-neutral-50/80 px-4 py-6 text-center text-sm text-neutral-500">
+          <p className="rounded-2xl border border-neutral-200 bg-neutral-50/80 px-4 py-6 text-center text-sm text-neutral-500 dark:border-neutral-700 dark:bg-neutral-800/80 dark:text-neutral-400">
             暂无事件记录。
           </p>
         ) : (
@@ -175,7 +175,7 @@ export function BreederEventTimeline({
             </div>
 
             {/* Horizontal scroll mini-cards (navigation) */}
-            <div className="overflow-x-auto rounded-2xl border border-black/5 bg-white p-3 shadow-[0_6px_18px_rgba(0,0,0,0.05)]">
+            <div className="overflow-x-auto rounded-2xl border border-black/5 bg-white p-3 shadow-[0_6px_18px_rgba(0,0,0,0.05)] dark:border-white/5 dark:bg-neutral-800 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <div className="flex w-max flex-row items-center gap-2">
                 {filteredEvents.map((event) => {
                   const isSelected = event.id === selectedEventId;
@@ -187,8 +187,8 @@ export function BreederEventTimeline({
                       aria-pressed={isSelected}
                       className={`flex w-[84px] shrink-0 flex-col items-center gap-1 rounded-xl border px-2 py-2.5 text-center shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD400]/60 focus-visible:ring-offset-2 ${
                         isSelected
-                          ? 'border-[#FFD400]/70 bg-[#FFD400]/10 text-neutral-900 ring-1 ring-[#FFD400]/40 shadow-[0_6px_20px_rgba(255,212,0,0.18)]'
-                          : 'border-neutral-200/90 bg-white text-neutral-700 hover:-translate-y-0.5 hover:border-[#FFD400]/30 hover:bg-[#FFD400]/5'
+                          ? 'border-[#FFD400]/70 bg-[#FFD400]/10 text-neutral-900 ring-1 ring-[#FFD400]/40 shadow-[0_6px_20px_rgba(255,212,0,0.18)] dark:text-neutral-100'
+                          : 'border-neutral-200/90 bg-white text-neutral-700 hover:-translate-y-0.5 hover:border-[#FFD400]/30 hover:bg-[#FFD400]/5 dark:border-neutral-700 dark:bg-neutral-800/80 dark:text-neutral-300'
                       }`}
                     >
                       <span className="text-sm leading-none">{eventTypeIcon(event.eventType)}</span>
@@ -212,7 +212,7 @@ export function BreederEventTimeline({
               <button
                 type="button"
                 onClick={() => setEventExpanded((current) => !current)}
-                className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-semibold text-neutral-700 transition hover:border-neutral-300"
+                className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-semibold text-neutral-700 transition hover:border-neutral-300 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:border-neutral-600"
               >
                 {eventExpanded ? '收起' : '展开'}
               </button>
@@ -250,7 +250,7 @@ export function BreederEventTimeline({
                               >
                                 {/* Dot */}
                                 <div
-                                  className={`absolute -left-5 mt-[14px] h-[10px] w-[10px] rounded-full border-2 bg-white ${eventDotClass(event.eventType)}`}
+                                  className={`absolute -left-5 mt-[14px] h-[10px] w-[10px] rounded-full border-2 bg-white dark:bg-neutral-900 ${eventDotClass(event.eventType)}`}
                                 />
 
                                 {/* Card */}
@@ -258,7 +258,7 @@ export function BreederEventTimeline({
                                   className={`min-w-0 flex-1 rounded-2xl border px-3 py-2.5 transition ${
                                     isSelected
                                       ? eventSelectedClass(event.eventType)
-                                      : `border-neutral-100 bg-neutral-50/60 ${eventCardHoverClass(event.eventType)}`
+                                      : `border-neutral-100 bg-neutral-50/60 dark:border-neutral-700/60 dark:bg-neutral-800/60 ${eventCardHoverClass(event.eventType)}`
                                   }`}
                                 >
                                   <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
@@ -276,7 +276,7 @@ export function BreederEventTimeline({
                                     {eventDetailLabels.get(event.id) ?? buildEventSummary(event)}
                                   </p>
                                   {isSelected ? (
-                                    <div className="mt-2 rounded-xl border border-neutral-200/80 bg-white px-3 py-2 text-xs leading-5 text-neutral-600">
+                                    <div className="mt-2 rounded-xl border border-neutral-200/80 bg-white px-3 py-2 text-xs leading-5 text-neutral-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-400">
                                       <p>录入时间 {formatEventClock(event.createdAt)}</p>
                                       <p className="mt-1 whitespace-pre-wrap">
                                         {note ? `备注：${note}` : '备注：暂无补充说明'}

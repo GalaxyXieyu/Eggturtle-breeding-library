@@ -1,0 +1,51 @@
+/* App body base typography, theme variables, and dark-mode body overrides. */
+:root {
+  --ui-accent: #ffd400;
+  --ui-bg-start: #f5f5f4;
+  --ui-bg-mid: #ffffff;
+  --ui-bg-end: rgba(255, 251, 235, 0.9);
+}
+
+:root[data-theme='dark'] {
+  --ui-bg-start: #0b1118;
+  --ui-bg-mid: #0f1722;
+  --ui-bg-end: #1b2636;
+}
+
+.app-body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100svh;
+  font-family:
+    var(--font-sans),
+    -apple-system,
+    BlinkMacSystemFont,
+    'PingFang SC',
+    'Segoe UI',
+    sans-serif;
+  color: #171717;
+}
+
+@supports (-webkit-touch-callout: none) {
+  @media (hover: none) and (pointer: coarse) {
+    .app-body input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='button']):not([type='submit']):not([type='reset']):not([type='color']):not([type='image']),
+    .app-body textarea,
+    .app-body select {
+      font-size: 16px;
+    }
+  }
+}
+
+:root[data-theme='dark'] .app-body {
+  color: #e5ecf5;
+  background: #0b1118;
+}
+
+.app-body h1,
+.app-body h2,
+.app-body h3,
+.app-body h4,
+.app-body h5,
+.app-body h6 {
+  font-family: var(--font-display), Georgia, 'Times New Roman', serif;
+}

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { PrismaModule } from '../prisma.module';
+import { StorageModule } from '../storage/storage.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 
 import { AuthAccessService } from './auth-access.service';
@@ -10,6 +11,7 @@ import { AuthIdentityService } from './auth-identity.service';
 import { AuthProfileService } from './auth-profile.service';
 import { AuthSharedService } from './auth-shared.service';
 import { JwtTokenService } from './jwt-token.service';
+import { MeAvatarPublicController } from './me-avatar.public.controller';
 import { MeController } from './me.controller';
 import { RbacGuard } from './rbac.guard';
 import { SmsVerificationService } from './sms-verification.service';
@@ -19,8 +21,13 @@ import { TenantSubscriptionGuard } from './tenant-subscription.guard';
 import { WechatAuthService } from './wechat-auth.service';
 
 @Module({
-  imports: [PrismaModule, SubscriptionsModule],
-  controllers: [AuthController, MeController, SubscriptionActivationCodesController],
+  imports: [PrismaModule, StorageModule, SubscriptionsModule],
+  controllers: [
+    AuthController,
+    MeController,
+    MeAvatarPublicController,
+    SubscriptionActivationCodesController,
+  ],
   providers: [
     AuthSharedService,
     AuthAccessService,
@@ -32,8 +39,8 @@ import { WechatAuthService } from './wechat-auth.service';
     TenantSubscriptionGuard,
     JwtTokenService,
     SmsVerificationService,
-    WechatAuthService
+    WechatAuthService,
   ],
-  exports: [AuthGuard, RbacGuard, SuperAdminGuard, TenantSubscriptionGuard, AuthAccessService]
+  exports: [AuthGuard, RbacGuard, SuperAdminGuard, TenantSubscriptionGuard, AuthAccessService],
 })
 export class AuthModule {}

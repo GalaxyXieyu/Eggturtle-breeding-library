@@ -10,7 +10,7 @@ import {
   ACCOUNT_SETUP_SUBMIT_LABELS,
 } from '@/lib/locales/account';
 
-export type AccountTab = 'profile' | 'subscription' | 'referral';
+export type AccountTab = 'profile' | 'referral';
 
 export type SetupRequirements = {
   needsDisplayName: boolean;
@@ -123,9 +123,6 @@ export function toBusinessSetupError(error: unknown, locale: UiLocale) {
 }
 
 export function normalizeAccountTab(value: string | null): AccountTab {
-  if (value === 'subscription') {
-    return 'subscription';
-  }
   if (value === 'referral') {
     return 'referral';
   }

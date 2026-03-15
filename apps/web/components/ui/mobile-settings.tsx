@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 
 type MobileSettingsHeaderProps = {
   className?: string;
-  description: string;
+  description?: string;
   eyebrow?: string;
   title: string;
   titleAs?: 'h1' | 'h2';
@@ -35,7 +35,9 @@ export function MobileSettingsHeader({
         <TitleTag className="mt-2 text-pretty text-[24px] font-semibold tracking-tight text-neutral-950 sm:text-[28px]">
           {title}
         </TitleTag>
-        <p className="mt-1 text-[13px] leading-relaxed text-neutral-500">{description}</p>
+        {description ? (
+          <p className="mt-1 text-[13px] leading-relaxed text-neutral-500">{description}</p>
+        ) : null}
       </div>
       {trailing ? <div className="shrink-0">{trailing}</div> : null}
     </header>
@@ -51,7 +53,7 @@ export function MobileSettingsCard({ children, className }: MobileSettingsCardPr
   return (
     <Card
       className={cn(
-        'relative overflow-hidden rounded-[24px] border border-black/[0.05] bg-white/88 shadow-[0_12px_28px_rgba(15,23,42,0.07)] before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-white/80 supports-[backdrop-filter]:bg-white/78 supports-[backdrop-filter]:backdrop-blur-xl',
+        'mobile-settings-card relative overflow-hidden rounded-[24px] border border-black/[0.05] bg-white/88 shadow-[0_12px_28px_rgba(15,23,42,0.07)] before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-white/80 supports-[backdrop-filter]:bg-white/78 supports-[backdrop-filter]:backdrop-blur-xl',
         className,
       )}
     >
@@ -69,6 +71,7 @@ type MobileSettingRowProps = {
   leading?: ReactNode;
   onClick?: () => void;
   summary: string;
+  trailing?: ReactNode;
 };
 
 export function MobileSettingRow({
@@ -80,6 +83,7 @@ export function MobileSettingRow({
   leading,
   onClick,
   summary,
+  trailing,
 }: MobileSettingRowProps) {
   const content = (
     <>
@@ -98,6 +102,7 @@ export function MobileSettingRow({
         </div>
         {detail ? <p className="mt-0.5 truncate text-[11px] text-neutral-400">{detail}</p> : null}
       </div>
+      {trailing ? <div className="shrink-0">{trailing}</div> : null}
       {onClick ? (
         <ChevronRight
           aria-hidden="true"
@@ -145,7 +150,7 @@ export function MobileSettingsEditorPanel({
   return (
     <div
       className={cn(
-        'space-y-3 border-t border-black/[0.05] bg-gradient-to-b from-stone-50/80 via-white/88 to-white/96 px-3.5 py-3.5',
+        'mobile-settings-panel space-y-3 border-t border-black/[0.05] bg-gradient-to-b from-stone-50/80 via-white/88 to-white/96 px-3.5 py-3.5',
         className,
       )}
     >

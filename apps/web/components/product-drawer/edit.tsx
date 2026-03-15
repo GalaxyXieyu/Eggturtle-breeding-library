@@ -82,6 +82,8 @@ type ProductEditFormState = {
 };
 type EditDrawerModule = 'basic' | 'breeding' | 'images';
 
+const DEFAULT_EDIT_DRAWER_MODULE: EditDrawerModule = 'breeding';
+
 type ProductEditDrawerProps = {
   open: boolean;
   product: Product | null;
@@ -119,10 +121,10 @@ export default function ProductEditDrawer({
   const [submittingEventAction, setSubmittingEventAction] = useState(false);
   const [editingEvent, setEditingEvent] = useState<ProductEvent | null>(null);
   const [eventEditForm, setEventEditForm] = useState<ProductEventEditFormState | null>(null);
-  const [eventSectionCollapsed, setEventSectionCollapsed] = useState(false);
+  const [eventSectionCollapsed, setEventSectionCollapsed] = useState(true);
   const [eventTypeFilter, setEventTypeFilter] = useState<EventTypeQuickFilter>('all');
   const [eventKeywordFilter, setEventKeywordFilter] = useState('');
-  const [activeModule, setActiveModule] = useState<EditDrawerModule>('basic');
+  const [activeModule, setActiveModule] = useState<EditDrawerModule>(DEFAULT_EDIT_DRAWER_MODULE);
   const [error, setError] = useState<string | null>(null);
   const {
     seriesOptions: resolvedSeriesOptions,
@@ -173,10 +175,10 @@ export default function ProductEditDrawer({
     setEventMessage(null);
     setEditingEvent(null);
     setEventEditForm(null);
-    setEventSectionCollapsed(false);
+    setEventSectionCollapsed(true);
     setEventTypeFilter('all');
     setEventKeywordFilter('');
-    setActiveModule('basic');
+    setActiveModule(DEFAULT_EDIT_DRAWER_MODULE);
     setError(null);
   }, [open, product, resetSeriesDraft, setIsCreatingSeries]);
 
@@ -297,8 +299,8 @@ export default function ProductEditDrawer({
   );
   const moduleTabs: Array<{ key: EditDrawerModule; label: string }> = useMemo(
     () => [
-      { key: 'basic', label: '基础' },
-      { key: 'breeding', label: '繁殖' },
+      { key: 'breeding', label: '事件录入' },
+      { key: 'basic', label: '基础信息' },
       { key: 'images', label: '图片' }
     ],
     []

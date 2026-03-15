@@ -1,0 +1,185 @@
+/* Tenant mobile shell variables, dock spacing, and bottom navigation styles. */
+:root {
+  --tenant-mobile-nav-height: 56px;
+  --tenant-mobile-nav-float-gap: 14px;
+  --tenant-mobile-nav-safe-inset: max(0px, env(safe-area-inset-bottom));
+  --tenant-mobile-nav-bottom-offset: calc(
+    var(--tenant-mobile-nav-safe-inset) + var(--tenant-mobile-nav-float-gap)
+  );
+  --tenant-mobile-fab-size: 44px;
+  --tenant-mobile-fab-gap: 8px;
+  --tenant-mobile-dock-offset: calc(
+    var(--tenant-mobile-nav-height) + var(--tenant-mobile-nav-bottom-offset) + 12px
+  );
+  --tenant-mobile-dock-clearance: calc(
+    var(--tenant-mobile-dock-offset) + var(--tenant-mobile-fab-size) + 20px
+  );
+  --tenant-mobile-dock-stack-clearance: calc(
+    var(--tenant-mobile-dock-offset) + (var(--tenant-mobile-fab-size) * 4) +
+      (var(--tenant-mobile-fab-gap) * 3) + 20px
+  );
+}
+
+.tenant-shell-bg {
+  min-height: 100vh;
+  min-height: 100svh;
+  background: linear-gradient(
+    135deg,
+    var(--ui-bg-start) 0%,
+    var(--ui-bg-mid) 55%,
+    var(--ui-bg-end) 100%
+  );
+}
+
+.tenant-mobile-content-safe {
+  padding-bottom: calc(var(--tenant-mobile-nav-height) + var(--tenant-mobile-nav-bottom-offset));
+}
+
+.tenant-mobile-dock-safe {
+  padding-bottom: max(2.5rem, var(--tenant-mobile-dock-clearance));
+}
+
+.tenant-mobile-dock-safe-stack {
+  padding-bottom: max(2.5rem, var(--tenant-mobile-dock-stack-clearance));
+}
+
+.tenant-mobile-nav {
+  height: calc(var(--tenant-mobile-nav-height) + var(--tenant-mobile-nav-bottom-offset));
+  padding-inline: 12px;
+  font-size: 13px;
+}
+
+.tenant-mobile-nav-shell {
+  pointer-events: none;
+  position: absolute;
+  inset-inline: 12px;
+  bottom: var(--tenant-mobile-nav-bottom-offset);
+  height: var(--tenant-mobile-nav-height);
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.14);
+  backdrop-filter: blur(20px);
+}
+
+.tenant-mobile-nav-list {
+  position: absolute;
+  inset-inline: 12px;
+  bottom: var(--tenant-mobile-nav-bottom-offset);
+  z-index: 10;
+  margin: 0 auto;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 360px;
+  height: var(--tenant-mobile-nav-height);
+  padding-inline: 12px;
+  list-style: none;
+}
+
+.tenant-mobile-nav-item {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  list-style: none;
+}
+
+.tenant-mobile-nav-item::marker {
+  content: '';
+}
+
+.tenant-mobile-nav-link {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  background: transparent;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  padding: 0 4px;
+  text-decoration: none;
+  line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 180ms ease;
+}
+
+.tenant-mobile-nav-stack {
+  display: grid;
+  grid-template-rows: 28px 11px;
+  align-content: center;
+  justify-items: center;
+  gap: 2px;
+  width: 100%;
+}
+
+.tenant-mobile-nav-link.is-active {
+  color: #b88600;
+}
+
+.tenant-mobile-nav-icon {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: currentColor;
+  line-height: 1;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease;
+}
+
+.tenant-mobile-nav-link.is-active .tenant-mobile-nav-icon {
+  background: #fff4c2;
+  color: #b88600;
+}
+
+.tenant-mobile-nav-icon-glyph {
+  display: block;
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+}
+
+.tenant-mobile-nav-link.is-active .tenant-mobile-nav-icon-glyph {
+  width: 18px;
+  height: 18px;
+}
+
+.tenant-mobile-nav-label {
+  display: block;
+  height: 11px;
+  font-size: 11px;
+  line-height: 11px;
+  font-weight: 500;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.tenant-mobile-nav-link.is-active .tenant-mobile-nav-label {
+  font-weight: 600;
+}
+
+:root[data-theme='dark'] .tenant-mobile-nav-shell {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(10, 10, 10, 0.86);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.52);
+}
+
+:root[data-theme='dark'] .tenant-mobile-nav-link.is-active {
+  color: #ffd85a;
+}
+
+:root[data-theme='dark'] .tenant-mobile-nav-link.is-active .tenant-mobile-nav-icon {
+  background: rgba(255, 212, 0, 0.2);
+  color: #ffd85a;
+}
